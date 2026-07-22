@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { ProviderError, ReplayProvider } from "@codingpro/llm";
 import { describe, expect, it } from "vitest";
+import { ConfigError } from "../src/config.js";
 import { criarPrograma, executarCli, executarPrograma, type CliIo } from "../src/program.js";
 
 function capturarSaida(): { io: CliIo; stderr: string[]; stdout: string[] } {
@@ -81,6 +82,51 @@ describe("CLI", () => {
     expect(captura.stderr).toEqual([]);
   });
 
+  it("repassa flags de provider e replay ao composition root", async () => {
+    const captura = capturarSaida();
+    const overrides: unknown[] = [];
+    const provider = new ReplayProvider([
+      {
+        events: [
+          { text: "ok", type: "text-delta" },
+          { message: { content: "ok", role: "assistant" }, reason: "stop", type: "finish" },
+        ],
+        request: { messages: [{ content: "teste", role: "user" }] },
+      },
+    ]);
+
+    await expect(
+      executarCli(
+        ["--provider", "replay", "--replay-file", "fixture.jsonl", "-p", "teste"],
+        captura.io,
+        {
+          criarProvider: (value) => {
+            overrides.push(value);
+            return provider;
+          },
+        },
+      ),
+    ).resolves.toBe(0);
+    expect(overrides).toEqual([{ provider: "replay", replayFile: "fixture.jsonl" }]);
+  });
+
+  it("rejeita provider inválido como erro de uso antes do composition root", async () => {
+    const captura = capturarSaida();
+    let chamadas = 0;
+
+    await expect(
+      executarCli(["--provider", "outro", "-p", "teste"], captura.io, {
+        criarProvider: () => {
+          chamadas += 1;
+          throw new Error("não deveria executar");
+        },
+      }),
+    ).resolves.toBe(1);
+    expect(chamadas).toBe(0);
+    expect(captura.stderr.join("")).toContain("Valores permitidos:");
+    expect(captura.stderr.join("")).not.toContain("Allowed choices are");
+  });
+
   it("preserva espaços, acentos e quebras de linha do prompt", async () => {
     const captura = capturarSaida();
     const prompt = "  primeira linha ç\nsegunda linha  ";
@@ -151,6 +197,21 @@ describe("CLI", () => {
       }),
     ).resolves.toBe(2);
     expect(captura.stderr.join("")).toBe("erro: provider não configurado\n");
+    expect(captura.stderr.join("")).not.toContain(canary);
+  });
+
+  it("exibe somente mensagem segura de configuração", async () => {
+    const captura = capturarSaida();
+    const canary = "segredo-config-nao-pode-vazar";
+
+    await expect(
+      executarCli(["-p", "olá"], captura.io, {
+        criarProvider: () => {
+          throw new ConfigError("configuração inválida", { cause: new Error(canary) });
+        },
+      }),
+    ).resolves.toBe(2);
+    expect(captura.stderr.join("")).toBe("erro: configuração inválida\n");
     expect(captura.stderr.join("")).not.toContain(canary);
   });
 

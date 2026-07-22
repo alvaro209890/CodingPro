@@ -17,7 +17,7 @@ pt-BR, o runtime alvo é Node.js 24 e o workspace usa pnpm.
 
 ## Estado atual
 
-O F0.2b adicionou o adaptador `deepseek-v4-pro` via AI SDK, streaming de texto/raciocínio,
-usage/cache, cancelamento, erros seguros e hardening de terminal. A integração é validada
-offline com `fetch` injetado; o smoke real existe, mas só roda com autorização explícita e
-nunca no CI. Após esse smoke, o próximo incremento é o sistema de configuração em camadas.
+O F0.2c adicionou configuração JSONC global → projeto → ambiente legado → flags, com schema
+fechado, leitura segura e política que impede repositórios de ativarem rede. O smoke real do
+adaptador e o fluxo completo `codingpro -p` via DeepSeek foram aprovados com prompt sintético.
+O próximo incremento é o spike de troca do provider para Ollama local.

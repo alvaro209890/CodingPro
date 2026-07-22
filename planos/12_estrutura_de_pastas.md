@@ -94,6 +94,11 @@ codingpro/
 <projeto>/CODINGPRO.md           # contexto do projeto (versionável, gerado por /init)
 ```
 
+No F0.2c, a configuração de projeto é lida somente de `<cwd>/.codingpro/settings.json`, sem
+busca em ancestrais. Caminhos `replay.file` globais são relativos a `~/.codingpro`; caminhos de
+projeto são relativos ao `cwd` e precisam permanecer dentro dele. Configurações nunca guardam
+credenciais, endpoint, headers ou modelo.
+
 ## Esta pasta de planejamento (`~/Documentos/CodingPro`)
 
 ```

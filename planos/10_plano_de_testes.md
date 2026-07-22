@@ -9,7 +9,7 @@ Princípio: o máximo possível de testes **sem tocar na API do LLM** (rápidos,
 - [ ] Aplicador de diffs: match exato, zero match, múltiplos matches, fuzzy, atomicidade multi-bloco
 - [ ] Permissões: avaliação de padrões de allowlist, níveis de risco, deny-list
 - [ ] Compactação de contexto: orçamento respeitado, informações obrigatórias preservadas
-- [ ] Parser de config (merge global→projeto→flags)
+- [x] Parser/config JSONC: global→projeto→env legado→flags, schema, trust boundary e filesystem seguro — 2026-07-22
 - [ ] Repo map: extração de símbolos por linguagem (fixtures pequenas), ranking, orçamento
 - [ ] Memória: CRUD, dedupe, FTS5, geração do índice
 - [ ] Protocolo orquestrador↔subagente (mensagens válidas/inválidas)

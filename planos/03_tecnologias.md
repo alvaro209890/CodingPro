@@ -68,7 +68,7 @@ Stack: **TypeScript + Node.js ≥ 24**, ESM puro, monorepo pnpm.
 | Plugins | **MCP** via `@modelcontextprotocol/sdk` (cliente) | Protocolo aberto, ecossistema enorme de servidores prontos |
 | Skills | Arquivos `.md` com frontmatter em `~/.codingpro/skills/` e `.codingpro/skills/` | Convenção validada na prática (Claude Code, Hermes) |
 | Hooks | Comandos shell configurados em `settings.json` (pre/post tool, stop) | Automação do usuário sem plugin |
-| Config | JSON5/JSONC em `~/.codingpro/settings.json` + `.codingpro/settings.json` | Comentários permitidos, merge global→projeto |
+| Config | JSONC com `jsonc-parser@3.3.1` em `~/.codingpro/settings.json` + `.codingpro/settings.json` | Parser fixado; comentários/trailing comma com validação estrutural estrita |
 
 ## Testes (doc 10)
 

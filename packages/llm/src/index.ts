@@ -15,4 +15,9 @@ export {
   DeepSeekProvider,
   type DeepSeekProviderOptions,
 } from "./providers/deepseek.js";
-export { loadReplayProvider, ReplayProvider, type ReplayTurn } from "./providers/replay.js";
+export {
+  loadReplayProvider,
+  parseReplayProvider,
+  ReplayProvider,
+  type ReplayTurn,
+} from "./providers/replay.js";

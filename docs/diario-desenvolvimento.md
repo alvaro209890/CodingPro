@@ -111,9 +111,50 @@ Node 24.18.0 e pnpm 10.34.4:
 - CI remoto verde no Node 24.11/24.18 Linux e 24.18 macOS:
   [execução 29947294481](https://github.com/alvaro209890/CodingPro/actions/runs/29947294481).
 
-O smoke com API real não foi executado: ele permanece pendente de opt-in explícito.
+Com autorização explícita do operador, o smoke real foi aprovado usando a chave de origem Hermes
+por um loader mínimo que repassou somente `DEEPSEEK_API_KEY`. Em seguida, o binário compilado
+`codingpro -p` também respondeu corretamente a um prompt sintético dentro de HOME/projeto
+temporários, sem imprimir resposta bruta ou credencial no relatório do teste.
 
 ### Próximo incremento
 
 Depois do smoke real autorizado, implementar configuração em camadas (global → projeto → flags)
 e continuar os spikes restantes da F0.
+
+## 2026-07-22 — F0.2c: configuração em camadas protegida
+
+### Entregue
+
+- Loader JSONC v1 para `~/.codingpro/settings.json` e `<cwd>/.codingpro/settings.json`.
+- Precedência campo a campo: global → projeto → ambiente legado → flags.
+- Flags `--provider` e `--replay-file`, com validação e ajuda em pt-BR.
+- Parser `jsonc-parser@3.3.1` fixado e incluído no bundle autossuficiente.
+- Caminhos de replay resolvidos conforme a origem da camada.
+- Smoke do tarball cobrindo global, projeto e flags com HOME/cwd descartáveis.
+
+### Decisões de segurança
+
+- O schema aceita somente `version`, `provider` e `replay.file`; credenciais, endpoint, headers,
+  modelo, includes, interpolação e execução de código são rejeitados.
+- O arquivo do projeto é não confiável: pode selecionar apenas replay, nunca DeepSeek.
+- Não há busca em ancestrais no F0.2c; somente o `cwd` inicial representa o projeto.
+- Arquivos têm limite de 64 KiB e são lidos uma vez por descriptor com `O_NOFOLLOW`.
+- Symlinks, hardlinks, arquivos não regulares, mudança durante leitura e escrita por grupo/outros
+  falham fechado; fixture de projeto é validada/lida pelo mesmo descriptor e vira snapshot.
+- `DEEPSEEK_API_KEY` não participa do merge e sua mera presença nunca ativa rede.
+
+### Validação
+
+Consulte o roteiro [F0.2c](roteiros-qa/f0.2c-config.md). Validação local com Node 24.18.0 e
+pnpm 10.34.4:
+
+- 118/118 testes aprovados;
+- cobertura global: 93,80% statements, 91,83% branches, 98,48% functions e 93,73% lines;
+- loader de config: 92,66% statements, 90,32% branches, 100% functions e 92,62% lines;
+- typecheck, build e instalação offline do tarball aprovados;
+- smoke DeepSeek real e binário `codingpro -p` real aprovados com prompt sintético.
+
+### Próximo incremento
+
+Executar o spike de troca para Ollama local pelo mesmo contrato Provider, mantendo a CLI offline
+quando esse provider for selecionado.

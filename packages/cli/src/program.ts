@@ -1,6 +1,7 @@
-import { Command, CommanderError, type Help } from "commander";
+import { Command, CommanderError, type Help, Option } from "commander";
 import { ProviderError, type Provider } from "@codingpro/llm";
 import packageJson from "../package.json" with { type: "json" };
+import { ConfigError, type ProviderOverrides } from "./config.js";
 import { executarPromptHeadless } from "./headless.js";
 import { mensagens } from "./i18n/pt-BR.js";
 
@@ -10,7 +11,7 @@ export interface CliIo {
 }
 
 export interface CliServices {
-  readonly criarProvider: () => Promise<Provider> | Provider;
+  readonly criarProvider: (overrides: ProviderOverrides) => Promise<Provider> | Provider;
   readonly signal?: AbortSignal;
 }
 
@@ -60,6 +61,8 @@ function traduzirErro(texto: string): string {
     .replace(/unknown option/gu, mensagens.erro.opcaoDesconhecida)
     .replace(/too many arguments/gu, mensagens.erro.argumentosDemais)
     .replace(/option '([^']+)' argument missing/gu, "a opção '$1' exige um argumento")
+    .replace(/argument '([^']+)' is invalid/gu, "argumento '$1' é inválido")
+    .replace(/Allowed choices are/gu, "Valores permitidos:")
     .replace(/missing mandatory argument/gu, mensagens.erro.argumentoAusente);
 }
 
@@ -69,6 +72,10 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
     .description(mensagens.ajuda.descricao)
     .version(packageJson.version, "-v, --versao", mensagens.opcao.versao)
     .option("-p, --prompt <texto>", mensagens.opcao.prompt)
+    .addOption(
+      new Option("--provider <nome>", mensagens.opcao.provider).choices(["deepseek", "replay"]),
+    )
+    .option("--replay-file <caminho>", mensagens.opcao.replayFile)
     .helpOption("-h, --ajuda", mensagens.opcao.ajuda)
     .addHelpCommand(false)
     .configureHelp({ formatHelp: formatarAjuda })
@@ -80,7 +87,8 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
     .exitOverride();
 
   programa.action(async () => {
-    const prompt = programa.opts<{ prompt?: string }>().prompt;
+    const options = programa.opts<{ prompt?: string; provider?: string; replayFile?: string }>();
+    const prompt = options.prompt;
     if (prompt === undefined) {
       programa.outputHelp();
       return;
@@ -90,7 +98,10 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
     }
 
     services.signal?.throwIfAborted();
-    const provider = await services.criarProvider();
+    const provider = await services.criarProvider({
+      ...(options.provider === undefined ? {} : { provider: options.provider }),
+      ...(options.replayFile === undefined ? {} : { replayFile: options.replayFile }),
+    });
     await executarPromptHeadless(prompt, provider, io.stdout, services.signal);
   });
   return programa;
@@ -132,7 +143,7 @@ export async function executarCli(
       io.stderr(`erro: ${error.message}\n`);
       return 1;
     }
-    if (error instanceof ProviderError) {
+    if (error instanceof ConfigError || error instanceof ProviderError) {
       io.stderr(`erro: ${error.safeMessage}\n`);
       return 2;
     }

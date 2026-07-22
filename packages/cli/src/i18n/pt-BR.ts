@@ -15,6 +15,8 @@ export const mensagens = {
   opcao: {
     ajuda: "exibe a ajuda",
     prompt: "envia um prompt no modo não interativo",
+    provider: "seleciona deepseek ou replay",
+    replayFile: "define a fixture do provider replay",
     versao: "exibe a versão",
   },
 } as const;

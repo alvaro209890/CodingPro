@@ -163,6 +163,10 @@ export async function loadReplayProvider(
     });
   }
 
+  return parseReplayProvider(content);
+}
+
+export function parseReplayProvider(content: string): ReplayProvider {
   const turns: ReplayTurn[] = [];
   for (const [index, rawLine] of content.split(/\r?\n/u).entries()) {
     const line = rawLine.trim();

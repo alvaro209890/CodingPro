@@ -2,6 +2,7 @@
 
 import { executarCli } from "./program.js";
 import { criarProviderRuntime } from "./provider-runtime.js";
+import { homedir } from "node:os";
 
 const controller = new AbortController();
 const interrupt = () => controller.abort();
@@ -15,7 +16,16 @@ try {
       stdout: (texto) => process.stdout.write(texto),
     },
     {
-      criarProvider: () => criarProviderRuntime(process.env, controller.signal),
+      criarProvider: (flags) =>
+        criarProviderRuntime(
+          {
+            cwd: process.cwd(),
+            environment: process.env,
+            flags,
+            homeDirectory: homedir(),
+          },
+          controller.signal,
+        ),
       signal: controller.signal,
     },
   );

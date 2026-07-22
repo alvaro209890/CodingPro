@@ -55,13 +55,13 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] F0.2b: adaptador DeepSeek/AI SDK + usage de cache + erros/abort offline — 2026-07-22
 - [x] F0.2b: smoke real sintético com autorização dupla e bloqueio no CI — 2026-07-22
 - [x] CI F0.2b bloqueante verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29947294481](https://github.com/alvaro209890/CodingPro/actions/runs/29947294481)) — 2026-07-22
-- [ ] Executar o smoke DeepSeek real com autorização explícita do operador
+- [x] Smoke DeepSeek real e `codingpro -p` real aprovados com prompt sintético e credencial isolada — 2026-07-22
 - [ ] Adicionar os demais pacotes de domínio conforme entrarem em uso (`core`, `tools`, `tui`, `knowledge`, `memory`, `voice`)
 - [ ] Contratos restantes: eventos core↔UI e interface Tool
 - [x] Contrato Provider v1: streaming de texto/raciocínio, finalização, uso e capabilities — 2026-07-22
-- [ ] Config em camadas (global → projeto → flags)
+- [x] F0.2c: config JSONC global → projeto → ambiente legado → flags, fail-closed e sem segredos — 2026-07-22
 - [ ] Spikes: Ink+streaming · DeepSeek tool calling · Ollama swap · node:sqlite FTS5 · tree-sitter WASM · whisper pt-BR · checkpoint git
-- [ ] 🏁 `codingpro -p "olá"` respondendo via DeepSeek
+- [x] 🏁 `codingpro -p` respondendo via DeepSeek real com prompt sintético — 2026-07-22
 
 ## F1 — Loop agêntico mínimo
 

@@ -6,7 +6,7 @@
 **Data do plano:** 2026-07-22
 **Stack decidida:** TypeScript / Node.js ≥ 24 · comando `codingpro` (alias `cpro`)
 **Licença:** proprietária source-available (ver `LICENSE`; código de terceiros portado mantém a licença original)
-**Status geral:** 🟠 F0 em andamento — adaptador DeepSeek do F0.2b validado offline em 2026-07-22
+**Status geral:** 🟠 F0 em andamento — configuração em camadas F0.2c concluída em 2026-07-22
 
 ## Desenvolvimento local
 
@@ -18,12 +18,13 @@ nvm use
 pnpm install --frozen-lockfile
 pnpm check
 node packages/cli/dist/index.mjs --ajuda
-CODINGPRO_PROVIDER=replay \
-  CODINGPRO_REPLAY_FILE=fixtures/llm/ola.jsonl \
-  node packages/cli/dist/index.mjs -p "olá"
+node packages/cli/dist/index.mjs \
+  --provider replay \
+  --replay-file fixtures/llm/ola.jsonl \
+  -p "olá"
 
-CODINGPRO_PROVIDER=deepseek \
-  node --env-file="$HOME/.config/codingpro/deepseek.env" packages/cli/dist/index.mjs -p "olá"
+node --env-file="$HOME/.config/codingpro/deepseek.env" \
+  packages/cli/dist/index.mjs --provider deepseek -p "olá"
 ```
 
 O artefato oferece os dois bins `codingpro` e `cpro`, ajuda/versão em pt-BR e o modo headless
@@ -37,6 +38,44 @@ O arquivo dedicado do exemplo deve ter permissão `0600` e conter somente essa v
 O smoke real é separado, usa apenas um prompt sintético e requer autorização explícita;
 consulte [o roteiro F0.2b](docs/roteiros-qa/f0.2b-deepseek.md).
 O histórico verificável fica em [docs/diario-desenvolvimento.md](docs/diario-desenvolvimento.md).
+
+## Configuração em camadas
+
+A CLI aceita JSONC com comentários e vírgula final. A precedência é:
+
+```text
+~/.codingpro/settings.json → <cwd>/.codingpro/settings.json → ambiente legado → flags
+```
+
+Configuração global persistente:
+
+```jsonc
+{
+  "version": 1,
+  "provider": "deepseek",
+}
+```
+
+Configuração de projeto, segura para versionar:
+
+```jsonc
+{
+  "version": 1,
+  "provider": "replay",
+  "replay": { "file": "fixtures/llm/ola.jsonl" },
+}
+```
+
+O arquivo do projeto é procurado somente no diretório inicial da execução, sem herança de
+ancestrais, e não pode ativar DeepSeek. Configurações nunca aceitam chave, endpoint, headers ou
+modelo. `DEEPSEEK_API_KEY` permanece exclusivamente no ambiente. `CODINGPRO_PROVIDER` e
+`CODINGPRO_REPLAY_FILE` continuam temporariamente compatíveis, abaixo das flags na precedência.
+
+Arquivos e diretórios de configuração não podem ser symlinks nem permitir escrita por grupo ou
+outros usuários. Um `replay.file` global relativo usa `~/.codingpro` como base; a camada global
+confiável também aceita caminho absoluto. No projeto, o caminho é relativo ao `cwd`, precisa
+permanecer dentro dele e a fixture é lida em snapshot seguro. Consulte o
+[roteiro F0.2c](docs/roteiros-qa/f0.2c-config.md).
 
 ## As 3 fases do projeto
 

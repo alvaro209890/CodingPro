@@ -30,12 +30,12 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 - [x] F0.2a: completar `codingpro -p`/`--prompt` com streaming headless offline — 2026-07-22
 - [x] F0.2b: adaptador `deepseek-v4-pro` via AI SDK, thinking/effort, usage/cache e abort — 2026-07-22
 - [x] F0.2b: testes SSE sem rede + bundle autossuficiente + smoke real opt-in protegido — 2026-07-22
-- [ ] Executar smoke real DeepSeek com autorização explícita e registrar resultado
+- [x] Executar smoke real DeepSeek e fluxo completo `codingpro -p` com prompt sintético — 2026-07-22
 - [ ] Adicionar os demais pacotes quando tiverem responsabilidade real (`core|tui|tools|knowledge|memory|voice`)
 - [ ] Especificar os contratos internos restantes (eventos core↔UI e interface Tool) — ver doc 02
-- [ ] Sistema de config: merge `~/.codingpro/settings.json` → `.codingpro/settings.json` → flags
+- [x] F0.2c: config JSONC `~/.codingpro/settings.json` → `.codingpro/settings.json` → ambiente legado → flags — 2026-07-22
 - [ ] Rodar os spikes do doc 03
-- [ ] **Marco: `codingpro -p "olá"` responde via DeepSeek (sem tools)**
+- [x] **Marco: `codingpro -p` responde via DeepSeek real (sem tools)** — 2026-07-22
 
 ## F1 — Loop agêntico mínimo (2 semanas)
 

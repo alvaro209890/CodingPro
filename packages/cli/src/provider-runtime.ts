@@ -1,15 +1,31 @@
-import { DeepSeekProvider, loadReplayProvider, ProviderError, type Provider } from "@codingpro/llm";
+import {
+  DeepSeekProvider,
+  loadReplayProvider,
+  parseReplayProvider,
+  ProviderError,
+  type Provider,
+} from "@codingpro/llm";
+import { loadConfig, type ProviderOverrides, type RuntimeEnvironment } from "./config.js";
 
-export type RuntimeEnvironment = Readonly<Record<string, string | undefined>>;
+export type { RuntimeEnvironment } from "./config.js";
+
+export interface ProviderRuntimeContext {
+  readonly cwd: string;
+  readonly environment: RuntimeEnvironment;
+  readonly flags: ProviderOverrides;
+  readonly homeDirectory: string;
+}
 
 export async function criarProviderRuntime(
-  environment: RuntimeEnvironment,
+  context: ProviderRuntimeContext,
   signal?: AbortSignal,
 ): Promise<Provider> {
   signal?.throwIfAborted();
+  const config = await loadConfig({ ...context, ...(signal === undefined ? {} : { signal }) });
+  signal?.throwIfAborted();
 
-  if (environment.CODINGPRO_PROVIDER === "deepseek") {
-    const apiKey = environment.DEEPSEEK_API_KEY;
+  if (config.provider === "deepseek") {
+    const apiKey = context.environment.DEEPSEEK_API_KEY;
     if (apiKey === undefined || apiKey.trim().length === 0) {
       throw new ProviderError(
         "not-configured",
@@ -19,17 +35,15 @@ export async function criarProviderRuntime(
     return new DeepSeekProvider({ apiKey });
   }
 
-  if (environment.CODINGPRO_PROVIDER !== "replay") {
-    throw new ProviderError("not-configured", "Defina CODINGPRO_PROVIDER como deepseek ou replay.");
-  }
-
-  const replayFile = environment.CODINGPRO_REPLAY_FILE;
-  if (replayFile === undefined || replayFile.trim().length === 0) {
+  if (config.provider !== "replay") {
     throw new ProviderError(
       "not-configured",
-      "Defina CODINGPRO_REPLAY_FILE para usar o provider de replay.",
+      "Selecione deepseek ou replay no settings, CODINGPRO_PROVIDER ou --provider.",
     );
   }
 
-  return loadReplayProvider(replayFile, signal === undefined ? undefined : { signal });
+  if (config.replayContent !== undefined) {
+    return parseReplayProvider(config.replayContent);
+  }
+  return loadReplayProvider(config.replayFile, signal === undefined ? undefined : { signal });
 }
