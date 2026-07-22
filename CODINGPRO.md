@@ -65,9 +65,17 @@ o loop com TODAS as ferramentas; efeitos (escrever/rodar) pedem **aprovação in
 salvo por turno e há `/sair` `/custo` `/limpar` `/ajuda`. Toda a mecânica é testada offline com IO e
 provider injetados.
 
-A **F1 está funcionalmente completa**: sandbox, tools, permissões, loop, retry, compactação, custo,
-sessões, progresso, headless (`--agente`) e chat interativo com aprovações. Resta apenas: (a) o
-**marco ao vivo** (rodar uma tarefa real de 5+ passos com DeepSeek — é eval, não teste offline) e
-(b) o **polimento visual Ink/Aurora** (tema, spinner, statusline, banner — doc 16), que fica para a
-F8. Depois começa a **F2** (edição segura: `edit_file` search/replace, checkpoints git, `/undo`).
-Antes (F0.4/F0.3) já estavam fechados o roteamento de papéis Pro/Flash e o tool calling multi-turno.
+A **F1 está completa, incluindo o marco validado AO VIVO com DeepSeek** (2026-07-22): num projeto
+real, `codingpro --chat` executou uma tarefa de 10 passos (2× list_dir, 5× read_file, 1× write_file)
+com **1 aprovação interativa** concedida no prompt e o arquivo criado de fato; o headless `--agente`
+fez 6 passos read-only com custo/cache reais (65% de cache-hit, ~US$ 0,0009). Sandbox, tools,
+permissões, loop (retry/compactação/custo), sessões, progresso, headless e chat interativo com
+aprovações — tudo pronto, testado offline e comprovado ao vivo.
+
+**Known issue** (a corrigir na fase de interface): `--chat` por stdin em *pipe* (não-TTY) é instável
+por causa de um race de EOF do `readline/promises`; o TTY real funciona. O fix é um leitor por
+eventos de linha (fila) no lugar de `question` sequencial.
+
+Falta só o **polimento visual Ink/Aurora** (doc 16), que o roteiro joga para a F8. Próximo bloco: a
+**F2** (edição segura: `edit_file` search/replace, checkpoints git, `/undo`). Antes (F0.4/F0.3) já
+estavam fechados o roteamento de papéis Pro/Flash e o tool calling multi-turno.

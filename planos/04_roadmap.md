@@ -55,7 +55,7 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 - [x] F1.13/F1.14: sessões ligadas à CLI — auto-save + `--resume <id>` + `--continuar` (última) no `codingpro --agente` — 2026-07-22
 - [x] F1.5: compactação de contexto por truncamento (`compactMessages`, preserva system + pareamento tool/result) — 2026-07-22; falta ligar ao loop com orçamento real
 - [ ] System prompt v1 (identidade, regras de tool use, estilo de resposta conciso, diretiva de resposta em pt-BR)
-- [ ] **Marco: tarefa real de 5+ passos num projeto de verdade, com aprovação de permissões**
+- [x] **Marco: tarefa real de 5+ passos num projeto de verdade, com aprovação de permissões** — validado ao vivo com DeepSeek em 2026-07-22 (`--chat`: 10 passos + aprovação de escrita; `--agente`: 6 passos read-only + custo/cache reais)
 
 ## F2 — Edição segura (1–2 semanas)
 
