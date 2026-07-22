@@ -154,6 +154,11 @@ pnpm 10.34.4:
 - typecheck, build e instalação offline do tarball aprovados;
 - smoke DeepSeek real e binário `codingpro -p` real aprovados com prompt sintético.
 
+O primeiro CI da F0.2c ([execução 29950048386](https://github.com/alvaro209890/CodingPro/actions/runs/29950048386))
+expôs duas suposições dos testes: o `umask` do runner podia remover o bit inseguro solicitado na
+criação do arquivo, e o macOS canonicaliza `/var` como `/private/var`. As fixtures passaram a
+aplicar `chmod` explicitamente e a comparar diretórios temporários canonicalizados.
+
 ### Próximo incremento
 
 Executar o spike de troca para Ollama local pelo mesmo contrato Provider, mantendo a CLI offline

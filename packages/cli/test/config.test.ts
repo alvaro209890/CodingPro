@@ -1,4 +1,14 @@
-import { chmod, link, lstat, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  link,
+  lstat,
+  mkdir,
+  mkdtemp,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,6 +29,7 @@ beforeEach(async () => {
   homeDirectory = join(temporary, "home com espaço");
   cwd = join(temporary, "projeto ç");
   await Promise.all([mkdir(homeDirectory), mkdir(cwd)]);
+  [homeDirectory, cwd] = await Promise.all([realpath(homeDirectory), realpath(cwd)]);
 });
 
 afterEach(async () => {
@@ -275,6 +286,7 @@ describe("loadConfig", () => {
 
     await rm(settings, { recursive: true });
     await writeFile(settings, '{ "provider": "deepseek" }', { mode: 0o622 });
+    await chmod(settings, 0o622);
     await expect(loadConfig(options())).rejects.toMatchObject({
       safeMessage: expect.stringContaining("escrita por outros"),
     });
