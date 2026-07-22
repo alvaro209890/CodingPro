@@ -41,6 +41,13 @@ rodam após um `finish` limpo, então falha de streaming nunca duplica efeito. A
 respeita `AbortSignal` e emite eventos (`text/reasoning-delta`, `tool-call`, `tool-result`, `step`)
 para a UI. O system prompt v1 (pt-BR, regras de tool-use e estilo conciso) é prefixado.
 
-Próximo na F1: sessões (transcrito JSONL + retomada), depois a TUI Ink (chat com streaming +
-`Approver` visual) ligando o loop à interface, além de retry/backoff e `/cost`. Antes (F0.4/F0.3)
-já estavam fechados o roteamento de papéis Pro/Flash e o tool calling multi-turno.
+O **F1.4** adicionou persistência de sessão: `SessionStore` grava o transcrito em JSONL (uma
+`ChatMessage` por linha, append-only), com `save`/`append`/`load`/`list`/`has`, ids seguros como
+nome de arquivo e carga fail-closed (linha corrompida ou não-mensagem aborta). O `runAgent` passou a
+detectar quando o transcrito já começa com o system prompt e não o duplica, habilitando a retomada.
+
+Próximo na F1 (fase de integração): a TUI Ink (chat com streaming + `Approver` visual) ligando o loop
+e as sessões à interface e ao `codingpro -p`, com as flags `--continue`/`--resume`; depois
+retry/backoff e `/cost`. O núcleo agêntico (sandbox, tools, permissões, loop, sessões) já está pronto
+e testado offline; falta a camada de interface. Antes (F0.4/F0.3) já estavam fechados o roteamento
+de papéis Pro/Flash e o tool calling multi-turno.

@@ -127,10 +127,11 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
       ? Math.trunc(options.maxSteps)
       : AGENT_DEFAULT_MAX_STEPS;
   const tools = options.tools ?? [];
-  const messages: ChatMessage[] = [
-    { content: options.systemPrompt ?? SYSTEM_PROMPT_V1, role: "system" },
-    ...options.messages,
-  ];
+  // Ao retomar uma sessão, o transcrito já começa com o system prompt: não duplicar.
+  const hasSystem = options.messages[0]?.role === "system";
+  const messages: ChatMessage[] = hasSystem
+    ? [...options.messages]
+    : [{ content: options.systemPrompt ?? SYSTEM_PROMPT_V1, role: "system" }, ...options.messages];
 
   let usage = ZERO_USAGE;
   let steps = 0;

@@ -17,7 +17,13 @@ export type {
   ToolResult,
   TokenUsage,
 } from "./provider.js";
-export { isTool, isToolCall, toolAcceptsInput } from "./validation.js";
+export {
+  copyChatMessage,
+  isChatMessage,
+  isTool,
+  isToolCall,
+  toolAcceptsInput,
+} from "./validation.js";
 export {
   DEEPSEEK_BASE_URL,
   DEEPSEEK_MODEL,

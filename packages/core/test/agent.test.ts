@@ -245,6 +245,25 @@ describe("runAgent", () => {
     ).rejects.toMatchObject({ code: "invalid-response" });
   });
 
+  it("não duplica o system prompt ao retomar um transcrito", async () => {
+    const { provider, requests } = scripted([[finish(assistant("continuando"))]]);
+    const result = await runAgent({
+      context,
+      gate,
+      messages: [
+        { content: "SISTEMA RETOMADO", role: "system" },
+        { content: "pergunta antiga", role: "user" },
+        { content: "resposta antiga", role: "assistant" },
+        { content: "e agora?", role: "user" },
+      ],
+      provider,
+    });
+    const systemCount = result.messages.filter((message) => message.role === "system").length;
+    expect(systemCount).toBe(1);
+    expect(result.messages[0]).toEqual({ content: "SISTEMA RETOMADO", role: "system" });
+    expect(requests[0]?.messages[0]).toEqual({ content: "SISTEMA RETOMADO", role: "system" });
+  });
+
   it("aborta antes de chamar o provider quando o sinal já está abortado", async () => {
     const provider = scripted([[finish(assistant("ok"))]]);
     const spy = vi.spyOn(provider.provider, "stream");

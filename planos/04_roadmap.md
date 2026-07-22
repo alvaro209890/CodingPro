@@ -50,7 +50,8 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 - [ ] TUI Ink: chat com streaming, render markdown, indicador de tool em execução
 - [ ] Identidade visual v1 (doc 16): tokens.ts, tema Aurora escuro, trilho de timeline, spinner, statusline, banner
 - [ ] i18n pt-BR (doc 15): strings canônicas, verbos de progresso, comandos com alias
-- [ ] Sessões: persistir JSONL, `--continue` / `--resume`
+- [x] F1.4: sessões em JSONL (`SessionStore` save/append/load/list, fail-closed) + `runAgent` retoma transcrito sem duplicar system prompt — 2026-07-22
+- [ ] Ligar sessões à CLI: flags `--continue` / `--resume` (depende da fase de integração CLI/TUI)
 - [ ] Compactação de contexto quando estourar orçamento de tokens
 - [ ] System prompt v1 (identidade, regras de tool use, estilo de resposta conciso, diretiva de resposta em pt-BR)
 - [ ] **Marco: tarefa real de 5+ passos num projeto de verdade, com aprovação de permissões**
