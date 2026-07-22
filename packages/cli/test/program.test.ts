@@ -1,8 +1,30 @@
-import { readFile } from "node:fs/promises";
-import { ProviderError, ReplayProvider } from "@codingpro/llm";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { type Provider, type ProviderEvent, ProviderError, ReplayProvider } from "@codingpro/llm";
 import { describe, expect, it } from "vitest";
 import { ConfigError } from "../src/config.js";
 import { criarPrograma, executarCli, executarPrograma, type CliIo } from "../src/program.js";
+
+function providerRoteirizado(turns: readonly (readonly ProviderEvent[])[]): Provider {
+  let indice = 0;
+  return {
+    capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+    id: "fake",
+    model: "fake",
+    async *stream(_request, options) {
+      options?.signal?.throwIfAborted();
+      const turno = turns[indice];
+      indice += 1;
+      if (turno === undefined) {
+        throw new Error("roteiro sem turno");
+      }
+      for (const evento of turno) {
+        yield evento;
+      }
+    },
+  };
+}
 
 function capturarSaida(): { io: CliIo; stderr: string[]; stdout: string[] } {
   const stderr: string[] = [];
@@ -244,6 +266,60 @@ describe("CLI", () => {
       }),
     ).resolves.toBe(130);
     expect(captura.stderr.join("")).toBe("erro: operação interrompida\n");
+  });
+
+  it("roda o loop agêntico com --agente e ferramentas de leitura", async () => {
+    const captura = capturarSaida();
+    const raiz = await mkdtemp(join(tmpdir(), "codingpro-agente-"));
+    try {
+      await writeFile(join(raiz, "a.txt"), "conteúdo do projeto");
+      const provider = providerRoteirizado([
+        [
+          {
+            call: { id: "c1", input: { path: "a.txt" }, name: "read_file" },
+            type: "tool-call",
+          },
+          {
+            message: {
+              content: "",
+              role: "assistant",
+              toolCalls: [{ id: "c1", input: { path: "a.txt" }, name: "read_file" }],
+            },
+            reason: "tool-calls",
+            type: "finish",
+          },
+        ],
+        [
+          { text: "o arquivo tem conteúdo do projeto", type: "text-delta" },
+          {
+            message: { content: "o arquivo tem conteúdo do projeto", role: "assistant" },
+            reason: "stop",
+            type: "finish",
+          },
+        ],
+      ]);
+
+      await expect(
+        executarCli(["--agente", "-p", "o que tem em a.txt?"], captura.io, {
+          criarProvider: () => provider,
+          raizProjeto: raiz,
+        }),
+      ).resolves.toBe(0);
+      expect(captura.stdout.join("")).toContain("o arquivo tem conteúdo do projeto");
+      expect(captura.stderr.join("")).toContain("· Lendo a.txt");
+    } finally {
+      await rm(raiz, { force: true, recursive: true });
+    }
+  });
+
+  it("rejeita --max-contexto não inteiro como erro de uso", async () => {
+    const captura = capturarSaida();
+    await expect(
+      executarCli(["--agente", "--max-contexto", "abc", "-p", "oi"], captura.io, {
+        criarProvider: () => providerRoteirizado([]),
+      }),
+    ).resolves.toBe(1);
+    expect(captura.stderr.join("")).toContain("--max-contexto exige um inteiro positivo");
   });
 
   it("rejeita opção desconhecida com erro em pt-BR", async () => {

@@ -13,7 +13,9 @@ export const mensagens = {
     promptVazio: "o prompt não pode estar vazio",
   },
   opcao: {
+    agente: "roda o loop agêntico com ferramentas de leitura (headless)",
     ajuda: "exibe a ajuda",
+    maxContexto: "orçamento de tokens antes de compactar o contexto",
     prompt: "envia um prompt no modo não interativo",
     provider: "seleciona deepseek ou replay",
     replayFile: "define a fixture do provider replay",

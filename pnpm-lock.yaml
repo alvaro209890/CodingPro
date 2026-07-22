@@ -35,6 +35,9 @@ importers:
 
   packages/cli:
     devDependencies:
+      '@codingpro/core':
+        specifier: workspace:*
+        version: link:../core
       '@codingpro/llm':
         specifier: workspace:*
         version: link:../llm

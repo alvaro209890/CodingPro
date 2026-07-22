@@ -90,7 +90,9 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] F1.7: retry/backoff no `runAgent` só antes do 1º token (sem duplicar deltas nem efeitos), abortável — 2026-07-22
 - [x] F1.8: compactação ligada ao loop via `contextBudget` (compacta antes de cada turno) — 2026-07-22
 - [x] F1.9: custo agregado no `AgentResult` (`cost`) quando o modelo tem tabela de preço — 2026-07-22
-- [ ] TUI chat (Ink) + ligar o loop/sessões à interface + flags `--continue`/`--resume`
+- [x] F1.11: runtime headless do agente (`executarAgenteHeadless`: Workspace + tools de leitura + gate + loop; texto→stdout, progresso/`/cost`→stderr) — 2026-07-22
+- [x] F1.12: `codingpro --agente -p` liga o loop à CLI + `--max-contexto` (compactação) — 2026-07-22
+- [ ] TUI chat (Ink) + flags `--continue`/`--resume` na CLI
 - [ ] 🏁 Tarefa real de 5+ passos com aprovações
 
 ## F2 — Edição segura

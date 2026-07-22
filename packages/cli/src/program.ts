@@ -1,6 +1,7 @@
 import { Command, CommanderError, type Help, Option } from "commander";
 import { ProviderError, type Provider } from "@codingpro/llm";
 import packageJson from "../package.json" with { type: "json" };
+import { executarAgenteHeadless } from "./agent-runtime.js";
 import { ConfigError, type ProviderOverrides } from "./config.js";
 import { executarPromptHeadless } from "./headless.js";
 import { mensagens } from "./i18n/pt-BR.js";
@@ -12,6 +13,8 @@ export interface CliIo {
 
 export interface CliServices {
   readonly criarProvider: (overrides: ProviderOverrides) => Promise<Provider> | Provider;
+  /** Raiz do projeto (cwd) para o modo agente sandboxar as ferramentas. */
+  readonly raizProjeto?: string;
   readonly signal?: AbortSignal;
 }
 
@@ -72,6 +75,16 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
     .description(mensagens.ajuda.descricao)
     .version(packageJson.version, "-v, --versao", mensagens.opcao.versao)
     .option("-p, --prompt <texto>", mensagens.opcao.prompt)
+    .option("--agente", mensagens.opcao.agente)
+    .addOption(
+      new Option("--max-contexto <n>", mensagens.opcao.maxContexto).argParser((valor) => {
+        const numero = Number.parseInt(valor, 10);
+        if (!Number.isSafeInteger(numero) || numero <= 0) {
+          throw new CliUsageError("--max-contexto exige um inteiro positivo");
+        }
+        return numero;
+      }),
+    )
     .addOption(
       new Option("--provider <nome>", mensagens.opcao.provider).choices(["deepseek", "replay"]),
     )
@@ -87,7 +100,13 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
     .exitOverride();
 
   programa.action(async () => {
-    const options = programa.opts<{ prompt?: string; provider?: string; replayFile?: string }>();
+    const options = programa.opts<{
+      agente?: boolean;
+      maxContexto?: number;
+      prompt?: string;
+      provider?: string;
+      replayFile?: string;
+    }>();
     const prompt = options.prompt;
     if (prompt === undefined) {
       programa.outputHelp();
@@ -102,6 +121,21 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
       ...(options.provider === undefined ? {} : { provider: options.provider }),
       ...(options.replayFile === undefined ? {} : { replayFile: options.replayFile }),
     });
+
+    if (options.agente === true) {
+      await executarAgenteHeadless(
+        {
+          cwd: services.raizProjeto ?? process.cwd(),
+          prompt,
+          provider,
+          ...(options.maxContexto === undefined ? {} : { maxContexto: options.maxContexto }),
+          ...(services.signal === undefined ? {} : { signal: services.signal }),
+        },
+        { progresso: io.stderr, saida: io.stdout },
+      );
+      return;
+    }
+
     await executarPromptHeadless(prompt, provider, io.stdout, services.signal);
   });
   return programa;

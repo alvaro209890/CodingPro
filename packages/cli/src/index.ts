@@ -26,6 +26,7 @@ try {
           },
           controller.signal,
         ),
+      raizProjeto: process.cwd(),
       signal: controller.signal,
     },
   );
