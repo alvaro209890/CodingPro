@@ -1,8 +1,11 @@
 export {
+  AGENT_DEFAULT_MAX_RETRIES,
   AGENT_DEFAULT_MAX_STEPS,
+  AGENT_DEFAULT_RETRY_BASE_MS,
   type AgentEvent,
   type AgentFinishReason,
   type AgentResult,
+  type RetryOptions,
   runAgent,
   type RunAgentOptions,
 } from "./agent.js";

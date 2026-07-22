@@ -1,6 +1,13 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { ChatRequest, Provider, ProviderEvent, ToolCall, TokenUsage } from "@codingpro/llm";
+import {
+  type ChatRequest,
+  type Provider,
+  type ProviderEvent,
+  ProviderError,
+  type ToolCall,
+  type TokenUsage,
+} from "@codingpro/llm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type AgentEvent, runAgent } from "../src/agent.js";
 import { ToolGate } from "../src/gate.js";
@@ -262,6 +269,160 @@ describe("runAgent", () => {
     expect(systemCount).toBe(1);
     expect(result.messages[0]).toEqual({ content: "SISTEMA RETOMADO", role: "system" });
     expect(requests[0]?.messages[0]).toEqual({ content: "SISTEMA RETOMADO", role: "system" });
+  });
+
+  it("re-tenta turno em erro transitório antes de emitir e depois sucede", async () => {
+    let calls = 0;
+    const provider: Provider = {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "flaky",
+      model: "fake",
+      async *stream() {
+        calls += 1;
+        if (calls <= 2) {
+          throw new ProviderError("provider-failed", "instabilidade", true);
+        }
+        yield finish(assistant("ok após retry"));
+      },
+    };
+    const result = await runAgent({
+      context,
+      gate,
+      messages: [{ content: "oi", role: "user" }],
+      provider,
+      retry: { baseDelayMs: 0, maxRetries: 3 },
+    });
+    expect(calls).toBe(3);
+    expect(result.messages.at(-1)).toEqual(assistant("ok após retry"));
+  });
+
+  it("não re-tenta erro não-transitório nem após emitir", async () => {
+    let naoRetryavel = 0;
+    const provider: Provider = {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "fatal",
+      model: "fake",
+      // biome-ignore lint/correctness/useYield: erro fatal antes de qualquer yield.
+      async *stream() {
+        naoRetryavel += 1;
+        throw new ProviderError("invalid-response", "fatal", false);
+      },
+    };
+    await expect(
+      runAgent({
+        context,
+        gate,
+        messages: [{ content: "oi", role: "user" }],
+        provider,
+        retry: { baseDelayMs: 0, maxRetries: 3 },
+      }),
+    ).rejects.toMatchObject({ code: "invalid-response" });
+    expect(naoRetryavel).toBe(1);
+
+    let apos = 0;
+    const afterEmit: Provider = {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "meio",
+      model: "fake",
+      async *stream() {
+        apos += 1;
+        yield { text: "parcial", type: "text-delta" };
+        throw new ProviderError("provider-failed", "caiu no meio", true);
+      },
+    };
+    await expect(
+      runAgent({
+        context,
+        gate,
+        messages: [{ content: "oi", role: "user" }],
+        provider: afterEmit,
+        retry: { baseDelayMs: 0, maxRetries: 3 },
+      }),
+    ).rejects.toMatchObject({ code: "provider-failed" });
+    expect(apos).toBe(1);
+  });
+
+  it("aguarda o backoff real entre tentativas", async () => {
+    let calls = 0;
+    const provider: Provider = {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "flaky-delay",
+      model: "fake",
+      async *stream() {
+        calls += 1;
+        if (calls === 1) {
+          throw new ProviderError("provider-failed", "instável", true);
+        }
+        yield finish(assistant("ok"));
+      },
+    };
+    const started = Date.now();
+    const result = await runAgent({
+      context,
+      gate,
+      messages: [{ content: "oi", role: "user" }],
+      provider,
+      retry: { baseDelayMs: 15, maxRetries: 2 },
+    });
+    expect(Date.now() - started).toBeGreaterThanOrEqual(10);
+    expect(result.messages.at(-1)).toEqual(assistant("ok"));
+  });
+
+  it("aborta durante o backoff", async () => {
+    const provider: Provider = {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "sempre-cai",
+      model: "fake",
+      // biome-ignore lint/correctness/useYield: sempre falha antes de qualquer yield.
+      async *stream() {
+        throw new ProviderError("provider-failed", "instável", true);
+      },
+    };
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 10);
+    await expect(
+      runAgent({
+        context,
+        gate,
+        messages: [{ content: "oi", role: "user" }],
+        provider,
+        retry: { baseDelayMs: 10_000, maxRetries: 5 },
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("compacta o transcrito acima do orçamento antes de cada turno", async () => {
+    const call: ToolCall = { id: "c", input: { path: "a.txt" }, name: "read_file" };
+    await writeFile(join(root, "a.txt"), "x");
+    const { provider, requests } = scripted([
+      [finish(assistant("", [call]))],
+      [finish(assistant("fim"))],
+    ]);
+    await runAgent({
+      context,
+      gate,
+      // Orçamento minúsculo: cada request deve carregar poucas mensagens.
+      contextBudget: 5,
+      messages: [{ content: "leia", role: "user" }],
+      provider,
+      tools: registry.definitions(),
+    });
+    // O 2º request foi compactado: bem menos que o transcrito completo (system+user+asst+tool).
+    expect(requests[1]?.messages.length).toBeLessThanOrEqual(3);
+  });
+
+  it("expõe o custo quando o modelo do provider tem tabela de preço", async () => {
+    const priced = scripted([[finish(assistant("oi"), { inputTokens: 1_000, outputTokens: 100 })]]);
+    const provider: Provider = { ...priced.provider, model: "deepseek-v4-pro" };
+    const result = await runAgent({
+      context,
+      gate,
+      messages: [{ content: "oi", role: "user" }],
+      provider,
+    });
+    expect(result.cost?.totalCostUsd).toBeGreaterThan(0);
+    expect(result.cost?.model).toBe("deepseek-v4-pro");
   });
 
   it("aborta antes de chamar o provider quando o sinal já está abortado", async () => {

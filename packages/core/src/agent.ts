@@ -1,6 +1,10 @@
 import {
   type ChatMessage,
   type ChatRequest,
+  type CostBreakdown,
+  DEEPSEEK_PRICING,
+  type DeepSeekModel,
+  estimateCost,
   type FinishReason,
   type Provider,
   ProviderError,
@@ -9,12 +13,22 @@ import {
   type TokenUsage,
   type ToolResult,
 } from "@codingpro/llm";
+import { compactMessages } from "./compaction.js";
 import type { ToolGate } from "./gate.js";
 import { SYSTEM_PROMPT_V1 } from "./system-prompt.js";
 import type { ToolContext } from "./tool.js";
 
 /** Teto de passos do loop, para nunca girar sem fim quando o modelo insiste em ferramentas. */
 export const AGENT_DEFAULT_MAX_STEPS = 25;
+
+/** Tentativas extras por turno em erro transitório do provider (backoff exponencial). */
+export const AGENT_DEFAULT_MAX_RETRIES = 2;
+export const AGENT_DEFAULT_RETRY_BASE_MS = 500;
+
+export interface RetryOptions {
+  readonly baseDelayMs?: number;
+  readonly maxRetries?: number;
+}
 
 export type AgentFinishReason = "max-steps" | "stop";
 
@@ -32,6 +46,8 @@ export type AgentEvent =
     };
 
 export interface RunAgentOptions {
+  /** Orçamento de tokens: acima dele, o transcrito é compactado antes do turno. */
+  readonly contextBudget?: number;
   readonly context: ToolContext;
   readonly gate: ToolGate;
   /** Mensagens iniciais (ex.: a pergunta do usuário). O system prompt é prefixado. */
@@ -39,6 +55,7 @@ export interface RunAgentOptions {
   readonly maxSteps?: number;
   readonly onEvent?: (event: AgentEvent) => void;
   readonly provider: Provider;
+  readonly retry?: RetryOptions;
   readonly signal?: AbortSignal;
   readonly systemPrompt?: string;
   /** Definições de ferramentas anunciadas ao provider. Vazio → nenhuma ferramenta. */
@@ -46,6 +63,8 @@ export interface RunAgentOptions {
 }
 
 export interface AgentResult {
+  /** Custo estimado do uso agregado, quando o modelo do provider tem tabela de preço. */
+  readonly cost?: CostBreakdown;
   readonly finishReason: AgentFinishReason;
   /** Transcrito completo, incluindo a mensagem de sistema e os resultados de ferramentas. */
   readonly messages: readonly ChatMessage[];
@@ -115,6 +134,67 @@ async function streamTurn(
   return outcome;
 }
 
+function isRetryable(error: unknown): boolean {
+  return error instanceof ProviderError && error.retryable;
+}
+
+function delayWithAbort(ms: number, signal: AbortSignal | undefined): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (ms <= 0) {
+      resolve();
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal?.reason ?? new DOMException("Operação cancelada.", "AbortError"));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+/**
+ * Transmite um turno com retry/backoff em erro transitório do provider. Só re-tenta se NADA
+ * foi emitido ainda (falha na conexão, antes do primeiro token): isso evita duplicar deltas e,
+ * como as ferramentas só rodam após um `finish`, nunca duplica efeitos colaterais.
+ */
+async function streamTurnWithRetry(
+  provider: Provider,
+  request: ChatRequest,
+  onEvent: ((event: AgentEvent) => void) | undefined,
+  signal: AbortSignal | undefined,
+  retry: RetryOptions | undefined,
+): Promise<TurnOutcome> {
+  const maxRetries = retry?.maxRetries ?? AGENT_DEFAULT_MAX_RETRIES;
+  const baseDelayMs = retry?.baseDelayMs ?? AGENT_DEFAULT_RETRY_BASE_MS;
+  let attempt = 0;
+
+  for (;;) {
+    let emitted = false;
+    const track = (event: AgentEvent): void => {
+      emitted = true;
+      onEvent?.(event);
+    };
+    try {
+      return await streamTurn(provider, request, track, signal);
+    } catch (error) {
+      if (emitted || attempt >= maxRetries || !isRetryable(error)) {
+        throw error;
+      }
+      signal?.throwIfAborted();
+      await delayWithAbort(baseDelayMs * 2 ** attempt, signal);
+      attempt += 1;
+    }
+  }
+}
+
+function isPricedModel(model: string): model is DeepSeekModel {
+  return Object.hasOwn(DEEPSEEK_PRICING, model);
+}
+
 /**
  * Loop agêntico mínimo: transmite um turno do provider, executa as ferramentas pedidas pelo
  * `ToolGate` (que aplica permissão) e realimenta os resultados até o modelo parar de pedir
@@ -136,13 +216,24 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
   let usage = ZERO_USAGE;
   let steps = 0;
   let finishReason: AgentFinishReason = "max-steps";
+  let working = messages;
 
   while (steps < maxSteps) {
     options.signal?.throwIfAborted();
     steps += 1;
-    const request: ChatRequest = { messages, ...(tools.length > 0 ? { tools } : {}) };
-    const turn = await streamTurn(options.provider, request, options.onEvent, options.signal);
-    messages.push(turn.message);
+    // Compacta antes do turno quando o transcrito passa do orçamento (preserva pareamento).
+    if (options.contextBudget !== undefined) {
+      working = compactMessages(working, { maxTokens: options.contextBudget }).messages;
+    }
+    const request: ChatRequest = { messages: working, ...(tools.length > 0 ? { tools } : {}) };
+    const turn = await streamTurnWithRetry(
+      options.provider,
+      request,
+      options.onEvent,
+      options.signal,
+      options.retry,
+    );
+    working = [...working, turn.message];
     usage = addUsage(usage, turn.usage);
     options.onEvent?.({
       reason: turn.reason,
@@ -162,7 +253,7 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
     for (const call of calls) {
       options.signal?.throwIfAborted();
       const result = await options.gate.run(call.name, call.input, options.context);
-      messages.push({
+      working.push({
         result,
         role: "tool",
         toolCallId: call.id,
@@ -172,5 +263,14 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
     }
   }
 
-  return { finishReason, messages, steps, usage };
+  const cost = isPricedModel(options.provider.model)
+    ? estimateCost(usage, options.provider.model)
+    : undefined;
+  return {
+    ...(cost === undefined ? {} : { cost }),
+    finishReason,
+    messages: working,
+    steps,
+    usage,
+  };
 }
