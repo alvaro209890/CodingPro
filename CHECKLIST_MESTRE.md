@@ -83,6 +83,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] CI F1.1/F1.2 verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29958217506](https://github.com/alvaro209890/CodingPro/actions/runs/29958217506)) — 2026-07-22
 - [x] F1.3: loop agêntico `runAgent` (provider↔`ToolGate` multi-turno, uso de tokens agregado, teto de passos, abort) + system prompt v1 — 2026-07-22
 - [x] F1.4: persistência de sessão em JSONL (`SessionStore`: save/append/load/list, fail-closed, id seguro) + retomada sem duplicar system prompt no `runAgent` — 2026-07-22
+- [x] CI F1.3/F1.4 verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29958941912](https://github.com/alvaro209890/CodingPro/actions/runs/29958941912)) — 2026-07-22
 - [ ] LLM Layer restante: retry/backoff sem duplicar efeitos + `/cost`
 - [ ] TUI chat (Ink) + ligar o loop/sessões à interface + flags `--continue`/`--resume` + compactação
 - [ ] 🏁 Tarefa real de 5+ passos com aprovações
