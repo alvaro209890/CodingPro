@@ -1,0 +1,58 @@
+# CodingPro — Plano de Desenvolvimento
+
+> CLI de código assistida por IA com o **DeepSeek V4 Pro** como cérebro principal.
+> Este repositório contém **apenas o planejamento** — nenhuma linha de código foi escrita ainda.
+
+**Data do plano:** 2026-07-22
+**Stack decidida:** TypeScript / Node.js ≥ 24 · comando `codingpro` (alias `cpro`)
+**Licença:** proprietária source-available (ver `LICENSE`; código de terceiros portado mantém a licença original)
+**Status geral:** 📋 Planejamento — decisões de produto fechadas no doc [01](planos/01_visao_e_escopo.md)
+
+## As 3 fases do projeto
+
+| Fase | O quê | Planos | Status |
+|---|---|---|---|
+| **1** | **A CLI, 100% local e funcional** (o produto; nada de backend) | [`planos/`](planos/) — docs 01–16 | 📋 planejada |
+| **2** | **App Windows** (Electron, estilo Claude Code desktop; core da CLI reaproveitado) | [`fase2-app-windows/`](fase2-app-windows/) | 📋 planejada, aguarda F1 |
+| **3** | **Plataforma web**: site, contas, proxy LLM com **limites por usuário** (backend neste PC + Cloudflare Tunnel em `cursar.space`) | [`fase3-plataforma-web/`](fase3-plataforma-web/) | 📋 planejada, aguarda F1 |
+
+**API de desenvolvimento/testes (todas as fases):** a chave DeepSeek do Hermes deste PC — `DEEPSEEK_API_KEY` em `~/.hermes/.env`. **Referenciar sempre o arquivo; o valor nunca entra em docs, repo ou commits.** Produção da Fase 3 usará chave própria dedicada.
+
+## Nota sobre fontes de inspiração
+
+O prompt original citava "código vazado do Claude Code". Este plano **não usa nem referencia código proprietário vazado** — todos os conceitos equivalentes (agentes em background, memória persistente, modo de planejamento, multi-agente, hooks, MCP, subagentes) são **públicos e documentados**, e as fontes de código reais deste plano são projetos open source com licenças permissivas:
+
+| Fonte | Licença | O que aproveitar |
+|---|---|---|
+| [Cline](https://github.com/cline/cline) | Apache-2.0 | TypeScript — diff apply, tree-sitter, checkpoints |
+| [Aider](https://github.com/Aider-AI/aider) | Apache-2.0 | Conceitos — repo map, edit blocks, undo por git |
+| [OpenCode (sst)](https://github.com/sst/opencode) | MIT | TypeScript — TUI, sessões, provider-agnóstico |
+| Docs públicas do Claude Code | — | UX, permissões, skills/hooks, subagentes |
+| [Vertex](https://github.com/alvaro209890/Vertex) (repo do Álvaro) | próprio | Integração DeepSeek em produção — effort→budget, proxy Anthropic-compat |
+
+**Objetivos centrais** (detalhe no doc 01): economia extrema de tokens (cache-friendly), qualidade extrema de código (verificação em loop), raciocínio auto-adaptável sem o usuário escolher effort, **CLI 100% em português** (doc 15) e **visual próprio "Aurora"** — interação estilo Claude Code com pele nova (doc 16).
+Os repos de referência já estão clonados em `referencias/` (análise no doc 13).
+
+Detalhes em [09_integracao_referencias.md](planos/09_integracao_referencias.md).
+
+## Índice dos planos
+
+| Doc | Conteúdo |
+|---|---|
+| [01_visao_e_escopo.md](planos/01_visao_e_escopo.md) | Objetivo, princípios, o que fica fora do escopo |
+| [02_arquitetura.md](planos/02_arquitetura.md) | Componentes, diagrama, fluxo do loop agêntico |
+| [03_tecnologias.md](planos/03_tecnologias.md) | Bibliotecas e ferramentas escolhidas, com justificativa |
+| [04_roadmap.md](planos/04_roadmap.md) | Fases F0–F9, marcos e estimativas |
+| [05_funcionalidades_agentes.md](planos/05_funcionalidades_agentes.md) | Loop agêntico, subagentes, background, planejamento |
+| [06_funcionalidades_memoria.md](planos/06_funcionalidades_memoria.md) | Memória persistente local + consolidação automática |
+| [07_funcionalidades_edicao_e_projeto.md](planos/07_funcionalidades_edicao_e_projeto.md) | Edição por diff, undo, repo map, revisão/refatoração |
+| [08_funcionalidades_interface.md](planos/08_funcionalidades_interface.md) | TUI, voz local, gamificação (pet), modo undercover |
+| [09_integracao_referencias.md](planos/09_integracao_referencias.md) | O que portar/estudar de cada projeto de referência |
+| [10_plano_de_testes.md](planos/10_plano_de_testes.md) | Unit, integração com LLM gravado, E2E, evals |
+| [11_desafios_e_solucoes.md](planos/11_desafios_e_solucoes.md) | Riscos (incl. gotchas reais da API DeepSeek) e mitigações |
+| [12_estrutura_de_pastas.md](planos/12_estrutura_de_pastas.md) | Estrutura de diretórios proposta para o código |
+| [13_mineracao_codigo.md](planos/13_mineracao_codigo.md) | Análise real dos repos clonados (arquivo a arquivo): o que portar de opencode/Cline/Aider/**Vertex** |
+| [14_deepseek_e_economia_tokens.md](planos/14_deepseek_e_economia_tokens.md) | Pesquisa DeepSeek V4, economia de tokens (cache), esforço auto-adaptável, qualidade extrema |
+| [15_idioma_portugues.md](planos/15_idioma_portugues.md) | CLI 100% pt-BR (UI, verbos, respostas); raciocínio interno livre; custo do idioma |
+| [16_design_visual_tui.md](planos/16_design_visual_tui.md) | Identidade "Aurora": paleta, trilho de timeline, temas, componentes, mockup |
+| [CHECKLIST_MESTRE.md](CHECKLIST_MESTRE.md) | Visão única de progresso de todas as fases |

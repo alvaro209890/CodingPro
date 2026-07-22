@@ -1,0 +1,13 @@
+# Clones de repos de terceiros p/ estudo (nunca subir — ver planos/13)
+referencias/
+
+# Futuro código
+node_modules/
+dist/
+coverage/
+
+# Segredos — NUNCA commitar (chaves ficam fora do repo; ver README)
+.env
+.env.*
+*.local.json
+credentials*.json
