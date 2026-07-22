@@ -98,6 +98,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] F1.15: aprovação interativa de efeitos (`Approver` via readline) + `PermissionRequest.input` para mostrar o que aprovar — 2026-07-22
 - [x] F1.16: chat interativo `codingpro --chat` (todas as tools, efeitos sob aprovação, sessão salva por turno, `/sair` `/custo` `/limpar` `/ajuda`) — 2026-07-22
 - [~] camada visual Ink/Aurora (tema, spinner, statusline, banner — doc 16): interface v1 é readline; visual vira polimento (F8)
+- [x] CI F1.15/F1.16 verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29961622281](https://github.com/alvaro209890/CodingPro/actions/runs/29961622281)); binário real validado (`--chat` abre, `--agente` dirige a cadeia até o provider, `-p` intacto) — 2026-07-22
 - [ ] 🏁 Tarefa real de 5+ passos com aprovações: mecânica pronta e testada offline; falta rodar ao vivo com DeepSeek
 
 ## F2 — Edição segura
