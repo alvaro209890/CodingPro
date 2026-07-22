@@ -164,6 +164,9 @@ aprovou testes e builds nos três runners, mas o smoke offline detectou que o pa
 bundle ainda constava como dependência de runtime do tarball. Ele foi movido para dependência de
 desenvolvimento, evitando qualquer download na instalação do artefato autossuficiente.
 
+CI final verde no Node 24.11/24.18 Linux e Node 24.18 macOS:
+[execução 29950272198](https://github.com/alvaro209890/CodingPro/actions/runs/29950272198).
+
 ### Próximo incremento
 
 Executar o spike de troca para Ollama local pelo mesmo contrato Provider, mantendo a CLI offline
