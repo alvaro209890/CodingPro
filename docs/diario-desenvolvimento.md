@@ -176,3 +176,7 @@ sintético de testes, sem inferência nem rede.
 
 Executar o F0.3: tool calling multi-turno no V4 Pro e V4 Flash, preservar reasoning entre turnos
 e evoluir os contratos Provider/Tool. O roteamento automático Pro/Flash entra logo depois.
+
+Revisão documental aprovada nos gates de arquitetura, segurança e consistência; CI verde no Node
+24.11/24.18 Linux e 24.18 macOS:
+[execução 29951543077](https://github.com/alvaro209890/CodingPro/actions/runs/29951543077).

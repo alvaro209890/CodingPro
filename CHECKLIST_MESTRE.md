@@ -21,7 +21,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [ ] Estudar a fundo `tool/edit.ts` do opencode e escolher Replacers da v1
 - [ ] Rodar o provider-vcr do Cline e decidir portar × imitar o design
 - [x] Chave DeepSeek p/ desenvolvimento definida; execução usa arquivo `0600` dedicado somente com `DEEPSEEK_API_KEY`, nunca o `.env` compartilhado — 2026-07-22
-- [x] Decisão de produto: único provider de LLM para código é DeepSeek, somente V4 Pro/Flash; replay fica restrito a testes — 2026-07-22
+- [x] Decisão de produto: único provider de LLM para código é DeepSeek, somente V4 Pro/Flash; replay fica restrito a testes; CI verde ([execução 29951543077](https://github.com/alvaro209890/CodingPro/actions/runs/29951543077)) — 2026-07-22
 
 ## Transversal — Economia de tokens & auto-effort *(doc 14)*
 
