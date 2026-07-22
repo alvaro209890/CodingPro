@@ -6,6 +6,12 @@ export {
   runAgent,
   type RunAgentOptions,
 } from "./agent.js";
+export {
+  type CompactionOptions,
+  type CompactionResult,
+  compactMessages,
+  estimateMessageTokens,
+} from "./compaction.js";
 export { CoreError, type CoreErrorCode } from "./errors.js";
 export { readFileWithin, writeFileWithin } from "./fs-safe.js";
 export { ToolGate } from "./gate.js";
