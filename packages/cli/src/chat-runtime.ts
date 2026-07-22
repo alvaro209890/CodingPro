@@ -1,5 +1,6 @@
 import {
   ALL_TOOLS,
+  createReadTracker,
   describeAgentEvent,
   newSessionId,
   PermissionController,
@@ -51,6 +52,8 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
   const store =
     options.sessaoDir === undefined ? undefined : await SessionStore.create(options.sessaoDir);
   const sessaoId = newSessionId();
+  // Um rastreador para toda a sessão de chat: uma leitura habilita edições nos turnos seguintes.
+  const readTracker = createReadTracker();
 
   let transcrito: ChatMessage[] = [];
   let ultimoCusto: CostBreakdown | undefined;
@@ -90,7 +93,11 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
     const entrada: ChatMessage[] = [...transcrito, { content: mensagem, role: "user" }];
     let respondeu = false;
     const result = await runAgent({
-      context: { workspace, ...(options.signal === undefined ? {} : { signal: options.signal }) },
+      context: {
+        readTracker,
+        workspace,
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
+      },
       gate,
       messages: entrada,
       onEvent: (event) => {

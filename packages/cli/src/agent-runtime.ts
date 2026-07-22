@@ -1,5 +1,6 @@
 import {
   type AgentResult,
+  createReadTracker,
   describeAgentEvent,
   newSessionId,
   PermissionController,
@@ -69,9 +70,14 @@ export async function executarAgenteHeadless(
     }
   }
 
+  const readTracker = createReadTracker();
   let respostaCrua = "";
   const result = await runAgent({
-    context: { workspace, ...(options.signal === undefined ? {} : { signal: options.signal }) },
+    context: {
+      readTracker,
+      workspace,
+      ...(options.signal === undefined ? {} : { signal: options.signal }),
+    },
     gate,
     messages: mensagens,
     onEvent: (event) => {

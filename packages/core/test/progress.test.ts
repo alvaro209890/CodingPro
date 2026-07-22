@@ -17,6 +17,7 @@ describe("describeToolCall", () => {
     expect(describeToolCall(call("list_dir", { path: "src" }))).toBe("Listando src");
     expect(describeToolCall(call("grep", { pattern: "TODO" }))).toBe('Buscando "TODO"');
     expect(describeToolCall(call("write_file", { path: "n.txt" }))).toBe("Escrevendo n.txt");
+    expect(describeToolCall(call("edit_file", { path: "e.ts" }))).toBe("Editando e.ts");
     expect(describeToolCall(call("bash", { command: "ls -la" }))).toBe("Rodando ls -la");
     expect(describeToolCall(call("mcp_thing", {}))).toBe("Usando mcp_thing");
   });
@@ -27,6 +28,7 @@ describe("describeToolCall", () => {
     expect(describeToolCall(call("grep", {}))).toBe("Buscando");
     expect(describeToolCall(call("bash", {}))).toBe("Rodando comando");
     expect(describeToolCall(call("write_file", {}))).toBe("Escrevendo arquivo");
+    expect(describeToolCall(call("edit_file", {}))).toBe("Editando arquivo");
   });
 });
 

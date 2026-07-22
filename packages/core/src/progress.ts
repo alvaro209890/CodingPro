@@ -26,6 +26,8 @@ export function describeToolCall(call: ToolCall): string {
     }
     case "write_file":
       return `Escrevendo ${pathArg(call) ?? "arquivo"}`;
+    case "edit_file":
+      return `Editando ${pathArg(call) ?? "arquivo"}`;
     case "bash": {
       const command = call.input.command;
       return typeof command === "string" ? `Rodando ${truncate(command)}` : "Rodando comando";

@@ -78,6 +78,23 @@ em TTY e em pipe e resolve `undefined` no EOF sem travar. Validado no binário r
 linhas e roda o agente) e com 5 testes de unidade, incluindo o cenário exato do race (todo o input
 de uma vez + EOF imediato).
 
-Falta só o **polimento visual Ink/Aurora** (doc 16), que o roteiro joga para a F8. Próximo bloco: a
-**F2** (edição segura: `edit_file` search/replace, checkpoints git, `/undo`). Antes (F0.4/F0.3) já
-estavam fechados o roteamento de papéis Pro/Flash e o tool calling multi-turno.
+O **polimento visual Ink/Aurora** (doc 16) segue reservado para a F8. Antes (F0.4/F0.3) já estavam
+fechados o roteamento de papéis Pro/Flash e o tool calling multi-turno.
+
+## F2 — Edição segura (em andamento)
+
+O **F2.1** entregou a tool `edit_file` (blocos search/replace, formato do doc 07). Cada bloco tem
+`search`/`replace`; o `search` precisa casar **exatamente uma vez** no arquivo (contagem literal, sem
+regex) — 0 ocorrências devolve um erro estruturado ao modelo com a **linha mais parecida** como dica,
+e >1 devolve a contagem pedindo mais contexto. A aplicação é **atômica**: os blocos entram numa cópia
+de trabalho em ordem (um bloco pode editar texto que outro anterior produziu) e o arquivo só é
+gravado se **todos** casarem; qualquer falha não toca o disco. A substituição é **literal** (split/join,
+nunca interpreta `$&`/`$1` do `replace`). Há uma **guarda de leitura-antes-de-editar**: um `ReadTracker`
+por sessão (criado no runtime de chat e no headless) registra cada `read_file`, e `edit_file` recusa
+editar um arquivo que não foi lido na sessão (evita edição às cegas). A tool é `write` (passa pelo gate
+de permissão como o `write_file`), reaproveita `writeFileWithin` (symlink final bloqueado, teto de 1 MiB,
+contenção por realpath) e aparece no progresso pt-BR como "Editando …". Tudo testado offline
+(blocos únicos/múltiplos/atômicos, match falho/ambíguo, guarda de leitura, `$` literal, symlink).
+
+Faltam na F2: **checkpoints git + repo-sombra + `/undo`**, **diff bonito na TUI** e o **marco**
+(refatoração multi-arquivo + undo total < 2 s sem sujar o staging do usuário).

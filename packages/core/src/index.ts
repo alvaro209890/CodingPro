@@ -39,8 +39,10 @@ export { ToolRegistry } from "./registry.js";
 export { newSessionId, SessionStore } from "./session.js";
 export { SYSTEM_PROMPT_V1 } from "./system-prompt.js";
 export {
+  createReadTracker,
   errorResult,
   type ExecutableTool,
+  type ReadTracker,
   textResult,
   type ToolContext,
   type ToolSideEffect,
@@ -53,6 +55,11 @@ export {
   BASH_MAX_TIMEOUT_MS,
   bashTool,
 } from "./tools/bash.js";
+export {
+  EDIT_FILE_MAX_BLOCKS,
+  EDIT_FILE_MAX_BYTES,
+  editFileTool,
+} from "./tools/edit-file.js";
 export {
   GREP_DEADLINE_MS,
   GREP_DEFAULT_MAX_RESULTS,
@@ -68,6 +75,7 @@ export { WRITE_FILE_MAX_BYTES, writeFileTool } from "./tools/write-file.js";
 export { Workspace } from "./workspace.js";
 
 import { bashTool } from "./tools/bash.js";
+import { editFileTool } from "./tools/edit-file.js";
 import { grepTool } from "./tools/grep.js";
 import { listDirTool } from "./tools/list-dir.js";
 import { readFileTool } from "./tools/read-file.js";
@@ -77,7 +85,7 @@ import { writeFileTool } from "./tools/write-file.js";
 export const READ_ONLY_TOOLS = Object.freeze([readFileTool, listDirTool, grepTool] as const);
 
 /** Tools com efeito colateral — sempre passam pelo gate de permissão. */
-export const EFFECT_TOOLS = Object.freeze([writeFileTool, bashTool] as const);
+export const EFFECT_TOOLS = Object.freeze([writeFileTool, editFileTool, bashTool] as const);
 
 /** Todas as tools do núcleo, prontas para registrar. */
 export const ALL_TOOLS = Object.freeze([...READ_ONLY_TOOLS, ...EFFECT_TOOLS] as const);

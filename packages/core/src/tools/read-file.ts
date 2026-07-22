@@ -27,6 +27,8 @@ export const readFileTool: ExecutableTool = {
   async execute(input: JsonObject, context: ToolContext): Promise<ToolResult> {
     const absolute = context.workspace.resolve(input.path);
     const bytes = await readFileWithin(context.workspace, absolute, READ_FILE_MAX_BYTES);
+    // Marca a leitura para habilitar edições subsequentes (guarda do edit_file).
+    context.readTracker?.markRead(context.workspace.toRelative(absolute));
     return textResult(bytes.toString("utf8"));
   },
 };

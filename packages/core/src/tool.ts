@@ -1,10 +1,33 @@
 import type { JsonObject, Tool, ToolResult } from "@codingpro/llm";
 import type { Workspace } from "./workspace.js";
 
+/**
+ * Rastreador de leitura por sessão: `read_file` registra cada arquivo lido e `edit_file`
+ * exige que o arquivo tenha sido lido antes de editar (impede edição às cegas). O estado
+ * é da sessão, não do processo — cada runtime cria o seu.
+ */
+export interface ReadTracker {
+  markRead(relativePath: string): void;
+  wasRead(relativePath: string): boolean;
+}
+
+/** Cria um rastreador de leitura vazio (um por sessão de agente). */
+export function createReadTracker(): ReadTracker {
+  const lidos = new Set<string>();
+  return {
+    markRead: (relativePath) => {
+      lidos.add(relativePath);
+    },
+    wasRead: (relativePath) => lidos.has(relativePath),
+  };
+}
+
 /** Ambiente entregue a cada execução de tool. Sem credenciais, sem rede implícita. */
 export interface ToolContext {
   readonly workspace: Workspace;
   readonly signal?: AbortSignal;
+  /** Rastreador de leitura da sessão; `edit_file` o consulta para a guarda de leitura. */
+  readonly readTracker?: ReadTracker;
 }
 
 /**

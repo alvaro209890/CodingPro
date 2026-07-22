@@ -104,7 +104,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 
 ## F2 — Edição segura
 
-- [ ] edit_file (search/replace atômico) + recuperação de falha
+- [x] edit_file (search/replace atômico) + recuperação de falha — blocos `{search,replace}`, cada `search` casa exatamente 1×, aplicação atômica (todos ou nenhum), guarda de leitura-antes-de-editar (`ReadTracker` por sessão, `read_file` marca), erro estruturado ao modelo (0 ocorrências → dica de linha mais próxima; >1 → contagem), substituição literal via split/join (não interpreta `$`) — 2026-07-22
 - [ ] Checkpoints git + shadow git + `/undo`
 - [ ] Diff view na TUI
 - [ ] 🏁 Refatoração multi-arquivo + undo < 2 s

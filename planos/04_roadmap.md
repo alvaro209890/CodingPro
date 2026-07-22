@@ -59,7 +59,7 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 
 ## F2 — Edição segura (1–2 semanas)
 
-- [ ] Tool `edit_file` com blocos search/replace (formato do doc 07) + validação de unicidade
+- [x] Tool `edit_file` com blocos search/replace (formato do doc 07) + validação de unicidade — 2026-07-22
 - [ ] Checkpoint git automático antes de cada mudança (incl. repo-sombra p/ pastas sem git)
 - [ ] Comando `/undo` (reverte último passo) e `/undo N`
 - [ ] Recuperação de falha de match do diff (re-leitura + retry pelo modelo)
