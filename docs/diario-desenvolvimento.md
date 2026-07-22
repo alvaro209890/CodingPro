@@ -69,7 +69,8 @@ Consulte o roteiro [F0.2a](roteiros-qa/f0.2a-headless-replay.md). Validação lo
 - format check, lint, typecheck, build dos dois pacotes e smoke do tarball aprovados;
 - `git diff --check` aprovado e nenhuma vulnerabilidade conhecida em `pnpm audit`.
 
-O link e o resultado do CI remoto serão registrados após o push.
+- [GitHub Actions 29944958829](https://github.com/alvaro209890/CodingPro/actions/runs/29944958829)
+  aprovado: Node 24.18/Linux em 18s, Node 24.11/Linux em 21s e Node 24.18/macOS em 21s.
 
 ### Próximo incremento
 
