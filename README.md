@@ -6,7 +6,7 @@
 **Data do plano:** 2026-07-22
 **Stack decidida:** TypeScript / Node.js ≥ 24 · comando `codingpro` (alias `cpro`)
 **Licença:** proprietária source-available (ver `LICENSE`; código de terceiros portado mantém a licença original)
-**Status geral:** 🟠 F0 em andamento — tool calling multi-turno F0.3 concluído em 2026-07-22
+**Status geral:** 🟠 F0 em andamento — roteamento interno Pro/Flash (F0.4) concluído em 2026-07-22
 
 ## Desenvolvimento local
 
@@ -29,24 +29,27 @@ node --env-file="$HOME/.config/codingpro/deepseek.env" \
 
 O artefato oferece os dois bins `codingpro` e `cpro`, ajuda/versão em pt-BR e o modo headless
 `-p`/`--prompt`. O provider precisa ser escolhido explicitamente: `replay` permanece sintético
-e sem rede; `deepseek` usa `deepseek-v4-pro` por padrão e exige `DEEPSEEK_API_KEY`.
+e sem rede; `deepseek` exige `DEEPSEEK_API_KEY` e resolve o modelo por papel interno
+(`auto`/`main` → `deepseek-v4-pro`, `fast` → `deepseek-v4-flash`). O headless de codificação usa
+`auto` → Pro; não há seletor de ID de modelo, endpoint ou provider alternativo para o usuário.
 O arquivo dedicado do exemplo deve ter permissão `0600` e conter somente essa variável.
 
-O único provider de LLM para código planejado para produção é a API oficial DeepSeek. V4 Pro atende
-codificação, arquitetura e revisão; V4 Flash já está integrado ao mesmo contrato para tarefas
-mecânicas. A escolha automática Pro/Flash será o próximo incremento. `replay` é apenas
-infraestrutura determinística de testes, sem inferência.
+O único provider de LLM para código em produção é a API oficial DeepSeek. V4 Pro atende
+codificação, arquitetura e revisão; V4 Flash atende caminhos mecânicos internos via `role: "fast"`.
+`replay` é apenas infraestrutura determinística de testes, sem inferência.
 
 O contrato F0.3 aceita descritores puros de tools, valida schemas/argumentos, transmite chamadas
-completas e preserva `reasoning_content` na continuação. O provider nunca executa a função: o loop,
-as permissões e as tools reais entram na F1. O modo headless atual falha fechado se receber uma
-tool call, pois ainda não há executor aprovado nessa fronteira.
+completas e preserva `reasoning_content` na continuação. O F0.4 expõe o mapeamento de papéis
+sem alterar a execução de tools. O provider nunca executa a função: o loop, as permissões e as
+tools reais entram na F1. O modo headless atual falha fechado se receber uma tool call, pois
+ainda não há executor aprovado nessa fronteira.
 
 > **Privacidade:** ao selecionar `deepseek`, o prompt e qualquer conteúdo incluído nele são
 > enviados à API da DeepSeek. Os testes comuns nunca selecionam esse caminho nem carregam chaves.
 
 O smoke real é separado, usa apenas uma soma sintética em memória e requer autorização explícita;
-consulte [o roteiro F0.3](docs/roteiros-qa/f0.3-tools-deepseek.md).
+consulte [o roteiro F0.3](docs/roteiros-qa/f0.3-tools-deepseek.md) e
+[o roteiro F0.4](docs/roteiros-qa/f0.4-roteamento-papeis.md).
 O histórico verificável fica em [docs/diario-desenvolvimento.md](docs/diario-desenvolvimento.md).
 
 ## Configuração em camadas

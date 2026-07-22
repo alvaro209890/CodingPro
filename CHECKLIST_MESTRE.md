@@ -27,7 +27,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 
 - [ ] Layout de contexto cache-friendly especificado (prefixo estável, volátil no fim)
 - [x] Driver DeepSeek com capability flags (`thinking` on/off + effort high/max; sem `budget_tokens`) — F0.2b, 2026-07-22
-- [ ] Estratégia fixa de 2 modelos (Pro código / Flash mecânico) com roteamento interno
+- [x] Estratégia fixa de 2 modelos (Pro código / Flash mecânico) com roteamento interno — F0.4, 2026-07-22
 - [ ] Auto-effort v1: heurísticas + roteador Flash + escalada por falha (sem escolha do usuário)
 - [ ] `/cost` com taxa de cache-hit + custo por turno/tarefa/subagente
 - [ ] Loop de qualidade: sintaxe→lint→testes→review antes do "pronto" (14.5)
@@ -68,6 +68,8 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] F0.3: replay multi-turno, 167 testes offline e cobertura global >93% — 2026-07-22
 - [x] F0.3: smoke real `modelo → somar → resultado → modelo` aprovado no Pro e Flash — 2026-07-22
 - [x] CI F0.3 verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29954449299](https://github.com/alvaro209890/CodingPro/actions/runs/29954449299)) — 2026-07-22
+- [x] F0.4: roteamento interno `auto|main|fast` → Pro/Flash, fail-closed, headless em Pro — 2026-07-22
+- [x] F0.4: API pura `resolveDeepSeekModelForRole` + runtime `role` e testes offline — 2026-07-22
 - [ ] Spikes restantes da F0: Ink+streaming · node:sqlite FTS5 · tree-sitter WASM · checkpoint git
 - [x] 🏁 `codingpro -p` respondendo via DeepSeek real com prompt sintético — 2026-07-22
 

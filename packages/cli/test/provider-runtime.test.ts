@@ -153,7 +153,7 @@ describe("criarProviderRuntime", () => {
     }
   });
 
-  it("cria DeepSeek somente quando selecionado explicitamente", async () => {
+  it("cria DeepSeek somente quando selecionado explicitamente (auto→Pro)", async () => {
     const directory = await mkdtemp(join(tmpdir(), "codingpro-runtime-"));
     const provider = await criarProviderRuntime(
       await runtimeContext(directory, {
@@ -164,6 +164,48 @@ describe("criarProviderRuntime", () => {
 
     expect(provider).toMatchObject({ id: "deepseek", model: "deepseek-v4-pro" });
     await rm(directory, { force: true, recursive: true });
+  });
+
+  it.each([
+    { role: "auto" as const, model: "deepseek-v4-pro" },
+    { role: "main" as const, model: "deepseek-v4-pro" },
+    { role: "fast" as const, model: "deepseek-v4-flash" },
+  ])("runtime DeepSeek com role $role → $model", async ({ role, model }) => {
+    const directory = await mkdtemp(join(tmpdir(), "codingpro-runtime-"));
+    try {
+      const context = await runtimeContext(directory, {
+        CODINGPRO_PROVIDER: "deepseek",
+        DEEPSEEK_API_KEY: "chave-sintetica",
+      });
+      const provider = await criarProviderRuntime({ ...context, role });
+      expect(provider).toMatchObject({ id: "deepseek", model });
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
+
+  it("rejeita papel inválido no runtime sem vazar a chave", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "codingpro-runtime-"));
+    const chave = "chave-que-nao-pode-vazar";
+    try {
+      const context = await runtimeContext(directory, {
+        CODINGPRO_PROVIDER: "deepseek",
+        DEEPSEEK_API_KEY: chave,
+      });
+      await expect(
+        criarProviderRuntime({ ...context, role: "turbo" as never }),
+      ).rejects.toMatchObject({
+        code: "not-configured",
+        safeMessage: expect.stringContaining("papel"),
+      });
+      try {
+        await criarProviderRuntime({ ...context, role: "turbo" as never });
+      } catch (error) {
+        expect(String(error)).not.toContain(chave);
+      }
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
   });
 
   it.each([undefined, "", "   ", "chave\nmaliciosa"])(

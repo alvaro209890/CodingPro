@@ -42,9 +42,11 @@ concluído validou streaming, tools, `reasoning_content`, usage/cache e erros no
 | Codificação, arquiteto, revisor | **V4 Pro** | Qualidade máxima onde importa |
 | Roteador de esforço (14.4), subagente explorer, consolidador de memória, mensagens de commit, resumos/compactação, título de sessão | **V4 Flash** | Tarefas mecânicas ficam ~10× mais baratas sem perda perceptível |
 
-Mapeamento interno fixo: `main = deepseek-v4-pro` e `fast = deepseek-v4-flash`. `auto` é o padrão
-e decide o papel; perfis avançados de agente podem fixar `main` ou `fast`, nunca fornecedor,
-endpoint ou ID de modelo arbitrário.
+Mapeamento interno fixo (F0.4, implementado): `main = deepseek-v4-pro` e `fast = deepseek-v4-flash`.
+`auto` é o padrão de produto e, no headless/codificação atual, resolve para `main` (Pro). Perfis
+avançados de agente e caminhos mecânicos (roteador, explorer, resumo, commit, compactação) fixam
+`main` ou `fast` via API interna (`role`), nunca fornecedor, endpoint ou ID de modelo arbitrário.
+API pura: `resolveDeepSeekModelForRole` / `parseModelRole` em `@codingpro/llm`.
 
 ## 14.3 Economia de tokens (regras de engenharia, por prioridade)
 

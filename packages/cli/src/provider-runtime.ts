@@ -1,6 +1,9 @@
 import {
+  DEFAULT_MODEL_ROLE,
   DeepSeekProvider,
   loadReplayProvider,
+  type ModelRole,
+  parseModelRole,
   parseReplayProvider,
   ProviderError,
   type Provider,
@@ -14,6 +17,12 @@ export interface ProviderRuntimeContext {
   readonly environment: RuntimeEnvironment;
   readonly flags: ProviderOverrides;
   readonly homeDirectory: string;
+  /**
+   * Papel interno de produto para o DeepSeek (`auto`|`main`|`fast`).
+   * Padrão `auto` → Pro (tráfego de codificação headless).
+   * Caminhos mecânicos futuros passam `fast` explicitamente.
+   */
+  readonly role?: ModelRole;
 }
 
 export async function criarProviderRuntime(
@@ -32,7 +41,8 @@ export async function criarProviderRuntime(
         "Defina DEEPSEEK_API_KEY para usar o provider DeepSeek.",
       );
     }
-    return new DeepSeekProvider({ apiKey });
+    const role = context.role === undefined ? DEFAULT_MODEL_ROLE : parseModelRole(context.role);
+    return new DeepSeekProvider({ apiKey, role });
   }
 
   if (config.provider !== "replay") {

@@ -238,3 +238,43 @@ pnpm 10.34.4, sem credenciais no gate comum:
 Implementar o roteamento interno `main|fast`: Pro para codificação/arquitetura/revisão e Flash
 para trabalho mecânico, sem expor provider, endpoint ou ID arbitrário ao usuário. Depois, concluir
 os spikes restantes da F0 antes de abrir o loop executável da F1.
+
+## 2026-07-22 — F0.4: roteamento interno `auto|main|fast`
+
+### Entregue
+
+- Módulo puro `packages/llm/src/roles.ts` com papéis fechados `auto|main|fast` e mapeamento
+  `main`/`auto` → `deepseek-v4-pro`, `fast` → `deepseek-v4-flash`.
+- `parseModelRole` / `isModelRole` / `resolveDeepSeekModelForRole` fail-closed: IDs de modelo,
+  providers e strings desconhecidas não são papéis válidos.
+- `DeepSeekProvider` aceita `role` de produto; `model` allowlisted permanece para testes/smoke.
+  `role` + `model` inconsistentes falham antes de qualquer rede.
+- Runtime da CLI (`criarProviderRuntime`) usa `role` opcional com padrão `auto` → Pro no headless
+  de codificação; caminhos mecânicos passam `role: "fast"` na API interna.
+- Allowlist de modelos e de papéis congeladas; mensagens de erro não vazam a chave.
+
+### Decisões
+
+- Não há flag/config de usuário para escolher ID de modelo ou endpoint. O seletor de produto é só
+  o papel interno; heurísticas de auto-effort (doc 14.4) e perfis de agente (F5) virão depois.
+- `auto` no estado atual equivale a `main` (qualidade de código). Flash só entra por chamada
+  explícita de caminho mecânico, não por picker.
+- Constantes de ID em `roles.ts` espelham as do provider sem import circular; testes garantem
+  igualdade com `DEEPSEEK_MODEL_PRO|FLASH`.
+
+### Validação
+
+Consulte o roteiro [F0.4](roteiros-qa/f0.4-roteamento-papeis.md). Gate offline com Node 24.18.0
+e pnpm 10.34.4, sem credenciais no ambiente comum:
+
+- 181/181 testes aprovados em oito arquivos;
+- cobertura global: 93,52% statements, 91,56% branches, 99,15% functions e 93,42% lines;
+- `roles.ts` e o caminho DeepSeek do runtime em 100% statements/lines;
+- format, lint, typecheck, build e smoke offline do tarball aprovados por `pnpm check`;
+- resolução exercitada no artefato `packages/llm/dist`: main→Pro, fast→Flash, auto/default→Pro,
+  inválido fail-closed.
+
+### Próximo incremento
+
+Auto-effort v1 (heurísticas + roteador Flash + escalada por falha) e/ou spikes restantes da F0
+(Ink+streaming, sqlite FTS5, tree-sitter WASM, checkpoint git) antes do loop executável da F1.

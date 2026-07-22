@@ -41,6 +41,7 @@ adicionada depois de existir sanitização de segredos testada.
 - [x] F0.3: segundo request preserva assistant `reasoning_content` + `tool_calls` e associa `role: tool` pelo ID — 2026-07-22
 - [x] F0.3: replay de dois turnos e transcript fail-closed; provider não executa tools — 2026-07-22
 - [x] F0.3: buffer até finish coerente, snapshots contra mutação/TOCTOU, limites UTF-8 e cancelamento durante argumentos fragmentados — 2026-07-22
+- [x] F0.4: papéis `auto|main|fast` → Pro/Flash, default auto→Pro, fail-closed e runtime CLI — 2026-07-22
 
 ### 3. E2E em repos descartáveis — roda no CI diário
 

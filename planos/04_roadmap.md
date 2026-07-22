@@ -35,7 +35,7 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 - [ ] Especificar o contrato restante de eventos core↔UI — ver doc 02
 - [x] F0.2c: config JSONC `~/.codingpro/settings.json` → `.codingpro/settings.json` → ambiente legado → flags — 2026-07-22
 - [x] F0.3: tool calling multi-turno no DeepSeek V4 Pro/Flash, reasoning preservado e contrato Tool — 2026-07-22
-- [ ] Integrar roteamento automático Pro/Flash por papel, sem seleção de provider pelo usuário
+- [x] F0.4: roteamento interno Pro/Flash por papel (`auto|main|fast`), sem seleção de provider/ID pelo usuário — 2026-07-22
 - [ ] Rodar os demais spikes do doc 03
 - [x] **Marco: `codingpro -p` responde via DeepSeek real (sem tools)** — 2026-07-22
 

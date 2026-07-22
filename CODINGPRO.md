@@ -18,8 +18,10 @@ DeepSeek, limitado aos modelos V4 Pro e V4 Flash; replay existe somente para tes
 
 ## Estado atual
 
-O F0.3 adicionou tool calling multi-turno no DeepSeek V4 Pro e V4 Flash, com contrato Tool puro,
-schemas/argumentos/transcript validados, replay estrito e reasoning preservado entre call e
-resultado. O smoke real de dois turnos foi aprovado nos dois modelos. O provider não executa
-tools; permissões e efeitos pertencem à F1. O próximo incremento é o roteamento interno
-`main|fast` entre Pro e Flash, sem seleção de provider ou ID arbitrário pelo usuário.
+O F0.4 fechou o roteamento interno de papéis `auto|main|fast` para a allowlist DeepSeek:
+`main`/`auto` → `deepseek-v4-pro`, `fast` → `deepseek-v4-flash`. A resolução é pura, fail-closed
+e não aceita provider, endpoint ou ID arbitrário na fronteira de produto. O tráfego headless de
+codificação (`codingpro -p`) usa `auto` → Pro; caminhos mecânicos internos passam `role: "fast"`.
+O F0.3 anterior cobriu tools multi-turno, schemas e smoke real Pro/Flash. O provider ainda não
+executa tools; permissões e efeitos ficam na F1. Próximo: heurísticas de auto-effort / spikes F0
+restantes, sem seletor de modelo para o usuário.

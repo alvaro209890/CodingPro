@@ -28,6 +28,12 @@ import type {
   TokenUsage,
 } from "../provider.js";
 import {
+  DEFAULT_MODEL_ROLE,
+  isModelRole,
+  type ModelRole,
+  resolveDeepSeekModelForRole,
+} from "../roles.js";
+import {
   copyChatRequest,
   copyToolCall,
   isChatRequest,
@@ -49,7 +55,13 @@ export interface DeepSeekProviderOptions {
   readonly chunkTimeoutMs?: number;
   readonly fetch?: FetchFunction;
   readonly maxOutputTokens?: number;
+  /**
+   * ID allowlisted — uso interno/testes. Preferir `role` no caminho de produto.
+   * Se `role` e `model` forem informados juntos, precisam concordar.
+   */
   readonly model?: DeepSeekModel;
+  /** Papel de produto (`auto`|`main`|`fast`). Padrão efetivo: `auto` → Pro. */
+  readonly role?: ModelRole;
   readonly reasoningEffort?: "high" | "max";
   readonly thinking?: boolean;
   readonly totalTimeoutMs?: number;
@@ -75,6 +87,42 @@ function validateModel(model: unknown): asserts model is DeepSeekModel {
   if (model !== DEEPSEEK_MODEL_PRO && model !== DEEPSEEK_MODEL_FLASH) {
     throw new ProviderError("not-configured", "O modelo DeepSeek é inválido.");
   }
+}
+
+/**
+ * Resolve o modelo a partir de `role` e/ou `model` allowlisted.
+ * Caminho de produto: só `role` (default `auto` → Pro). `model` permanece para testes/smoke.
+ */
+export function resolveDeepSeekProviderModel(options: {
+  readonly model?: unknown;
+  readonly role?: unknown;
+}): DeepSeekModel {
+  const hasRole = options.role !== undefined;
+  const hasModel = options.model !== undefined;
+
+  if (hasRole) {
+    if (!isModelRole(options.role)) {
+      throw new ProviderError("not-configured", "O papel de modelo é inválido.");
+    }
+    const fromRole = resolveDeepSeekModelForRole(options.role);
+    if (hasModel) {
+      validateModel(options.model);
+      if (options.model !== fromRole) {
+        throw new ProviderError(
+          "not-configured",
+          "O papel e o modelo DeepSeek são inconsistentes.",
+        );
+      }
+    }
+    return fromRole;
+  }
+
+  if (hasModel) {
+    validateModel(options.model);
+    return options.model;
+  }
+
+  return resolveDeepSeekModelForRole(DEFAULT_MODEL_ROLE);
 }
 
 function createRestrictedFetch(delegate: FetchFunction): FetchFunction {
@@ -346,8 +394,10 @@ export class DeepSeekProvider implements Provider {
 
   constructor(options: DeepSeekProviderOptions) {
     validateApiKey(options.apiKey);
-    const model = options.model ?? DEEPSEEK_MODEL_PRO;
-    validateModel(model);
+    const model = resolveDeepSeekProviderModel({
+      ...(options.model === undefined ? {} : { model: options.model }),
+      ...(options.role === undefined ? {} : { role: options.role }),
+    });
     this.model = model;
     this.#maxOutputTokens = options.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS;
     const chunkMs = options.chunkTimeoutMs ?? DEFAULT_CHUNK_TIMEOUT_MS;
