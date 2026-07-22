@@ -1,3 +1,11 @@
+export {
+  AGENT_DEFAULT_MAX_STEPS,
+  type AgentEvent,
+  type AgentFinishReason,
+  type AgentResult,
+  runAgent,
+  type RunAgentOptions,
+} from "./agent.js";
 export { CoreError, type CoreErrorCode } from "./errors.js";
 export { readFileWithin, writeFileWithin } from "./fs-safe.js";
 export { ToolGate } from "./gate.js";
@@ -13,6 +21,7 @@ export {
   type PermissionRequest,
 } from "./permissions.js";
 export { ToolRegistry } from "./registry.js";
+export { SYSTEM_PROMPT_V1 } from "./system-prompt.js";
 export {
   errorResult,
   type ExecutableTool,

@@ -34,6 +34,13 @@ aprovação** — git de checkpoint só chega na F2); `PermissionController` gua
 consulta o `Approver`; `ToolGate` autoriza antes de executar e devolve `execution-denied` sem tocar
 em disco/processo quando negado.
 
-Próximo na F1: TUI Ink (chat com streaming + `Approver` visual), o loop agêntico que liga
-provider→tool-call→gate→`ToolResult`→próximo turno, e sessões/compactação. Antes (F0.4/F0.3) já
-estavam fechados o roteamento de papéis Pro/Flash e o tool calling multi-turno.
+O **F1.3** fechou o loop agêntico: `runAgent` transmite um turno do provider, acumula a mensagem
+do assistant, executa cada tool pedida via `ToolGate` (permissão aplicada) e realimenta os
+`ToolResult` até o modelo parar de pedir tools ou o teto de passos ser atingido. Ferramentas só
+rodam após um `finish` limpo, então falha de streaming nunca duplica efeito. Agrega uso de tokens,
+respeita `AbortSignal` e emite eventos (`text/reasoning-delta`, `tool-call`, `tool-result`, `step`)
+para a UI. O system prompt v1 (pt-BR, regras de tool-use e estilo conciso) é prefixado.
+
+Próximo na F1: sessões (transcrito JSONL + retomada), depois a TUI Ink (chat com streaming +
+`Approver` visual) ligando o loop à interface, além de retry/backoff e `/cost`. Antes (F0.4/F0.3)
+já estavam fechados o roteamento de papéis Pro/Flash e o tool calling multi-turno.

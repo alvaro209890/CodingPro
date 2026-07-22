@@ -81,6 +81,8 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] F1.2: tools de efeito `write_file` (O_NOFOLLOW + pai por realpath) e `bash` (env mínimo, grupo de processo morto no timeout/abort, saída saneada) — 2026-07-22
 - [x] F1.2: permissões `ask|allowlist|auto` (`decidePermission` puro + `PermissionController` de sessão) e `ToolGate` que autoriza antes de executar; efeito sem checkpoint sempre pede aprovação — 2026-07-22
 - [x] CI F1.1/F1.2 verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29958217506](https://github.com/alvaro209890/CodingPro/actions/runs/29958217506)) — 2026-07-22
+- [x] F1.3: loop agêntico `runAgent` (provider↔`ToolGate` multi-turno, uso de tokens agregado, teto de passos, abort) + system prompt v1 — 2026-07-22
+- [ ] LLM Layer restante: retry/backoff sem duplicar efeitos + `/cost`
 - [ ] TUI chat + sessões (resume) + compactação
 - [ ] 🏁 Tarefa real de 5+ passos com aprovações
 

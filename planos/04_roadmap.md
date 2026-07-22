@@ -41,7 +41,8 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 
 ## F1 — Loop agêntico mínimo (2 semanas)
 
-- [ ] Completar o loop da LLM Layer: execução/aprovação de tools, retry/backoff sem duplicar efeitos e contagem de custo
+- [x] F1.3: loop da LLM Layer — `runAgent` executa/aprova tools em multi-turno (efeito só após finish limpo, sem duplicar) e agrega uso de tokens; system prompt v1 — 2026-07-22
+- [ ] Loop restante: retry/backoff em erro transitório do provider + contagem de custo (`/cost`)
 - [x] F1.1: `packages/core` com `Workspace` (sandbox realpath/O_NOFOLLOW), `ToolRegistry` fail-closed e tools de leitura `read_file`/`list_dir`/`grep` (busca literal) — 2026-07-22
 - [x] F1.2: tools de efeito `write_file` (O_NOFOLLOW + pai realpath) e `bash` (env mínimo, grupo de processo, timeout/abort, saída saneada) — 2026-07-22
 - [x] F1.2: até haver checkpoint (git só na F2), toda escrita e todo bash caem em `ask` — regra embutida em `decidePermission` — 2026-07-22
