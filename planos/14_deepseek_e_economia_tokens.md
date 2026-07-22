@@ -21,10 +21,10 @@ Fatos operacionais críticos:
 - **Thinking mode**: ligado por padrão; `reasoning_effort` aceita `high`/`max` (**`low`/`medium` são mapeados p/ `high`** — não existem de verdade); a API já auto-escala p/ `max` em requests "de agente complexo". `thinking: {type: disabled}` desliga.
 - Em thinking mode, `temperature`/`top_p`/penalties **não têm efeito**.
 - **Tool calls em thinking mode**: o `reasoning_content` intermediário **precisa voltar no contexto** dos turnos seguintes (a LLM Layer tem que preservar isso — erro clássico é descartar).
-- Endpoint Anthropic-compat aceita `thinking.budget_tokens` e `output_config.effort` — controle **fino** de raciocínio que o OpenAI-compat não dá. O Vertex do Álvaro já usa isso em produção (ver doc 13.0).
+- Endpoint Anthropic-compat aceita `thinking`, mas a documentação oficial informa que `budget_tokens` é **ignorado**; em `output_config`, somente `effort` (`high`/`max`) é suportado. O Vertex envia budgets, mas isso não prova que o servidor os obedece. Fonte verificada em 2026-07-22: [DeepSeek — Anthropic API Compatibility](https://api-docs.deepseek.com/guides/anthropic_api).
 - `deepseek-chat`/`deepseek-reasoner` legados **aposentam em 2026-07-24** — usar só `deepseek-v4-pro`/`deepseek-v4-flash`.
 
-**Decisão de arquitetura:** a LLM Layer terá driver p/ os dois formatos; p/ DeepSeek, **preferir o endpoint Anthropic-compat** (budget_tokens + semântica de thinking melhor). O AI SDK continua p/ os demais providers.
+**Decisão de arquitetura:** a LLM Layer terá driver p/ os dois formatos e uma matriz de capabilities. O spike F0 decidirá o transporte preferido para DeepSeek com base em streaming, tools, `reasoning_content`, usage/cache e erros; não dependeremos de `budget_tokens`. O AI SDK continua candidato p/ providers OpenAI-compatíveis.
 
 ## 14.2 Estratégia de dois modelos (qualidade × custo)
 
@@ -65,7 +65,7 @@ Mecanismo em 3 camadas (da mais barata pra mais cara):
    - `high` (padrão): implementação normal, edições, perguntas de código.
    - `max`/budget alto: modo planejamento, `/review`, depuração de erro que já falhou ≥1 vez, tarefa marcada difícil pelo plano, refatoração multi-arquivo.
 2. **Roteador Flash (barato)** — quando as heurísticas não decidem, o V4 Flash classifica o prompt (uma chamada de ~centavos: `{complexidade: trivial|normal|dificil, motivo}`) e o resultado mapeia p/ budget.
-3. **Escalada por falha (feedback real)** — se o turno falhar (edit não aplicou, teste quebrou de novo, modelo se confundiu), o próximo turno da mesma tarefa **sobe um degrau** de esforço automaticamente; sucesso consecutivo desce de volta. Inspiração direta: a própria API do DeepSeek auto-escala p/ `max` em agentes; nós refinamos com o `budget_tokens` do endpoint Anthropic (tabela do Vertex como ponto de partida: 4k/8k/16k/32k).
+3. **Escalada por falha (feedback real)** — se o turno falhar (edit não aplicou, teste quebrou de novo, modelo se confundiu), o próximo turno da mesma tarefa sobe de `high` para `max`; sucesso consecutivo volta a `high`. Thinking pode ser desligado para operações mecânicas. Não usamos os níveis 4k/8k/16k/32k, pois `budget_tokens` é ignorado pela API oficial.
 
 Overrides: `/effort off|auto|max` existe p/ quem quiser forçar, mas o padrão é `auto` e a UI não pergunta nada. A statusline mostra o nível escolhido (transparência sem fricção).
 

@@ -5,6 +5,11 @@ referencias/
 node_modules/
 dist/
 coverage/
+*.tsbuildinfo
+
+# Relatórios e caches locais de ferramentas
+.vitest/
+.cache/
 
 # Segredos — NUNCA commitar (chaves ficam fora do repo; ver README)
 .env

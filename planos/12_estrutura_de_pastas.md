@@ -1,6 +1,6 @@
 # 12 — Estrutura de Pastas Proposta
 
-## Repositório da CLI (quando o desenvolvimento começar)
+## Repositório da CLI
 
 ```
 codingpro/
@@ -104,4 +104,6 @@ CodingPro/
 └── referencias/                 # (F0) clones de cline, aider, sst/opencode p/ mineração
 ```
 
-Quando o desenvolvimento começar, o repo `codingpro/` nasce como subpasta aqui (ou pasta irmã) e esta documentação migra para `codingpro/docs/planos/`.
+O desenvolvimento começou em 2026-07-22 **nesta raiz**, que já é o repositório definitivo
+`alvaro209890/CodingPro`. Não será criada uma subpasta `codingpro/`. Os pacotes entram
+incrementalmente quando ganharem responsabilidade real; o F0.1 iniciou por `packages/cli`.

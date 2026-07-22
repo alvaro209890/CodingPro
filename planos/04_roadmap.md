@@ -23,11 +23,13 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 
 ## F0 — Fundação (1 semana)
 
-- [ ] Criar repo git + monorepo pnpm (`packages/core|tui|tools|llm|memory|voice`)
-- [ ] TypeScript strict + Biome + Vitest configurados
+- [x] F0.1: criar workspace pnpm na raiz definitiva + `packages/cli` com bins `codingpro`/`cpro` — 2026-07-22
+- [x] Node 24 fixado + TypeScript strict + Biome + Vitest/cobertura configurados — 2026-07-22
+- [x] Ajuda/versão em pt-BR + build ESM + CI Linux/macOS — 2026-07-22
+- [ ] Adicionar os demais pacotes quando tiverem responsabilidade real (`core|tui|tools|llm|knowledge|memory|voice`)
 - [ ] Especificar contratos internos (eventos core↔UI, interface Tool, interface Provider) — ver doc 02
 - [ ] Sistema de config: merge `~/.codingpro/settings.json` → `.codingpro/settings.json` → flags
-- [ ] Esqueleto `codingpro` com commander (versão, help, `-p`)
+- [ ] Completar esqueleto `codingpro` com `-p` (versão e ajuda já concluídas no F0.1)
 - [ ] Rodar os spikes do doc 03
 - [ ] **Marco: `codingpro -p "olá"` responde via DeepSeek (sem tools)**
 
@@ -35,7 +37,8 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 
 - [ ] LLM Layer com AI SDK: streaming, tool calling, retry/backoff, contagem de custo
 - [ ] Tools: `read_file`, `write_file`, `list/glob`, `grep` (ripgrep), `bash` (execa + timeout)
-- [ ] Sistema de permissões: modos `allowlist` (padrão, com allowlist de fábrica) / `ask` / `auto`; prompt de aprovação na TUI
+- [ ] Checkpoint mínimo antes da primeira escrita; até ele existir, toda escrita e todo bash usam `ask`
+- [ ] Sistema de permissões: modos `allowlist` (padrão de produto após checkpoint) / `ask` / `auto`; prompt de aprovação na TUI
 - [ ] TUI Ink: chat com streaming, render markdown, indicador de tool em execução
 - [ ] Identidade visual v1 (doc 16): tokens.ts, tema Aurora escuro, trilho de timeline, spinner, statusline, banner
 - [ ] i18n pt-BR (doc 15): strings canônicas, verbos de progresso, comandos com alias

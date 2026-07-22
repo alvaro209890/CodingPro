@@ -10,7 +10,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] Escrever docs de planejamento 01–16 + fases 2/3 — 2026-07-22
 - [x] Rodada de 10 decisões de produto com o Álvaro (tabela no doc 01): comando codingpro+cpro, allowlist padrão, licença source-available, repo definitivo, pet on, voz→pós-1.0, trailer on, Aurora, npm+curl, Windows na F2 — 2026-07-22
 - [ ] Álvaro revisar os planos e marcar ajustes
-- [ ] Decidir data de início da F0
+- [x] Iniciar a F0 — 2026-07-22
 
 ## Pré-F0 — Preparação
 
@@ -25,7 +25,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 ## Transversal — Economia de tokens & auto-effort *(doc 14)*
 
 - [ ] Layout de contexto cache-friendly especificado (prefixo estável, volátil no fim)
-- [ ] Driver DeepSeek via endpoint Anthropic-compat (budget_tokens; portar quirks do Vertex)
+- [ ] Driver DeepSeek com capability flags (`thinking` on/off + effort high/max; `budget_tokens` é ignorado pela API oficial)
 - [ ] Estratégia 2 modelos (Pro código / Flash mecânico) na config
 - [ ] Auto-effort v1: heurísticas + roteador Flash + escalada por falha (sem escolha do usuário)
 - [ ] `/cost` com taxa de cache-hit + custo por turno/tarefa/subagente
@@ -45,7 +45,11 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 
 ## F0 — Fundação *(doc 04)*
 
-- [ ] Monorepo pnpm + TS strict + Biome + Vitest
+- [x] F0.1: workspace pnpm + pacote `packages/cli` + bins `codingpro`/`cpro` — 2026-07-22
+- [x] Node 24 fixado + TypeScript strict + Biome + Vitest + cobertura — 2026-07-22
+- [x] Esqueleto offline: ajuda/versão em pt-BR, build ESM e erros controlados — 2026-07-22
+- [x] Workflow CI inicial configurado em Node 24 (Linux obrigatório; macOS best-effort) — 2026-07-22
+- [ ] Adicionar os pacotes de domínio conforme entrarem em uso (`core`, `llm`, `tools`, `tui`, `knowledge`, `memory`, `voice`)
 - [ ] Contratos: eventos core↔UI, interface Tool, interface Provider
 - [ ] Config em camadas (global → projeto → flags)
 - [ ] Spikes: Ink+streaming · DeepSeek tool calling · Ollama swap · node:sqlite FTS5 · tree-sitter WASM · whisper pt-BR · checkpoint git

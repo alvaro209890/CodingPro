@@ -1,0 +1,29 @@
+{
+  "name": "codingpro",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "CLI local de código assistida por IA",
+  "bin": {
+    "codingpro": "./dist/index.mjs",
+    "cpro": "./dist/index.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=24.11 <25"
+  },
+  "scripts": {
+    "build": "tsdown"
+  },
+  "devDependencies": {
+    "commander": "catalog:"
+  }
+}

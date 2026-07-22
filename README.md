@@ -1,12 +1,28 @@
 # CodingPro — Plano de Desenvolvimento
 
 > CLI de código assistida por IA com o **DeepSeek V4 Pro** como cérebro principal.
-> Este repositório contém **apenas o planejamento** — nenhuma linha de código foi escrita ainda.
+> Desenvolvimento iniciado pela fundação executável e offline da CLI.
 
 **Data do plano:** 2026-07-22
 **Stack decidida:** TypeScript / Node.js ≥ 24 · comando `codingpro` (alias `cpro`)
 **Licença:** proprietária source-available (ver `LICENSE`; código de terceiros portado mantém a licença original)
-**Status geral:** 📋 Planejamento — decisões de produto fechadas no doc [01](planos/01_visao_e_escopo.md)
+**Status geral:** 🟠 F0 em andamento — walking skeleton da CLI concluído em 2026-07-22
+
+## Desenvolvimento local
+
+Requisitos: Node.js 24 (a versão validada está em `.nvmrc` e `.node-version`) e pnpm
+10.34.4. O primeiro incremento não acessa rede nem carrega chave de API.
+
+```bash
+nvm use
+pnpm install --frozen-lockfile
+pnpm check
+node packages/cli/dist/index.mjs --ajuda
+```
+
+O comando final terá os dois bins `codingpro` e `cpro`. Nesta etapa, o artefato já oferece
+ajuda e versão em pt-BR; `-p` e a integração DeepSeek entram no próximo incremento F0.2.
+O histórico verificável fica em [docs/diario-desenvolvimento.md](docs/diario-desenvolvimento.md).
 
 ## As 3 fases do projeto
 

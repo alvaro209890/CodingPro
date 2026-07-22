@@ -11,7 +11,7 @@ Estes são comportamentos **confirmados na prática** (projetos acompanhamento/H
 | API oficial **não tem visão** | Nada de screenshots/imagens no fluxo principal | Tools de imagem só quando provider suportar (capability flag por provider); fallback opcional configurável |
 | Chaves 401 acontecem (rotação/expiração) | CLI "morre" de forma confusa | `codingpro doctor` testa a chave; erro 401 vira mensagem clara com passo-a-passo |
 | Latência de reasoning alto pode ser grande | UX de espera ruim | Streaming do reasoning como indicador de progresso; **esforço auto-adaptável por turno (doc 14.4)** decide quando pagar essa latência |
-| `reasoning_effort` só tem `off/high/max` de fato (`low/medium` viram `high`) | Granularidade fina só existe via `thinking.budget_tokens` | Usar o endpoint Anthropic-compat (`api.deepseek.com/anthropic`) c/ budgets — tabela validada no Vertex (doc 13.0) |
+| `reasoning_effort` só tem `off/high/max` de fato (`low/medium` viram `high`) | A API Anthropic-compat ignora `thinking.budget_tokens`; não há granularidade 4k/8k/16k/32k garantida | Modelar capabilities e usar somente thinking on/off + `high`/`max`; validar o comportamento real em eval opt-in |
 | Em thinking mode com tools, o `reasoning_content` intermediário **precisa voltar** nos turnos seguintes | Descartar = degradação silenciosa de qualidade | LLM Layer preserva reasoning_content no histórico por contrato (teste de replay dedicado) |
 | Modelos legados `deepseek-chat`/`reasoner` aposentam 2026-07-24 | Configs antigas quebram | Só `deepseek-v4-pro`/`v4-flash` no código; doctor avisa se config aponta p/ legado |
 | Mudar 1 byte no meio do prompt invalida o cache de prefixo dali em diante | Perder o desconto de ~99% no input | Layout de contexto cache-friendly é regra de arquitetura (doc 14.3), com taxa de cache-hit monitorada em `/cost` |
@@ -32,7 +32,7 @@ Estes são comportamentos **confirmados na prática** (projetos acompanhamento/H
 ## 11.4 Segurança do bash tool
 
 **Risco:** comando destrutivo executado por alucinação ou prompt injection vindo de conteúdo de arquivos/web.
-**Solução em camadas:** permissões (`ask` por padrão), deny-list dura, timeout, cwd restrito ao projeto, aviso destacado p/ comandos de risco (rm, push --force, curl|sh), sandbox opcional (bubblewrap) na fase 2. Conteúdo externo (tool results de MCP/web) marcado como não-confiável no prompt.
+**Solução em camadas:** o padrão do produto continua sendo `allowlist`, mas durante o desenvolvimento toda escrita e todo bash ficam em `ask` até existir checkpoint testado. Depois disso: allowlist conservadora, deny-list dura, timeout, cwd/realpath restritos ao projeto, ambiente de subprocesso sem credenciais e aviso destacado p/ comandos de risco (rm, push --force, curl|sh). Sandbox opcional (bubblewrap) entra depois. Conteúdo externo (tool results de MCP/web) é marcado como não-confiável no prompt.
 
 ## 11.5 Multi-agente: custo e caos
 
