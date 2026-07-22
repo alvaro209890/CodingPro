@@ -100,7 +100,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [~] camada visual Ink/Aurora (tema, spinner, statusline, banner — doc 16): interface v1 é readline; visual vira polimento (F8)
 - [x] CI F1.15/F1.16 verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29961622281](https://github.com/alvaro209890/CodingPro/actions/runs/29961622281)); binário real validado (`--chat` abre, `--agente` dirige a cadeia até o provider, `-p` intacto) — 2026-07-22
 - [x] 🏁 **Tarefa real de 5+ passos com aprovações — validada AO VIVO com DeepSeek** (2026-07-22): `--chat` num projeto real fez 10 passos (2× list_dir, 5× read_file, 1× write_file) com 1 aprovação interativa concedida no prompt e `VISAO.md` criado de fato; headless `--agente` fez 6 passos read-only + custo/cache reais (65% cache-hit, US$ 0,0009)
-- [ ] ⚠️ known issue: `--chat` por stdin em pipe (não-TTY) é instável (race de EOF do `readline/promises`); TTY real funciona. Corrigir com leitor por eventos de linha (fila) na fase de interface
+- [x] fix: `--chat` por stdin em pipe (não-TTY) — `criarLeitorDeLinhas` (eventos `line`/`close` + fila) elimina o race de EOF do `readline/promises`; validado no binário real (pipe lê as linhas e roda o agente) — 2026-07-22
 
 ## F2 — Edição segura
 

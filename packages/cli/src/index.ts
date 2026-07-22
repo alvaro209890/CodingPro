@@ -1,28 +1,24 @@
 #!/usr/bin/env node
 
-import { createInterface } from "node:readline/promises";
 import { executarCli } from "./program.js";
 import { criarProviderRuntime } from "./provider-runtime.js";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { ChatIo } from "./chat-runtime.js";
+import { criarLeitorDeLinhas } from "./line-reader.js";
 
 const controller = new AbortController();
 const interrupt = () => controller.abort();
 process.once("SIGINT", interrupt);
 
 function criarChatIo(): ChatIo {
-  const rl = createInterface({ input: process.stdin, output: process.stderr });
+  // Leitor por eventos de linha: robusto em TTY e em pipe (sem race de EOF).
+  const leitor = criarLeitorDeLinhas(process.stdin, process.stderr);
   return {
-    pergunta: (texto) => rl.question(texto),
+    // Em EOF durante uma aprovação, "" nega (fail-closed).
+    pergunta: async (texto) => (await leitor.next(texto)) ?? "",
     progresso: (texto) => process.stderr.write(texto),
-    proximaMensagem: async () => {
-      try {
-        return await rl.question("› ");
-      } catch {
-        return undefined; // Ctrl-D / stream fechado encerra o chat.
-      }
-    },
+    proximaMensagem: () => leitor.next("› "),
     saida: (texto) => process.stdout.write(texto),
   };
 }

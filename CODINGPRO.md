@@ -72,9 +72,11 @@ fez 6 passos read-only com custo/cache reais (65% de cache-hit, ~US$ 0,0009). Sa
 permissões, loop (retry/compactação/custo), sessões, progresso, headless e chat interativo com
 aprovações — tudo pronto, testado offline e comprovado ao vivo.
 
-**Known issue** (a corrigir na fase de interface): `--chat` por stdin em *pipe* (não-TTY) é instável
-por causa de um race de EOF do `readline/promises`; o TTY real funciona. O fix é um leitor por
-eventos de linha (fila) no lugar de `question` sequencial.
+O *known issue* do `--chat` por *pipe* foi **corrigido**: `criarLeitorDeLinhas` lê stdin por eventos
+`line`/`close` com uma fila (em vez de `readline/promises.question` sequencial), então funciona igual
+em TTY e em pipe e resolve `undefined` no EOF sem travar. Validado no binário real (pipe consome as
+linhas e roda o agente) e com 5 testes de unidade, incluindo o cenário exato do race (todo o input
+de uma vez + EOF imediato).
 
 Falta só o **polimento visual Ink/Aurora** (doc 16), que o roteiro joga para a F8. Próximo bloco: a
 **F2** (edição segura: `edit_file` search/replace, checkpoints git, `/undo`). Antes (F0.4/F0.3) já
