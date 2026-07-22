@@ -46,8 +46,16 @@ O **F1.4** adicionou persistência de sessão: `SessionStore` grava o transcrito
 nome de arquivo e carga fail-closed (linha corrompida ou não-mensagem aborta). O `runAgent` passou a
 detectar quando o transcrito já começa com o system prompt e não o duplica, habilitando a retomada.
 
+O **F1.5** adicionou `compactMessages` (core): compactação por truncamento que mantém o system
+inicial e o sufixo mais recente dentro de um orçamento de tokens, sempre preservando o pareamento
+tool-call/tool-result — se o corte cairia num resultado órfão, recua para incluir o assistant dono
+(integridade acima do orçamento). O **F1.6** adicionou `estimateCost`/`formatCost` (llm): custo em
+USD e taxa de cache-hit por modelo, com a tabela DeepSeek do doc 14.1 (Pro oficial; Flash estimado
+~10× mais barato). Ambos são puros e testados offline; falta ligá-los ao loop (orçamento real de
+compactação) e ao statusline/turno (`/cost`).
+
 Próximo na F1 (fase de integração): a TUI Ink (chat com streaming + `Approver` visual) ligando o loop
-e as sessões à interface e ao `codingpro -p`, com as flags `--continue`/`--resume`; depois
-retry/backoff e `/cost`. O núcleo agêntico (sandbox, tools, permissões, loop, sessões) já está pronto
-e testado offline; falta a camada de interface. Antes (F0.4/F0.3) já estavam fechados o roteamento
-de papéis Pro/Flash e o tool calling multi-turno.
+e as sessões à interface e ao `codingpro -p`, com as flags `--continue`/`--resume`, além de
+retry/backoff. O núcleo agêntico (sandbox, tools, permissões, loop, sessões, compactação, custo) já
+está pronto e testado offline; falta a camada de interface. Antes (F0.4/F0.3) já estavam fechados o
+roteamento de papéis Pro/Flash e o tool calling multi-turno.

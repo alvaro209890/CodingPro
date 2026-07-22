@@ -18,6 +18,13 @@ export type {
   TokenUsage,
 } from "./provider.js";
 export {
+  type CostBreakdown,
+  DEEPSEEK_PRICING,
+  estimateCost,
+  formatCost,
+  type ModelPricing,
+} from "./cost.js";
+export {
   copyChatMessage,
   isChatMessage,
   isTool,

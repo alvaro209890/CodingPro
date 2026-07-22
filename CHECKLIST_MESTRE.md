@@ -84,8 +84,10 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] F1.3: loop agêntico `runAgent` (provider↔`ToolGate` multi-turno, uso de tokens agregado, teto de passos, abort) + system prompt v1 — 2026-07-22
 - [x] F1.4: persistência de sessão em JSONL (`SessionStore`: save/append/load/list, fail-closed, id seguro) + retomada sem duplicar system prompt no `runAgent` — 2026-07-22
 - [x] CI F1.3/F1.4 verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29958941912](https://github.com/alvaro209890/CodingPro/actions/runs/29958941912)) — 2026-07-22
-- [ ] LLM Layer restante: retry/backoff sem duplicar efeitos + `/cost`
-- [ ] TUI chat (Ink) + ligar o loop/sessões à interface + flags `--continue`/`--resume` + compactação
+- [x] F1.5: compactação de contexto por truncamento (`compactMessages`: mantém system + sufixo recente, preserva pareamento tool-call/result, integridade acima do orçamento) — 2026-07-22
+- [x] F1.6: contabilidade de custo DeepSeek (`estimateCost`/`formatCost`: cache-hit + USD; Pro oficial, Flash estimado ~10×) — 2026-07-22
+- [ ] LLM Layer restante: retry/backoff sem duplicar efeitos + ligar `/cost` e compactação ao loop/statusline
+- [ ] TUI chat (Ink) + ligar o loop/sessões à interface + flags `--continue`/`--resume`
 - [ ] 🏁 Tarefa real de 5+ passos com aprovações
 
 ## F2 — Edição segura

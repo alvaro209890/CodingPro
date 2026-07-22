@@ -42,7 +42,8 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 ## F1 — Loop agêntico mínimo (2 semanas)
 
 - [x] F1.3: loop da LLM Layer — `runAgent` executa/aprova tools em multi-turno (efeito só após finish limpo, sem duplicar) e agrega uso de tokens; system prompt v1 — 2026-07-22
-- [ ] Loop restante: retry/backoff em erro transitório do provider + contagem de custo (`/cost`)
+- [x] F1.6: contagem de custo — `estimateCost`/`formatCost` (cache-hit + USD por modelo, doc 14.1) em `@codingpro/llm` — 2026-07-22
+- [ ] Loop restante: retry/backoff em erro transitório do provider + ligar `/cost` ao statusline/turno
 - [x] F1.1: `packages/core` com `Workspace` (sandbox realpath/O_NOFOLLOW), `ToolRegistry` fail-closed e tools de leitura `read_file`/`list_dir`/`grep` (busca literal) — 2026-07-22
 - [x] F1.2: tools de efeito `write_file` (O_NOFOLLOW + pai realpath) e `bash` (env mínimo, grupo de processo, timeout/abort, saída saneada) — 2026-07-22
 - [x] F1.2: até haver checkpoint (git só na F2), toda escrita e todo bash caem em `ask` — regra embutida em `decidePermission` — 2026-07-22
@@ -52,7 +53,7 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 - [ ] i18n pt-BR (doc 15): strings canônicas, verbos de progresso, comandos com alias
 - [x] F1.4: sessões em JSONL (`SessionStore` save/append/load/list, fail-closed) + `runAgent` retoma transcrito sem duplicar system prompt — 2026-07-22
 - [ ] Ligar sessões à CLI: flags `--continue` / `--resume` (depende da fase de integração CLI/TUI)
-- [ ] Compactação de contexto quando estourar orçamento de tokens
+- [x] F1.5: compactação de contexto por truncamento (`compactMessages`, preserva system + pareamento tool/result) — 2026-07-22; falta ligar ao loop com orçamento real
 - [ ] System prompt v1 (identidade, regras de tool use, estilo de resposta conciso, diretiva de resposta em pt-BR)
 - [ ] **Marco: tarefa real de 5+ passos num projeto de verdade, com aprovação de permissões**
 
