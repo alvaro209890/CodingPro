@@ -25,9 +25,7 @@
   },
   "devDependencies": {
     "@codingpro/llm": "workspace:*",
-    "commander": "catalog:"
-  },
-  "dependencies": {
+    "commander": "catalog:",
     "jsonc-parser": "3.3.1"
   }
 }

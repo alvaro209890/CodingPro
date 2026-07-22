@@ -159,6 +159,11 @@ expôs duas suposições dos testes: o `umask` do runner podia remover o bit ins
 criação do arquivo, e o macOS canonicaliza `/var` como `/private/var`. As fixtures passaram a
 aplicar `chmod` explicitamente e a comparar diretórios temporários canonicalizados.
 
+A execução seguinte ([29950160285](https://github.com/alvaro209890/CodingPro/actions/runs/29950160285))
+aprovou testes e builds nos três runners, mas o smoke offline detectou que o parser já embutido no
+bundle ainda constava como dependência de runtime do tarball. Ele foi movido para dependência de
+desenvolvimento, evitando qualquer download na instalação do artefato autossuficiente.
+
 ### Próximo incremento
 
 Executar o spike de troca para Ollama local pelo mesmo contrato Provider, mantendo a CLI offline
