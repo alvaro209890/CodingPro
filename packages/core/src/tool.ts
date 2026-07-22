@@ -1,4 +1,5 @@
 import type { JsonObject, Tool, ToolResult } from "@codingpro/llm";
+import type { CheckpointRecorder } from "./checkpoints.js";
 import type { Workspace } from "./workspace.js";
 
 /**
@@ -28,6 +29,8 @@ export interface ToolContext {
   readonly signal?: AbortSignal;
   /** Rastreador de leitura da sessão; `edit_file` o consulta para a guarda de leitura. */
   readonly readTracker?: ReadTracker;
+  /** Registro de checkpoints; tools de escrita capturam o estado pré-escrita antes de gravar. */
+  readonly checkpoints?: CheckpointRecorder;
 }
 
 /**

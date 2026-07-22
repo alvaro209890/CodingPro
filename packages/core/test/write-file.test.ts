@@ -25,6 +25,20 @@ describe("write_file", () => {
     expect(await readFile(join(root, "novo.txt"), "utf8")).toBe("olá ção");
   });
 
+  it("captura no checkpoint antes de escrever quando há recorder", async () => {
+    const capturado: string[] = [];
+    const checkpoints = {
+      capture: async (p: string) => {
+        capturado.push(p);
+      },
+    };
+    await writeFileTool.execute(
+      { content: "x longo", path: "cp.txt" },
+      { ...context, checkpoints },
+    );
+    expect(capturado).toEqual(["cp.txt"]);
+  });
+
   it("sobrescreve arquivo existente", async () => {
     await writeFile(join(root, "a.txt"), "antigo conteúdo longo");
     await writeFileTool.execute({ content: "novo", path: "a.txt" }, context);

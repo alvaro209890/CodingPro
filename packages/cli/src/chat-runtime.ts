@@ -1,5 +1,8 @@
+import { join } from "node:path";
 import {
   ALL_TOOLS,
+  type CheckpointMeta,
+  CheckpointStore,
   createReadTracker,
   describeAgentEvent,
   newSessionId,
@@ -32,7 +35,22 @@ export interface ChatOptions {
 }
 
 const AJUDA =
-  "Comandos: /sair encerra · /custo mostra o custo do último turno · /limpar esquece o histórico\n";
+  "Comandos: /sair encerra · /custo mostra o custo do último turno · /limpar esquece o histórico · " +
+  "/undo [N] desfaz as últimas edições · /redo [N] refaz · /checkpoint lista a linha do tempo\n";
+
+/** Lê o argumento numérico opcional de um comando como /undo ou /redo (default 1). */
+function parseQuantidade(mensagem: string): number {
+  const arg = mensagem.split(/\s+/)[1];
+  const n = arg === undefined ? 1 : Number.parseInt(arg, 10);
+  return Number.isInteger(n) && n > 0 ? n : 1;
+}
+
+/** Resumo pt-BR de um checkpoint para a linha do tempo. */
+function descreverCheckpoint(meta: CheckpointMeta): string {
+  const arquivos = meta.files.map((f) => f.path).join(", ");
+  const rotulo = meta.label.trim().length > 0 ? meta.label.trim() : "(sem rótulo)";
+  return `#${meta.seq} · ${rotulo} · ${arquivos}`;
+}
 
 /**
  * Chat interativo do agente: cada mensagem roda o loop com TODAS as ferramentas; efeitos
@@ -54,6 +72,11 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
   const sessaoId = newSessionId();
   // Um rastreador para toda a sessão de chat: uma leitura habilita edições nos turnos seguintes.
   const readTracker = createReadTracker();
+  // Checkpoints do projeto: cada turno com escrita vira um passo desfazível com /undo.
+  const checkpoints = await CheckpointStore.create(
+    join(workspace.root, ".codingpro", "checkpoints"),
+    workspace,
+  );
 
   let transcrito: ChatMessage[] = [];
   let ultimoCusto: CostBreakdown | undefined;
@@ -89,11 +112,46 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       io.progresso(AJUDA);
       continue;
     }
+    if (mensagem === "/undo" || mensagem.startsWith("/undo ")) {
+      const r = await checkpoints.undo(parseQuantidade(mensagem));
+      if (r.passos === 0) {
+        io.progresso("· nada a desfazer\n");
+      } else {
+        for (const c of r.checkpoints) {
+          io.progresso(`· desfeito ${descreverCheckpoint(c)}\n`);
+        }
+      }
+      continue;
+    }
+    if (mensagem === "/redo" || mensagem.startsWith("/redo ")) {
+      const r = await checkpoints.redo(parseQuantidade(mensagem));
+      if (r.passos === 0) {
+        io.progresso("· nada a refazer\n");
+      } else {
+        for (const c of r.checkpoints) {
+          io.progresso(`· refeito ${descreverCheckpoint(c)}\n`);
+        }
+      }
+      continue;
+    }
+    if (mensagem === "/checkpoint" || mensagem === "/checkpoints") {
+      const lista = checkpoints.list();
+      if (lista.length === 0) {
+        io.progresso("· sem checkpoints ainda\n");
+      } else {
+        for (const c of lista) {
+          io.progresso(`· ${descreverCheckpoint(c)}\n`);
+        }
+      }
+      continue;
+    }
 
+    checkpoints.begin(mensagem);
     const entrada: ChatMessage[] = [...transcrito, { content: mensagem, role: "user" }];
     let respondeu = false;
     const result = await runAgent({
       context: {
+        checkpoints,
         readTracker,
         workspace,
         ...(options.signal === undefined ? {} : { signal: options.signal }),
@@ -119,6 +177,11 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
 
     if (respondeu) {
       io.saida("\n");
+    }
+    // Fecha o passo: se o turno escreveu algo, vira um checkpoint desfazível.
+    const checkpoint = await checkpoints.commit();
+    if (checkpoint !== undefined) {
+      io.progresso(`· checkpoint ${descreverCheckpoint(checkpoint)} (/undo desfaz)\n`);
     }
     transcrito = [...result.messages];
     ultimoCusto = result.cost;

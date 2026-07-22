@@ -96,5 +96,21 @@ de permissão como o `write_file`), reaproveita `writeFileWithin` (symlink final
 contenção por realpath) e aparece no progresso pt-BR como "Editando …". Tudo testado offline
 (blocos únicos/múltiplos/atômicos, match falho/ambíguo, guarda de leitura, `$` literal, symlink).
 
-Faltam na F2: **checkpoints git + repo-sombra + `/undo`**, **diff bonito na TUI** e o **marco**
-(refatoração multi-arquivo + undo total < 2 s sem sujar o staging do usuário).
+O **F2.2** entregou os **checkpoints automáticos com `/undo`**. Um `CheckpointStore` puro em Node
+(sem dependência de git) mantém pilhas de **desfazer/refazer** sobre *snapshots* de arquivo,
+persistidos em `.codingpro/checkpoints/<seq>/meta.json`. Antes de gravar, `write_file`/`edit_file`
+**capturam o estado atual em disco** do alvo (a primeira captura do passo vence, então preserva
+edições manuais do usuário feitas entre turnos). No chat, cada turno abre um passo (`begin`) e, se
+escreveu algo, fecha num checkpoint (`commit`) — um turno que edita 3 arquivos vira **um** passo
+desfazível. Comandos: `/undo [N]` restaura o estado anterior aos N últimos passos, `/redo [N]` refaz
+(pilha só em memória, zerada a cada nova escrita), `/checkpoint` lista a linha do tempo. `undo`
+guarda o estado "depois" antes de restaurar o "antes", e apaga o checkpoint do disco (um novo store
+não o revê); `redo` recria o passo. A restauração usa `writeFileWithin`/`removeFileWithin` (contenção
+por realpath, symlink final bloqueado) — desfazer um "criar" apaga o arquivo; arquivos acima de 4 MiB
+são **omitidos** do snapshot (undo os ignora). A escolha por Node puro em vez de refs git ocultas é
+deliberada: **nunca toca no `.git`/staging/branches do usuário**, funciona igual em pastas com ou sem
+git e é 100% testável offline — satisfazendo a garantia do marco ("sem sujar o staging"). Tudo testado
+(edição/criação/multi-arquivo, undo/redo, primeira-captura-vence, persistência entre instâncias,
+omissão de arquivo grande, dir corrompido ignorado) — 404 testes verdes, cobertura 96,12%/92,62%.
+
+Faltam na F2: **diff bonito na TUI** e o **marco** formal (refatoração multi-arquivo + undo total < 2 s).

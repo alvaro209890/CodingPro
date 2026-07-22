@@ -166,6 +166,8 @@ export const editFileTool: ExecutableTool = {
       return textResult(`Nenhuma mudança: o conteúdo de ${rel} já era o desejado.`);
     }
 
+    // Captura o estado pré-edição antes de gravar, para permitir /undo.
+    await context.checkpoints?.capture(rel);
     const bytes = await writeFileWithin(
       context.workspace,
       absolute,

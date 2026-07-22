@@ -144,6 +144,49 @@ describe("executarChat", () => {
     expect(captura.progresso()).toContain("Comandos:");
   });
 
+  it("cria checkpoint ao escrever e /undo reverte o arquivo", async () => {
+    const call: ToolCall = {
+      id: "w1",
+      input: { content: "conteúdo novo", path: "a.txt" },
+      name: "write_file",
+    };
+    const { provider } = scripted([
+      [{ call, type: "tool-call" }, finish({ content: "", role: "assistant", toolCalls: [call] })],
+      [{ text: "feito", type: "text-delta" }, finish({ content: "feito", role: "assistant" })],
+    ]);
+    const captura = fakeIo(["crie a.txt", "/undo", undefined], ["s"]);
+    await executarChat({ cwd, provider }, captura.io);
+    expect(captura.progresso()).toContain("checkpoint");
+    expect(captura.progresso()).toContain("desfeito");
+    await expect(readFile(join(cwd, "a.txt"), "utf8")).rejects.toThrow();
+  });
+
+  it("/undo, /redo e /checkpoint operam a linha do tempo", async () => {
+    const call: ToolCall = {
+      id: "w1",
+      input: { content: "v1", path: "a.txt" },
+      name: "write_file",
+    };
+    const { provider } = scripted([
+      [{ call, type: "tool-call" }, finish({ content: "", role: "assistant", toolCalls: [call] })],
+      [{ text: "feito", type: "text-delta" }, finish({ content: "feito", role: "assistant" })],
+    ]);
+    const captura = fakeIo(["crie a.txt", "/checkpoint", "/undo", "/redo", undefined], ["s"]);
+    await executarChat({ cwd, provider }, captura.io);
+    expect(captura.progresso()).toContain("refeito");
+    expect(await readFile(join(cwd, "a.txt"), "utf8")).toBe("v1");
+  });
+
+  it("responde vazio quando não há o que desfazer/refazer/listar", async () => {
+    const { provider, requests } = scripted([]);
+    const captura = fakeIo(["/undo", "/redo 2", "/checkpoint", undefined], []);
+    await executarChat({ cwd, provider }, captura.io);
+    expect(requests).toEqual([]);
+    expect(captura.progresso()).toContain("nada a desfazer");
+    expect(captura.progresso()).toContain("nada a refazer");
+    expect(captura.progresso()).toContain("sem checkpoints ainda");
+  });
+
   it("mantém o histórico entre turnos sem duplicar o system", async () => {
     const { provider, requests } = scripted([
       [{ text: "um", type: "text-delta" }, finish({ content: "um", role: "assistant" })],

@@ -40,6 +40,21 @@ describe("edit_file", () => {
     expect(await readFile(join(root, "a.ts"), "utf8")).toBe("const x = 42;\nconst y = 2;\n");
   });
 
+  it("captura no checkpoint antes de gravar quando há recorder", async () => {
+    await writeFile(join(root, "a.ts"), "const x = 1;\n");
+    const capturado: string[] = [];
+    const checkpoints = {
+      capture: async (p: string) => {
+        capturado.push(p);
+      },
+    };
+    await editFileTool.execute(
+      { edits: [{ replace: "const x = 2;", search: "const x = 1;" }], path: "a.ts" },
+      { ...context, checkpoints },
+    );
+    expect(capturado).toEqual(["a.ts"]);
+  });
+
   it("aplica múltiplos blocos de forma atômica e em ordem", async () => {
     await writeFile(join(root, "a.ts"), "alpha\nbeta\ngama\n");
     await editFileTool.execute(

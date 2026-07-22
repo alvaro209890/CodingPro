@@ -1,5 +1,5 @@
 import { constants } from "node:fs";
-import { open } from "node:fs/promises";
+import { open, unlink } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { CoreError } from "./errors.js";
 import type { Workspace } from "./workspace.js";
@@ -115,5 +115,32 @@ export async function writeFileWithin(
     throw toWriteError(error);
   } finally {
     await handle.close();
+  }
+}
+
+/**
+ * Remove um arquivo contido no workspace, ancorando no realpath do diretório-pai. `unlink` não
+ * segue symlink no componente final (remove o próprio link). Ausência do arquivo ou do pai é
+ * tratada como sucesso (idempotente) — usado pela restauração de checkpoint ao desfazer um "criar".
+ */
+export async function removeFileWithin(workspace: Workspace, absolute: string): Promise<void> {
+  let realParent: string;
+  try {
+    realParent = await workspace.realpathInside(dirname(absolute));
+  } catch (error) {
+    if (error instanceof CoreError && error.code === "not-found") {
+      return;
+    }
+    throw error;
+  }
+  const target = join(realParent, basename(absolute));
+  workspace.assertInside(target);
+  try {
+    await unlink(target);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+      return;
+    }
+    throw toWriteError(error);
   }
 }

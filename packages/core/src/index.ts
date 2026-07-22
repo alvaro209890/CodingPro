@@ -10,13 +10,22 @@ export {
   type RunAgentOptions,
 } from "./agent.js";
 export {
+  CHECKPOINT_MAX_FILE_BYTES,
+  type CheckpointMeta,
+  type CheckpointRecorder,
+  CheckpointStore,
+  type FileSnapshot,
+  type FileStatus,
+  type UndoResult,
+} from "./checkpoints.js";
+export {
   type CompactionOptions,
   type CompactionResult,
   compactMessages,
   estimateMessageTokens,
 } from "./compaction.js";
 export { CoreError, type CoreErrorCode } from "./errors.js";
-export { readFileWithin, writeFileWithin } from "./fs-safe.js";
+export { readFileWithin, removeFileWithin, writeFileWithin } from "./fs-safe.js";
 export { ToolGate } from "./gate.js";
 export {
   type Approval,

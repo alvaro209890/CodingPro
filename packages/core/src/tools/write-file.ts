@@ -29,6 +29,8 @@ export const writeFileTool: ExecutableTool = {
       throw new CoreError("invalid-input", "O conteúdo precisa ser um texto.");
     }
     const absolute = context.workspace.resolve(input.path);
+    // Captura o estado atual em disco antes de sobrescrever, para permitir /undo.
+    await context.checkpoints?.capture(context.workspace.toRelative(absolute));
     const bytes = await writeFileWithin(
       context.workspace,
       absolute,
