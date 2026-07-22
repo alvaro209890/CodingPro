@@ -229,7 +229,9 @@ pnpm 10.34.4, sem credenciais no gate comum:
 - `validation.ts`: 91,95% statements e 91,75% lines;
 - format check, lint, typecheck, build e smoke offline do tarball aprovados por `pnpm check`;
 - smoke real opt-in aprovado no V4 Pro e V4 Flash, dois turnos por modelo, com a credencial
-  isolada no processo e somente mensagens de aprovação na saída.
+  isolada no processo e somente mensagens de aprovação na saída;
+- CI bloqueante verde no Node 24.11/24.18 Linux e 24.18 macOS na
+  [execução 29954449299](https://github.com/alvaro209890/CodingPro/actions/runs/29954449299).
 
 ### Próximo incremento
 

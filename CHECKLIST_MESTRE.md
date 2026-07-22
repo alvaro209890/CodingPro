@@ -67,7 +67,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] F0.3: validação fail-closed de schema, argumentos, IDs, transcript e allowlist de modelos — 2026-07-22
 - [x] F0.3: replay multi-turno, 167 testes offline e cobertura global >93% — 2026-07-22
 - [x] F0.3: smoke real `modelo → somar → resultado → modelo` aprovado no Pro e Flash — 2026-07-22
-- [ ] CI F0.3 verde no Node 24.11/24.18 Linux e 24.18 macOS
+- [x] CI F0.3 verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29954449299](https://github.com/alvaro209890/CodingPro/actions/runs/29954449299)) — 2026-07-22
 - [ ] Spikes restantes da F0: Ink+streaming · node:sqlite FTS5 · tree-sitter WASM · checkpoint git
 - [x] 🏁 `codingpro -p` respondendo via DeepSeek real com prompt sintético — 2026-07-22
 
