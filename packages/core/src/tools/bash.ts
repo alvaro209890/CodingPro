@@ -85,10 +85,13 @@ function runCommand(
     let settled = false;
 
     const collect = (chunk: Buffer, current: string): string => {
-      if (Buffer.byteLength(current, "utf8") >= BASH_MAX_OUTPUT_BYTES) {
+      const remaining = BASH_MAX_OUTPUT_BYTES - Buffer.byteLength(current, "utf8");
+      if (remaining <= 0) {
         return current;
       }
-      return current + chunk.toString("utf8");
+      // Fatia no limite exato para o fluxo nunca ultrapassar o teto (chunk pode ser grande).
+      const slice = chunk.byteLength > remaining ? chunk.subarray(0, remaining) : chunk;
+      return current + slice.toString("utf8");
     };
 
     const killTree = (): void => {

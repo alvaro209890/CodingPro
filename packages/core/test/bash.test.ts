@@ -45,11 +45,14 @@ describe("bash", () => {
     try {
       const out = text(
         await bashTool.execute(
-          { command: 'printf "PATH=%s SECRET=[%s]" "${PATH:+set}" "${CODINGPRO_TEST_SECRET-}"' },
+          {
+            command:
+              'test -n "$PATH" && printf PATHSET; printf "SECRET=[%s]" "$CODINGPRO_TEST_SECRET"',
+          },
           context,
         ),
       );
-      expect(out).toContain("PATH=set");
+      expect(out).toContain("PATHSET");
       expect(out).toContain("SECRET=[]");
     } finally {
       delete process.env.CODINGPRO_TEST_SECRET;
@@ -89,7 +92,8 @@ describe("bash", () => {
     const out = text(
       await bashTool.execute({ command: "yes abcdefghij | head -c 300000" }, context),
     );
-    expect(out.length).toBeLessThan(150_000);
+    // stdout limitado a 100 KiB por fluxo + um cabeçalho curto ($ cmd / [código]).
+    expect(out.length).toBeLessThan(101_000);
   });
 
   it("normaliza CR e remove caracteres de controle", async () => {
