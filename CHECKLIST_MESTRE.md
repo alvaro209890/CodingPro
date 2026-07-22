@@ -54,6 +54,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] CI F0.2a bloqueante verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29944958829](https://github.com/alvaro209890/CodingPro/actions/runs/29944958829)) — 2026-07-22
 - [x] F0.2b: adaptador DeepSeek/AI SDK + usage de cache + erros/abort offline — 2026-07-22
 - [x] F0.2b: smoke real sintético com autorização dupla e bloqueio no CI — 2026-07-22
+- [x] CI F0.2b bloqueante verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29947294481](https://github.com/alvaro209890/CodingPro/actions/runs/29947294481)) — 2026-07-22
 - [ ] Executar o smoke DeepSeek real com autorização explícita do operador
 - [ ] Adicionar os demais pacotes de domínio conforme entrarem em uso (`core`, `tools`, `tui`, `knowledge`, `memory`, `voice`)
 - [ ] Contratos restantes: eventos core↔UI e interface Tool

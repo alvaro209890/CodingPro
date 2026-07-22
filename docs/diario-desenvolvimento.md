@@ -108,6 +108,8 @@ Node 24.18.0 e pnpm 10.34.4:
 - adaptador DeepSeek: 92,68% statements, 92,85% branches, 100% functions e 92,62% lines;
 - typecheck, build autossuficiente e instalação offline do tarball aprovados;
 - gates do smoke recusaram corretamente execução sem autorização e dentro de CI.
+- CI remoto verde no Node 24.11/24.18 Linux e 24.18 macOS:
+  [execução 29947294481](https://github.com/alvaro209890/CodingPro/actions/runs/29947294481).
 
 O smoke com API real não foi executado: ele permanece pendente de opt-in explícito.
 
