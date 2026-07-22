@@ -15,10 +15,12 @@ export const mensagens = {
   opcao: {
     agente: "roda o loop agêntico com ferramentas de leitura (headless)",
     ajuda: "exibe a ajuda",
+    continuar: "retoma a sessão mais recente do agente",
     maxContexto: "orçamento de tokens antes de compactar o contexto",
     prompt: "envia um prompt no modo não interativo",
     provider: "seleciona deepseek ou replay",
     replayFile: "define a fixture do provider replay",
+    resume: "retoma uma sessão do agente pelo id",
     versao: "exibe a versão",
   },
 } as const;

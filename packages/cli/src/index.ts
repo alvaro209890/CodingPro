@@ -3,6 +3,7 @@
 import { executarCli } from "./program.js";
 import { criarProviderRuntime } from "./provider-runtime.js";
 import { homedir } from "node:os";
+import { join } from "node:path";
 
 const controller = new AbortController();
 const interrupt = () => controller.abort();
@@ -27,6 +28,7 @@ try {
           controller.signal,
         ),
       raizProjeto: process.cwd(),
+      raizSessoes: join(homedir(), ".codingpro", "sessions"),
       signal: controller.signal,
     },
   );

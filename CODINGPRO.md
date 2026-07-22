@@ -46,16 +46,20 @@ O **F1.4** adicionou persistência de sessão: `SessionStore` grava o transcrito
 nome de arquivo e carga fail-closed (linha corrompida ou não-mensagem aborta). O `runAgent` passou a
 detectar quando o transcrito já começa com o system prompt e não o duplica, habilitando a retomada.
 
-O **F1.5** adicionou `compactMessages` (core): compactação por truncamento que mantém o system
-inicial e o sufixo mais recente dentro de um orçamento de tokens, sempre preservando o pareamento
-tool-call/tool-result — se o corte cairia num resultado órfão, recua para incluir o assistant dono
-(integridade acima do orçamento). O **F1.6** adicionou `estimateCost`/`formatCost` (llm): custo em
-USD e taxa de cache-hit por modelo, com a tabela DeepSeek do doc 14.1 (Pro oficial; Flash estimado
-~10× mais barato). Ambos são puros e testados offline; falta ligá-los ao loop (orçamento real de
-compactação) e ao statusline/turno (`/cost`).
+O loop foi endurecido e ligado à CLL. **F1.7** deu retry/backoff no `runAgent` (só antes do 1º
+token, sem duplicar deltas nem efeitos). **F1.8** ligou a compactação ao loop via `contextBudget`.
+**F1.9** expôs `cost` no `AgentResult`. **F1.10** trouxe verbos de progresso pt-BR
+(`describeAgentEvent`: "Lendo…", "Rodando…", ✓/✗). **F1.5/F1.6** já haviam entregue `compactMessages`
+(trunca preservando o pareamento tool-call/result) e `estimateCost`/`formatCost` (doc 14.1).
 
-Próximo na F1 (fase de integração): a TUI Ink (chat com streaming + `Approver` visual) ligando o loop
-e as sessões à interface e ao `codingpro -p`, com as flags `--continue`/`--resume`, além de
-retry/backoff. O núcleo agêntico (sandbox, tools, permissões, loop, sessões, compactação, custo) já
-está pronto e testado offline; falta a camada de interface. Antes (F0.4/F0.3) já estavam fechados o
-roteamento de papéis Pro/Flash e o tool calling multi-turno.
+**F1.11/F1.12** ligaram o agente à CLI: `codingpro --agente -p "..."` roda o loop headless com as
+tools de leitura (efeitos negados fail-closed sem aprovação interativa), texto→stdout,
+progresso/`/cost`→stderr, `--max-contexto` para compactar. O `-p` simples segue intacto (o smoke de
+pacote continua verde). **F1.13/F1.14** adicionaram sessões: o transcrito é salvo em JSONL e o id
+impresso; `--resume <id>` retoma um transcrito e `--continuar` a sessão mais recente; `CoreError`
+vira mensagem segura na CLI.
+
+Falta na F1 apenas a **TUI Ink interativa** (chat com streaming + `Approver` visual para efeitos com
+aprovação). Todo o núcleo agêntico — sandbox, tools, permissões, loop, retry, compactação, custo,
+sessões, progresso — está pronto, testado offline e utilizável via `--agente`. Antes (F0.4/F0.3) já
+estavam fechados o roteamento de papéis Pro/Flash e o tool calling multi-turno.

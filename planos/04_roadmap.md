@@ -52,7 +52,7 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 - [ ] Identidade visual v1 (doc 16): tokens.ts, tema Aurora escuro, trilho de timeline, spinner, statusline, banner
 - [ ] i18n pt-BR (doc 15): strings canônicas, verbos de progresso, comandos com alias
 - [x] F1.4: sessões em JSONL (`SessionStore` save/append/load/list, fail-closed) + `runAgent` retoma transcrito sem duplicar system prompt — 2026-07-22
-- [ ] Ligar sessões à CLI: flags `--continue` / `--resume` (depende da fase de integração CLI/TUI)
+- [x] F1.13/F1.14: sessões ligadas à CLI — auto-save + `--resume <id>` + `--continuar` (última) no `codingpro --agente` — 2026-07-22
 - [x] F1.5: compactação de contexto por truncamento (`compactMessages`, preserva system + pareamento tool/result) — 2026-07-22; falta ligar ao loop com orçamento real
 - [ ] System prompt v1 (identidade, regras de tool use, estilo de resposta conciso, diretiva de resposta em pt-BR)
 - [ ] **Marco: tarefa real de 5+ passos num projeto de verdade, com aprovação de permissões**

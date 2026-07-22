@@ -1,3 +1,4 @@
+import { CoreError } from "@codingpro/core";
 import { Command, CommanderError, type Help, Option } from "commander";
 import { ProviderError, type Provider } from "@codingpro/llm";
 import packageJson from "../package.json" with { type: "json" };
@@ -15,6 +16,8 @@ export interface CliServices {
   readonly criarProvider: (overrides: ProviderOverrides) => Promise<Provider> | Provider;
   /** Raiz do projeto (cwd) para o modo agente sandboxar as ferramentas. */
   readonly raizProjeto?: string;
+  /** Diretório onde as sessões do agente são salvas/lidas. */
+  readonly raizSessoes?: string;
   readonly signal?: AbortSignal;
 }
 
@@ -76,6 +79,7 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
     .version(packageJson.version, "-v, --versao", mensagens.opcao.versao)
     .option("-p, --prompt <texto>", mensagens.opcao.prompt)
     .option("--agente", mensagens.opcao.agente)
+    .option("--continuar", mensagens.opcao.continuar)
     .addOption(
       new Option("--max-contexto <n>", mensagens.opcao.maxContexto).argParser((valor) => {
         const numero = Number.parseInt(valor, 10);
@@ -85,6 +89,7 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
         return numero;
       }),
     )
+    .option("--resume <id>", mensagens.opcao.resume)
     .addOption(
       new Option("--provider <nome>", mensagens.opcao.provider).choices(["deepseek", "replay"]),
     )
@@ -102,10 +107,12 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
   programa.action(async () => {
     const options = programa.opts<{
       agente?: boolean;
+      continuar?: boolean;
       maxContexto?: number;
       prompt?: string;
       provider?: string;
       replayFile?: string;
+      resume?: string;
     }>();
     const prompt = options.prompt;
     if (prompt === undefined) {
@@ -125,10 +132,13 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
     if (options.agente === true) {
       await executarAgenteHeadless(
         {
+          continuarUltima: options.continuar === true,
           cwd: services.raizProjeto ?? process.cwd(),
           prompt,
           provider,
           ...(options.maxContexto === undefined ? {} : { maxContexto: options.maxContexto }),
+          ...(options.resume === undefined ? {} : { resumirId: options.resume }),
+          ...(services.raizSessoes === undefined ? {} : { sessaoDir: services.raizSessoes }),
           ...(services.signal === undefined ? {} : { signal: services.signal }),
         },
         { progresso: io.stderr, saida: io.stdout },
@@ -177,7 +187,11 @@ export async function executarCli(
       io.stderr(`erro: ${error.message}\n`);
       return 1;
     }
-    if (error instanceof ConfigError || error instanceof ProviderError) {
+    if (
+      error instanceof ConfigError ||
+      error instanceof ProviderError ||
+      error instanceof CoreError
+    ) {
       io.stderr(`erro: ${error.safeMessage}\n`);
       return 2;
     }

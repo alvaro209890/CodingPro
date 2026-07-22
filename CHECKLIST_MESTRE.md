@@ -92,7 +92,9 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] F1.9: custo agregado no `AgentResult` (`cost`) quando o modelo tem tabela de preço — 2026-07-22
 - [x] F1.11: runtime headless do agente (`executarAgenteHeadless`: Workspace + tools de leitura + gate + loop; texto→stdout, progresso/`/cost`→stderr) — 2026-07-22
 - [x] F1.12: `codingpro --agente -p` liga o loop à CLI + `--max-contexto` (compactação) — 2026-07-22
-- [ ] TUI chat (Ink) + flags `--continue`/`--resume` na CLI
+- [x] F1.13: sessões no agente headless (auto-salva transcrito em JSONL, imprime id) + `--resume <id>` — 2026-07-22
+- [x] F1.14: `--continuar` retoma a sessão mais recente; `CoreError` vira mensagem segura na CLI — 2026-07-22
+- [ ] TUI chat (Ink) ligando o loop/aprovações à interface interativa
 - [ ] 🏁 Tarefa real de 5+ passos com aprovações
 
 ## F2 — Edição segura

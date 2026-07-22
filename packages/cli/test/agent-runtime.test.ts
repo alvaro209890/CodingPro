@@ -110,4 +110,108 @@ describe("executarAgenteHeadless", () => {
       executarAgenteHeadless({ cwd, prompt: "oi", provider, signal: controller.signal }, io),
     ).rejects.toThrow();
   });
+
+  it("salva o transcrito e devolve o id da sessão", async () => {
+    const sessaoDir = join(cwd, "sessoes");
+    const provider = scripted([
+      [
+        { text: "resposta um", type: "text-delta" },
+        finish({ content: "resposta um", role: "assistant" }),
+      ],
+    ]);
+    const { sessaoId } = await executarAgenteHeadless(
+      { cwd, prompt: "primeira", provider, sessaoDir },
+      io,
+    );
+    expect(sessaoId).toBeDefined();
+    expect(progresso).toContain(`Sessão: ${sessaoId}`);
+  });
+
+  it("retoma uma sessão salva e continua o transcrito", async () => {
+    const sessaoDir = join(cwd, "sessoes");
+    const primeiro = scripted([
+      [{ text: "um", type: "text-delta" }, finish({ content: "um", role: "assistant" })],
+    ]);
+    const { sessaoId } = await executarAgenteHeadless(
+      { cwd, prompt: "primeira pergunta", provider: primeiro, sessaoDir },
+      io,
+    );
+    if (sessaoId === undefined) {
+      throw new Error("esperava id de sessão");
+    }
+
+    const requests: string[] = [];
+    const segundo: Provider = {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "fake",
+      model: "fake",
+      async *stream(request) {
+        requests.push(JSON.stringify(request));
+        yield { text: "dois", type: "text-delta" };
+        yield finish({ content: "dois", role: "assistant" });
+      },
+    };
+    const resultado = await executarAgenteHeadless(
+      { cwd, prompt: "segunda pergunta", provider: segundo, resumirId: sessaoId, sessaoDir },
+      io,
+    );
+    expect(resultado.sessaoId).toBe(sessaoId);
+    // O request retomado carrega a pergunta antiga e a resposta antiga.
+    expect(requests[0]).toContain("primeira pergunta");
+    expect(requests[0]).toContain("segunda pergunta");
+    // O transcrito final tem as duas perguntas do usuário.
+    const perguntas = resultado.resultado.messages.filter((m) => m.role === "user");
+    expect(perguntas).toHaveLength(2);
+  });
+
+  it("--continuar retoma a sessão mais recente", async () => {
+    const sessaoDir = join(cwd, "sessoes");
+    const um = scripted([
+      [{ text: "um", type: "text-delta" }, finish({ content: "um", role: "assistant" })],
+    ]);
+    const { sessaoId } = await executarAgenteHeadless(
+      { cwd, prompt: "pergunta antiga", provider: um, sessaoDir },
+      io,
+    );
+
+    const requests: string[] = [];
+    const dois: Provider = {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "fake",
+      model: "fake",
+      async *stream(request) {
+        requests.push(JSON.stringify(request));
+        yield finish({ content: "dois", role: "assistant" });
+      },
+    };
+    const resultado = await executarAgenteHeadless(
+      { continuarUltima: true, cwd, prompt: "pergunta nova", provider: dois, sessaoDir },
+      io,
+    );
+    expect(resultado.sessaoId).toBe(sessaoId);
+    expect(requests[0]).toContain("pergunta antiga");
+    expect(requests[0]).toContain("pergunta nova");
+  });
+
+  it("--continuar sem sessão prévia começa uma nova", async () => {
+    const sessaoDir = join(cwd, "sessoes");
+    const provider = scripted([
+      [{ text: "nova", type: "text-delta" }, finish({ content: "nova", role: "assistant" })],
+    ]);
+    const { sessaoId } = await executarAgenteHeadless(
+      { continuarUltima: true, cwd, prompt: "primeira de todas", provider, sessaoDir },
+      io,
+    );
+    expect(sessaoId).toBeDefined();
+  });
+
+  it("erro claro ao retomar sessão inexistente", async () => {
+    const provider = scripted([[finish({ content: "x", role: "assistant" })]]);
+    await expect(
+      executarAgenteHeadless(
+        { cwd, prompt: "oi", provider, resumirId: "nao-existe", sessaoDir: join(cwd, "sessoes") },
+        io,
+      ),
+    ).rejects.toMatchObject({ code: "not-found" });
+  });
 });

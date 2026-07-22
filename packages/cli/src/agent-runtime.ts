@@ -1,23 +1,29 @@
 import {
   type AgentResult,
   describeAgentEvent,
+  newSessionId,
   PermissionController,
   READ_ONLY_TOOLS,
   runAgent,
+  SessionStore,
   ToolGate,
   ToolRegistry,
   Workspace,
 } from "@codingpro/core";
-import { formatCost, type Provider } from "@codingpro/llm";
+import { type ChatMessage, formatCost, type Provider } from "@codingpro/llm";
 import { sanitizarTextoTerminal } from "./headless.js";
 
 export interface AgenteHeadlessOptions {
+  /** Retoma a sessão mais recente do `sessaoDir` quando nenhum `resumirId` é dado. */
+  readonly continuarUltima?: boolean;
   readonly cwd: string;
-  /** Mensagens iniciais para retomar uma sessão; se ausente, usa só o prompt. */
-  readonly mensagensIniciais?: Parameters<typeof runAgent>[0]["messages"];
   readonly maxContexto?: number;
   readonly prompt: string;
   readonly provider: Provider;
+  /** Id de sessão a retomar; o transcrito é carregado e o prompt vira o próximo turno. */
+  readonly resumirId?: string;
+  /** Diretório de sessões; se definido, o transcrito é salvo ao final. */
+  readonly sessaoDir?: string;
   readonly signal?: AbortSignal;
 }
 
@@ -27,15 +33,20 @@ export interface AgenteHeadlessIo {
   readonly saida: (texto: string) => void;
 }
 
+export interface AgenteHeadlessResultado {
+  readonly resultado: AgentResult;
+  readonly sessaoId?: string;
+}
+
 /**
  * Executa o loop agêntico em modo headless: registra apenas ferramentas de leitura (efeitos
  * exigem aprovação interativa, ausente aqui, então são negados fail-closed), transmite o texto
- * para stdout e o progresso/custo para stderr. Devolve o transcrito para persistência.
+ * para stdout e o progresso/custo para stderr. Persiste o transcrito quando há `sessaoDir`.
  */
 export async function executarAgenteHeadless(
   options: AgenteHeadlessOptions,
   io: AgenteHeadlessIo,
-): Promise<AgentResult> {
+): Promise<AgenteHeadlessResultado> {
   options.signal?.throwIfAborted();
   const workspace = await Workspace.create(options.cwd);
   const registry = new ToolRegistry();
@@ -44,9 +55,19 @@ export async function executarAgenteHeadless(
   }
   const gate = new ToolGate(registry, new PermissionController({ mode: "ask" }));
 
-  const mensagens = options.mensagensIniciais ?? [
-    { content: options.prompt, role: "user" as const },
-  ];
+  const promptMsg: ChatMessage = { content: options.prompt, role: "user" };
+  let store: SessionStore | undefined;
+  let mensagens: ChatMessage[] = [promptMsg];
+  let idSessao = options.resumirId;
+  if (options.sessaoDir !== undefined) {
+    store = await SessionStore.create(options.sessaoDir);
+    if (idSessao === undefined && options.continuarUltima === true) {
+      idSessao = (await store.list()).at(-1);
+    }
+    if (idSessao !== undefined) {
+      mensagens = [...(await store.load(idSessao)), promptMsg];
+    }
+  }
 
   let respostaCrua = "";
   const result = await runAgent({
@@ -77,5 +98,12 @@ export async function executarAgenteHeadless(
   if (result.cost !== undefined) {
     io.progresso(`${formatCost(result.cost)}\n`);
   }
-  return result;
+
+  let sessaoId: string | undefined;
+  if (store !== undefined) {
+    sessaoId = idSessao ?? newSessionId();
+    await store.save(sessaoId, result.messages);
+    io.progresso(`Sessão: ${sessaoId}\n`);
+  }
+  return { resultado: result, ...(sessaoId === undefined ? {} : { sessaoId }) };
 }
