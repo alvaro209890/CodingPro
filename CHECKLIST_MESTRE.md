@@ -49,8 +49,11 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] Node 24 fixado + TypeScript strict + Biome + Vitest + cobertura — 2026-07-22
 - [x] Esqueleto offline: ajuda/versão em pt-BR, build ESM e erros controlados — 2026-07-22
 - [x] CI em Node 24 verde no Linux e macOS ([execução 29943155025](https://github.com/alvaro209890/CodingPro/actions/runs/29943155025)) — 2026-07-22
-- [ ] Adicionar os pacotes de domínio conforme entrarem em uso (`core`, `llm`, `tools`, `tui`, `knowledge`, `memory`, `voice`)
-- [ ] Contratos: eventos core↔UI, interface Tool, interface Provider
+- [x] F0.2a: pacote `packages/llm` + contrato Provider v1 + replay sintético fail-closed — 2026-07-22
+- [x] F0.2a: `codingpro -p`/`--prompt` com streaming headless offline e smoke do tarball — 2026-07-22
+- [ ] Adicionar os demais pacotes de domínio conforme entrarem em uso (`core`, `tools`, `tui`, `knowledge`, `memory`, `voice`)
+- [ ] Contratos restantes: eventos core↔UI e interface Tool
+- [x] Contrato Provider v1: streaming de texto/raciocínio, finalização, uso e capabilities — 2026-07-22
 - [ ] Config em camadas (global → projeto → flags)
 - [ ] Spikes: Ink+streaming · DeepSeek tool calling · Ollama swap · node:sqlite FTS5 · tree-sitter WASM · whisper pt-BR · checkpoint git
 - [ ] 🏁 `codingpro -p "olá"` respondendo via DeepSeek

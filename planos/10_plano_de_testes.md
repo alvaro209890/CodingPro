@@ -15,10 +15,14 @@ Princípio: o máximo possível de testes **sem tocar na API do LLM** (rápidos,
 - [ ] Protocolo orquestrador↔subagente (mensagens válidas/inválidas)
 - Meta: núcleo (`core`, `tools`, `memory`) ≥ 80% de cobertura de linhas
 
-### 2. Integração com LLM gravado (replay) — roda em todo commit
+### 2. Integração determinística com LLM (replay) — roda em todo commit
 
-Mecânica: provider `replay` que lê fixtures JSONL de conversas reais gravadas (modo `--record` em dev). Testa o **loop completo** (sessão → tool calls → edição → checkpoint) sem rede.
+Mecânica inicial (F0.2a): provider `replay` que lê fixtures JSONL **sintéticas**, valida o
+contrato estritamente e falha sem consumir o turno quando a requisição diverge. Ele não
+acessa rede e não possui modo de gravação. Gravação de conversas reais só poderá ser
+adicionada depois de existir sanitização de segredos testada.
 
+- [x] Contrato Provider v1 + replay JSONL sintético, fail-closed e abortável — 2026-07-22
 - [ ] Harness de gravação/replay com sanitização de segredos nas fixtures
 - [ ] Cenário: tarefa multi-passo com 2 edits + 1 bash + permissão negada no meio
 - [ ] Cenário: match de edit falha → modelo se recupera com re-leitura
@@ -30,7 +34,7 @@ Mecânica: provider `replay` que lê fixtures JSONL de conversas reais gravadas 
 
 Repos git sintéticos criados no setup (Node, Python, monorepo) + binário real da CLI em modo headless com provider replay (ou modelo local barato no CI da casa).
 
-- [ ] `codingpro -p` executa tarefa e sai com código correto
+- [x] `codingpro -p` transmite resposta replay e sai com código correto no tarball instalado — 2026-07-22
 - [ ] Undo restaura árvore byte a byte (incl. staging sujo do usuário)
 - [ ] Instalação limpa (`npm pack` + install global em container) → `codingpro doctor` verde
 - [ ] Projeto sem git → shadow git funciona
@@ -63,5 +67,5 @@ Cada fase do doc 04 tem um marco que é, na prática, um roteiro manual. Manter 
 
 ## CI
 
-- [ ] GitHub Actions: lint + typecheck + unit + replay em push; E2E diário; evals manual/semanal
-- [ ] Matriz: Node 24 em Linux (obrigatório) e macOS (best-effort)
+- [ ] GitHub Actions: lint + typecheck + unit + replay em push; E2E diário e evals manual/semanal ainda pendentes
+- [x] Matriz bloqueante: Node mínimo suportado no Linux + Node fixado em Linux/macOS — 2026-07-22

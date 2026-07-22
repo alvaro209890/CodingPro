@@ -6,29 +6,34 @@
 **Data do plano:** 2026-07-22
 **Stack decidida:** TypeScript / Node.js ≥ 24 · comando `codingpro` (alias `cpro`)
 **Licença:** proprietária source-available (ver `LICENSE`; código de terceiros portado mantém a licença original)
-**Status geral:** 🟠 F0 em andamento — walking skeleton da CLI concluído em 2026-07-22
+**Status geral:** 🟠 F0 em andamento — F0.2a headless com replay offline concluído em 2026-07-22
 
 ## Desenvolvimento local
 
 Requisitos: Node.js 24 (a versão validada está em `.nvmrc` e `.node-version`) e pnpm
-10.34.4. O primeiro incremento não acessa rede nem carrega chave de API.
+10.34.4. Os testes comuns não acessam rede nem carregam chave de API.
 
 ```bash
 nvm use
 pnpm install --frozen-lockfile
 pnpm check
 node packages/cli/dist/index.mjs --ajuda
+CODINGPRO_PROVIDER=replay \
+  CODINGPRO_REPLAY_FILE=fixtures/llm/ola.jsonl \
+  node packages/cli/dist/index.mjs -p "olá"
 ```
 
-O comando final terá os dois bins `codingpro` e `cpro`. Nesta etapa, o artefato já oferece
-ajuda e versão em pt-BR; `-p` e a integração DeepSeek entram no próximo incremento F0.2.
+O artefato oferece os dois bins `codingpro` e `cpro`, ajuda/versão em pt-BR e o modo headless
+`-p`/`--prompt`. Por enquanto esse modo exige o provider `replay` explicitamente configurado;
+a fixture é sintética, a requisição precisa coincidir byte a byte e nenhuma rede é usada.
+A integração DeepSeek real entra no F0.2b como smoke manual opt-in.
 O histórico verificável fica em [docs/diario-desenvolvimento.md](docs/diario-desenvolvimento.md).
 
 ## As 3 fases do projeto
 
 | Fase | O quê | Planos | Status |
 |---|---|---|---|
-| **1** | **A CLI, 100% local e funcional** (o produto; nada de backend) | [`planos/`](planos/) — docs 01–16 | 📋 planejada |
+| **1** | **A CLI, 100% local e funcional** (o produto; nada de backend) | [`planos/`](planos/) — docs 01–16 | 🟠 em desenvolvimento (F0) |
 | **2** | **App Windows** (Electron, estilo Claude Code desktop; core da CLI reaproveitado) | [`fase2-app-windows/`](fase2-app-windows/) | 📋 planejada, aguarda F1 |
 | **3** | **Plataforma web**: site, contas, proxy LLM com **limites por usuário** (backend neste PC + Cloudflare Tunnel em `cursar.space`) | [`fase3-plataforma-web/`](fase3-plataforma-web/) | 📋 planejada, aguarda F1 |
 

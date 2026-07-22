@@ -8,7 +8,7 @@
     "node": ">=24.11 <25"
   },
   "scripts": {
-    "build": "pnpm --filter codingpro build",
+    "build": "pnpm --filter @codingpro/llm build && pnpm --filter codingpro build",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build && pnpm test:package",
     "format": "biome format --write .",
     "format:check": "biome format .",

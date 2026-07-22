@@ -1,0 +1,1 @@
+{"request":{"messages":[{"content":"olá","role":"user"}]},"events":[{"text":"Olá! ","type":"text-delta"},{"text":"Como posso ajudar?","type":"text-delta"},{"message":{"content":"Olá! Como posso ajudar?","role":"assistant"},"reason":"stop","type":"finish","usage":{"inputTokens":2,"outputTokens":6}}]}

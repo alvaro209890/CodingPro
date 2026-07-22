@@ -39,3 +39,39 @@ Node 24.18.0 e pnpm 10.34.4. Resultado da rodada:
 
 F0.2: contrato pequeno de Provider + provider replay/fake, `codingpro -p "olá"` offline nos
 testes e smoke DeepSeek manual/opt-in sem expor credenciais.
+
+## 2026-07-22 — F0.2a: Provider e headless replay offline
+
+### Entregue
+
+- Pacote `packages/llm` com contrato Provider v1 independente de fornecedor.
+- Provider replay JSONL sintético, estrito, fail-closed e compatível com `AbortSignal`.
+- Modo headless `codingpro -p`/`--prompt` com streaming imediato e newline final canônico.
+- Seleção explícita do replay por `CODINGPRO_PROVIDER` e `CODINGPRO_REPLAY_FILE`.
+- Smoke do tarball instalado cobrindo os dois bins e ambos os aliases de prompt.
+- CI bloqueante no Node 24 mínimo suportado e no Node fixado, em Linux e macOS.
+
+### Decisões
+
+- Fixtures de replay são exclusivamente sintéticas neste incremento; não existe `--record`.
+- Divergência entre prompt e fixture não consome o turno, evitando respostas fora de ordem.
+- O pacote LLM não lê ambiente nem credenciais; a composição fica na fronteira da CLI.
+- Erros inesperados e causas internas não são mostrados ao usuário.
+- AI SDK e adaptador DeepSeek entram somente no F0.2b, quando houver integração real.
+
+### Validação
+
+Consulte o roteiro [F0.2a](roteiros-qa/f0.2a-headless-replay.md). Validação local com Node
+24.18.0 e pnpm 10.34.4:
+
+- 44/44 testes aprovados;
+- cobertura global: 95,91% statements, 92,92% branches, 96,55% functions e 95,83% lines;
+- format check, lint, typecheck, build dos dois pacotes e smoke do tarball aprovados;
+- `git diff --check` aprovado e nenhuma vulnerabilidade conhecida em `pnpm audit`.
+
+O link e o resultado do CI remoto serão registrados após o push.
+
+### Próximo incremento
+
+F0.2b: adaptador DeepSeek via AI SDK, capability mapping e smoke real manual/opt-in, sem usar
+rede ou credenciais nos testes comuns.

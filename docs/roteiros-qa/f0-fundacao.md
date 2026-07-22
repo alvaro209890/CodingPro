@@ -14,8 +14,9 @@ pnpm install --frozen-lockfile
 pnpm check
 ```
 
-Resultado esperado: lint, typecheck, 11 testes, cobertura e build passam; o bundle executável é
-gerado em `packages/cli/dist/index.mjs`.
+Resultado histórico ao encerrar o F0.1: lint, typecheck, 11 testes, cobertura e build passaram;
+o bundle executável foi gerado em `packages/cli/dist/index.mjs`. A contagem corrente cresce a
+cada incremento e fica registrada no roteiro da etapa correspondente.
 
 ## Smoke test
 

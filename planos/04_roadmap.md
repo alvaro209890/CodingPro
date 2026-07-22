@@ -26,10 +26,11 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 - [x] F0.1: criar workspace pnpm na raiz definitiva + `packages/cli` com bins `codingpro`/`cpro` — 2026-07-22
 - [x] Node 24 fixado + TypeScript strict + Biome + Vitest/cobertura configurados — 2026-07-22
 - [x] Ajuda/versão em pt-BR + build ESM + CI Linux/macOS — 2026-07-22
-- [ ] Adicionar os demais pacotes quando tiverem responsabilidade real (`core|tui|tools|llm|knowledge|memory|voice`)
-- [ ] Especificar contratos internos (eventos core↔UI, interface Tool, interface Provider) — ver doc 02
+- [x] F0.2a: adicionar `packages/llm`, contrato Provider v1 e replay sintético fail-closed — 2026-07-22
+- [x] F0.2a: completar `codingpro -p`/`--prompt` com streaming headless offline — 2026-07-22
+- [ ] Adicionar os demais pacotes quando tiverem responsabilidade real (`core|tui|tools|knowledge|memory|voice`)
+- [ ] Especificar os contratos internos restantes (eventos core↔UI e interface Tool) — ver doc 02
 - [ ] Sistema de config: merge `~/.codingpro/settings.json` → `.codingpro/settings.json` → flags
-- [ ] Completar esqueleto `codingpro` com `-p` (versão e ajuda já concluídas no F0.1)
 - [ ] Rodar os spikes do doc 03
 - [ ] **Marco: `codingpro -p "olá"` responde via DeepSeek (sem tools)**
 

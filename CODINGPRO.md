@@ -17,6 +17,7 @@ pt-BR, o runtime alvo é Node.js 24 e o workspace usa pnpm.
 
 ## Estado atual
 
-O F0.1 criou o walking skeleton offline em `packages/cli`. O próximo incremento é F0.2:
-contrato de Provider/replay e modo headless `codingpro -p`, mantendo DeepSeek real como smoke
-opt-in.
+O F0.2a criou `packages/llm`, o contrato Provider v1, um replay sintético fail-closed e o
+modo headless `codingpro -p`, todos cobertos por testes offline e pelo smoke do tarball.
+O próximo incremento é F0.2b: adaptador DeepSeek via AI SDK, com chamada real somente em
+smoke manual opt-in e sem expor credenciais.

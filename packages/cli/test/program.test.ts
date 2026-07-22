@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { ProviderError, ReplayProvider } from "@codingpro/llm";
 import { describe, expect, it } from "vitest";
 import { criarPrograma, executarCli, executarPrograma, type CliIo } from "../src/program.js";
 
@@ -55,6 +56,133 @@ describe("CLI", () => {
 
     expect(manifesto.bin.codingpro).toBe("./dist/index.mjs");
     expect(manifesto.bin.cpro).toBe(manifesto.bin.codingpro);
+  });
+
+  it.each(["-p", "--prompt"])("executa prompt via replay com %s", async (option) => {
+    const captura = capturarSaida();
+    const provider = new ReplayProvider([
+      {
+        events: [
+          { text: "Olá!", type: "text-delta" },
+          {
+            message: { content: "Olá!", role: "assistant" },
+            reason: "stop",
+            type: "finish",
+          },
+        ],
+        request: { messages: [{ content: "olá", role: "user" }] },
+      },
+    ]);
+
+    await expect(
+      executarCli([option, "olá"], captura.io, { criarProvider: () => provider }),
+    ).resolves.toBe(0);
+    expect(captura.stdout.join("")).toBe("Olá!\n");
+    expect(captura.stderr).toEqual([]);
+  });
+
+  it("preserva espaços, acentos e quebras de linha do prompt", async () => {
+    const captura = capturarSaida();
+    const prompt = "  primeira linha ç\nsegunda linha  ";
+    const provider = new ReplayProvider([
+      {
+        events: [
+          { text: "ok", type: "text-delta" },
+          { message: { content: "ok", role: "assistant" }, reason: "stop", type: "finish" },
+        ],
+        request: { messages: [{ content: prompt, role: "user" }] },
+      },
+    ]);
+
+    await expect(
+      executarCli(["-p", prompt], captura.io, { criarProvider: () => provider }),
+    ).resolves.toBe(0);
+  });
+
+  it("rejeita -p sem argumento em pt-BR", async () => {
+    const captura = capturarSaida();
+
+    await expect(executarCli(["-p"], captura.io)).resolves.toBe(1);
+    expect(captura.stdout).toEqual([]);
+    expect(captura.stderr.join("")).toContain("a opção '-p, --prompt <texto>' exige um argumento");
+  });
+
+  it("rejeita prompt em branco antes de construir o provider", async () => {
+    const captura = capturarSaida();
+    let construído = false;
+
+    await expect(
+      executarCli(["-p", "   "], captura.io, {
+        criarProvider: () => {
+          construído = true;
+          throw new Error("não deveria executar");
+        },
+      }),
+    ).resolves.toBe(1);
+    expect(construído).toBe(false);
+    expect(captura.stderr.join("")).toBe("erro: o prompt não pode estar vazio\n");
+  });
+
+  it("não constrói provider para ajuda ou versão", async () => {
+    let chamadas = 0;
+    const services = {
+      criarProvider: () => {
+        chamadas += 1;
+        throw new Error("não deveria executar");
+      },
+    };
+
+    await executarCli(["--ajuda"], capturarSaida().io, services);
+    await executarCli(["--versao"], capturarSaida().io, services);
+    expect(chamadas).toBe(0);
+  });
+
+  it("exibe somente mensagem segura de erro do provider", async () => {
+    const captura = capturarSaida();
+    const canary = "sk-segredo-nao-pode-vazar";
+
+    await expect(
+      executarCli(["-p", "olá"], captura.io, {
+        criarProvider: () => {
+          throw new ProviderError("not-configured", "provider não configurado", false, {
+            cause: new Error(canary),
+          });
+        },
+      }),
+    ).resolves.toBe(2);
+    expect(captura.stderr.join("")).toBe("erro: provider não configurado\n");
+    expect(captura.stderr.join("")).not.toContain(canary);
+  });
+
+  it("oculta detalhes de erro inesperado", async () => {
+    const captura = capturarSaida();
+    const canary = "token-super-secreto";
+
+    await expect(
+      executarCli(["-p", "olá"], captura.io, {
+        criarProvider: () => {
+          throw new Error(canary);
+        },
+      }),
+    ).resolves.toBe(2);
+    expect(captura.stderr.join("")).toBe("erro: não foi possível concluir a solicitação\n");
+    expect(captura.stderr.join("")).not.toContain(canary);
+  });
+
+  it("mapeia cancelamento para código 130", async () => {
+    const captura = capturarSaida();
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      executarCli(["-p", "olá"], captura.io, {
+        criarProvider: () => {
+          throw new Error("não deveria executar");
+        },
+        signal: controller.signal,
+      }),
+    ).resolves.toBe(130);
+    expect(captura.stderr.join("")).toBe("erro: operação interrompida\n");
   });
 
   it("rejeita opção desconhecida com erro em pt-BR", async () => {

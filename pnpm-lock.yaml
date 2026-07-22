@@ -35,9 +35,14 @@ importers:
 
   packages/cli:
     devDependencies:
+      '@codingpro/llm':
+        specifier: workspace:*
+        version: link:../llm
       commander:
         specifier: 'catalog:'
         version: 15.0.0
+
+  packages/llm: {}
 
 packages:
 

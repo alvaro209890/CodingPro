@@ -85,7 +85,8 @@ flowchart TB
 
 - [ ] Esquema JSON dos eventos core→UI (turno, tool_call, tool_result, permissão, progresso)
 - [ ] Interface `Tool` (nome, schema JSON, execute, nível de risco)
-- [ ] Interface `Provider` (chat streaming, tool calling, contagem de tokens, custo)
+- [x] Interface `Provider` v1 (chat streaming, raciocínio, finalização, uso e capabilities) — F0.2a, 2026-07-22
+- [ ] Evoluir `Provider` para tool calling e custo quando o loop agêntico entrar
 - [ ] Formato do arquivo de sessão (JSONL append-only)
 - [ ] Formato de memória (frontmatter + corpo, igual convenção já usada pelo Álvaro)
 - [ ] Protocolo orquestrador↔subagente (JSON-RPC sobre stdio)
