@@ -48,7 +48,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] F0.1: workspace pnpm + pacote `packages/cli` + bins `codingpro`/`cpro` — 2026-07-22
 - [x] Node 24 fixado + TypeScript strict + Biome + Vitest + cobertura — 2026-07-22
 - [x] Esqueleto offline: ajuda/versão em pt-BR, build ESM e erros controlados — 2026-07-22
-- [x] Workflow CI inicial configurado em Node 24 (Linux obrigatório; macOS best-effort) — 2026-07-22
+- [x] CI em Node 24 verde no Linux e macOS ([execução 29943155025](https://github.com/alvaro209890/CodingPro/actions/runs/29943155025)) — 2026-07-22
 - [ ] Adicionar os pacotes de domínio conforme entrarem em uso (`core`, `llm`, `tools`, `tui`, `knowledge`, `memory`, `voice`)
 - [ ] Contratos: eventos core↔UI, interface Tool, interface Provider
 - [ ] Config em camadas (global → projeto → flags)

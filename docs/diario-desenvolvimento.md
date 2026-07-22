@@ -31,7 +31,9 @@ Node 24.18.0 e pnpm 10.34.4. Resultado da rodada:
 - 11/11 testes aprovados e 100% de statements, branches, functions e lines no código testável;
 - lint, typecheck, build, `git diff --check` e smoke do artefato aprovados;
 - tarball instalado em prefixo temporário; `codingpro` e `cpro` apontam para o mesmo artefato;
-- `pnpm audit --prod`: nenhuma vulnerabilidade conhecida.
+- `pnpm audit`: nenhuma vulnerabilidade conhecida.
+- [GitHub Actions 29943155025](https://github.com/alvaro209890/CodingPro/actions/runs/29943155025)
+  aprovado: Ubuntu em 21s e macOS em 32s.
 
 ### Próximo incremento
 
