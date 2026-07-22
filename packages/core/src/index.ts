@@ -29,6 +29,12 @@ export {
   type PermissionPolicy,
   type PermissionRequest,
 } from "./permissions.js";
+export {
+  describeAgentEvent,
+  describeToolCall,
+  describeToolResult,
+  PROGRESS_THINKING,
+} from "./progress.js";
 export { ToolRegistry } from "./registry.js";
 export { newSessionId, SessionStore } from "./session.js";
 export { SYSTEM_PROMPT_V1 } from "./system-prompt.js";

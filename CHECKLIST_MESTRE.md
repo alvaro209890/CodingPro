@@ -35,7 +35,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 
 ## Transversal — Português & Visual Aurora *(docs 15/16)*
 
-- [ ] i18n pt-BR canônico + verbos de progresso ("Pensando…", "Escrevendo…") por evento
+- [~] verbos de progresso por evento (`describeAgentEvent`: "Lendo…", "Rodando…", "Pensando…") — F1.10, 2026-07-22; falta i18n canônico completo da UI
 - [ ] Raciocínio interno livre, colapsado na TUI (Ctrl+O expande o bruto)
 - [ ] Comandos em português com alias inglês (/plano, /desfazer, /custo…)
 - [ ] Design tokens + tema Aurora escuro + trilho de timeline + spinner gradiente
