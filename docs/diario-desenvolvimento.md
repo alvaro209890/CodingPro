@@ -76,3 +76,42 @@ Consulte o roteiro [F0.2a](roteiros-qa/f0.2a-headless-replay.md). Validação lo
 
 F0.2b: adaptador DeepSeek via AI SDK, capability mapping e smoke real manual/opt-in, sem usar
 rede ou credenciais nos testes comuns.
+
+## 2026-07-22 — F0.2b: adaptador DeepSeek protegido
+
+### Entregue
+
+- `DeepSeekProvider` sobre `ai@7.0.34` e `@ai-sdk/openai-compatible@3.0.14`, ambos fixados.
+- Modelo `deepseek-v4-pro` e endpoint oficial fechados no adaptador, sem override por ambiente.
+- Thinking on/off, effort `high|max`, texto/raciocínio streaming e reasoning multi-turno.
+- Conversão de usage nativo, inclusive cache hit/miss e tokens de raciocínio.
+- Uma tentativa por chamada, timeouts total/por chunk, telemetria desligada e erros sanitizados.
+- `CODINGPRO_PROVIDER=deepseek` exige chave explícita; replay continua sem rede.
+- Bundle da CLI autossuficiente e smoke real sintético com bloqueio obrigatório no CI.
+- Saída headless remove controles C0/C1, ANSI/OSC e marcadores bidi perigosos.
+
+### Decisões
+
+- A URL, o modelo e os headers não são configuráveis no F0.2b, reduzindo risco de exfiltração.
+- Tests recebem um `fetch` sintético; nenhuma suite comum pode cair no transporte global.
+- Retry/backoff e tools continuam no F1; capabilities anunciam `tools: false` nesta etapa.
+- O AI SDK não grava telemetria e seu callback de erro padrão foi neutralizado.
+- O smoke real não imprime resposta, reasoning, chave ou causa de erro.
+
+### Validação
+
+Consulte o roteiro [F0.2b](roteiros-qa/f0.2b-deepseek.md). Validação offline local com
+Node 24.18.0 e pnpm 10.34.4:
+
+- 70/70 testes aprovados;
+- cobertura global: 94,62% statements, 92,61% branches, 97,82% functions e 94,54% lines;
+- adaptador DeepSeek: 92,68% statements, 92,85% branches, 100% functions e 92,62% lines;
+- typecheck, build autossuficiente e instalação offline do tarball aprovados;
+- gates do smoke recusaram corretamente execução sem autorização e dentro de CI.
+
+O smoke com API real não foi executado: ele permanece pendente de opt-in explícito.
+
+### Próximo incremento
+
+Depois do smoke real autorizado, implementar configuração em camadas (global → projeto → flags)
+e continuar os spikes restantes da F0.

@@ -9,4 +9,10 @@ export type {
   StreamOptions,
   TokenUsage,
 } from "./provider.js";
+export {
+  DEEPSEEK_BASE_URL,
+  DEEPSEEK_MODEL,
+  DeepSeekProvider,
+  type DeepSeekProviderOptions,
+} from "./providers/deepseek.js";
 export { loadReplayProvider, ReplayProvider, type ReplayTurn } from "./providers/replay.js";

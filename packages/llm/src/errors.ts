@@ -2,6 +2,7 @@ export type ProviderErrorCode =
   | "invalid-fixture"
   | "invalid-response"
   | "not-configured"
+  | "provider-failed"
   | "replay-exhausted"
   | "replay-mismatch";
 

@@ -30,6 +30,14 @@ adicionada depois de existir sanitização de segredos testada.
 - [ ] Cenário: subagente lançado, reporta, orquestrador consolida
 - [ ] Cenário: tool call malformado do modelo (JSON inválido) → erro gracioso
 
+### 2.1. Adaptador DeepSeek com transporte injetado — roda em todo commit
+
+- [x] Request OpenAI-compatible: modelo, thinking, effort, mensagens e usage streaming — 2026-07-22
+- [x] SSE: reasoning/text deltas, finish, cache hit, reasoning tokens e fragmentação do stream — 2026-07-22
+- [x] Erros 400/401/402/429/503, transporte, SSE inválido e zero retry implícito — 2026-07-22
+- [x] Abort antes/durante a chamada e rejeição fail-closed de conteúdo não suportado — 2026-07-22
+- [x] Sanitização de controles de terminal e canários de segredo — 2026-07-22
+
 ### 3. E2E em repos descartáveis — roda no CI diário
 
 Repos git sintéticos criados no setup (Node, Python, monorepo) + binário real da CLI em modo headless com provider replay (ou modelo local barato no CI da casa).
@@ -44,6 +52,7 @@ Repos git sintéticos criados no setup (Node, Python, monorepo) + binário real 
 
 Custa dinheiro; mede **qualidade**, não correção de código nosso.
 
+- [ ] Smoke sintético `deepseek-v4-pro`, manual e bloqueado no CI
 - [ ] Mini-benchmark de edição (estilo Aider polyglot, ~20 exercícios): % de tarefas com testes passando por modelo (DeepSeek V4 Pro vs local)
 - [ ] Eval de retrieval de memória: dado histórico plantado, a memória certa entra no contexto?
 - [ ] Eval do consolidador: sessões sintéticas → fatos extraídos corretos, sem duplicatas

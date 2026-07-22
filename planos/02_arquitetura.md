@@ -71,6 +71,7 @@ flowchart TB
 | **SQLite (`node:sqlite`) para índices/sessões + Markdown para memória legível** | SQLite = busca e metadados; Markdown = usuário pode ler/editar a memória na mão |
 | **Checkpoints via git (stash/ref oculta), não cópia de arquivos** | Barato, atômico, funciona em qualquer repo; projetos sem git ganham repo-sombra em `.codingpro/shadow-git` |
 | **Sem daemon obrigatório** | "Local puro" de verdade; jobs de background (consolidação de memória) rodam oportunisticamente ao fim de sessões ou via `codingpro maintenance` |
+| **DeepSeek atrás do contrato Provider** | AI SDK e protocolo OpenAI-compatible ficam confinados em `packages/llm`; a CLI não importa tipos do fornecedor |
 
 ## Adaptação local dos conceitos "de nuvem"
 

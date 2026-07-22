@@ -28,6 +28,9 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 - [x] Ajuda/versão em pt-BR + build ESM + CI Linux/macOS — 2026-07-22
 - [x] F0.2a: adicionar `packages/llm`, contrato Provider v1 e replay sintético fail-closed — 2026-07-22
 - [x] F0.2a: completar `codingpro -p`/`--prompt` com streaming headless offline — 2026-07-22
+- [x] F0.2b: adaptador `deepseek-v4-pro` via AI SDK, thinking/effort, usage/cache e abort — 2026-07-22
+- [x] F0.2b: testes SSE sem rede + bundle autossuficiente + smoke real opt-in protegido — 2026-07-22
+- [ ] Executar smoke real DeepSeek com autorização explícita e registrar resultado
 - [ ] Adicionar os demais pacotes quando tiverem responsabilidade real (`core|tui|tools|knowledge|memory|voice`)
 - [ ] Especificar os contratos internos restantes (eventos core↔UI e interface Tool) — ver doc 02
 - [ ] Sistema de config: merge `~/.codingpro/settings.json` → `.codingpro/settings.json` → flags

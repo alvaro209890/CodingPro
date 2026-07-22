@@ -3,8 +3,8 @@ import { defineConfig } from "tsdown";
 export default defineConfig({
   clean: true,
   deps: {
-    alwaysBundle: ["commander"],
-    onlyBundle: ["commander"],
+    alwaysBundle: ["@ai-sdk/openai-compatible", "ai", "commander"],
+    onlyBundle: false,
   },
   dts: true,
   entry: ["src/index.ts"],

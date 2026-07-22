@@ -72,6 +72,25 @@ describe("executarPromptHeadless", () => {
     expect(output.join("")).toBe("Olá!\n");
   });
 
+  it("remove controles capazes de manipular o terminal", async () => {
+    const output: string[] = [];
+    const perigoso = "antes\u001b]52;c;Y2FuaW8=\u0007\u009b31m\u202edepois\r\u0000";
+    await executarPromptHeadless(
+      "olá",
+      providerFrom([
+        { text: perigoso, type: "text-delta" },
+        {
+          message: { content: perigoso, role: "assistant" },
+          reason: "stop",
+          type: "finish",
+        },
+      ]),
+      (text) => output.push(text),
+    );
+
+    expect(output.join("")).toBe("antesdepois\n");
+  });
+
   it.each([
     {
       events: [{ text: "sem finish", type: "text-delta" }] satisfies ProviderEvent[],

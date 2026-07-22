@@ -20,12 +20,12 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [ ] Extrair spec do repo map do Aider (`repomap.py`) para .md próprio em TS-pseudocódigo
 - [ ] Estudar a fundo `tool/edit.ts` do opencode e escolher Replacers da v1
 - [ ] Rodar o provider-vcr do Cline e decidir portar × imitar o design
-- [x] Chave DeepSeek p/ desenvolvimento definida: a do Hermes deste PC (`DEEPSEEK_API_KEY` em `~/.hermes/.env`; valor nunca em docs/repo) — 2026-07-22
+- [x] Chave DeepSeek p/ desenvolvimento definida; execução usa arquivo `0600` dedicado somente com `DEEPSEEK_API_KEY`, nunca o `.env` compartilhado — 2026-07-22
 
 ## Transversal — Economia de tokens & auto-effort *(doc 14)*
 
 - [ ] Layout de contexto cache-friendly especificado (prefixo estável, volátil no fim)
-- [ ] Driver DeepSeek com capability flags (`thinking` on/off + effort high/max; `budget_tokens` é ignorado pela API oficial)
+- [x] Driver DeepSeek com capability flags (`thinking` on/off + effort high/max; sem `budget_tokens`) — F0.2b, 2026-07-22
 - [ ] Estratégia 2 modelos (Pro código / Flash mecânico) na config
 - [ ] Auto-effort v1: heurísticas + roteador Flash + escalada por falha (sem escolha do usuário)
 - [ ] `/cost` com taxa de cache-hit + custo por turno/tarefa/subagente
@@ -52,6 +52,9 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] F0.2a: pacote `packages/llm` + contrato Provider v1 + replay sintético fail-closed — 2026-07-22
 - [x] F0.2a: `codingpro -p`/`--prompt` com streaming headless offline e smoke do tarball — 2026-07-22
 - [x] CI F0.2a bloqueante verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29944958829](https://github.com/alvaro209890/CodingPro/actions/runs/29944958829)) — 2026-07-22
+- [x] F0.2b: adaptador DeepSeek/AI SDK + usage de cache + erros/abort offline — 2026-07-22
+- [x] F0.2b: smoke real sintético com autorização dupla e bloqueio no CI — 2026-07-22
+- [ ] Executar o smoke DeepSeek real com autorização explícita do operador
 - [ ] Adicionar os demais pacotes de domínio conforme entrarem em uso (`core`, `tools`, `tui`, `knowledge`, `memory`, `voice`)
 - [ ] Contratos restantes: eventos core↔UI e interface Tool
 - [x] Contrato Provider v1: streaming de texto/raciocínio, finalização, uso e capabilities — 2026-07-22

@@ -62,7 +62,9 @@ O usuário abre o terminal dentro de um projeto, conversa em linguagem natural, 
 - ❌ Extensão de IDE (VS Code etc.) — integração via MCP fica para depois
 - ❌ Treinamento/fine-tuning de modelos
 
-**Chave de API p/ desenvolvimento:** a do Hermes deste PC (`DEEPSEEK_API_KEY` em `~/.hermes/.env`) — referência ao arquivo apenas; valor nunca em docs/repo.
+**Chave de API p/ desenvolvimento:** a origem neste PC é o Hermes, mas o processo do CodingPro
+recebe um arquivo `0600` dedicado contendo somente `DEEPSEEK_API_KEY`; o `.env` compartilhado não é
+carregado. O valor nunca entra em docs/repo.
 
 ## Usuário-alvo
 

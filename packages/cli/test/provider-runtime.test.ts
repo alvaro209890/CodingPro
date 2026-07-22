@@ -34,7 +34,7 @@ describe("criarProviderRuntime", () => {
   });
 
   it.each([
-    { environment: {}, message: "Nenhum provider real" },
+    { environment: {}, message: "CODINGPRO_PROVIDER" },
     { environment: { CODINGPRO_PROVIDER: "replay" }, message: "CODINGPRO_REPLAY_FILE" },
     {
       environment: { CODINGPRO_PROVIDER: "replay", CODINGPRO_REPLAY_FILE: "   " },
@@ -58,4 +58,25 @@ describe("criarProviderRuntime", () => {
       ),
     ).rejects.toMatchObject({ name: "AbortError" });
   });
+
+  it("cria DeepSeek somente quando selecionado explicitamente", async () => {
+    const provider = await criarProviderRuntime({
+      CODINGPRO_PROVIDER: "deepseek",
+      DEEPSEEK_API_KEY: "chave-sintetica",
+    });
+
+    expect(provider).toMatchObject({ id: "deepseek", model: "deepseek-v4-pro" });
+  });
+
+  it.each([undefined, "", "   ", "chave\nmaliciosa"])(
+    "rejeita chave DeepSeek ausente ou inválida",
+    async (apiKey) => {
+      await expect(
+        criarProviderRuntime({ CODINGPRO_PROVIDER: "deepseek", DEEPSEEK_API_KEY: apiKey }),
+      ).rejects.toMatchObject({
+        code: "not-configured",
+        safeMessage: expect.stringContaining("DeepSeek"),
+      });
+    },
+  );
 });

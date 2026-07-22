@@ -29,7 +29,7 @@ Stack: **TypeScript + Node.js ≥ 24**, ESM puro, monorepo pnpm.
 | Item | Escolha | Justificativa |
 |---|---|---|
 | SDK | **Vercel AI SDK (`ai`)** + `@ai-sdk/openai-compatible` | Streaming + tool calling prontos, agnóstico de provider — DeepSeek, Ollama, Groq, OpenRouter todos OpenAI-compatíveis |
-| Provider padrão | DeepSeek V4 Pro (`api.deepseek.com/v1`) | Decisão do prompt; barato, reasoning configurável; **gotchas conhecidas no doc 11** |
+| Provider padrão | DeepSeek V4 Pro (`https://api.deepseek.com`) | Endpoint oficial OpenAI-compatible; reasoning configurável; **gotchas conhecidas no doc 11** |
 | Modelos locais | Ollama (`localhost:11434/v1`) | Modo 100% offline |
 | Contagem de tokens | tokenizador aproximado (tiktoken/gpt-tokenizer) + usage real da API | Orçamento de contexto e custo por sessão |
 

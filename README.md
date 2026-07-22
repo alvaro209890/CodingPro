@@ -6,7 +6,7 @@
 **Data do plano:** 2026-07-22
 **Stack decidida:** TypeScript / Node.js ≥ 24 · comando `codingpro` (alias `cpro`)
 **Licença:** proprietária source-available (ver `LICENSE`; código de terceiros portado mantém a licença original)
-**Status geral:** 🟠 F0 em andamento — F0.2a headless com replay offline concluído em 2026-07-22
+**Status geral:** 🟠 F0 em andamento — adaptador DeepSeek do F0.2b validado offline em 2026-07-22
 
 ## Desenvolvimento local
 
@@ -21,12 +21,21 @@ node packages/cli/dist/index.mjs --ajuda
 CODINGPRO_PROVIDER=replay \
   CODINGPRO_REPLAY_FILE=fixtures/llm/ola.jsonl \
   node packages/cli/dist/index.mjs -p "olá"
+
+CODINGPRO_PROVIDER=deepseek \
+  node --env-file="$HOME/.config/codingpro/deepseek.env" packages/cli/dist/index.mjs -p "olá"
 ```
 
 O artefato oferece os dois bins `codingpro` e `cpro`, ajuda/versão em pt-BR e o modo headless
-`-p`/`--prompt`. Por enquanto esse modo exige o provider `replay` explicitamente configurado;
-a fixture é sintética, a requisição precisa coincidir byte a byte e nenhuma rede é usada.
-A integração DeepSeek real entra no F0.2b como smoke manual opt-in.
+`-p`/`--prompt`. O provider precisa ser escolhido explicitamente: `replay` permanece sintético
+e sem rede; `deepseek` usa o modelo `deepseek-v4-pro` e exige `DEEPSEEK_API_KEY`.
+O arquivo dedicado do exemplo deve ter permissão `0600` e conter somente essa variável.
+
+> **Privacidade:** ao selecionar `deepseek`, o prompt e qualquer conteúdo incluído nele são
+> enviados à API da DeepSeek. Os testes comuns nunca selecionam esse caminho nem carregam chaves.
+
+O smoke real é separado, usa apenas um prompt sintético e requer autorização explícita;
+consulte [o roteiro F0.2b](docs/roteiros-qa/f0.2b-deepseek.md).
 O histórico verificável fica em [docs/diario-desenvolvimento.md](docs/diario-desenvolvimento.md).
 
 ## As 3 fases do projeto
@@ -37,7 +46,10 @@ O histórico verificável fica em [docs/diario-desenvolvimento.md](docs/diario-d
 | **2** | **App Windows** (Electron, estilo Claude Code desktop; core da CLI reaproveitado) | [`fase2-app-windows/`](fase2-app-windows/) | 📋 planejada, aguarda F1 |
 | **3** | **Plataforma web**: site, contas, proxy LLM com **limites por usuário** (backend neste PC + Cloudflare Tunnel em `cursar.space`) | [`fase3-plataforma-web/`](fase3-plataforma-web/) | 📋 planejada, aguarda F1 |
 
-**API de desenvolvimento/testes (todas as fases):** a chave DeepSeek do Hermes deste PC — `DEEPSEEK_API_KEY` em `~/.hermes/.env`. **Referenciar sempre o arquivo; o valor nunca entra em docs, repo ou commits.** Produção da Fase 3 usará chave própria dedicada.
+**API de desenvolvimento/testes (todas as fases):** a origem da chave DeepSeek neste PC é o
+Hermes. Para executar o CodingPro, disponibilize somente `DEEPSEEK_API_KEY` no arquivo dedicado
+`~/.config/codingpro/deepseek.env` com permissão `0600`; nunca carregue o `.env` compartilhado no
+processo. O valor não entra em docs, repo ou commits. A produção da Fase 3 usará chave própria.
 
 ## Nota sobre fontes de inspiração
 

@@ -3,6 +3,7 @@ import {
   chmodSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   statSync,
@@ -63,6 +64,22 @@ function executarBin(nome, argumentos) {
   });
 }
 
+function validarBloqueioCi(nome, valor) {
+  const resultado = spawnSync(process.execPath, [join(raiz, "scripts", "smoke-deepseek.mjs")], {
+    encoding: "utf8",
+    env: {
+      [nome]: valor,
+      CODINGPRO_REAL_SMOKE: "1",
+      DEEPSEEK_API_KEY: "",
+      PATH: process.env.PATH,
+      SYSTEMROOT: process.env.SYSTEMROOT,
+    },
+  });
+  if (resultado.status !== 1 || resultado.stderr !== "Smoke DeepSeek recusado dentro de CI.\n") {
+    throw new Error(`O smoke DeepSeek não bloqueou ${nome}=${valor}.`);
+  }
+}
+
 try {
   execFileSync("pnpm", ["--filter", "codingpro", "pack", "--pack-destination", destinoPacote], {
     cwd: raiz,
@@ -121,6 +138,31 @@ try {
   if (process.platform !== "win32" && (statSync(artefato).mode & 0o111) === 0) {
     throw new Error("O artefato instalado não é executável.");
   }
+
+  const dist = join(destinoInstalacao, "node_modules", "codingpro", "dist");
+  for (const arquivo of readdirSync(dist).filter((nome) => nome.endsWith(".mjs"))) {
+    const modulo = readFileSync(join(dist, arquivo), "utf8");
+    const imports = [
+      ...modulo.matchAll(/^import\s+(?:.*?\s+from\s+)?["']([^"']+)["'];?$/gmu),
+      ...modulo.matchAll(/\bimport\(["']([^"']+)["']\)/gu),
+    ];
+    for (const match of imports) {
+      const specifier = match[1];
+      if (
+        specifier !== undefined &&
+        !specifier.startsWith("./") &&
+        !specifier.startsWith("node:")
+      ) {
+        throw new Error(`O bundle manteve import externo: ${specifier}`);
+      }
+    }
+  }
+
+  for (const valor of ["true", "TRUE", "1", "yes"]) {
+    validarBloqueioCi("CI", valor);
+  }
+  validarBloqueioCi("GITHUB_ACTIONS", "true");
+  validarBloqueioCi("GITHUB_ACTIONS", "1");
 } finally {
   // npm pode criar arquivos somente leitura em alguns ambientes; garante limpeza do fixture.
   chmodSync(temporario, 0o700);

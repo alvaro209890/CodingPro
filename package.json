@@ -13,6 +13,7 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint .",
+    "smoke:deepseek": "pnpm build && node scripts/smoke-deepseek.mjs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:package": "node scripts/smoke-package.mjs",
