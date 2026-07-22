@@ -42,7 +42,8 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 ## F1 — Loop agêntico mínimo (2 semanas)
 
 - [ ] Completar o loop da LLM Layer: execução/aprovação de tools, retry/backoff sem duplicar efeitos e contagem de custo
-- [ ] Tools: `read_file`, `write_file`, `list/glob`, `grep` (ripgrep), `bash` (execa + timeout)
+- [x] F1.1: `packages/core` com `Workspace` (sandbox realpath/O_NOFOLLOW), `ToolRegistry` fail-closed e tools de leitura `read_file`/`list_dir`/`grep` (busca literal) — 2026-07-22
+- [ ] Tools de efeito: `write_file`, `bash` (timeout) — F1.2
 - [ ] Checkpoint mínimo antes da primeira escrita; até ele existir, toda escrita e todo bash usam `ask`
 - [ ] Sistema de permissões: modos `allowlist` (padrão de produto após checkpoint) / `ask` / `auto`; prompt de aprovação na TUI
 - [ ] TUI Ink: chat com streaming, render markdown, indicador de tool em execução

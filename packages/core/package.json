@@ -1,0 +1,19 @@
+{
+  "name": "@codingpro/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Núcleo do CodingPro: sandbox, execução de tools e permissões",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "engines": {
+    "node": ">=24.11 <25"
+  },
+  "scripts": {
+    "build": "tsdown"
+  },
+  "dependencies": {
+    "@codingpro/llm": "workspace:*"
+  }
+}

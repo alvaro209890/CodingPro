@@ -18,10 +18,16 @@ DeepSeek, limitado aos modelos V4 Pro e V4 Flash; replay existe somente para tes
 
 ## Estado atual
 
-O F0.4 fechou o roteamento interno de papéis `auto|main|fast` para a allowlist DeepSeek:
-`main`/`auto` → `deepseek-v4-pro`, `fast` → `deepseek-v4-flash`. A resolução é pura, fail-closed
-e não aceita provider, endpoint ou ID arbitrário na fronteira de produto. O tráfego headless de
-codificação (`codingpro -p`) usa `auto` → Pro; caminhos mecânicos internos passam `role: "fast"`.
-O F0.3 anterior cobriu tools multi-turno, schemas e smoke real Pro/Flash. O provider ainda não
-executa tools; permissões e efeitos ficam na F1. Próximo: heurísticas de auto-effort / spikes F0
-restantes, sem seletor de modelo para o usuário.
+Começou a F1 (loop agêntico). O **F1.1** entregou o pacote `packages/core`: `Workspace` é a raiz
+de trabalho canonicalizada (realpath) por onde toda tool de arquivo passa — rejeita caminho
+absoluto/`~`/`..`, caracteres de controle e symlink que escapa (leitura com `O_NOFOLLOW`).
+`ToolRegistry.run` é a única fronteira de execução: valida o input contra o schema e converte
+qualquer falha em `ToolResult` de erro, sem nunca vazar caminho absoluto nem propagar throw pro
+loop. As tools de leitura `read_file`, `list_dir` e `grep` são offline, com tetos de bytes/entradas;
+o `grep` faz **busca literal** (nunca cria `RegExp` do usuário) para eliminar ReDoS. Efeitos
+colaterais (write/bash) e permissões `ask|allowlist|auto` ficam para o **F1.2**.
+
+O F0.4 anterior fechou o roteamento de papéis `auto|main|fast` para a allowlist DeepSeek
+(`main`/`auto` → Pro, `fast` → Flash), puro e fail-closed. O F0.3 cobriu tools multi-turno,
+schemas e smoke real Pro/Flash. Próximo: **F1.2** (write_file + bash sob permissão, `ask` até haver
+checkpoint).

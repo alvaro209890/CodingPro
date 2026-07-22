@@ -45,6 +45,12 @@ importers:
         specifier: 3.3.1
         version: 3.3.1
 
+  packages/core:
+    dependencies:
+      '@codingpro/llm':
+        specifier: workspace:*
+        version: link:../llm
+
   packages/llm:
     dependencies:
       '@ai-sdk/openai-compatible':
