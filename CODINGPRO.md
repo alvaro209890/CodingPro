@@ -18,16 +18,22 @@ DeepSeek, limitado aos modelos V4 Pro e V4 Flash; replay existe somente para tes
 
 ## Estado atual
 
-Começou a F1 (loop agêntico). O **F1.1** entregou o pacote `packages/core`: `Workspace` é a raiz
-de trabalho canonicalizada (realpath) por onde toda tool de arquivo passa — rejeita caminho
-absoluto/`~`/`..`, caracteres de controle e symlink que escapa (leitura com `O_NOFOLLOW`).
-`ToolRegistry.run` é a única fronteira de execução: valida o input contra o schema e converte
-qualquer falha em `ToolResult` de erro, sem nunca vazar caminho absoluto nem propagar throw pro
-loop. As tools de leitura `read_file`, `list_dir` e `grep` são offline, com tetos de bytes/entradas;
-o `grep` faz **busca literal** (nunca cria `RegExp` do usuário) para eliminar ReDoS. Efeitos
-colaterais (write/bash) e permissões `ask|allowlist|auto` ficam para o **F1.2**.
+F1 (loop agêntico) em andamento no pacote `packages/core`. O **F1.1** deu a base: `Workspace` é a
+raiz canonicalizada (realpath) por onde toda tool de arquivo passa — rejeita caminho
+absoluto/`~`/`..`, caracteres de controle e symlink que escapa (I/O com `O_NOFOLLOW`).
+`ToolRegistry.run` valida o input contra o schema e converte qualquer falha em `ToolResult` de erro,
+sem vazar caminho absoluto nem propagar throw pro loop. Tools de leitura offline com tetos:
+`read_file`, `list_dir` e `grep` (**busca literal**, nunca cria `RegExp` do usuário → sem ReDoS).
 
-O F0.4 anterior fechou o roteamento de papéis `auto|main|fast` para a allowlist DeepSeek
-(`main`/`auto` → Pro, `fast` → Flash), puro e fail-closed. O F0.3 cobriu tools multi-turno,
-schemas e smoke real Pro/Flash. Próximo: **F1.2** (write_file + bash sob permissão, `ask` até haver
-checkpoint).
+O **F1.2** adicionou efeitos e permissões. `write_file` ancora a escrita no realpath do diretório-pai
+(que já deve existir) e abre com `O_NOFOLLOW` (symlink final → bloqueado); `bash` roda na raiz com
+**ambiente mínimo** (`PATH`/`HOME`/`LANG`, credenciais nunca vazam), grupo de processo próprio morto
+no timeout/abort, saída capada e saneada (sem caracteres de controle). Permissões: `decidePermission`
+é puro (`allowlist`/`ask`/`auto`; leitura sempre liberada; **efeito sem checkpoint sempre pede
+aprovação** — git de checkpoint só chega na F2); `PermissionController` guarda o allow de sessão e
+consulta o `Approver`; `ToolGate` autoriza antes de executar e devolve `execution-denied` sem tocar
+em disco/processo quando negado.
+
+Próximo na F1: TUI Ink (chat com streaming + `Approver` visual), o loop agêntico que liga
+provider→tool-call→gate→`ToolResult`→próximo turno, e sessões/compactação. Antes (F0.4/F0.3) já
+estavam fechados o roteamento de papéis Pro/Flash e o tool calling multi-turno.

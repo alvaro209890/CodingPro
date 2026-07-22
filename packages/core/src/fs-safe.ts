@@ -1,10 +1,13 @@
 import { constants } from "node:fs";
 import { open } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
 import { CoreError } from "./errors.js";
 import type { Workspace } from "./workspace.js";
 
 /** O_NOFOLLOW bloqueia symlink no componente final; ausente em alguns SOs → neutro (0). */
-const READ_FLAGS = constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0);
+const O_NOFOLLOW = constants.O_NOFOLLOW ?? 0;
+const READ_FLAGS = constants.O_RDONLY | O_NOFOLLOW;
+const WRITE_FLAGS = constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | O_NOFOLLOW;
 
 export function toReadError(error: unknown): CoreError {
   if (error instanceof CoreError) {
@@ -57,6 +60,59 @@ export async function readFileWithin(
     await workspace.realpathInside(absolute);
     // O fstat acima já garantiu o tamanho no mesmo descritor/inode.
     return handle.readFile();
+  } finally {
+    await handle.close();
+  }
+}
+
+export function toWriteError(error: unknown): CoreError {
+  if (error instanceof CoreError) {
+    return error;
+  }
+  const code = (error as NodeJS.ErrnoException | undefined)?.code;
+  switch (code) {
+    case "ELOOP":
+      return new CoreError("path-escape", "O destino é um link simbólico.");
+    case "EISDIR":
+      return new CoreError("not-a-file", "O destino é um diretório, não um arquivo.");
+    case "EACCES":
+    case "EPERM":
+      return new CoreError("execution-failed", "Sem permissão para escrever no arquivo.");
+    default:
+      return new CoreError("execution-failed", "Não foi possível escrever o arquivo.");
+  }
+}
+
+/**
+ * Escreve um arquivo dentro do workspace sem seguir symlink no componente final e ancorando
+ * a escrita no realpath do diretório-pai (defesa contra pai symlink que escapa). O diretório-pai
+ * precisa existir — não cria árvore automaticamente. Devolve o total de bytes gravados.
+ */
+export async function writeFileWithin(
+  workspace: Workspace,
+  absolute: string,
+  content: string,
+  maxBytes: number,
+): Promise<number> {
+  const bytes = Buffer.byteLength(content, "utf8");
+  if (bytes > maxBytes) {
+    throw new CoreError("too-large", "O conteúdo é grande demais para ser escrito.");
+  }
+  const realParent = await workspace.realpathInside(dirname(absolute));
+  const target = join(realParent, basename(absolute));
+  workspace.assertInside(target);
+
+  let handle: Awaited<ReturnType<typeof open>>;
+  try {
+    handle = await open(target, WRITE_FLAGS, 0o644);
+  } catch (error) {
+    throw toWriteError(error);
+  }
+  try {
+    await handle.writeFile(content, "utf8");
+    return bytes;
+  } catch (error) {
+    throw toWriteError(error);
   } finally {
     await handle.close();
   }

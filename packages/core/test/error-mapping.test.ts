@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CoreError } from "../src/errors.js";
-import { toReadError } from "../src/fs-safe.js";
+import { toReadError, toWriteError } from "../src/fs-safe.js";
 import { kindOf, toListError } from "../src/tools/list-dir.js";
 
 function errno(code: string): NodeJS.ErrnoException {
@@ -26,6 +26,23 @@ describe("toReadError", () => {
     const original = new CoreError("too-large", "grande");
     expect(toReadError(original)).toBe(original);
     expect(toReadError(new Error("sem code")).code).toBe("execution-failed");
+  });
+});
+
+describe("toWriteError", () => {
+  it.each([
+    ["ELOOP", "path-escape"],
+    ["EISDIR", "not-a-file"],
+    ["EACCES", "execution-failed"],
+    ["EPERM", "execution-failed"],
+    ["ENOSPC", "execution-failed"],
+  ])("mapeia %s para %s", (code, expected) => {
+    expect(toWriteError(errno(code)).code).toBe(expected);
+  });
+
+  it("preserva um CoreError já lançado", () => {
+    const original = new CoreError("too-large", "grande");
+    expect(toWriteError(original)).toBe(original);
   });
 });
 

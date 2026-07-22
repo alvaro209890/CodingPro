@@ -78,8 +78,8 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [ ] LLM Layer (streaming, tools, retry, custo)
 - [x] F1.1: pacote `packages/core` + `Workspace` sandboxado (realpath, sem escape, O_NOFOLLOW) + `ToolRegistry` fail-closed — 2026-07-22
 - [x] F1.1: tools de leitura `read_file` / `list_dir` / `grep` (busca literal, sem ReDoS), offline e com tetos — 2026-07-22
-- [ ] Tools de efeito: `write_file` / `bash` (F1.2)
-- [ ] Permissões: ask / allowlist / auto
+- [x] F1.2: tools de efeito `write_file` (O_NOFOLLOW + pai por realpath) e `bash` (env mínimo, grupo de processo morto no timeout/abort, saída saneada) — 2026-07-22
+- [x] F1.2: permissões `ask|allowlist|auto` (`decidePermission` puro + `PermissionController` de sessão) e `ToolGate` que autoriza antes de executar; efeito sem checkpoint sempre pede aprovação — 2026-07-22
 - [ ] TUI chat + sessões (resume) + compactação
 - [ ] 🏁 Tarefa real de 5+ passos com aprovações
 

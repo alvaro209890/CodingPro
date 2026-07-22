@@ -56,7 +56,8 @@ export class Workspace {
     return new Workspace(canonical);
   }
 
-  private assertInside(absolute: string): void {
+  /** Garante que um caminho absoluto está contido na raiz; senão falha fechado. */
+  assertInside(absolute: string): void {
     if (absolute !== this.root && !absolute.startsWith(this.root + sep)) {
       throw new CoreError("path-escape", "O caminho aponta para fora do projeto.");
     }

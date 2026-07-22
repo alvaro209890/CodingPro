@@ -23,6 +23,7 @@ const definition: Tool = {
 
 export const readFileTool: ExecutableTool = {
   definition,
+  sideEffect: "read",
   async execute(input: JsonObject, context: ToolContext): Promise<ToolResult> {
     const absolute = context.workspace.resolve(input.path);
     const bytes = await readFileWithin(context.workspace, absolute, READ_FILE_MAX_BYTES);

@@ -55,6 +55,7 @@ export function toListError(error: unknown): CoreError {
 
 export const listDirTool: ExecutableTool = {
   definition,
+  sideEffect: "read",
   async execute(input: JsonObject, context: ToolContext): Promise<ToolResult> {
     const requested =
       input.path === undefined ? context.workspace.root : context.workspace.resolve(input.path);

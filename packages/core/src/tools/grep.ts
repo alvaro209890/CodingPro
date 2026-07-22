@@ -52,6 +52,7 @@ function clampMaxResults(value: JsonValue | undefined): number {
 
 export const grepTool: ExecutableTool = {
   definition,
+  sideEffect: "read",
   async execute(input: JsonObject, context: ToolContext): Promise<ToolResult> {
     const pattern = input.pattern;
     if (typeof pattern !== "string" || pattern.length === 0) {

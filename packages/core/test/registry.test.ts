@@ -17,7 +17,7 @@ function tool(name: string, execute: ExecutableTool["execute"]): ExecutableTool 
     },
     name,
   };
-  return { definition, execute };
+  return { definition, execute, sideEffect: "read" };
 }
 
 describe("ToolRegistry", () => {

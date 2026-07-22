@@ -43,9 +43,9 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 
 - [ ] Completar o loop da LLM Layer: execução/aprovação de tools, retry/backoff sem duplicar efeitos e contagem de custo
 - [x] F1.1: `packages/core` com `Workspace` (sandbox realpath/O_NOFOLLOW), `ToolRegistry` fail-closed e tools de leitura `read_file`/`list_dir`/`grep` (busca literal) — 2026-07-22
-- [ ] Tools de efeito: `write_file`, `bash` (timeout) — F1.2
-- [ ] Checkpoint mínimo antes da primeira escrita; até ele existir, toda escrita e todo bash usam `ask`
-- [ ] Sistema de permissões: modos `allowlist` (padrão de produto após checkpoint) / `ask` / `auto`; prompt de aprovação na TUI
+- [x] F1.2: tools de efeito `write_file` (O_NOFOLLOW + pai realpath) e `bash` (env mínimo, grupo de processo, timeout/abort, saída saneada) — 2026-07-22
+- [x] F1.2: até haver checkpoint (git só na F2), toda escrita e todo bash caem em `ask` — regra embutida em `decidePermission` — 2026-07-22
+- [x] F1.2: permissões `allowlist`/`ask`/`auto` (`decidePermission` puro + `PermissionController` de sessão) e `ToolGate`; o prompt de aprovação na TUI liga o `Approver` na fase da TUI — 2026-07-22
 - [ ] TUI Ink: chat com streaming, render markdown, indicador de tool em execução
 - [ ] Identidade visual v1 (doc 16): tokens.ts, tema Aurora escuro, trilho de timeline, spinner, statusline, banner
 - [ ] i18n pt-BR (doc 15): strings canônicas, verbos de progresso, comandos com alias
