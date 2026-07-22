@@ -86,6 +86,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] CI F1.3/F1.4 verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29958941912](https://github.com/alvaro209890/CodingPro/actions/runs/29958941912)) — 2026-07-22
 - [x] F1.5: compactação de contexto por truncamento (`compactMessages`: mantém system + sufixo recente, preserva pareamento tool-call/result, integridade acima do orçamento) — 2026-07-22
 - [x] F1.6: contabilidade de custo DeepSeek (`estimateCost`/`formatCost`: cache-hit + USD; Pro oficial, Flash estimado ~10×) — 2026-07-22
+- [x] CI F1.5/F1.6 verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29959645894](https://github.com/alvaro209890/CodingPro/actions/runs/29959645894)) — 2026-07-22
 - [ ] LLM Layer restante: retry/backoff sem duplicar efeitos + ligar `/cost` e compactação ao loop/statusline
 - [ ] TUI chat (Ink) + ligar o loop/sessões à interface + flags `--continue`/`--resume`
 - [ ] 🏁 Tarefa real de 5+ passos com aprovações
