@@ -94,6 +94,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] F1.12: `codingpro --agente -p` liga o loop à CLI + `--max-contexto` (compactação) — 2026-07-22
 - [x] F1.13: sessões no agente headless (auto-salva transcrito em JSONL, imprime id) + `--resume <id>` — 2026-07-22
 - [x] F1.14: `--continuar` retoma a sessão mais recente; `CoreError` vira mensagem segura na CLI — 2026-07-22
+- [x] CI F1.7–F1.14 verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29961027060](https://github.com/alvaro209890/CodingPro/actions/runs/29961027060)) — 2026-07-22
 - [ ] TUI chat (Ink) ligando o loop/aprovações à interface interativa
 - [ ] 🏁 Tarefa real de 5+ passos com aprovações
 
