@@ -16,7 +16,8 @@ Estes são comportamentos **confirmados na prática** (projetos acompanhamento/H
 | Modelos legados `deepseek-chat`/`reasoner` aposentam 2026-07-24 | Integrações antigas quebram | Allowlist interna fixa em `deepseek-v4-pro`/`deepseek-v4-flash`; config não aceita IDs de modelo |
 | Mudar 1 byte no meio do prompt invalida o cache de prefixo dali em diante | Perder o desconto de ~99% no input | Layout de contexto cache-friendly é regra de arquitetura (doc 14.3), com taxa de cache-hit monitorada em `/cost` |
 
-- [ ] Validar na F0.3: tool calling do DeepSeek V4 Pro/Flash em multi-turno longo (estabilidade do formato)
+- [x] Validar na F0.3: tool calling do DeepSeek V4 Pro/Flash, SSE fragmentado e round-trip de reasoning — 2026-07-22
+- [ ] Ampliar na F1 para loops longos com execução, permissão, retries e efeitos exatamente uma vez
 - [ ] Medir: custo médio por tarefa típica (definir tarefa-padrão de benchmark)
 
 ## 11.2 Janela de contexto em sessões longas

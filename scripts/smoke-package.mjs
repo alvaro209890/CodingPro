@@ -92,6 +92,17 @@ function validarBloqueioCi(nome, valor) {
   }
 }
 
+function validarRecusaSmoke(env, stderrEsperado) {
+  const resultado = spawnSync(process.execPath, [join(raiz, "scripts", "smoke-deepseek.mjs")], {
+    encoding: "utf8",
+    env: { PATH: process.env.PATH, SYSTEMROOT: process.env.SYSTEMROOT, ...env },
+    timeout: 10_000,
+  });
+  if (resultado.status !== 1 || resultado.stderr !== stderrEsperado) {
+    throw new Error("O smoke DeepSeek não aplicou o gate esperado.");
+  }
+}
+
 try {
   execFileSync("pnpm", ["--filter", "codingpro", "pack", "--pack-destination", destinoPacote], {
     cwd: raiz,
@@ -276,6 +287,14 @@ try {
   }
   validarBloqueioCi("GITHUB_ACTIONS", "true");
   validarBloqueioCi("GITHUB_ACTIONS", "1");
+  validarRecusaSmoke(
+    {},
+    "Smoke DeepSeek recusado: defina CODINGPRO_REAL_SMOKE=1 explicitamente.\n",
+  );
+  validarRecusaSmoke(
+    { CODINGPRO_REAL_SMOKE: "1" },
+    "Smoke DeepSeek recusado: DEEPSEEK_API_KEY não está definida.\n",
+  );
 } finally {
   // npm pode criar arquivos somente leitura em alguns ambientes; garante limpeza do fixture.
   chmodSync(temporario, 0o700);

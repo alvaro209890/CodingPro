@@ -139,4 +139,41 @@ describe("executarPromptHeadless", () => {
     );
     expect(output.join("")).toBe("parcial");
   });
+
+  it("rejeita tool calls sem exibir nome, ID ou argumentos no headless", async () => {
+    const output: string[] = [];
+    const canary = "segredo-tool-nao-pode-vazar";
+
+    await expect(
+      executarPromptHeadless(
+        "olá",
+        providerFrom([
+          {
+            call: { id: "call_secreta", input: { valor: canary }, name: "ferramenta_secreta" },
+            type: "tool-call",
+          },
+          {
+            message: {
+              content: "",
+              role: "assistant",
+              toolCalls: [
+                {
+                  id: "call_secreta",
+                  input: { valor: canary },
+                  name: "ferramenta_secreta",
+                },
+              ],
+            },
+            reason: "tool-calls",
+            type: "finish",
+          },
+        ]),
+        (text) => output.push(text),
+      ),
+    ).rejects.toMatchObject({
+      code: "invalid-response",
+      safeMessage: expect.not.stringContaining(canary),
+    });
+    expect(output).toEqual([]);
+  });
 });

@@ -6,9 +6,11 @@ import {
   loadReplayProvider,
   ProviderError,
   ReplayProvider,
+  type ChatMessage,
   type ChatRequest,
   type ProviderEvent,
   type ReplayTurn,
+  type Tool,
 } from "../src/index.js";
 
 const request: ChatRequest = { messages: [{ content: "olá", role: "user" }] };
@@ -22,6 +24,16 @@ const events: ProviderEvent[] = [
     usage: { cacheReadInputTokens: 1, inputTokens: 2, outputTokens: 3, reasoningTokens: 1 },
   },
 ];
+const somar: Tool = {
+  description: "Soma dois inteiros.",
+  inputSchema: {
+    additionalProperties: false,
+    properties: { a: { type: "integer" }, b: { type: "integer" } },
+    required: ["a", "b"],
+    type: "object",
+  },
+  name: "somar",
+};
 
 async function collect(provider: ReplayProvider, chatRequest = request): Promise<ProviderEvent[]> {
   const result: ProviderEvent[] = [];
@@ -42,7 +54,7 @@ describe("ReplayProvider", () => {
       cacheUsage: false,
       reasoning: "toggle",
       streaming: true,
-      tools: false,
+      tools: true,
     });
   });
 
@@ -53,6 +65,17 @@ describe("ReplayProvider", () => {
       collect(provider, { messages: [{ content: "diferente", role: "user" }] }),
     ).rejects.toMatchObject({ code: "replay-mismatch" });
     await expect(collect(provider)).resolves.toEqual(events);
+  });
+
+  it("preserva snapshots mesmo se a fixture em memória for alterada depois", async () => {
+    const mutableRequest = structuredClone(request);
+    const mutableEvents = structuredClone(events);
+    const provider = new ReplayProvider([{ events: mutableEvents, request: mutableRequest }]);
+
+    (mutableRequest.messages as ChatMessage[])[0] = { content: "alterado", role: "user" };
+    mutableEvents[0] = { text: "alterado", type: "reasoning-delta" };
+
+    await expect(collect(provider, request)).resolves.toEqual(events);
   });
 
   it("rejeita chamada além dos turnos gravados", async () => {
@@ -90,6 +113,148 @@ describe("ReplayProvider", () => {
     await expect(iterator.next()).resolves.toEqual({ done: false, value: events[0] });
     during.abort();
     await expect(iterator.next()).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("reproduz dois turnos com tool call, resultado e reasoning preservado", async () => {
+    const prompt = { content: "some", role: "user" as const };
+    const call = { id: "call_soma", input: { a: 19, b: 23 }, name: "somar" };
+    const assistant = {
+      content: "",
+      reasoning: "preciso somar",
+      role: "assistant" as const,
+      toolCalls: [call],
+    };
+    const firstRequest: ChatRequest = {
+      messages: [prompt],
+      toolChoice: "required",
+      tools: [somar],
+    };
+    const firstEvents: ProviderEvent[] = [
+      { text: "preciso somar", type: "reasoning-delta" },
+      { call, type: "tool-call" },
+      { message: assistant, reason: "tool-calls", type: "finish" },
+    ];
+    const secondRequest: ChatRequest = {
+      messages: [
+        prompt,
+        assistant,
+        {
+          result: { type: "json", value: { resultado: 42 } },
+          role: "tool",
+          toolCallId: call.id,
+          toolName: call.name,
+        },
+      ],
+      toolChoice: "none",
+      tools: [somar],
+    };
+    const secondEvents: ProviderEvent[] = [
+      { text: "42", type: "text-delta" },
+      {
+        message: { content: "42", role: "assistant" },
+        reason: "stop",
+        type: "finish",
+      },
+    ];
+    const provider = new ReplayProvider([
+      { events: firstEvents, request: firstRequest },
+      { events: secondEvents, request: secondRequest },
+    ]);
+
+    await expect(collect(provider, firstRequest)).resolves.toEqual(firstEvents);
+    await expect(collect(provider, secondRequest)).resolves.toEqual(secondEvents);
+  });
+
+  it.each([
+    {
+      events: [
+        {
+          call: { id: "call_soma", input: { a: 1, b: 2 }, name: "somar" },
+          type: "tool-call",
+        },
+        {
+          message: { content: "", role: "assistant" },
+          reason: "tool-calls",
+          type: "finish",
+        },
+      ],
+      label: "finish sem as calls emitidas",
+    },
+    {
+      events: [
+        {
+          call: { id: "call_soma", input: { a: 1, b: "dois" }, name: "somar" },
+          type: "tool-call",
+        },
+        {
+          message: {
+            content: "",
+            role: "assistant",
+            toolCalls: [{ id: "call_soma", input: { a: 1, b: "dois" }, name: "somar" }],
+          },
+          reason: "tool-calls",
+          type: "finish",
+        },
+      ],
+      label: "argumento fora do schema",
+    },
+  ])("rejeita fixture de tool inconsistente: $label", ({ events: toolEvents }) => {
+    expect(
+      () =>
+        new ReplayProvider([
+          {
+            events: toolEvents,
+            request: {
+              messages: [{ content: "some", role: "user" }],
+              tools: [somar],
+            },
+          } as ReplayTurn,
+        ]),
+    ).toThrowError(ProviderError);
+  });
+
+  it("faz cumprir toolChoice também nas fixtures", () => {
+    const call = { id: "call_soma", input: { a: 1, b: 2 }, name: "somar" };
+    const callEvents: ProviderEvent[] = [
+      { call, type: "tool-call" },
+      {
+        message: { content: "", role: "assistant", toolCalls: [call] },
+        reason: "tool-calls",
+        type: "finish",
+      },
+    ];
+    expect(
+      () =>
+        new ReplayProvider([
+          {
+            events: callEvents,
+            request: {
+              messages: [{ content: "some", role: "user" }],
+              toolChoice: "none",
+              tools: [somar],
+            },
+          },
+        ]),
+    ).toThrowError(ProviderError);
+    expect(
+      () =>
+        new ReplayProvider([
+          {
+            events: [
+              {
+                message: { content: "", role: "assistant" },
+                reason: "stop",
+                type: "finish",
+              },
+            ],
+            request: {
+              messages: [{ content: "some", role: "user" }],
+              toolChoice: "required",
+              tools: [somar],
+            },
+          },
+        ]),
+    ).toThrowError(ProviderError);
   });
 });
 

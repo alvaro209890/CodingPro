@@ -32,16 +32,16 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 - [x] F0.2b: testes SSE sem rede + bundle autossuficiente + smoke real opt-in protegido — 2026-07-22
 - [x] Executar smoke real DeepSeek e fluxo completo `codingpro -p` com prompt sintético — 2026-07-22
 - [ ] Adicionar os demais pacotes quando tiverem responsabilidade real (`core|tui|tools|knowledge|memory|voice`)
-- [ ] Especificar o contrato de eventos core↔UI; a interface Tool será fechada na F0.3 — ver doc 02
+- [ ] Especificar o contrato restante de eventos core↔UI — ver doc 02
 - [x] F0.2c: config JSONC `~/.codingpro/settings.json` → `.codingpro/settings.json` → ambiente legado → flags — 2026-07-22
-- [ ] F0.3: tool calling multi-turno no DeepSeek V4 Pro/Flash, reasoning preservado e contrato Tool
+- [x] F0.3: tool calling multi-turno no DeepSeek V4 Pro/Flash, reasoning preservado e contrato Tool — 2026-07-22
 - [ ] Integrar roteamento automático Pro/Flash por papel, sem seleção de provider pelo usuário
 - [ ] Rodar os demais spikes do doc 03
 - [x] **Marco: `codingpro -p` responde via DeepSeek real (sem tools)** — 2026-07-22
 
 ## F1 — Loop agêntico mínimo (2 semanas)
 
-- [ ] LLM Layer com AI SDK: streaming, tool calling, retry/backoff, contagem de custo
+- [ ] Completar o loop da LLM Layer: execução/aprovação de tools, retry/backoff sem duplicar efeitos e contagem de custo
 - [ ] Tools: `read_file`, `write_file`, `list/glob`, `grep` (ripgrep), `bash` (execa + timeout)
 - [ ] Checkpoint mínimo antes da primeira escrita; até ele existir, toda escrita e todo bash usam `ask`
 - [ ] Sistema de permissões: modos `allowlist` (padrão de produto após checkpoint) / `ask` / `auto`; prompt de aprovação na TUI

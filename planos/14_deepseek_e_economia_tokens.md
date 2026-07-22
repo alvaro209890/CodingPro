@@ -21,13 +21,19 @@ Fatos operacionais críticos:
 - **Thinking mode**: ligado por padrão; `reasoning_effort` aceita `high`/`max` (**`low`/`medium` são mapeados p/ `high`** — não existem de verdade); a API já auto-escala p/ `max` em requests "de agente complexo". `thinking: {type: disabled}` desliga.
 - Em thinking mode, `temperature`/`top_p`/penalties **não têm efeito**.
 - **Tool calls em thinking mode**: o `reasoning_content` intermediário **precisa voltar no contexto** dos turnos seguintes (a LLM Layer tem que preservar isso — erro clássico é descartar).
+- **`tool_choice` forçado + thinking (comportamento observado em 2026-07-22):** a API real
+  rejeitou `required` e a escolha nominal com HTTP 400 no V4 Pro; `auto` no primeiro turno e
+  `none` após o resultado passaram no Pro e no Flash. O adaptador falha localmente antes da rede
+  nessa combinação. O modo não-thinking continua aceitando escolha nominal. Reavaliar se o
+  comportamento oficial mudar.
 - Endpoint Anthropic-compat aceita `thinking`, mas a documentação oficial informa que `budget_tokens` é **ignorado**; em `output_config`, somente `effort` (`high`/`max`) é suportado. O Vertex envia budgets, mas isso não prova que o servidor os obedece. Fonte verificada em 2026-07-22: [DeepSeek — Anthropic API Compatibility](https://api-docs.deepseek.com/guides/anthropic_api).
 - `deepseek-chat`/`deepseek-reasoner` legados **aposentam em 2026-07-24** — usar só `deepseek-v4-pro`/`deepseek-v4-flash`.
 
 **Decisão de arquitetura:** a LLM Layer usa somente a API oficial DeepSeek, com allowlist fechada
 em V4 Pro/Flash e transporte OpenAI-compatible pelo AI SDK. O contrato Provider isola o SDK e
-permite replay sintético nos testes; não é extensão para fornecedores alternativos. O F0.3 valida
-streaming, tools, `reasoning_content`, usage/cache e erros nos dois modelos, sem `budget_tokens`.
+permite replay sintético nos testes; não é extensão para fornecedores alternativos. O F0.3
+concluído validou streaming, tools, `reasoning_content`, usage/cache e erros nos dois modelos, sem
+`budget_tokens`.
 
 ## 14.2 Estratégia de dois modelos (qualidade × custo)
 

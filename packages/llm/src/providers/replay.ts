@@ -2,7 +2,6 @@ import { readFile, stat } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
 import { ProviderError } from "../errors.js";
 import type {
-  ChatMessage,
   ChatRequest,
   FinishReason,
   Provider,
@@ -10,6 +9,15 @@ import type {
   StreamOptions,
   TokenUsage,
 } from "../provider.js";
+import {
+  copyChatMessage,
+  copyChatRequest,
+  copyToolCall,
+  isChatMessage,
+  isChatRequest,
+  isToolCall,
+  toolAcceptsInput,
+} from "../validation.js";
 
 export interface ReplayTurn {
   readonly events: readonly ProviderEvent[];
@@ -29,23 +37,13 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isNonNegativeInteger(value: unknown): value is number {
-  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  const allowed = new Set(keys);
+  return Object.keys(value).every((key) => allowed.has(key));
 }
 
-function isChatMessage(value: unknown): value is ChatMessage {
-  if (!isObject(value) || typeof value.content !== "string") {
-    return false;
-  }
-
-  if (value.role === "system" || value.role === "user") {
-    return true;
-  }
-
-  return (
-    value.role === "assistant" &&
-    (value.reasoning === undefined || typeof value.reasoning === "string")
-  );
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
 function isTokenUsage(value: unknown): value is TokenUsage {
@@ -55,6 +53,12 @@ function isTokenUsage(value: unknown): value is TokenUsage {
 
   const optionalNumbers = [value.cacheReadInputTokens, value.reasoningTokens];
   return (
+    hasOnlyKeys(value, [
+      "cacheReadInputTokens",
+      "inputTokens",
+      "outputTokens",
+      "reasoningTokens",
+    ]) &&
     isNonNegativeInteger(value.inputTokens) &&
     isNonNegativeInteger(value.outputTokens) &&
     optionalNumbers.every((token) => token === undefined || isNonNegativeInteger(token))
@@ -67,11 +71,16 @@ function isProviderEvent(value: unknown): value is ProviderEvent {
   }
 
   if (value.type === "text-delta" || value.type === "reasoning-delta") {
-    return typeof value.text === "string";
+    return hasOnlyKeys(value, ["text", "type"]) && typeof value.text === "string";
+  }
+
+  if (value.type === "tool-call") {
+    return hasOnlyKeys(value, ["call", "type"]) && isToolCall(value.call);
   }
 
   return (
     value.type === "finish" &&
+    hasOnlyKeys(value, ["message", "reason", "type", "usage"]) &&
     typeof value.reason === "string" &&
     finishReasons.has(value.reason as FinishReason) &&
     isChatMessage(value.message) &&
@@ -81,11 +90,15 @@ function isProviderEvent(value: unknown): value is ProviderEvent {
 }
 
 function isReplayTurn(value: unknown): value is ReplayTurn {
-  if (!isObject(value) || !isObject(value.request) || !Array.isArray(value.request.messages)) {
+  if (
+    !isObject(value) ||
+    !hasOnlyKeys(value, ["events", "request"]) ||
+    !isChatRequest(value.request)
+  ) {
     return false;
   }
 
-  if (!value.request.messages.every(isChatMessage) || !Array.isArray(value.events)) {
+  if (!Array.isArray(value.events)) {
     return false;
   }
 
@@ -97,7 +110,54 @@ function isReplayTurn(value: unknown): value is ReplayTurn {
     .map((event, index) => (isObject(event) && event.type === "finish" ? index : -1))
     .filter((index) => index >= 0);
 
-  return finishIndexes.length === 1 && finishIndexes[0] === value.events.length - 1;
+  if (finishIndexes.length !== 1 || finishIndexes[0] !== value.events.length - 1) {
+    return false;
+  }
+
+  const finish = value.events.at(-1);
+  if (!isObject(finish) || finish.type !== "finish" || !isChatMessage(finish.message)) {
+    return false;
+  }
+  let content = "";
+  let reasoning = "";
+  const calls = [];
+  const callIds = new Set<string>();
+  const definitions = new Map(
+    value.request.tools?.map((definition) => [definition.name, definition]),
+  );
+  for (const event of value.events.slice(0, -1)) {
+    if (event.type === "text-delta") {
+      content += event.text;
+    } else if (event.type === "reasoning-delta") {
+      reasoning += event.text;
+    } else if (event.type === "tool-call") {
+      const definition = definitions.get(event.call.name);
+      if (
+        value.request.toolChoice === "none" ||
+        (typeof value.request.toolChoice === "object" &&
+          value.request.toolChoice.toolName !== event.call.name) ||
+        definition === undefined ||
+        callIds.has(event.call.id) ||
+        !toolAcceptsInput(definition.inputSchema, event.call.input)
+      ) {
+        return false;
+      }
+      callIds.add(event.call.id);
+      calls.push(event.call);
+    }
+  }
+
+  const toolCallRequired =
+    value.request.toolChoice === "required" || typeof value.request.toolChoice === "object";
+
+  return (
+    finish.message.role === "assistant" &&
+    finish.message.content === content &&
+    finish.message.reasoning === (reasoning.length === 0 ? undefined : reasoning) &&
+    isDeepStrictEqual(finish.message.toolCalls, calls.length === 0 ? undefined : calls) &&
+    (finish.reason === "tool-calls") === calls.length > 0 &&
+    (!toolCallRequired || calls.length > 0)
+  );
 }
 
 export class ReplayProvider implements Provider {
@@ -105,21 +165,48 @@ export class ReplayProvider implements Provider {
     cacheUsage: false,
     reasoning: "toggle",
     streaming: true,
-    tools: false,
+    tools: true,
   } as const;
   readonly id = "replay";
   readonly model = "fixture";
+  readonly #turns: readonly ReplayTurn[];
   #nextTurn = 0;
 
-  constructor(private readonly turns: readonly ReplayTurn[]) {
-    if (!turns.every(isReplayTurn)) {
+  constructor(turns: readonly ReplayTurn[]) {
+    let valid = false;
+    try {
+      valid = turns.every(isReplayTurn);
+    } catch {
+      valid = false;
+    }
+    if (!valid) {
       throw new ProviderError("invalid-fixture", "A fixture de replay é inválida.");
     }
+    this.#turns = turns.map((turn) => ({
+      events: turn.events.map((event): ProviderEvent => {
+        if (event.type === "text-delta" || event.type === "reasoning-delta") {
+          return { text: event.text, type: event.type };
+        }
+        if (event.type === "tool-call") {
+          return { call: copyToolCall(event.call), type: "tool-call" };
+        }
+        return {
+          message: copyChatMessage(event.message) as Extract<
+            ReturnType<typeof copyChatMessage>,
+            { role: "assistant" }
+          >,
+          reason: event.reason,
+          type: "finish",
+          ...(event.usage === undefined ? {} : { usage: { ...event.usage } }),
+        };
+      }),
+      request: copyChatRequest(turn.request),
+    }));
   }
 
   async *stream(request: ChatRequest, options?: StreamOptions): AsyncIterable<ProviderEvent> {
     options?.signal?.throwIfAborted();
-    const turn = this.turns[this.#nextTurn];
+    const turn = this.#turns[this.#nextTurn];
 
     if (turn === undefined) {
       throw new ProviderError("replay-exhausted", "A fixture de replay não possui outro turno.");

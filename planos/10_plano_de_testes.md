@@ -37,6 +37,10 @@ adicionada depois de existir sanitização de segredos testada.
 - [x] Erros 400/401/402/429/503, transporte, SSE inválido e zero retry implícito — 2026-07-22
 - [x] Abort antes/durante a chamada e rejeição fail-closed de conteúdo não suportado — 2026-07-22
 - [x] Sanitização de controles de terminal e canários de segredo — 2026-07-22
+- [x] F0.3: mesma suíte Pro/Flash para tool calls fragmentadas, paralelas, schemas, IDs e allowlist fechada — 2026-07-22
+- [x] F0.3: segundo request preserva assistant `reasoning_content` + `tool_calls` e associa `role: tool` pelo ID — 2026-07-22
+- [x] F0.3: replay de dois turnos e transcript fail-closed; provider não executa tools — 2026-07-22
+- [x] F0.3: buffer até finish coerente, snapshots contra mutação/TOCTOU, limites UTF-8 e cancelamento durante argumentos fragmentados — 2026-07-22
 
 ### 3. E2E em repos descartáveis — roda no CI diário
 
@@ -52,7 +56,7 @@ Repos git sintéticos criados no setup (Node, Python, monorepo) + binário real 
 
 Custa dinheiro; mede **qualidade**, não correção de código nosso.
 
-- [ ] Smoke sintético `deepseek-v4-pro` e `deepseek-v4-flash`, manual e bloqueado no CI
+- [x] Smoke sintético `deepseek-v4-pro` e `deepseek-v4-flash`, manual e bloqueado no CI — F0.3, 2026-07-22
 - [ ] Mini-benchmark de edição (estilo Aider polyglot, ~20 exercícios): roteamento Pro/Flash automático versus Pro fixo
 - [ ] Eval de retrieval de memória: dado histórico plantado, a memória certa entra no contexto?
 - [ ] Eval do consolidador: sessões sintéticas → fatos extraídos corretos, sem duplicatas

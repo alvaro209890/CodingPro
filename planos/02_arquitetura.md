@@ -84,12 +84,16 @@ flowchart TB
 | Consolidação de memória em nuvem | Job local pós-sessão que resume/deduplica/liga memórias (ver doc 06) |
 | Orquestração multi-agente | Orquestrador local com N child processes paralelos + merge de resultados (ver doc 05) |
 
-## Contratos internos (a especificar na F0)
+## Contratos internos
 
 - [ ] Esquema JSON dos eventos core→UI (turno, tool_call, tool_result, permissão, progresso)
-- [ ] Interface `Tool` (nome, schema JSON, execute, nível de risco)
+- [x] Interface `Tool` do provider: descritor puro (nome, descrição e subconjunto JSON Schema),
+  calls/results estruturados e nenhuma função `execute` — F0.3, 2026-07-22
+- [ ] Interface de tool executável no `core|tools` (execute, sinal, risco e permissão); não pertence
+  ao provider e só entra com o loop seguro da F1
 - [x] Interface `Provider` v1 (chat streaming, raciocínio, finalização, uso e capabilities) — F0.2a, 2026-07-22
-- [ ] Evoluir `Provider` para tool calling e custo quando o loop agêntico entrar
+- [x] Evoluir `Provider` para tool calling multi-turno Pro/Flash com reasoning preservado — F0.3, 2026-07-22
+- [ ] Acrescentar agregação de custo ao loop agêntico
 - [ ] Formato do arquivo de sessão (JSONL append-only)
 - [ ] Formato de memória (frontmatter + corpo, igual convenção já usada pelo Álvaro)
 - [ ] Protocolo orquestrador↔subagente (JSON-RPC sobre stdio)

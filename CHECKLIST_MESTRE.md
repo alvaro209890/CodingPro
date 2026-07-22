@@ -62,7 +62,12 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] Contrato Provider v1: streaming de texto/raciocínio, finalização, uso e capabilities — 2026-07-22
 - [x] F0.2c: config JSONC global → projeto → ambiente legado → flags, fail-closed e sem segredos — 2026-07-22
 - [x] CI F0.2c verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29950272198](https://github.com/alvaro209890/CodingPro/actions/runs/29950272198)) — 2026-07-22
-- [ ] F0.3: tool calling multi-turno com DeepSeek V4 Pro/Flash + reasoning preservado + contrato Tool
+- [x] F0.3: contrato `Tool` puro + calls/results estruturados, sem execução automática no provider — 2026-07-22
+- [x] F0.3: tool calling multi-turno no DeepSeek V4 Pro/Flash com reasoning preservado — 2026-07-22
+- [x] F0.3: validação fail-closed de schema, argumentos, IDs, transcript e allowlist de modelos — 2026-07-22
+- [x] F0.3: replay multi-turno, 167 testes offline e cobertura global >93% — 2026-07-22
+- [x] F0.3: smoke real `modelo → somar → resultado → modelo` aprovado no Pro e Flash — 2026-07-22
+- [ ] CI F0.3 verde no Node 24.11/24.18 Linux e 24.18 macOS
 - [ ] Spikes restantes da F0: Ink+streaming · node:sqlite FTS5 · tree-sitter WASM · checkpoint git
 - [x] 🏁 `codingpro -p` respondendo via DeepSeek real com prompt sintético — 2026-07-22
 

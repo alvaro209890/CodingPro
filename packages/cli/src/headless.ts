@@ -38,7 +38,15 @@ export async function executarPromptHeadless(
       const textoSeguro = sanitizarTextoTerminal(event.text);
       resposta += textoSeguro;
       escrever(textoSeguro);
+    } else if (event.type === "tool-call") {
+      throw new ProviderError("invalid-response", "O modo headless ainda não executa ferramentas.");
     } else if (event.type === "finish") {
+      if (event.reason === "tool-calls" || event.message.toolCalls !== undefined) {
+        throw new ProviderError(
+          "invalid-response",
+          "O modo headless ainda não executa ferramentas.",
+        );
+      }
       if (sanitizarTextoTerminal(event.message.content) !== resposta) {
         throw new ProviderError(
           "invalid-response",

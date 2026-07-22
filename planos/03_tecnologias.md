@@ -77,7 +77,7 @@ Vitest (unit/integração) + fixtures de conversas gravadas (replay de LLM) + re
 ## Checklist de validação da stack (spikes antes da F1)
 
 - [ ] Spike: Ink 5 + Node 24 — chat com streaming renderizando sem flicker
-- [ ] F0.3: AI SDK + DeepSeek V4 Pro/Flash — tool calling multi-turno funciona e preserva reasoning
+- [x] F0.3: AI SDK + DeepSeek V4 Pro/Flash — tool calling multi-turno funciona e preserva reasoning — 2026-07-22
 - [ ] Spike: `node:sqlite` + FTS5 disponível na versão do Node alvo
 - [ ] Spike: web-tree-sitter carregando gramáticas TS/JS/Python e extraindo símbolos
 - [ ] Spike: checkpoint git + undo em repo com mudanças não commitadas (não pode destruir staging do usuário)

@@ -1,5 +1,6 @@
 export type ProviderErrorCode =
   | "invalid-fixture"
+  | "invalid-request"
   | "invalid-response"
   | "not-configured"
   | "provider-failed"

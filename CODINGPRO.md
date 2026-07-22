@@ -18,8 +18,8 @@ DeepSeek, limitado aos modelos V4 Pro e V4 Flash; replay existe somente para tes
 
 ## Estado atual
 
-O F0.2c adicionou configuração JSONC global → projeto → ambiente legado → flags, com schema
-fechado, leitura segura e política que impede repositórios de ativarem rede. O smoke real do
-adaptador e o fluxo completo `codingpro -p` via DeepSeek foram aprovados com prompt sintético.
-O próximo incremento é o F0.3: tool calling multi-turno no DeepSeek V4 Pro e V4 Flash, com
-preservação de reasoning e evolução dos contratos Provider/Tool.
+O F0.3 adicionou tool calling multi-turno no DeepSeek V4 Pro e V4 Flash, com contrato Tool puro,
+schemas/argumentos/transcript validados, replay estrito e reasoning preservado entre call e
+resultado. O smoke real de dois turnos foi aprovado nos dois modelos. O provider não executa
+tools; permissões e efeitos pertencem à F1. O próximo incremento é o roteamento interno
+`main|fast` entre Pro e Flash, sem seleção de provider ou ID arbitrário pelo usuário.

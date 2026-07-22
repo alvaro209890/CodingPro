@@ -1,9 +1,12 @@
 import {
   APICallError,
   type FinishReason as AiFinishReason,
+  jsonSchema,
   type LanguageModelUsage,
   type ModelMessage,
   streamText,
+  tool,
+  type ToolSet,
 } from "ai";
 import {
   createOpenAICompatible,
@@ -14,14 +17,30 @@ import type {
   ChatMessage,
   ChatRequest,
   FinishReason,
+  JsonObject,
+  JsonValue,
   Provider,
   ProviderEvent,
   StreamOptions,
+  Tool as CodingProTool,
+  ToolCall,
+  ToolChoice,
   TokenUsage,
 } from "../provider.js";
+import {
+  copyChatRequest,
+  copyToolCall,
+  isChatRequest,
+  isToolCall,
+  toolAcceptsInput,
+} from "../validation.js";
 
 export const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
-export const DEEPSEEK_MODEL = "deepseek-v4-pro";
+export const DEEPSEEK_MODEL_PRO = "deepseek-v4-pro";
+export const DEEPSEEK_MODEL_FLASH = "deepseek-v4-flash";
+export const DEEPSEEK_MODELS = Object.freeze([DEEPSEEK_MODEL_PRO, DEEPSEEK_MODEL_FLASH] as const);
+export type DeepSeekModel = (typeof DEEPSEEK_MODELS)[number];
+export const DEEPSEEK_MODEL = DEEPSEEK_MODEL_PRO;
 
 type FetchFunction = NonNullable<OpenAICompatibleProviderSettings["fetch"]>;
 
@@ -30,6 +49,7 @@ export interface DeepSeekProviderOptions {
   readonly chunkTimeoutMs?: number;
   readonly fetch?: FetchFunction;
   readonly maxOutputTokens?: number;
+  readonly model?: DeepSeekModel;
   readonly reasoningEffort?: "high" | "max";
   readonly thinking?: boolean;
   readonly totalTimeoutMs?: number;
@@ -48,6 +68,12 @@ function validatePositiveInteger(value: number, name: string): void {
 function validateApiKey(apiKey: string): void {
   if (apiKey.trim().length === 0 || /[\0\r\n]/u.test(apiKey)) {
     throw new ProviderError("not-configured", "A chave da API DeepSeek é inválida.");
+  }
+}
+
+function validateModel(model: unknown): asserts model is DeepSeekModel {
+  if (model !== DEEPSEEK_MODEL_PRO && model !== DEEPSEEK_MODEL_FLASH) {
+    throw new ProviderError("not-configured", "O modelo DeepSeek é inválido.");
   }
 }
 
@@ -71,21 +97,74 @@ function createRestrictedFetch(delegate: FetchFunction): FetchFunction {
 }
 
 function toModelMessage(message: ChatMessage): ModelMessage {
-  if (
-    message.role !== "assistant" ||
-    message.reasoning === undefined ||
-    message.reasoning.length === 0
-  ) {
+  if (message.role === "system" || message.role === "user") {
     return { content: message.content, role: message.role };
+  }
+
+  if (message.role === "tool") {
+    return {
+      content: [
+        {
+          output: message.result as never,
+          toolCallId: message.toolCallId,
+          toolName: message.toolName,
+          type: "tool-result",
+        },
+      ],
+      role: "tool",
+    };
+  }
+
+  if (message.role !== "assistant") {
+    return { content: message.content, role: message.role };
+  }
+
+  if (
+    (message.reasoning === undefined || message.reasoning.length === 0) &&
+    message.toolCalls === undefined
+  ) {
+    return { content: message.content, role: "assistant" };
   }
 
   return {
     content: [
-      { text: message.reasoning, type: "reasoning" },
-      { text: message.content, type: "text" },
+      ...(message.reasoning === undefined || message.reasoning.length === 0
+        ? []
+        : [{ text: message.reasoning, type: "reasoning" as const }]),
+      ...(message.content.length === 0 ? [] : [{ text: message.content, type: "text" as const }]),
+      ...(message.toolCalls ?? []).map((call) => ({
+        input: call.input,
+        toolCallId: call.id,
+        toolName: call.name,
+        type: "tool-call" as const,
+      })),
     ],
     role: "assistant",
   };
+}
+
+function toAiTools(definitions: readonly CodingProTool[]): ToolSet {
+  const tools: ToolSet = Object.create(null) as ToolSet;
+  for (const definition of definitions) {
+    tools[definition.name] = tool({
+      description: definition.description,
+      inputSchema: jsonSchema<JsonObject>(definition.inputSchema as never, {
+        validate: (value) =>
+          toolAcceptsInput(definition.inputSchema, value)
+            ? { success: true, value }
+            : { error: new Error("Tool input inválido."), success: false },
+      }),
+      outputSchema: jsonSchema<JsonValue>({}),
+    });
+  }
+  return tools;
+}
+
+function toAiToolChoice(choice: ToolChoice | undefined) {
+  if (choice === undefined) {
+    return undefined;
+  }
+  return typeof choice === "string" ? choice : { toolName: choice.toolName, type: "tool" as const };
 }
 
 function isNonNegativeInteger(value: number | undefined): value is number {
@@ -255,17 +334,21 @@ export class DeepSeekProvider implements Provider {
     cacheUsage: true,
     reasoning: "effort",
     streaming: true,
-    tools: false,
+    tools: true,
   } as const;
   readonly id = "deepseek";
-  readonly model = DEEPSEEK_MODEL;
+  readonly model: DeepSeekModel;
 
   readonly #languageModel;
   readonly #maxOutputTokens: number;
+  readonly #thinking: boolean;
   readonly #timeout: { readonly chunkMs: number; readonly totalMs: number };
 
   constructor(options: DeepSeekProviderOptions) {
     validateApiKey(options.apiKey);
+    const model = options.model ?? DEEPSEEK_MODEL_PRO;
+    validateModel(model);
+    this.model = model;
     this.#maxOutputTokens = options.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS;
     const chunkMs = options.chunkTimeoutMs ?? DEFAULT_CHUNK_TIMEOUT_MS;
     const totalMs = options.totalTimeoutMs ?? DEFAULT_TOTAL_TIMEOUT_MS;
@@ -275,6 +358,7 @@ export class DeepSeekProvider implements Provider {
     this.#timeout = { chunkMs, totalMs };
 
     const thinking = options.thinking ?? true;
+    this.#thinking = thinking;
     const reasoningEffort = options.reasoningEffort ?? "high";
 
     const provider = createOpenAICompatible({
@@ -290,26 +374,56 @@ export class DeepSeekProvider implements Provider {
         ...(thinking ? { reasoning_effort: reasoningEffort } : {}),
       }),
     });
-    this.#languageModel = provider(DEEPSEEK_MODEL);
+    this.#languageModel = provider(model);
   }
 
   async *stream(request: ChatRequest, options?: StreamOptions): AsyncIterable<ProviderEvent> {
     options?.signal?.throwIfAborted();
+    let snapshot: ChatRequest;
+    try {
+      if (!isChatRequest(request)) {
+        throw new ProviderError("invalid-request", "A requisição ao provider é inválida.");
+      }
+      snapshot = copyChatRequest(request);
+    } catch (error) {
+      if (error instanceof ProviderError) {
+        throw error;
+      }
+      throw new ProviderError("invalid-request", "A requisição ao provider é inválida.");
+    }
+    if (
+      this.#thinking &&
+      (snapshot.toolChoice === "required" || typeof snapshot.toolChoice === "object")
+    ) {
+      throw new ProviderError(
+        "invalid-request",
+        "O modo thinking da DeepSeek aceita apenas tool choice automático ou none.",
+      );
+    }
     let content = "";
     let reasoning = "";
     let finished = false;
+    const toolCalls: ToolCall[] = [];
+    const toolCallIds = new Set<string>();
+    const toolDefinitions = new Map(
+      snapshot.tools?.map((definition) => [definition.name, definition]),
+    );
 
     try {
+      const tools = snapshot.tools === undefined ? undefined : toAiTools(snapshot.tools);
+      const toolChoice = toAiToolChoice(snapshot.toolChoice);
       const result = streamText({
         ...(options?.signal === undefined ? {} : { abortSignal: options.signal }),
         allowSystemInMessages: true,
         maxOutputTokens: this.#maxOutputTokens,
         maxRetries: 0,
-        messages: request.messages.map(toModelMessage),
+        messages: snapshot.messages.map(toModelMessage),
         model: this.#languageModel,
         onError: () => {},
         telemetry: { isEnabled: false, recordInputs: false, recordOutputs: false },
         timeout: this.#timeout,
+        ...(toolChoice === undefined ? {} : { toolChoice }),
+        ...(tools === undefined ? {} : { tools }),
       });
 
       for await (const part of result.stream) {
@@ -323,6 +437,28 @@ export class DeepSeekProvider implements Provider {
         } else if (part.type === "reasoning-delta") {
           reasoning += part.text;
           yield { text: part.text, type: "reasoning-delta" };
+        } else if (part.type === "tool-call") {
+          const candidate = { id: part.toolCallId, input: part.input, name: part.toolName };
+          const definition = toolDefinitions.get(part.toolName);
+          if (
+            snapshot.toolChoice === "none" ||
+            (typeof snapshot.toolChoice === "object" &&
+              snapshot.toolChoice.toolName !== part.toolName) ||
+            part.dynamic === true ||
+            part.providerExecuted === true ||
+            definition === undefined ||
+            !isToolCall(candidate) ||
+            !toolAcceptsInput(definition.inputSchema, candidate.input) ||
+            toolCallIds.has(candidate.id)
+          ) {
+            throw new ProviderError(
+              "invalid-response",
+              "A DeepSeek retornou uma chamada de ferramenta inválida.",
+            );
+          }
+          const call = copyToolCall(candidate);
+          toolCallIds.add(call.id);
+          toolCalls.push(call);
         } else if (part.type === "error") {
           throw providerFailure(part.error);
         } else if (part.type === "abort") {
@@ -345,13 +481,29 @@ export class DeepSeekProvider implements Provider {
           }
           finished = true;
           const usage = mapUsage(part.totalUsage);
+          const reason = mapFinishReason(part.finishReason);
+          const toolCallRequired =
+            snapshot.toolChoice === "required" || typeof snapshot.toolChoice === "object";
+          if (
+            (reason === "tool-calls") !== toolCalls.length > 0 ||
+            (toolCallRequired && toolCalls.length === 0)
+          ) {
+            throw new ProviderError(
+              "invalid-response",
+              "A DeepSeek finalizou chamadas de ferramenta de forma inconsistente.",
+            );
+          }
+          for (const call of toolCalls) {
+            yield { call: copyToolCall(call), type: "tool-call" };
+          }
           yield {
             message: {
               content,
               ...(reasoning.length === 0 ? {} : { reasoning }),
               role: "assistant",
+              ...(toolCalls.length === 0 ? {} : { toolCalls: toolCalls.map(copyToolCall) }),
             },
-            reason: mapFinishReason(part.finishReason),
+            reason,
             type: "finish",
             ...(usage === undefined ? {} : { usage }),
           };
@@ -362,7 +514,10 @@ export class DeepSeekProvider implements Provider {
           part.type === "text-start" ||
           part.type === "text-end" ||
           part.type === "reasoning-start" ||
-          part.type === "reasoning-end"
+          part.type === "reasoning-end" ||
+          part.type === "tool-input-start" ||
+          part.type === "tool-input-delta" ||
+          part.type === "tool-input-end"
         ) {
           // Eventos de ciclo de vida não fazem parte do contrato Provider v1.
         } else {

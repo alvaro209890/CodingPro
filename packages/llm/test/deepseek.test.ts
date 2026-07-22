@@ -2,10 +2,15 @@ import { describe, expect, it, vi } from "vitest";
 import {
   DEEPSEEK_BASE_URL,
   DEEPSEEK_MODEL,
+  DEEPSEEK_MODEL_FLASH,
+  DEEPSEEK_MODEL_PRO,
+  DEEPSEEK_MODELS,
   DeepSeekProvider,
+  type ChatRequest,
   type DeepSeekProviderOptions,
   type ProviderError,
   type ProviderEvent,
+  type Tool,
 } from "../src/index.js";
 
 type FetchFunction = NonNullable<DeepSeekProviderOptions["fetch"]>;
@@ -18,6 +23,22 @@ const request = {
   ],
 };
 
+const somar: Tool = {
+  description: "Soma dois números inteiros.",
+  inputSchema: {
+    additionalProperties: false,
+    properties: {
+      a: { type: "integer" },
+      b: { type: "integer" },
+    },
+    required: ["a", "b"],
+    type: "object",
+  },
+  name: "somar",
+};
+const subtrair: Tool = { ...somar, description: "Subtrai dois inteiros.", name: "subtrair" };
+const TOOL_ARGUMENT_CANARY = "segredo-argumento";
+
 function sseResponse(chunks: readonly unknown[]): Response {
   const body = `${chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`).join("")}data: [DONE]\n\n`;
   return new Response(body, { headers: { "content-type": "text/event-stream" }, status: 200 });
@@ -27,12 +48,13 @@ function streamChunk(
   delta: Record<string, unknown>,
   finishReason: string | null = null,
   usage: Record<string, unknown> | null = null,
+  model = DEEPSEEK_MODEL,
 ) {
   return {
     choices: [{ delta, finish_reason: finishReason, index: 0 }],
     created: 1,
     id: "fixture",
-    model: DEEPSEEK_MODEL,
+    model,
     usage,
   };
 }
@@ -81,10 +103,14 @@ function fragmentedSseResponse(): Response {
   return new Response(stream, { headers: { "content-type": "text/event-stream" } });
 }
 
-async function collect(provider: DeepSeekProvider, signal?: AbortSignal): Promise<ProviderEvent[]> {
+async function collect(
+  provider: DeepSeekProvider,
+  signal?: AbortSignal,
+  chatRequest: ChatRequest = request,
+): Promise<ProviderEvent[]> {
   const events: ProviderEvent[] = [];
   for await (const event of provider.stream(
-    request,
+    chatRequest,
     signal === undefined ? undefined : { signal },
   )) {
     events.push(event);
@@ -115,7 +141,7 @@ describe("DeepSeekProvider", () => {
       cacheUsage: true,
       reasoning: "effort",
       streaming: true,
-      tools: false,
+      tools: true,
     });
     expect(capturedHeaders?.get("authorization")).toBe("Bearer chave-sintetica");
     expect(capturedRedirect).toBe("error");
@@ -194,6 +220,10 @@ describe("DeepSeekProvider", () => {
     { options: { apiKey: "chave\nmaliciosa" }, message: "chave" },
     { options: { apiKey: "ok", maxOutputTokens: 0 }, message: "maxOutputTokens" },
     { options: { apiKey: "ok", chunkTimeoutMs: 1.5 }, message: "chunkTimeoutMs" },
+    {
+      options: { apiKey: "ok", model: "deepseek-inventado" as never },
+      message: "modelo",
+    },
   ] satisfies Array<{ options: DeepSeekProviderOptions; message: string }>)(
     "rejeita configuração inválida: $message",
     ({ options, message }) => {
@@ -265,6 +295,55 @@ describe("DeepSeekProvider", () => {
     await vi.waitFor(() => expect(requests).toBe(1));
     during.abort();
     await expect(execution).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("cancela durante argumentos fragmentados sem publicar tool call", async () => {
+    let bodyStarted = false;
+    const provider = new DeepSeekProvider({
+      apiKey: "chave-sintetica",
+      fetch: async (_input, init) =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(
+                new TextEncoder().encode(
+                  `data: ${JSON.stringify(
+                    streamChunk({
+                      tool_calls: [
+                        {
+                          function: { arguments: '{"a":', name: "somar" },
+                          id: "call_cancelada",
+                          index: 0,
+                        },
+                      ],
+                    }),
+                  )}\n\n`,
+                ),
+              );
+              bodyStarted = true;
+              init?.signal?.addEventListener("abort", () => controller.error(init.signal?.reason), {
+                once: true,
+              });
+            },
+          }),
+          { headers: { "content-type": "text/event-stream" } },
+        ),
+    });
+    const controller = new AbortController();
+    const observed: ProviderEvent[] = [];
+    const execution = (async () => {
+      for await (const event of provider.stream(
+        { messages: [{ content: "some", role: "user" }], tools: [somar] },
+        { signal: controller.signal },
+      )) {
+        observed.push(event);
+      }
+    })();
+    await vi.waitFor(() => expect(bodyStarted).toBe(true));
+    controller.abort();
+
+    await expect(execution).rejects.toMatchObject({ name: "AbortError" });
+    expect(observed).not.toContainEqual(expect.objectContaining({ type: "tool-call" }));
   });
 
   it("classifica timeout total como falha transitória e segura", async () => {
@@ -423,7 +502,7 @@ describe("DeepSeekProvider", () => {
     });
   });
 
-  it("falha fechado diante de tool call inesperada", async () => {
+  it("falha fechado diante de tool call não declarada", async () => {
     const provider = new DeepSeekProvider({
       apiKey: "chave-sintetica",
       fetch: async () =>
@@ -442,5 +521,531 @@ describe("DeepSeekProvider", () => {
     });
 
     await expect(collect(provider)).rejects.toMatchObject({ code: "invalid-response" });
+  });
+
+  it.each(DEEPSEEK_MODELS)(
+    "preserva reasoning e tool call no ciclo multi-turno de %s",
+    async (model) => {
+      const bodies: Record<string, unknown>[] = [];
+      let call = 0;
+      const provider = new DeepSeekProvider({
+        apiKey: "chave-sintetica",
+        fetch: async (_input, init) => {
+          bodies.push(JSON.parse(String(init?.body)));
+          call += 1;
+          if (call === 1) {
+            return sseResponse([
+              streamChunk({ reasoning_content: "razão " }, null, null, model),
+              streamChunk({ reasoning_content: "preservada" }, null, null, model),
+              streamChunk(
+                {
+                  tool_calls: [
+                    {
+                      function: { arguments: '{"a":', name: "somar" },
+                      id: "call_soma_1",
+                      index: 0,
+                      type: "function",
+                    },
+                  ],
+                },
+                null,
+                null,
+                model,
+              ),
+              streamChunk(
+                { tool_calls: [{ function: { arguments: '19,"b":23}' }, index: 0 }] },
+                null,
+                null,
+                model,
+              ),
+              streamChunk({}, "tool_calls", null, model),
+              {
+                choices: [],
+                model,
+                usage: { completion_tokens: 8, prompt_tokens: 10 },
+              },
+            ]);
+          }
+          return sseResponse([
+            streamChunk({ reasoning_content: "resultado conferido" }, null, null, model),
+            streamChunk({ content: "42" }, null, null, model),
+            streamChunk({}, "stop", null, model),
+            {
+              choices: [],
+              model,
+              usage: { completion_tokens: 4, prompt_tokens: 20 },
+            },
+          ]);
+        },
+        model,
+      });
+      const prompt = { content: "Some 19 e 23 usando a ferramenta.", role: "user" as const };
+      const firstRequest: ChatRequest = {
+        messages: [prompt],
+        tools: [somar],
+      };
+
+      const firstEvents = await collect(provider, undefined, firstRequest);
+      const firstFinish = firstEvents.at(-1);
+      expect(firstEvents).toContainEqual({
+        call: { id: "call_soma_1", input: { a: 19, b: 23 }, name: "somar" },
+        type: "tool-call",
+      });
+      expect(firstFinish).toMatchObject({
+        message: {
+          content: "",
+          reasoning: "razão preservada",
+          role: "assistant",
+          toolCalls: [{ id: "call_soma_1", input: { a: 19, b: 23 }, name: "somar" }],
+        },
+        reason: "tool-calls",
+        type: "finish",
+      });
+      if (firstFinish?.type !== "finish") {
+        throw new Error("Fixture sem finish.");
+      }
+
+      const secondEvents = await collect(provider, undefined, {
+        messages: [
+          prompt,
+          firstFinish.message,
+          {
+            result: { type: "json", value: { resultado: 42 } },
+            role: "tool",
+            toolCallId: "call_soma_1",
+            toolName: "somar",
+          },
+        ],
+        toolChoice: "none",
+        tools: [somar],
+      });
+
+      expect(secondEvents.at(-1)).toMatchObject({
+        message: { content: "42", reasoning: "resultado conferido", role: "assistant" },
+        reason: "stop",
+        type: "finish",
+      });
+      expect(bodies).toHaveLength(2);
+      expect(bodies[0]).toMatchObject({
+        messages: [{ content: prompt.content, role: "user" }],
+        model,
+        tools: [
+          {
+            function: {
+              description: somar.description,
+              name: "somar",
+              parameters: somar.inputSchema,
+            },
+            type: "function",
+          },
+        ],
+      });
+      expect(bodies[0]).toMatchObject({ tool_choice: "auto" });
+      expect(bodies[1]).toMatchObject({
+        messages: [
+          { content: prompt.content, role: "user" },
+          {
+            content: null,
+            reasoning_content: "razão preservada",
+            role: "assistant",
+            tool_calls: [
+              {
+                function: { arguments: '{"a":19,"b":23}', name: "somar" },
+                id: "call_soma_1",
+                type: "function",
+              },
+            ],
+          },
+          { content: '{"resultado":42}', role: "tool", tool_call_id: "call_soma_1" },
+        ],
+        model,
+        tool_choice: "none",
+      });
+    },
+  );
+
+  it.each([
+    {
+      delta: {
+        tool_calls: [
+          {
+            function: {
+              arguments: `{"a":19,"b":23,"extra":"${TOOL_ARGUMENT_CANARY}"}`,
+              name: "somar",
+            },
+            id: "call_extra",
+            index: 0,
+          },
+        ],
+      },
+      label: "argumento fora do schema",
+    },
+    {
+      delta: {
+        tool_calls: [
+          {
+            function: { arguments: '{"a":"19","b":23}', name: "somar" },
+            id: "call_tipo",
+            index: 0,
+          },
+        ],
+      },
+      label: "tipo incompatível",
+    },
+    {
+      delta: {
+        tool_calls: [
+          {
+            function: { arguments: "{incompleto", name: "somar" },
+            id: "call_json",
+            index: 0,
+          },
+        ],
+      },
+      label: "JSON malformado",
+    },
+  ])("rejeita $label sem expor argumentos", async ({ delta }) => {
+    const provider = new DeepSeekProvider({
+      apiKey: "chave-sintetica",
+      fetch: async () => sseResponse([streamChunk(delta), streamChunk({}, "tool_calls")]),
+    });
+
+    await expect(
+      collect(provider, undefined, {
+        messages: [{ content: "use a tool", role: "user" }],
+        tools: [somar],
+      }),
+    ).rejects.toMatchObject({
+      code: "invalid-response",
+      safeMessage: expect.not.stringContaining(TOOL_ARGUMENT_CANARY),
+    });
+  });
+
+  it("rejeita IDs duplicados em chamadas paralelas", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "chave-sintetica",
+      fetch: async () =>
+        sseResponse([
+          streamChunk({
+            tool_calls: [
+              {
+                function: { arguments: '{"a":1,"b":2}', name: "somar" },
+                id: "call_repetida",
+                index: 0,
+              },
+              {
+                function: { arguments: '{"a":3,"b":4}', name: "somar" },
+                id: "call_repetida",
+                index: 1,
+              },
+            ],
+          }),
+          streamChunk({}, "tool_calls"),
+        ]),
+    });
+
+    await expect(
+      collect(provider, undefined, {
+        messages: [{ content: "duas somas", role: "user" }],
+        tools: [somar],
+      }),
+    ).rejects.toMatchObject({ code: "invalid-response" });
+  });
+
+  it("não publica tool call quando o finish terminal é inconsistente", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "chave-sintetica",
+      fetch: async () =>
+        sseResponse([
+          streamChunk({
+            tool_calls: [
+              {
+                function: { arguments: '{"a":1,"b":2}', name: "somar" },
+                id: "call_sem_finish",
+                index: 0,
+              },
+            ],
+          }),
+          streamChunk({}, "stop"),
+        ]),
+    });
+    const observed: ProviderEvent[] = [];
+    let failure: unknown;
+
+    try {
+      for await (const event of provider.stream({
+        messages: [{ content: "some", role: "user" }],
+        tools: [somar],
+      })) {
+        observed.push(event);
+      }
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toMatchObject({ code: "invalid-response" });
+    expect(observed).not.toContainEqual(expect.objectContaining({ type: "tool-call" }));
+  });
+
+  it("isola o finish de mutações feitas no evento de tool call", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "chave-sintetica",
+      fetch: async () =>
+        sseResponse([
+          streamChunk({
+            tool_calls: [
+              {
+                function: { arguments: '{"a":19,"b":23}', name: "somar" },
+                id: "call_isolada",
+                index: 0,
+              },
+            ],
+          }),
+          streamChunk({}, "tool_calls"),
+        ]),
+    });
+    const iterator = provider
+      .stream({ messages: [{ content: "some", role: "user" }], tools: [somar] })
+      [Symbol.asyncIterator]();
+    const first = await iterator.next();
+    expect(first.value).toMatchObject({ type: "tool-call" });
+    if (first.value?.type !== "tool-call") {
+      throw new Error("Fixture sem tool call.");
+    }
+    (first.value.call as { name: string }).name = "alterada";
+    (first.value.call.input as { a: number }).a = 999;
+
+    const finish = await iterator.next();
+    expect(finish.value).toMatchObject({
+      message: {
+        toolCalls: [{ id: "call_isolada", input: { a: 19, b: 23 }, name: "somar" }],
+      },
+      reason: "tool-calls",
+      type: "finish",
+    });
+  });
+
+  it("mantém snapshot do schema durante o stream", async () => {
+    const mutableTool = structuredClone(somar) as Tool;
+    const provider = new DeepSeekProvider({
+      apiKey: "chave-sintetica",
+      fetch: async () =>
+        sseResponse([
+          streamChunk({ reasoning_content: "validando" }),
+          streamChunk({
+            tool_calls: [
+              {
+                function: { arguments: '{"a":"19","b":23}', name: "somar" },
+                id: "call_mutacao",
+                index: 0,
+              },
+            ],
+          }),
+          streamChunk({}, "tool_calls"),
+        ]),
+    });
+    const iterator = provider
+      .stream({ messages: [{ content: "some", role: "user" }], tools: [mutableTool] })
+      [Symbol.asyncIterator]();
+    await expect(iterator.next()).resolves.toMatchObject({
+      value: { text: "validando", type: "reasoning-delta" },
+    });
+    (mutableTool.inputSchema.properties as Record<string, { readonly type: string }>).a = {
+      type: "string",
+    };
+
+    await expect(iterator.next()).rejects.toMatchObject({ code: "invalid-response" });
+  });
+
+  it("mantém IDs e argumentos separados em calls paralelas intercaladas", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "chave-sintetica",
+      fetch: async () =>
+        sseResponse([
+          streamChunk({
+            tool_calls: [
+              {
+                function: { arguments: '{"a":1,', name: "somar" },
+                id: "call_primeira",
+                index: 0,
+              },
+              {
+                function: { arguments: '{"a":3,', name: "somar" },
+                id: "call_segunda",
+                index: 1,
+              },
+            ],
+          }),
+          streamChunk({
+            tool_calls: [
+              { function: { arguments: '"b":4}' }, index: 1 },
+              { function: { arguments: '"b":2}' }, index: 0 },
+            ],
+          }),
+          streamChunk({}, "tool_calls"),
+        ]),
+    });
+
+    const events = await collect(provider, undefined, {
+      messages: [{ content: "duas somas", role: "user" }],
+      tools: [somar],
+    });
+    const calls = events.filter((event) => event.type === "tool-call").map((event) => event.call);
+    expect(calls).toEqual([
+      { id: "call_primeira", input: { a: 1, b: 2 }, name: "somar" },
+      { id: "call_segunda", input: { a: 3, b: 4 }, name: "somar" },
+    ]);
+    expect(events.at(-1)).toMatchObject({
+      message: { toolCalls: calls },
+      reason: "tool-calls",
+      type: "finish",
+    });
+  });
+
+  it("rejeita request inválido antes de acessar a rede", async () => {
+    const fetchMock = vi.fn<FetchFunction>();
+    const provider = new DeepSeekProvider({ apiKey: "chave-sintetica", fetch: fetchMock });
+
+    await expect(
+      collect(provider, undefined, {
+        messages: [{ content: "olá", role: "user" }],
+        tools: [somar, somar],
+      }),
+    ).rejects.toMatchObject({ code: "invalid-request" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each(["required", { toolName: "somar" }] as const)(
+    "rejeita tool choice forçado no thinking antes da rede: %j",
+    async (toolChoice) => {
+      const fetchMock = vi.fn<FetchFunction>();
+      const provider = new DeepSeekProvider({ apiKey: "chave-sintetica", fetch: fetchMock });
+
+      await expect(
+        collect(provider, undefined, {
+          messages: [{ content: "some", role: "user" }],
+          toolChoice,
+          tools: [somar],
+        }),
+      ).rejects.toMatchObject({
+        code: "invalid-request",
+        safeMessage: expect.stringContaining("thinking"),
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it("serializa tool choice nominal quando thinking está desligado", async () => {
+    let body: Record<string, unknown> | undefined;
+    const provider = new DeepSeekProvider({
+      apiKey: "chave-sintetica",
+      fetch: async (_input, init) => {
+        body = JSON.parse(String(init?.body));
+        return sseResponse([
+          streamChunk({
+            tool_calls: [
+              {
+                function: { arguments: '{"a":1,"b":2}', name: "somar" },
+                id: "call_nomeada",
+                index: 0,
+              },
+            ],
+          }),
+          streamChunk({}, "tool_calls"),
+        ]);
+      },
+      thinking: false,
+    });
+
+    await collect(provider, undefined, {
+      messages: [{ content: "some", role: "user" }],
+      toolChoice: { toolName: "somar" },
+      tools: [somar],
+    });
+    expect(body).toMatchObject({
+      tool_choice: { function: { name: "somar" }, type: "function" },
+    });
+  });
+
+  it("rejeita call quando tool choice é none", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "chave-sintetica",
+      fetch: async () =>
+        sseResponse([
+          streamChunk({
+            tool_calls: [
+              {
+                function: { arguments: '{"a":1,"b":2}', name: "somar" },
+                id: "call_proibida",
+                index: 0,
+              },
+            ],
+          }),
+          streamChunk({}, "tool_calls"),
+        ]),
+    });
+
+    await expect(
+      collect(provider, undefined, {
+        messages: [{ content: "não use tool", role: "user" }],
+        toolChoice: "none",
+        tools: [somar],
+      }),
+    ).rejects.toMatchObject({ code: "invalid-response" });
+  });
+
+  it("rejeita stop sem call quando tool choice é required", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "chave-sintetica",
+      fetch: async () => happyResponse(),
+      thinking: false,
+    });
+
+    await expect(
+      collect(provider, undefined, {
+        messages: [{ content: "use tool", role: "user" }],
+        toolChoice: "required",
+        tools: [somar],
+      }),
+    ).rejects.toMatchObject({ code: "invalid-response" });
+  });
+
+  it("rejeita tool diferente da escolha nominal", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "chave-sintetica",
+      fetch: async () =>
+        sseResponse([
+          streamChunk({
+            tool_calls: [
+              {
+                function: { arguments: '{"a":3,"b":1}', name: "subtrair" },
+                id: "call_errada",
+                index: 0,
+              },
+            ],
+          }),
+          streamChunk({}, "tool_calls"),
+        ]),
+      thinking: false,
+    });
+
+    await expect(
+      collect(provider, undefined, {
+        messages: [{ content: "some", role: "user" }],
+        toolChoice: { toolName: "somar" },
+        tools: [somar, subtrair],
+      }),
+    ).rejects.toMatchObject({ code: "invalid-response" });
+  });
+
+  it("mantém a allowlist de modelos fechada em Pro e Flash", () => {
+    expect(DEEPSEEK_MODELS).toEqual([DEEPSEEK_MODEL_PRO, DEEPSEEK_MODEL_FLASH]);
+    expect(Object.isFrozen(DEEPSEEK_MODELS)).toBe(true);
+    expect(() => (DEEPSEEK_MODELS as unknown as string[]).push("deepseek-inventado")).toThrow(
+      TypeError,
+    );
+    expect(
+      () => new DeepSeekProvider({ apiKey: "ok", model: "deepseek-inventado" as never }),
+    ).toThrowError(expect.objectContaining({ code: "not-configured" }));
   });
 });

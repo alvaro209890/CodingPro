@@ -180,3 +180,59 @@ e evoluir os contratos Provider/Tool. O roteamento automático Pro/Flash entra l
 Revisão documental aprovada nos gates de arquitetura, segurança e consistência; CI verde no Node
 24.11/24.18 Linux e 24.18 macOS:
 [execução 29951543077](https://github.com/alvaro209890/CodingPro/actions/runs/29951543077).
+
+## 2026-07-22 — F0.3: tools multi-turno no DeepSeek V4
+
+### Entregue
+
+- Contratos `Tool`, `ToolCall`, `ToolResult`, `ToolChoice` e mensagens `role: tool` independentes
+  do AI SDK.
+- `Tool` é um descritor puro: não contém `execute`; nenhum código de tool roda dentro do provider.
+- Subconjunto JSON Schema fechado, com raiz object, `additionalProperties: false`, limites de
+  tamanho/profundidade e rejeição de chaves de prototype.
+- Validação fail-closed de schemas, argumentos sem coerção, IDs, nomes, resultados e sequência do
+  transcript antes da rede.
+- Allowlist interna exata e imutável `deepseek-v4-pro|deepseek-v4-flash`; Pro continua o default.
+- Streaming de calls completas após remontagem dos fragmentos SSE, inclusive calls paralelas. As
+  calls ficam em buffer e só são publicadas depois de um finish terminal coerente.
+- Finish assistant preserva texto, reasoning e tool calls; o segundo request devolve
+  `reasoning_content` e `tool_calls` intactos antes da mensagem de resultado.
+- Replay estrito de múltiplos turnos e headless fail-closed enquanto não existe executor da F1.
+- Smoke real em memória `19 + 23 = 42` nos dois modelos, sem filesystem, shell ou saída bruta.
+
+### Decisões e segurança
+
+- O provider permanece single-step. O futuro core decide permissão, executa e chama o mesmo
+  provider novamente; não usamos `execute`, `stopWhen` nem `ToolLoopAgent` do AI SDK.
+- Inputs são validados pelo callback de `jsonSchema`, pois no AI SDK 7 o JSON Schema sem callback
+  apenas faz parse do JSON e não garante conformidade semântica.
+- Tool calls desconhecidas, dinâmicas, provider-executed, malformadas, fora do schema ou com ID
+  duplicado são rejeitadas sem expor argumentos.
+- Requests, schemas, calls, resultados e fixtures em memória são copiados para snapshots canônicos;
+  accessors, símbolos e propriedades ocultas são recusados. Objetos entregues ao consumidor não
+  compartilham referência com o finish interno.
+- Um resultado só pode aparecer após a call pendente de mesmo ID e nome. Todas as calls precisam
+  de resultado antes de outro turno de usuário/assistente.
+- `maxRetries` permanece zero. Política de retry pós-efeito e execução exatamente uma vez entram
+  junto do journal/checkpoint da F1.
+- No serviço real, `tool_choice=required` e a escolha nominal retornaram HTTP 400 quando thinking
+  estava ligado; `auto`/`none` passaram em Pro e Flash. Essa combinação agora falha localmente e
+  continua disponível com thinking desligado.
+
+### Validação
+
+Consulte o roteiro [F0.3](roteiros-qa/f0.3-tools-deepseek.md). Validação local com Node 24.18.0 e
+pnpm 10.34.4, sem credenciais no gate comum:
+
+- 167/167 testes aprovados em sete arquivos;
+- cobertura global: 93,27% statements, 91,34% branches, 99,12% functions e 93,17% lines;
+- `validation.ts`: 91,95% statements e 91,75% lines;
+- format check, lint, typecheck, build e smoke offline do tarball aprovados por `pnpm check`;
+- smoke real opt-in aprovado no V4 Pro e V4 Flash, dois turnos por modelo, com a credencial
+  isolada no processo e somente mensagens de aprovação na saída.
+
+### Próximo incremento
+
+Implementar o roteamento interno `main|fast`: Pro para codificação/arquitetura/revisão e Flash
+para trabalho mecânico, sem expor provider, endpoint ou ID arbitrário ao usuário. Depois, concluir
+os spikes restantes da F0 antes de abrir o loop executável da F1.
