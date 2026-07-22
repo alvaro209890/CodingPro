@@ -59,7 +59,15 @@ pacote continua verde). **F1.13/F1.14** adicionaram sessões: o transcrito é sa
 impresso; `--resume <id>` retoma um transcrito e `--continuar` a sessão mais recente; `CoreError`
 vira mensagem segura na CLI.
 
-Falta na F1 apenas a **TUI Ink interativa** (chat com streaming + `Approver` visual para efeitos com
-aprovação). Todo o núcleo agêntico — sandbox, tools, permissões, loop, retry, compactação, custo,
-sessões, progresso — está pronto, testado offline e utilizável via `--agente`. Antes (F0.4/F0.3) já
-estavam fechados o roteamento de papéis Pro/Flash e o tool calling multi-turno.
+**F1.15/F1.16** fecharam a interface interativa: `codingpro --chat` abre um chat (readline) que roda
+o loop com TODAS as ferramentas; efeitos (escrever/rodar) pedem **aprovação interativa**
+(`[s/N/sempre]`, fail-closed) mostrando o que será feito (`PermissionRequest.input`); o transcrito é
+salvo por turno e há `/sair` `/custo` `/limpar` `/ajuda`. Toda a mecânica é testada offline com IO e
+provider injetados.
+
+A **F1 está funcionalmente completa**: sandbox, tools, permissões, loop, retry, compactação, custo,
+sessões, progresso, headless (`--agente`) e chat interativo com aprovações. Resta apenas: (a) o
+**marco ao vivo** (rodar uma tarefa real de 5+ passos com DeepSeek — é eval, não teste offline) e
+(b) o **polimento visual Ink/Aurora** (tema, spinner, statusline, banner — doc 16), que fica para a
+F8. Depois começa a **F2** (edição segura: `edit_file` search/replace, checkpoints git, `/undo`).
+Antes (F0.4/F0.3) já estavam fechados o roteamento de papéis Pro/Flash e o tool calling multi-turno.

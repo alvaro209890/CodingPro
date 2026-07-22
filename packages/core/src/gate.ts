@@ -1,7 +1,13 @@
-import type { ToolResult } from "@codingpro/llm";
+import type { JsonObject, ToolResult } from "@codingpro/llm";
 import { deniedResult, type PermissionController } from "./permissions.js";
 import type { ToolRegistry } from "./registry.js";
 import { errorResult, type ToolContext } from "./tool.js";
+
+function asJsonObject(value: unknown): JsonObject | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as JsonObject)
+    : undefined;
+}
 
 /**
  * Fronteira única que o loop agêntico usa para rodar uma tool: primeiro autoriza pela
@@ -19,8 +25,9 @@ export class ToolGate {
     if (tool === undefined) {
       return errorResult(`Ferramenta desconhecida: ${name}.`);
     }
+    const input = asJsonObject(rawInput);
     const authorized = await this.permissions.authorize(
-      { sideEffect: tool.sideEffect, toolName: name },
+      { sideEffect: tool.sideEffect, toolName: name, ...(input === undefined ? {} : { input }) },
       context,
     );
     if (!authorized) {

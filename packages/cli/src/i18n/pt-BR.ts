@@ -7,6 +7,7 @@ export const mensagens = {
   erro: {
     argumentoAusente: "argumento obrigatório ausente",
     argumentosDemais: "argumentos demais",
+    chatIndisponivel: "o modo chat exige um terminal interativo",
     inesperado: "não foi possível concluir a solicitação",
     interrompido: "operação interrompida",
     opcaoDesconhecida: "opção desconhecida",
@@ -15,6 +16,7 @@ export const mensagens = {
   opcao: {
     agente: "roda o loop agêntico com ferramentas de leitura (headless)",
     ajuda: "exibe a ajuda",
+    chat: "abre o chat interativo do agente (com aprovação de efeitos)",
     continuar: "retoma a sessão mais recente do agente",
     maxContexto: "orçamento de tokens antes de compactar o contexto",
     prompt: "envia um prompt no modo não interativo",

@@ -48,7 +48,7 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 - [x] F1.2: tools de efeito `write_file` (O_NOFOLLOW + pai realpath) e `bash` (env mínimo, grupo de processo, timeout/abort, saída saneada) — 2026-07-22
 - [x] F1.2: até haver checkpoint (git só na F2), toda escrita e todo bash caem em `ask` — regra embutida em `decidePermission` — 2026-07-22
 - [x] F1.2: permissões `allowlist`/`ask`/`auto` (`decidePermission` puro + `PermissionController` de sessão) e `ToolGate`; o prompt de aprovação na TUI liga o `Approver` na fase da TUI — 2026-07-22
-- [ ] TUI Ink: chat com streaming, render markdown, indicador de tool em execução
+- [x] F1.15/F1.16: interface interativa v1 — `codingpro --chat` (readline) com streaming, indicador de ferramenta e aprovação de efeitos; render markdown/Ink fica para o polimento visual (doc 16/F8) — 2026-07-22
 - [ ] Identidade visual v1 (doc 16): tokens.ts, tema Aurora escuro, trilho de timeline, spinner, statusline, banner
 - [ ] i18n pt-BR (doc 15): strings canônicas, verbos de progresso, comandos com alias
 - [x] F1.4: sessões em JSONL (`SessionStore` save/append/load/list, fail-closed) + `runAgent` retoma transcrito sem duplicar system prompt — 2026-07-22

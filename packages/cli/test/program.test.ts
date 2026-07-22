@@ -312,6 +312,105 @@ describe("CLI", () => {
     }
   });
 
+  it("abre o chat interativo com --chat", async () => {
+    const captura = capturarSaida();
+    const raiz = await mkdtemp(join(tmpdir(), "codingpro-chat-prog-"));
+    try {
+      const provider = providerRoteirizado([
+        [
+          { text: "olá do chat", type: "text-delta" },
+          {
+            message: { content: "olá do chat", role: "assistant" },
+            reason: "stop",
+            type: "finish",
+          },
+        ],
+      ]);
+      const io = {
+        pergunta: async () => "n",
+        progresso: (t: string) => captura.io.stderr(t),
+        proximaMensagem: (() => {
+          const fila = ["oi", undefined] as const;
+          let i = 0;
+          return async () => fila[i++];
+        })(),
+        saida: (t: string) => captura.io.stdout(t),
+      };
+
+      await expect(
+        executarCli(["--chat"], captura.io, {
+          criarChatIo: () => io,
+          criarProvider: () => provider,
+          raizProjeto: raiz,
+        }),
+      ).resolves.toBe(0);
+      expect(captura.stdout.join("")).toContain("olá do chat");
+    } finally {
+      await rm(raiz, { force: true, recursive: true });
+    }
+  });
+
+  it("recusa --chat sem terminal interativo", async () => {
+    const captura = capturarSaida();
+    await expect(
+      executarCli(["--chat"], captura.io, { criarProvider: () => providerRoteirizado([]) }),
+    ).resolves.toBe(1);
+    expect(captura.stderr.join("")).toContain("terminal interativo");
+  });
+
+  it("repassa contexto, sessões e provider ao chat", async () => {
+    const captura = capturarSaida();
+    const raiz = await mkdtemp(join(tmpdir(), "codingpro-chat-cfg-"));
+    try {
+      const provider = providerRoteirizado([
+        [{ message: { content: "ok", role: "assistant" }, reason: "stop", type: "finish" }],
+      ]);
+      const io = {
+        pergunta: async () => "n",
+        progresso: (t: string) => captura.io.stderr(t),
+        proximaMensagem: (() => {
+          const fila = ["oi", undefined] as const;
+          let i = 0;
+          return async () => fila[i++];
+        })(),
+        saida: (t: string) => captura.io.stdout(t),
+      };
+      await expect(
+        executarCli(["--chat", "--max-contexto", "50", "--provider", "replay"], captura.io, {
+          criarChatIo: () => io,
+          criarProvider: () => provider,
+          raizProjeto: raiz,
+          raizSessoes: join(raiz, "sessoes"),
+        }),
+      ).resolves.toBe(0);
+    } finally {
+      await rm(raiz, { force: true, recursive: true });
+    }
+  });
+
+  it("repassa contexto e sessões ao agente com --continuar", async () => {
+    const captura = capturarSaida();
+    const raiz = await mkdtemp(join(tmpdir(), "codingpro-ag-cfg-"));
+    try {
+      const provider = providerRoteirizado([
+        [
+          { text: "resp", type: "text-delta" },
+          { message: { content: "resp", role: "assistant" }, reason: "stop", type: "finish" },
+        ],
+      ]);
+      await expect(
+        executarCli(["--agente", "--continuar", "--max-contexto", "50", "-p", "oi"], captura.io, {
+          criarProvider: () => provider,
+          raizProjeto: raiz,
+          raizSessoes: join(raiz, "sessoes"),
+        }),
+      ).resolves.toBe(0);
+      expect(captura.stderr.join("")).toContain("Sessão:");
+    } finally {
+      await rm(raiz, { force: true, recursive: true });
+    }
+  });
+
   it("rejeita --max-contexto não inteiro como erro de uso", async () => {
     const captura = capturarSaida();
     await expect(

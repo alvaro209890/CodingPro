@@ -1,4 +1,4 @@
-import type { ToolResult } from "@codingpro/llm";
+import type { JsonObject, ToolResult } from "@codingpro/llm";
 import type { ToolContext, ToolSideEffect } from "./tool.js";
 
 /** Modos de permissão do produto. Padrão após checkpoint = `allowlist`. */
@@ -11,6 +11,8 @@ export type PermissionDecision = "allow" | "ask" | "deny";
 export type Approval = "approve-always" | "approve-once" | "deny";
 
 export interface PermissionRequest {
+  /** Argumentos da chamada (não validados) — só para exibir o que será aprovado. */
+  readonly input?: JsonObject;
   readonly sideEffect: ToolSideEffect;
   readonly toolName: string;
 }

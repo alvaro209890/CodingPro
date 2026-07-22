@@ -3,6 +3,7 @@ import { Command, CommanderError, type Help, Option } from "commander";
 import { ProviderError, type Provider } from "@codingpro/llm";
 import packageJson from "../package.json" with { type: "json" };
 import { executarAgenteHeadless } from "./agent-runtime.js";
+import { type ChatIo, executarChat } from "./chat-runtime.js";
 import { ConfigError, type ProviderOverrides } from "./config.js";
 import { executarPromptHeadless } from "./headless.js";
 import { mensagens } from "./i18n/pt-BR.js";
@@ -13,6 +14,8 @@ export interface CliIo {
 }
 
 export interface CliServices {
+  /** IO interativo (readline) para o modo chat; ausente desabilita `--chat`. */
+  readonly criarChatIo?: () => ChatIo;
   readonly criarProvider: (overrides: ProviderOverrides) => Promise<Provider> | Provider;
   /** Raiz do projeto (cwd) para o modo agente sandboxar as ferramentas. */
   readonly raizProjeto?: string;
@@ -78,6 +81,7 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
     .description(mensagens.ajuda.descricao)
     .version(packageJson.version, "-v, --versao", mensagens.opcao.versao)
     .option("-p, --prompt <texto>", mensagens.opcao.prompt)
+    .option("--chat", mensagens.opcao.chat)
     .option("--agente", mensagens.opcao.agente)
     .option("--continuar", mensagens.opcao.continuar)
     .addOption(
@@ -107,6 +111,7 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
   programa.action(async () => {
     const options = programa.opts<{
       agente?: boolean;
+      chat?: boolean;
       continuar?: boolean;
       maxContexto?: number;
       prompt?: string;
@@ -114,6 +119,30 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
       replayFile?: string;
       resume?: string;
     }>();
+
+    if (options.chat === true) {
+      const criarChatIo = services.criarChatIo;
+      if (criarChatIo === undefined) {
+        throw new CliUsageError(mensagens.erro.chatIndisponivel);
+      }
+      services.signal?.throwIfAborted();
+      const provider = await services.criarProvider({
+        ...(options.provider === undefined ? {} : { provider: options.provider }),
+        ...(options.replayFile === undefined ? {} : { replayFile: options.replayFile }),
+      });
+      await executarChat(
+        {
+          cwd: services.raizProjeto ?? process.cwd(),
+          provider,
+          ...(options.maxContexto === undefined ? {} : { maxContexto: options.maxContexto }),
+          ...(services.raizSessoes === undefined ? {} : { sessaoDir: services.raizSessoes }),
+          ...(services.signal === undefined ? {} : { signal: services.signal }),
+        },
+        criarChatIo(),
+      );
+      return;
+    }
+
     const prompt = options.prompt;
     if (prompt === undefined) {
       programa.outputHelp();
