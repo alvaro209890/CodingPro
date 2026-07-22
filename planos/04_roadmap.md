@@ -32,9 +32,11 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 - [x] F0.2b: testes SSE sem rede + bundle autossuficiente + smoke real opt-in protegido — 2026-07-22
 - [x] Executar smoke real DeepSeek e fluxo completo `codingpro -p` com prompt sintético — 2026-07-22
 - [ ] Adicionar os demais pacotes quando tiverem responsabilidade real (`core|tui|tools|knowledge|memory|voice`)
-- [ ] Especificar os contratos internos restantes (eventos core↔UI e interface Tool) — ver doc 02
+- [ ] Especificar o contrato de eventos core↔UI; a interface Tool será fechada na F0.3 — ver doc 02
 - [x] F0.2c: config JSONC `~/.codingpro/settings.json` → `.codingpro/settings.json` → ambiente legado → flags — 2026-07-22
-- [ ] Rodar os spikes do doc 03
+- [ ] F0.3: tool calling multi-turno no DeepSeek V4 Pro/Flash, reasoning preservado e contrato Tool
+- [ ] Integrar roteamento automático Pro/Flash por papel, sem seleção de provider pelo usuário
+- [ ] Rodar os demais spikes do doc 03
 - [x] **Marco: `codingpro -p` responde via DeepSeek real (sem tools)** — 2026-07-22
 
 ## F1 — Loop agêntico mínimo (2 semanas)
@@ -83,7 +85,7 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 - [ ] Orquestrador: spawn N paralelos, coleta de relatórios, timeout/kill
 - [ ] Tarefas em background com notificação desktop ao concluir
 - [ ] Modo planejamento: subagente arquiteto (reasoning alto) → plano .md → aprovação → execução
-- [ ] Tipos de agente configuráveis (`.codingpro/agents/*.md`: modelo, prompt, tools)
+- [ ] Tipos de agente configuráveis (`.codingpro/agents/*.md`: perfil `auto|main|fast`, prompt, tools)
 - [ ] **Marco: "revise este diff com 3 revisores em paralelo e consolide" funcionando**
 
 ## F6 — Extensibilidade (2 semanas)
@@ -97,7 +99,7 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 
 - [ ] Captura de áudio push-to-talk na TUI → whisper.cpp → prompt
 - [ ] TTS Piper lendo resposta final (não o streaming), interrompível
-- [ ] Config de voz/modelo/dispositivo; totalmente opcional
+- [ ] Config de voz/modelo Whisper/dispositivo; totalmente opcional
 - [ ] **Marco: pedir uma tarefa por voz e ouvir o resumo do resultado, tudo offline**
 
 ## F8 — Personalidade e acabamento (1–2 semanas)

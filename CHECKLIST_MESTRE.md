@@ -21,12 +21,13 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [ ] Estudar a fundo `tool/edit.ts` do opencode e escolher Replacers da v1
 - [ ] Rodar o provider-vcr do Cline e decidir portar × imitar o design
 - [x] Chave DeepSeek p/ desenvolvimento definida; execução usa arquivo `0600` dedicado somente com `DEEPSEEK_API_KEY`, nunca o `.env` compartilhado — 2026-07-22
+- [x] Decisão de produto: único provider de LLM para código é DeepSeek, somente V4 Pro/Flash; replay fica restrito a testes — 2026-07-22
 
 ## Transversal — Economia de tokens & auto-effort *(doc 14)*
 
 - [ ] Layout de contexto cache-friendly especificado (prefixo estável, volátil no fim)
 - [x] Driver DeepSeek com capability flags (`thinking` on/off + effort high/max; sem `budget_tokens`) — F0.2b, 2026-07-22
-- [ ] Estratégia 2 modelos (Pro código / Flash mecânico) na config
+- [ ] Estratégia fixa de 2 modelos (Pro código / Flash mecânico) com roteamento interno
 - [ ] Auto-effort v1: heurísticas + roteador Flash + escalada por falha (sem escolha do usuário)
 - [ ] `/cost` com taxa de cache-hit + custo por turno/tarefa/subagente
 - [ ] Loop de qualidade: sintaxe→lint→testes→review antes do "pronto" (14.5)
@@ -57,11 +58,12 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] CI F0.2b bloqueante verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29947294481](https://github.com/alvaro209890/CodingPro/actions/runs/29947294481)) — 2026-07-22
 - [x] Smoke DeepSeek real e `codingpro -p` real aprovados com prompt sintético e credencial isolada — 2026-07-22
 - [ ] Adicionar os demais pacotes de domínio conforme entrarem em uso (`core`, `tools`, `tui`, `knowledge`, `memory`, `voice`)
-- [ ] Contratos restantes: eventos core↔UI e interface Tool
+- [ ] Contrato restante fora da F0.3: eventos core↔UI
 - [x] Contrato Provider v1: streaming de texto/raciocínio, finalização, uso e capabilities — 2026-07-22
 - [x] F0.2c: config JSONC global → projeto → ambiente legado → flags, fail-closed e sem segredos — 2026-07-22
 - [x] CI F0.2c verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29950272198](https://github.com/alvaro209890/CodingPro/actions/runs/29950272198)) — 2026-07-22
-- [ ] Spikes: Ink+streaming · DeepSeek tool calling · Ollama swap · node:sqlite FTS5 · tree-sitter WASM · whisper pt-BR · checkpoint git
+- [ ] F0.3: tool calling multi-turno com DeepSeek V4 Pro/Flash + reasoning preservado + contrato Tool
+- [ ] Spikes restantes da F0: Ink+streaming · node:sqlite FTS5 · tree-sitter WASM · checkpoint git
 - [x] 🏁 `codingpro -p` respondendo via DeepSeek real com prompt sintético — 2026-07-22
 
 ## F1 — Loop agêntico mínimo

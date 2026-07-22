@@ -8,15 +8,15 @@ Estes são comportamentos **confirmados na prática** (projetos acompanhamento/H
 |---|---|---|
 | `max_tokens` **inclui** os tokens de raciocínio | Resposta pode voltar com `content` vazio se o reasoning consumir tudo | Folga generosa de `max_tokens` + retry automático aumentando o limite quando `content` vier vazio |
 | `temperature` é ignorado em modelos reasoning | Ajustes de sampling não têm efeito | Não expor temperature como promessa; documentar |
-| API oficial **não tem visão** | Nada de screenshots/imagens no fluxo principal | Tools de imagem só quando provider suportar (capability flag por provider); fallback opcional configurável |
+| API oficial **não tem visão** | Nada de screenshots/imagens no fluxo principal | Entrada visual fica fora do escopo enquanto V4 Pro/Flash não oferecerem suporte oficial; sem fallback por outro provider |
 | Chaves 401 acontecem (rotação/expiração) | CLI "morre" de forma confusa | `codingpro doctor` testa a chave; erro 401 vira mensagem clara com passo-a-passo |
 | Latência de reasoning alto pode ser grande | UX de espera ruim | Streaming do reasoning como indicador de progresso; **esforço auto-adaptável por turno (doc 14.4)** decide quando pagar essa latência |
 | `reasoning_effort` só tem `off/high/max` de fato (`low/medium` viram `high`) | A API Anthropic-compat ignora `thinking.budget_tokens`; não há granularidade 4k/8k/16k/32k garantida | Modelar capabilities e usar somente thinking on/off + `high`/`max`; validar o comportamento real em eval opt-in |
 | Em thinking mode com tools, o `reasoning_content` intermediário **precisa voltar** nos turnos seguintes | Descartar = degradação silenciosa de qualidade | LLM Layer preserva reasoning_content no histórico por contrato (teste de replay dedicado) |
-| Modelos legados `deepseek-chat`/`reasoner` aposentam 2026-07-24 | Configs antigas quebram | Só `deepseek-v4-pro`/`v4-flash` no código; doctor avisa se config aponta p/ legado |
+| Modelos legados `deepseek-chat`/`reasoner` aposentam 2026-07-24 | Integrações antigas quebram | Allowlist interna fixa em `deepseek-v4-pro`/`deepseek-v4-flash`; config não aceita IDs de modelo |
 | Mudar 1 byte no meio do prompt invalida o cache de prefixo dali em diante | Perder o desconto de ~99% no input | Layout de contexto cache-friendly é regra de arquitetura (doc 14.3), com taxa de cache-hit monitorada em `/cost` |
 
-- [ ] Validar na F0: tool calling do DeepSeek V4 Pro em multi-turno longo (estabilidade do formato)
+- [ ] Validar na F0.3: tool calling do DeepSeek V4 Pro/Flash em multi-turno longo (estabilidade do formato)
 - [ ] Medir: custo médio por tarefa típica (definir tarefa-padrão de benchmark)
 
 ## 11.2 Janela de contexto em sessões longas

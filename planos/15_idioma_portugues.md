@@ -30,7 +30,7 @@ Texto em português tokeniza ~20–25% maior que inglês. Impacto real:
 - Módulo `packages/tui/src/i18n/` com **pt-BR como idioma canônico** (arquivo `pt-BR.ts` tipado; chaves derivam dele). Sem framework de i18n pesado — é um objeto tipado + helper `t()`.
 - Regra de lint: **nenhuma string literal visível ao usuário fora do i18n** (checável em CI por convenção de componente).
 - Preparado p/ outros idiomas no futuro (en.ts opcional), mas **sem investir nisso agora**.
-- Slash commands em português com **aliases em inglês** (quem vem de outras CLIs não se perde): `/ajuda` (=`/help`), `/custo` (=`/cost`), `/desfazer` (=`/undo`), `/plano` (=`/plan`), `/revisar` (=`/review`), `/memoria`, `/tarefas`, `/tema`, `/modelo`, `/voz`, `/iniciar` (=`/init`), `/sair`.
+- Slash commands em português com **aliases em inglês** (quem vem de outras CLIs não se perde): `/ajuda` (=`/help`), `/custo` (=`/cost`), `/desfazer` (=`/undo`), `/plano` (=`/plan`), `/revisar` (=`/review`), `/memoria`, `/tarefas`, `/tema`, `/voz`, `/iniciar` (=`/init`), `/sair`.
 - Números/datas em formato brasileiro (R$ não se aplica — custo em US$ mesmo, é o que a API cobra; exibir "US$ 0,0342").
 
 ## 15.4 Verbos de progresso (a "voz" da CLI)

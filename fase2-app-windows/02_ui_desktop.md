@@ -34,7 +34,7 @@ Mesma identidade da Fase 1 (doc `../planos/16`): gradiente esmeralda→ciano→v
 | **Aprovação de permissão** | Cards com botões (Permitir · Sempre · Negar · Negar e explicar) + preview do comando/arquivo; fila lateral quando subagentes pedem em paralelo |
 | **Barra lateral** | Sessões (retomar com 1 clique), projetos recentes, tarefas em background com progresso, memória navegável/editável |
 | **Painel de plano** | Modo planejamento vira documento lado a lado com checkboxes ao vivo durante a execução |
-| **Arrastar e soltar** | Arquivo/imagem no chat = anexar caminho/conteúdo (imagem só quando provider tiver visão — capability flag) |
+| **Arrastar e soltar** | Arquivo de texto no chat = anexar caminho/conteúdo; entrada de imagem fica fora do escopo enquanto V4 Pro/Flash não tiverem visão oficial |
 | **Terminal integrado** | Aba inferior opcional (xterm.js) — transparência total do que a IA executa |
 | **Paleta de comandos** | `Ctrl+K` estilo VS Code: toda ação do app pesquisável em pt-BR |
 | **Pet** | Canto da statusline, com animações discretas; conquistas viram toast |

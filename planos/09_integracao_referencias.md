@@ -42,7 +42,7 @@ Consequência: **nunca portar código GPL/AGPL/LGPL** (incompatível com fechado
 
 | Área | O que aproveitar |
 |---|---|
-| Provider-agnóstico | Config de múltiplos providers/modelos e troca a quente (`/model`) |
+| Isolamento da integração LLM | Separação entre runtime, transporte DeepSeek, capabilities, erros e sessões |
 | Sessões | Estrutura de armazenamento e retomada de sessões |
 | TUI | Padrões de layout/atalhos de chat no terminal |
 | Agentes | Separação agente primário vs subagentes com tools restritas |
@@ -58,7 +58,7 @@ Padrões a replicar por observação (sem código): permissões com allowlist in
 - [ ] Clonar os 3 repos de referência em `~/Documentos/CodingPro/referencias/` (gitignored no futuro repo da CLI)
 - [ ] Confirmar licenças exatas (LICENSE de cada um, na versão clonada) e registrar em `THIRD_PARTY_NOTICES.md`
 - [ ] Mapear no Cline: caminho dos arquivos de diff apply, queries tree-sitter, checkpoints (anotar aqui)
-- [ ] Mapear no sst/opencode: gestão de providers e sessões (anotar aqui)
+- [ ] Mapear no sst/opencode: middleware de transporte/erros/usage e gestão de sessões (anotar aqui)
 - [ ] Extrair do Aider a especificação do repo map (ler `repomap.py` e docs) para um spec .md próprio
 - [ ] Para cada porte de código: anotar origem (repo, commit, arquivo) no cabeçalho do arquivo portado
 

@@ -24,7 +24,10 @@ Fatos operacionais críticos:
 - Endpoint Anthropic-compat aceita `thinking`, mas a documentação oficial informa que `budget_tokens` é **ignorado**; em `output_config`, somente `effort` (`high`/`max`) é suportado. O Vertex envia budgets, mas isso não prova que o servidor os obedece. Fonte verificada em 2026-07-22: [DeepSeek — Anthropic API Compatibility](https://api-docs.deepseek.com/guides/anthropic_api).
 - `deepseek-chat`/`deepseek-reasoner` legados **aposentam em 2026-07-24** — usar só `deepseek-v4-pro`/`deepseek-v4-flash`.
 
-**Decisão de arquitetura:** a LLM Layer terá driver p/ os dois formatos e uma matriz de capabilities. O spike F0 decidirá o transporte preferido para DeepSeek com base em streaming, tools, `reasoning_content`, usage/cache e erros; não dependeremos de `budget_tokens`. O AI SDK continua candidato p/ providers OpenAI-compatíveis.
+**Decisão de arquitetura:** a LLM Layer usa somente a API oficial DeepSeek, com allowlist fechada
+em V4 Pro/Flash e transporte OpenAI-compatible pelo AI SDK. O contrato Provider isola o SDK e
+permite replay sintético nos testes; não é extensão para fornecedores alternativos. O F0.3 valida
+streaming, tools, `reasoning_content`, usage/cache e erros nos dois modelos, sem `budget_tokens`.
 
 ## 14.2 Estratégia de dois modelos (qualidade × custo)
 
@@ -33,7 +36,9 @@ Fatos operacionais críticos:
 | Codificação, arquiteto, revisor | **V4 Pro** | Qualidade máxima onde importa |
 | Roteador de esforço (14.4), subagente explorer, consolidador de memória, mensagens de commit, resumos/compactação, título de sessão | **V4 Flash** | Tarefas mecânicas ficam ~10× mais baratas sem perda perceptível |
 
-Config `models: {main, fast}` — o usuário troca o par, a CLI decide qual usa em cada função.
+Mapeamento interno fixo: `main = deepseek-v4-pro` e `fast = deepseek-v4-flash`. `auto` é o padrão
+e decide o papel; perfis avançados de agente podem fixar `main` ou `fast`, nunca fornecedor,
+endpoint ou ID de modelo arbitrário.
 
 ## 14.3 Economia de tokens (regras de engenharia, por prioridade)
 

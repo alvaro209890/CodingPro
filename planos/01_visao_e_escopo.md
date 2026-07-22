@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Uma CLI de código com IA que roda **inteiramente na máquina do usuário**: o único tráfego de rede da funcionalidade principal é a chamada à API do LLM (DeepSeek V4 Pro por padrão). Sem backend próprio, sem nuvem, sem telemetria obrigatória.
+Uma CLI de código com IA que roda **inteiramente na máquina do usuário**: o único tráfego de rede da funcionalidade principal é a chamada à API oficial DeepSeek, exclusivamente com V4 Pro ou V4 Flash. Sem backend ou nuvem próprios e sem telemetria obrigatória.
 
 O usuário abre o terminal dentro de um projeto, conversa em linguagem natural, e a CLI lê/edita arquivos, roda comandos, entende a arquitetura do projeto e executa tarefas de ponta a ponta — com permissões, undo e memória de longo prazo.
 
@@ -32,7 +32,10 @@ O usuário abre o terminal dentro de um projeto, conversa em linguagem natural, 
 ## Princípios de design
 
 1. **Local-first.** Todo estado (memória, sessões, config, índices) vive em arquivos locais (`~/.codingpro/` + `.codingpro/` no projeto). Funciona offline para tudo exceto a chamada ao LLM.
-2. **Agnóstico de modelo.** DeepSeek V4 Pro é o padrão, mas qualquer endpoint OpenAI-compatível serve (Ollama/llama.cpp local, Groq, OpenRouter, etc.). Trocar de modelo é editar config, não código.
+2. **DeepSeek exclusivo.** V4 Pro executa codificação, arquitetura e revisão; V4 Flash atende
+   roteamento e trabalho mecânico. A seleção é interna e automática, sem endpoints, fornecedores
+   ou IDs arbitrários na configuração. O contrato Provider permanece como fronteira interna de
+   isolamento e teste do adaptador DeepSeek.
 3. **Segurança por permissão.** Nenhuma escrita de arquivo ou comando shell sem passar pelo sistema de permissões (com modos: perguntar sempre / allowlist / autônomo).
 4. **Tudo é reversível.** Cada mudança em arquivo passa por checkpoint git; `undo` de um comando só.
 5. **Extensível sem fork.** Plugins via MCP (Model Context Protocol) + skills locais em Markdown + hooks de shell.
@@ -68,7 +71,8 @@ carregado. O valor nunca entra em docs/repo.
 
 ## Usuário-alvo
 
-Desenvolvedor que vive no terminal, quer autonomia da IA com controle fino, e prefere pagar só o custo de API (ou rodar modelo local) em vez de assinatura de ferramenta.
+Desenvolvedor que vive no terminal, quer autonomia da IA com controle fino e prefere pagar apenas
+o consumo da API DeepSeek em vez de uma assinatura fixa de ferramenta.
 
 ## Critério de sucesso da v1.0
 
@@ -77,4 +81,5 @@ Conseguir, num projeto real de porte médio (ex.: um dos projetos do Álvaro —
 - [ ] Resolver uma issue de ponta a ponta (entender → editar múltiplos arquivos → rodar testes → commitar) só com prompts
 - [ ] Sobreviver a sessões longas sem estourar contexto (compactação automática)
 - [ ] `undo` reverter qualquer mudança indesejada em < 2 s
-- [ ] Rodar com DeepSeek V4 Pro **e** com um modelo local (Ollama) sem mudar código
+- [ ] Rotear automaticamente entre DeepSeek V4 Pro e V4 Flash conforme o papel da tarefa, sem
+      provider, endpoint ou ID de modelo configurável

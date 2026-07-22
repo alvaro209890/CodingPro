@@ -100,7 +100,7 @@ rede ou credenciais nos testes comuns.
 
 ### Validação
 
-Consulte o roteiro [F0.2b](roteiros-qa/f0.2b-deepseek.md). Validação offline local com
+Consulte o roteiro [F0.2b](roteiros-qa/f0.2b-deepseek.md). Validação local sem rede com
 Node 24.18.0 e pnpm 10.34.4:
 
 - 70/70 testes aprovados;
@@ -169,5 +169,10 @@ CI final verde no Node 24.11/24.18 Linux e Node 24.18 macOS:
 
 ### Próximo incremento
 
-Executar o spike de troca para Ollama local pelo mesmo contrato Provider, mantendo a CLI offline
-quando esse provider for selecionado.
+Após a F0.2c, a decisão de produto foi fechada: o único provider de LLM para código será a API
+oficial DeepSeek, limitada a `deepseek-v4-pro` e `deepseek-v4-flash`. Outras formas de
+inferência e outros fornecedores saíram do plano. O provider `replay` permanece como harness
+sintético de testes, sem inferência nem rede.
+
+Executar o F0.3: tool calling multi-turno no V4 Pro e V4 Flash, preservar reasoning entre turnos
+e evoluir os contratos Provider/Tool. O roteamento automático Pro/Flash entra logo depois.

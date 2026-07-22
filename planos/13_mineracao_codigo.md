@@ -26,11 +26,15 @@ O Vertex é o wrapper Python + proxy FastAPI **Anthropic-compatível** que o Ál
 | **UX de setup em pt-BR** | `cli/setup_wizard.py`, `cli/process_registry.py`, `cli/session.py` | Inspiração direta p/ nosso wizard de onboarding (doc 08.5) |
 | **Instalador + auto-update** | repo `vertex-cli`: `scripts/install-vertex.sh`, checagem de GitHub Releases | Modelo p/ distribuição da F9 |
 
-⚠️ O `vendor/vertex-cli` dentro do repo Vertex é um runtime vendorizado de terceiros — **não é fonte de mineração**; o que reusamos é o código Python do wrapper/proxy, que é do Álvaro. Conclusão estratégica que o Vertex nos dá de graça: **o endpoint `api.deepseek.com/anthropic` funciona bem em produção** e dá controle fino de thinking — por isso ele é o driver preferido no doc 14.1.
+⚠️ O `vendor/vertex-cli` dentro do repo Vertex é um runtime vendorizado de terceiros — **não é
+fonte de mineração**; o que reusamos é o código Python do wrapper/proxy, que é do Álvaro. O
+endpoint Anthropic-compatible comprova os conceitos em produção, mas o CodingPro mantém o
+transporte OpenAI-compatible já implementado no F0.2b; reaproveitamos comportamento, não o wire format.
 
 ## 13.1 sst/opencode (MIT, TypeScript) — prioridade nº 1
 
-É uma CLI local agnóstica de modelo em TS — exatamente a nossa categoria. Caminhos verificados (base: `packages/opencode/src/`):
+É uma CLI local em TS com separação útil entre runtime e integração LLM. O CodingPro aproveita
+essa separação somente no adaptador DeepSeek. Caminhos verificados (base: `packages/opencode/src/`):
 
 | Área | Arquivos reais | O que fazer |
 |---|---|---|
@@ -40,7 +44,7 @@ O Vertex é o wrapper Python + proxy FastAPI **Anthropic-compatível** que o Ál
 | **Checkpoints/undo** | `snapshot/index.ts` (807) + `session/revert.ts` | Portar: snapshots git p/ undo — bate com nosso doc 07.2 |
 | **Permissões** | `permission/*` + `agent/subagent-permissions.ts` | Portar avaliação de padrões de allowlist + herança de permissões em subagentes |
 | **Agentes/subagentes** | `agent/agent.ts`, `tool/task.ts`, `background/` | Referência direta p/ nosso orquestrador (doc 05.3/5.4) |
-| **Providers** | `provider/provider.ts`, `transform.ts`, `auth.ts` | Referência p/ capability flags e normalização entre providers |
+| **Integração LLM** | `provider/provider.ts`, `transform.ts`, `auth.ts` | Referência p/ capability flags, transforms, erros e usage dentro do adaptador DeepSeek |
 | **Skills / MCP / worktree** | `skill/discovery.ts`, `mcp/`, `worktree/` | Referência p/ F6 e isolamento por worktree |
 | **LSP (bônus não planejado)** | `lsp/` | Avaliar na F3: diagnósticos de LSP pós-edição são alternativa/complemento ao check de sintaxe tree-sitter |
 
@@ -53,7 +57,7 @@ O repo virou monorepo com SDK em 2026; a estrutura antiga (`src/core/assistant-m
 | Área | Arquivos reais | O que fazer |
 |---|---|---|
 | **Harness record/replay de LLM** | `sdk/packages/llms/src/tests/provider-vcr/` | **PORTAR/estudar.** É exatamente o provider `replay` do nosso plano de testes (doc 10.2), já resolvido |
-| **Camada de providers** | `sdk/packages/llms/src/providers/{vendors,middleware,routing}/` | Referência de arquitetura p/ nossa `packages/llm` (middleware de retry/custo) |
+| **Middleware LLM** | `sdk/packages/llms/src/providers/{vendors,middleware,routing}/` | Referência de arquitetura p/ retry/custo no adaptador DeepSeek |
 | **Runtime de agente** | `sdk/packages/core/src/runtime/{orchestration,tools,safety,capabilities}/` | Estudar: separação orquestração × execução de tools × trilhos de segurança |
 | **Checkpoints** | `sdk/packages/core/src/session/checkpoint-diff.ts` | Comparar com o snapshot do opencode; escolher a melhor mecânica |
 | **Hooks & cron** | `sdk/packages/core/src/{hooks,cron}/` | Referência p/ nossos hooks (F6) |

@@ -18,7 +18,7 @@ Layout base:
 └──────────────────────────────────────────────┘
 ```
 
-- Slash commands com autocomplete, **em português com alias em inglês** (doc 15.3): `/plano`, `/desfazer`, `/revisar`, `/memoria`, `/tarefas`, `/iniciar`, `/modelo`, `/voz`, `/tema`, `/custo`, `/ajuda`…
+- Slash commands com autocomplete, **em português com alias em inglês** (doc 15.3): `/plano`, `/desfazer`, `/revisar`, `/memoria`, `/tarefas`, `/iniciar`, `/voz`, `/tema`, `/custo`, `/ajuda`…
 - Atalhos: `Esc` interrompe, `Shift+Tab` cicla modos (normal/plan/auto), `Ctrl+R` histórico.
 - Modo headless: `codingpro -p "prompt"` (stdout puro, `--output-format json` para scripts) — essencial p/ testes e automação.
 - Statusline configurável (comando do usuário, como no settings do Claude Code).
@@ -36,9 +36,9 @@ Fluxo push-to-talk (não é wake-word, sem escuta contínua):
 
 Decisões:
 - Voz é 100% opcional e lazy: binários/modelos baixados só no primeiro uso (`codingpro voice setup`).
-- Reuso direto da experiência do Ares (Piper pt-BR já validado pelo Álvaro; Groq STT fica como fallback opcional de config, não padrão, para manter o "local puro").
+- Reuso direto da experiência do Ares (Piper pt-BR já validado pelo Álvaro); voz não adiciona outro provider de IA em nuvem.
 
-- [ ] Escolher modelo whisper padrão (latência × acurácia pt-BR) no spike da F0
+- [ ] Escolher modelo whisper padrão (latência × acurácia pt-BR) no spike do release 1.1
 - [ ] Resumo falável: TTS lê um resumo curto gerado, não a resposta técnica inteira
 
 ## 8.3 Gamificação — pet virtual ("Buddy" local)
@@ -67,6 +67,6 @@ Commits feitos pela CLI, por padrão, levam trailer `Co-Authored-By: CodingPro <
 
 ## 8.5 Onboarding
 
-- `codingpro` primeira vez: wizard curto — chave da API (ou detectar Ollama), modo de permissão, tema, pet on/off.
+- `codingpro` primeira vez: wizard curto — chave da API DeepSeek, modo de permissão, tema, pet on/off.
 - `codingpro doctor`: diagnóstico do ambiente (node, git, ripgrep, chave válida, latência da API, binários de voz).
 - [ ] Roteiro do wizard e mensagens de erro amigáveis para chave inválida/sem rede

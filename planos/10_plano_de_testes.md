@@ -40,7 +40,7 @@ adicionada depois de existir sanitização de segredos testada.
 
 ### 3. E2E em repos descartáveis — roda no CI diário
 
-Repos git sintéticos criados no setup (Node, Python, monorepo) + binário real da CLI em modo headless com provider replay (ou modelo local barato no CI da casa).
+Repos git sintéticos criados no setup (Node, Python, monorepo) + binário real da CLI em modo headless sempre com replay sintético. Nenhum modelo executa no CI comum.
 
 - [x] `codingpro -p` transmite resposta replay e sai com código correto no tarball instalado — 2026-07-22
 - [ ] Undo restaura árvore byte a byte (incl. staging sujo do usuário)
@@ -52,8 +52,8 @@ Repos git sintéticos criados no setup (Node, Python, monorepo) + binário real 
 
 Custa dinheiro; mede **qualidade**, não correção de código nosso.
 
-- [ ] Smoke sintético `deepseek-v4-pro`, manual e bloqueado no CI
-- [ ] Mini-benchmark de edição (estilo Aider polyglot, ~20 exercícios): % de tarefas com testes passando por modelo (DeepSeek V4 Pro vs local)
+- [ ] Smoke sintético `deepseek-v4-pro` e `deepseek-v4-flash`, manual e bloqueado no CI
+- [ ] Mini-benchmark de edição (estilo Aider polyglot, ~20 exercícios): roteamento Pro/Flash automático versus Pro fixo
 - [ ] Eval de retrieval de memória: dado histórico plantado, a memória certa entra no contexto?
 - [ ] Eval do consolidador: sessões sintéticas → fatos extraídos corretos, sem duplicatas
 - [ ] Relatório com custo por eval e regressão vs baseline anterior

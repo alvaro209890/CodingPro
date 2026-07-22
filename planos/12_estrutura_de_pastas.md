@@ -30,7 +30,7 @@ codingpro/
 │   ├── llm/                     # camada de providers
 │   │   └── src/
 │   │       ├── provider.ts      # interface Provider + capability flags
-│   │       ├── providers/       # deepseek, ollama, openai-compat genérico, replay
+│   │       ├── providers/       # deepseek (Pro/Flash) + replay sintético de testes
 │   │       └── tokens.ts        # contagem/orçamento/custo
 │   │
 │   ├── tools/                   # tools nativas

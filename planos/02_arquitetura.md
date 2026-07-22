@@ -29,10 +29,11 @@ flowchart TB
     end
 
     subgraph BRAIN["LLM Layer (packages/llm)"]
-        PROV["Abstração de provider<br/>(OpenAI-compatível)"]
-        DS["DeepSeek V4 Pro (padrão)"]
-        LOCAL["Ollama / llama.cpp"]
-        OUTROS["Groq / OpenRouter / etc."]
+        CONTRACT["Contrato Provider interno"]
+        DS["DeepSeekProvider<br/>(produção)"]
+        PRO["DeepSeek V4 Pro<br/>(main)"]
+        FLASH["DeepSeek V4 Flash<br/>(fast)"]
+        REPLAY["ReplayProvider<br/>(somente testes)"]
     end
 
     subgraph KNOW["Conhecimento local"]
@@ -45,7 +46,8 @@ flowchart TB
     CORE --> TOOLS
     CORE --> BRAIN
     CORE --> KNOW
-    PROV --> DS & LOCAL & OUTROS
+    CONTRACT --> DS & REPLAY
+    DS --> PRO & FLASH
     DREAM --> MEM
     REPOMAP --> LOOP
 ```
@@ -71,7 +73,7 @@ flowchart TB
 | **SQLite (`node:sqlite`) para índices/sessões + Markdown para memória legível** | SQLite = busca e metadados; Markdown = usuário pode ler/editar a memória na mão |
 | **Checkpoints via git (stash/ref oculta), não cópia de arquivos** | Barato, atômico, funciona em qualquer repo; projetos sem git ganham repo-sombra em `.codingpro/shadow-git` |
 | **Sem daemon obrigatório** | "Local puro" de verdade; jobs de background (consolidação de memória) rodam oportunisticamente ao fim de sessões ou via `codingpro maintenance` |
-| **DeepSeek atrás do contrato Provider** | AI SDK e protocolo OpenAI-compatible ficam confinados em `packages/llm`; a CLI não importa tipos do fornecedor |
+| **DeepSeek exclusivo atrás do contrato Provider** | V4 Pro/Flash são os únicos modelos LLM de código; AI SDK e protocolo OpenAI-compatible ficam confinados em `packages/llm`, enquanto replay valida o contrato sem rede |
 
 ## Adaptação local dos conceitos "de nuvem"
 

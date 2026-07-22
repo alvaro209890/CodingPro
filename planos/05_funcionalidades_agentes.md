@@ -38,10 +38,10 @@ Checklist de especificação:
 
 **Mecanismo:** o próprio binário relançado como child process (`codingpro --agent-mode`), conversando com o orquestrador por JSON-RPC sobre stdio.
 
-- Cada subagente tem: prompt de tarefa, tipo (define modelo/system prompt/tools permitidas), diretório de trabalho, limite de tokens/tempo.
+- Cada subagente tem: prompt de tarefa, tipo (define perfil `auto|main|fast`, system prompt e tools permitidas), diretório de trabalho, limite de tokens/tempo. Os perfis resolvem somente para DeepSeek V4 Pro/Flash.
 - Contexto **isolado**: o subagente não vê a conversa principal; recebe só o prompt; devolve um relatório final.
 - Tipos padrão de fábrica: `explorer` (só leitura, busca), `worker` (geral), `architect` (reasoning alto, só planeja), `reviewer` (só leitura, reporta achados).
-- Tipos custom: `.codingpro/agents/nome.md` com frontmatter (modelo, tools, prompt).
+- Tipos custom: `.codingpro/agents/nome.md` com frontmatter (perfil, tools, prompt), sem provider, endpoint ou ID de modelo arbitrário.
 - Paralelismo: orquestrador roda até N em paralelo (padrão 3) — casos de uso: revisão multi-perspectiva, exploração de codebase, comparação de abordagens.
 - Isolamento de arquivos opcional por **git worktree** temporário (subagente mexe numa cópia; merge só se aprovado).
 

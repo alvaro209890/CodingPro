@@ -42,7 +42,9 @@ A Fase 1 assume Linux/macOS (Windows via WSL). A Fase 2 paga essa dívida no cor
 ## Integração com a config existente
 
 - Mesmo formato `settings.json`/skills/memória da CLI — quem usa os dois compartilha tudo.
-- Provider: Fase 2 continua com chave direta (DeepSeek); quando a Fase 3 existir, o app ganha login e passa a usar o provider `codingpro-cloud` — **só troca de provider**, arquitetura já prevê.
+- LLM de código: permanece exclusivamente DeepSeek V4 Pro/Flash. A Fase 2 começa com acesso direto
+  por chave; quando a Fase 3 existir, o login apenas troca o transporte para o proxy autenticado
+  do CodingPro, sem criar outro provider ou liberar outros modelos.
 
 ## Checklist de especificação
 

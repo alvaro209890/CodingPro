@@ -28,9 +28,9 @@ Stack: **TypeScript + Node.js ≥ 24**, ESM puro, monorepo pnpm.
 
 | Item | Escolha | Justificativa |
 |---|---|---|
-| SDK | **Vercel AI SDK (`ai`)** + `@ai-sdk/openai-compatible` | Streaming + tool calling prontos, agnóstico de provider — DeepSeek, Ollama, Groq, OpenRouter todos OpenAI-compatíveis |
-| Provider padrão | DeepSeek V4 Pro (`https://api.deepseek.com`) | Endpoint oficial OpenAI-compatible; reasoning configurável; **gotchas conhecidas no doc 11** |
-| Modelos locais | Ollama (`localhost:11434/v1`) | Modo 100% offline |
+| SDK | **Vercel AI SDK (`ai`)** + `@ai-sdk/openai-compatible` | Transporte da API oficial DeepSeek, com streaming e tool calling; não implica suporte a outros providers |
+| Provider de LLM para código | DeepSeek (`https://api.deepseek.com`) | Único fornecedor; endpoint oficial fechado no adaptador e **gotchas conhecidas no doc 11** |
+| Modelos | `deepseek-v4-pro` (main) + `deepseek-v4-flash` (fast) | Allowlist fixa; a CLI roteia por papel, sem ID ou endpoint arbitrário na config |
 | Contagem de tokens | tokenizador aproximado (tiktoken/gpt-tokenizer) + usage real da API | Orçamento de contexto e custo por sessão |
 
 ## Tools e execução
@@ -51,7 +51,7 @@ Stack: **TypeScript + Node.js ≥ 24**, ESM puro, monorepo pnpm.
 | Parsing de código | **web-tree-sitter (WASM)** + gramáticas das linguagens-alvo | Repo map estilo Aider/Cline; WASM evita compilação nativa |
 | Banco local | `node:sqlite` (nativo do Node 24) | Zero dependência nativa externa; FTS5 para busca textual na memória |
 | Memória legível | Markdown com frontmatter YAML | Usuário lê/edita na mão; mesmo padrão que o Álvaro já usa |
-| Embeddings (opcional, F4+) | fastembed-js ou API de embeddings | Busca semântica na memória; começa só com FTS5 |
+| Retrieval de memória | SQLite FTS5 determinístico | Sem embeddings ou outro modelo; avaliar qualidade por métricas antes de ampliar escopo |
 
 ## Voz (doc 08)
 
@@ -77,9 +77,7 @@ Vitest (unit/integração) + fixtures de conversas gravadas (replay de LLM) + re
 ## Checklist de validação da stack (spikes antes da F1)
 
 - [ ] Spike: Ink 5 + Node 24 — chat com streaming renderizando sem flicker
-- [ ] Spike: AI SDK + DeepSeek — tool calling multi-turno funciona (incl. reasoning)
-- [ ] Spike: AI SDK + Ollama local — mesmo código, modelo trocado só por config
+- [ ] F0.3: AI SDK + DeepSeek V4 Pro/Flash — tool calling multi-turno funciona e preserva reasoning
 - [ ] Spike: `node:sqlite` + FTS5 disponível na versão do Node alvo
 - [ ] Spike: web-tree-sitter carregando gramáticas TS/JS/Python e extraindo símbolos
-- [ ] Spike: whisper.cpp transcrevendo pt-BR do microfone com latência aceitável (< 2 s p/ frase curta)
 - [ ] Spike: checkpoint git + undo em repo com mudanças não commitadas (não pode destruir staging do usuário)

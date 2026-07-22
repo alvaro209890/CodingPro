@@ -20,9 +20,9 @@ Pré-requisito: Fase 1 estável (Fase 2 pode andar em paralelo a partir do P2). 
 - [ ] Rate limit + concorrência por usuário
 - [ ] **Marco: CLI real completando tarefa via proxy com consumo gravado certo (conferido contra o painel DeepSeek)**
 
-## P2 — Provider na CLI + auth (1–2 semanas)
+## P2 — Acesso cloud na CLI + auth (1–2 semanas)
 
-- [ ] Provider `codingpro-cloud` na LLM Layer da Fase 1
+- [ ] Transporte autenticado via proxy na LLM Layer, preservando o provider DeepSeek e os modelos Pro/Flash
 - [ ] `codingpro login`/`logout` (device flow) + credentials 600
 - [ ] Tokens `cp_` (emissão, revogação, último uso)
 - [ ] Cadastro/login no site + verificação de e-mail + aprovação manual (status pendente)

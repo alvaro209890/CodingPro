@@ -1,6 +1,8 @@
 # 06 — Memória Persistente e Consolidação
 
-Objetivo: a CLI lembra do usuário, dos projetos e do feedback recebido **entre sessões**, tudo em arquivos locais legíveis, com um processo automático de consolidação (inspirado no conceito de otimização de memória em background, implementado 100% local).
+Objetivo: a CLI lembra do usuário, dos projetos e do feedback recebido **entre sessões**, tudo em
+arquivos locais legíveis. Estado e orquestração da consolidação são locais; a inferência usa
+exclusivamente DeepSeek V4 Flash.
 
 ## 6.1 Camadas de memória
 
@@ -39,14 +41,14 @@ Justificativa: formato idêntico ao que o Álvaro já usa com Claude Code/Hermes
 
 1. `MEMORY.md` global + do projeto entram sempre (são só índices de 1 linha por fato).
 2. No início do turno, busca FTS5 com termos do prompt + arquivos citados → top-K memórias completas (orçamento de tokens fixo, ex. 2k).
-3. Fase 2 (opcional): reranking por embeddings locais (fastembed) se FTS5 se mostrar fraco.
+3. Não há embeddings: melhorar consulta, ranking e métricas do FTS5 antes de ampliar o mecanismo.
 
 - [ ] Definir orçamento de tokens de memória e política de corte
 - [ ] Métrica simples de acerto de retrieval para os evals (doc 10)
 
 ## 6.5 Consolidador (o "sonho" da CLI)
 
-Job local que roda **ao fim da sessão** (ou via `codingpro maintenance`), usando modelo barato (DeepSeek V4 Flash ou local):
+Job local que roda **ao fim da sessão** (ou via `codingpro maintenance`), usando DeepSeek V4 Flash:
 
 1. **Extração:** varre a sessão encerrada e propõe fatos novos que o modelo esqueceu de salvar.
 2. **Deduplicação/merge:** encontra memórias sobrepostas (FTS5 + similaridade) e funde, preservando a mais recente como verdade.

@@ -5,7 +5,7 @@
 ```mermaid
 flowchart LR
     subgraph CLIENTES["Clientes"]
-        CLI["CLI (Fase 1)<br/>provider codingpro-cloud"]
+        CLI["CLI (Fase 1)<br/>DeepSeek via acesso cloud"]
         APP["App Windows (Fase 2)"]
         NAV["Navegador"]
     end
@@ -30,7 +30,7 @@ flowchart LR
 
 ## O coração: proxy LLM com medição
 
-Endpoint `POST /v1/chat` (formato Anthropic-compat, espelhando o que a LLM Layer da Fase 1 já fala):
+Endpoint `POST /v1/chat` (wire contract OpenAI-compatible, espelhando a LLM Layer da Fase 1):
 
 1. Autentica token do usuário (`cp_...`) → carrega limites/estado.
 2. **Pré-checagem:** limite estourado → `402` com mensagem clara em pt-BR (a CLI mostra bonito).
@@ -41,7 +41,9 @@ Endpoint `POST /v1/chat` (formato Anthropic-compat, espelhando o que a LLM Layer
 Decisões:
 
 - **Passthrough burro por design**: o backend NÃO guarda prompts/código dos usuários (privacidade + LGPD + disco); persiste só metadados de uso (tokens, modelo, timestamps, custo). Log de conteúdo é **opt-in de debug** com retenção curta e aviso.
-- A CLI continua funcionando com **chave própria do usuário** se ele preferir (provider `deepseek` direto) — a plataforma é opção, não prisão.
+- O proxy aceita somente `deepseek-v4-pro` e `deepseek-v4-flash`; qualquer outro ID é rejeitado.
+- A CLI continua funcionando com **chave própria do usuário** se ele preferir (acesso direto à
+  mesma API DeepSeek) — a plataforma muda somente autenticação e transporte.
 - Experiência prévia reaproveitada: o conceito é o mesmo do **Painel de Limites** que o Álvaro já operou com o Vertex (`LIMITS_PANEL_URL` + secret de agente) — agora feito produto.
 
 ## Site (Next.js)
@@ -55,7 +57,8 @@ Decisões:
 
 1. CLI abre `codingpro.cursar.space/device` no navegador com código curto (device flow simples).
 2. Usuário logado aprova → backend emite token `cp_...` (hash no banco, mostrado 1×).
-3. CLI grava em `~/.codingpro/credentials.json` (chmod 600) e ativa o provider `codingpro-cloud`.
+3. CLI grava em `~/.codingpro/credentials.json` (chmod 600) e ativa `access.mode = cloud`; o
+   provider permanece DeepSeek.
 4. `codingpro logout` revoga no servidor.
 
 ## Stack
@@ -70,7 +73,7 @@ Decisões:
 
 ## Checklist de especificação
 
-- [ ] Contrato OpenAPI do `/v1/chat` (espelho Anthropic-compat) + endpoints de conta
+- [ ] Contrato OpenAPI do `/v1/chat` (wire contract OpenAI-compatible) + endpoints de conta
 - [ ] Formato do erro de limite (`402`) que a CLI/app renderizam em pt-BR com "quanto falta e quando renova"
 - [ ] Política de privacidade e termos (pt-BR, LGPD: dados mínimos, sem retenção de prompts)
 - [ ] Decidir contagem: por tokens ou por custo US$ (recomendo **custo US$** — cache-hit barato vira incentivo natural)

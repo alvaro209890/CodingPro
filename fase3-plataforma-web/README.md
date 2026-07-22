@@ -14,7 +14,8 @@ Componentes:
 1. **Site** — landing + cadastro/login + dashboard do usuário (uso, limite, token de acesso da CLI).
 2. **API/Proxy LLM** — backend que autentica o usuário, repassa as chamadas ao DeepSeek com streaming, conta tokens e corta quando o limite acaba.
 3. **Painel admin (só o Álvaro)** — criar/bloquear usuários, definir limite individual, ver consumo em tempo real.
-4. **Provider `codingpro-cloud`** na CLI/app — o usuário faz `codingpro login` e pronto (a LLM Layer da Fase 1 já é plugável; é adicionar um provider).
+4. **Modo de acesso cloud** na CLI/app — `codingpro login` troca a autenticação e o transporte para
+   o proxy; o provider continua DeepSeek e a allowlist permanece V4 Pro/Flash.
 
 ## Infra decidida (diretriz do Álvaro)
 

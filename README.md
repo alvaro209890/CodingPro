@@ -1,6 +1,6 @@
 # CodingPro — Plano de Desenvolvimento
 
-> CLI de código assistida por IA com o **DeepSeek V4 Pro** como cérebro principal.
+> CLI de código assistida por IA com **DeepSeek V4 Pro e V4 Flash** como únicos modelos LLM de código.
 > Desenvolvimento iniciado pela fundação executável e offline da CLI.
 
 **Data do plano:** 2026-07-22
@@ -32,6 +32,10 @@ O artefato oferece os dois bins `codingpro` e `cpro`, ajuda/versão em pt-BR e o
 e sem rede; `deepseek` usa o modelo `deepseek-v4-pro` e exige `DEEPSEEK_API_KEY`.
 O arquivo dedicado do exemplo deve ter permissão `0600` e conter somente essa variável.
 
+O único provider de LLM para código planejado para produção é a API oficial DeepSeek. V4 Pro atende
+codificação, arquitetura e revisão; V4 Flash será integrado no próximo incremento para tarefas
+mecânicas e roteamento. `replay` é apenas infraestrutura determinística de testes, sem inferência.
+
 > **Privacidade:** ao selecionar `deepseek`, o prompt e qualquer conteúdo incluído nele são
 > enviados à API da DeepSeek. Os testes comuns nunca selecionam esse caminho nem carregam chaves.
 
@@ -56,7 +60,7 @@ Configuração global persistente:
 }
 ```
 
-Configuração de projeto, segura para versionar:
+Configuração de projeto para desenvolvimento/testes, segura para versionar:
 
 ```jsonc
 {
@@ -81,7 +85,7 @@ permanecer dentro dele e a fixture é lida em snapshot seguro. Consulte o
 
 | Fase | O quê | Planos | Status |
 |---|---|---|---|
-| **1** | **A CLI, 100% local e funcional** (o produto; nada de backend) | [`planos/`](planos/) — docs 01–16 | 🟠 em desenvolvimento (F0) |
+| **1** | **CLI executada localmente e funcional** (sem backend próprio; inferência via DeepSeek) | [`planos/`](planos/) — docs 01–16 | 🟠 em desenvolvimento (F0) |
 | **2** | **App Windows** (Electron, estilo Claude Code desktop; core da CLI reaproveitado) | [`fase2-app-windows/`](fase2-app-windows/) | 📋 planejada, aguarda F1 |
 | **3** | **Plataforma web**: site, contas, proxy LLM com **limites por usuário** (backend neste PC + Cloudflare Tunnel em `cursar.space`) | [`fase3-plataforma-web/`](fase3-plataforma-web/) | 📋 planejada, aguarda F1 |
 
@@ -98,7 +102,7 @@ O prompt original citava "código vazado do Claude Code". Este plano **não usa 
 |---|---|---|
 | [Cline](https://github.com/cline/cline) | Apache-2.0 | TypeScript — diff apply, tree-sitter, checkpoints |
 | [Aider](https://github.com/Aider-AI/aider) | Apache-2.0 | Conceitos — repo map, edit blocks, undo por git |
-| [OpenCode (sst)](https://github.com/sst/opencode) | MIT | TypeScript — TUI, sessões, provider-agnóstico |
+| [OpenCode (sst)](https://github.com/sst/opencode) | MIT | TypeScript — TUI, sessões e separação entre runtime e integração LLM |
 | Docs públicas do Claude Code | — | UX, permissões, skills/hooks, subagentes |
 | [Vertex](https://github.com/alvaro209890/Vertex) (repo do Álvaro) | próprio | Integração DeepSeek em produção — effort→budget, proxy Anthropic-compat |
 
