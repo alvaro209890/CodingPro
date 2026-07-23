@@ -203,6 +203,15 @@ export { TASK_MAX_TAREFAS, taskTool } from "./tools/task.js";
 export { WRITE_FILE_MAX_BYTES, writeFileTool } from "./tools/write-file.js";
 export { Workspace } from "./workspace.js";
 
+// Auto-effort (escolha automática Flash/Pro)
+export {
+  atualizarAutoEffort,
+  criarAutoEffortState,
+  prepararAutoEffort,
+  resolverAutoEffort,
+} from "./auto-effort.js";
+export type { AutoEffortState } from "./auto-effort.js";
+
 import { bashTool } from "./tools/bash.js";
 import { editFileTool } from "./tools/edit-file.js";
 import { grepTool } from "./tools/grep.js";

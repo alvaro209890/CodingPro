@@ -420,3 +420,28 @@ F6 — extensibilidade (cliente MCP stdio, skills .md com auto-sugestão, hooks 
 
 Fechar a Fase 1: hardening dedicado + evals no CI; polimento cosmético F8 (Ink/temas/pet) é pós-1.0 e
 não bloqueia a Fase 2. Depois, iniciar a Fase 2 (app Windows) reusando o núcleo.
+
+## 2026-07-23 (sessão 2) — Revisão, correções e auto-effort
+
+### Entregue
+
+- **Revisão profunda de código**: 24 issues encontradas por subagente composer (1 crítico, 8 altos,
+  10 médios, 5 baixos). Nenhuma de path traversal — as defesas do `Workspace` são sólidas.
+- **7 bugs corrigidos**: race condition no transcrito do agente (C-01), memory leaks no bash/MCP/hooks
+  (A-01, A-05), race condition pós-settle no bash (A-02), hook stdin.end() travando (A-03),
+  colisão de IDs MCP (A-04), schema MCP sem validação (A-07).
+- **Auto-effort v1**: módulo `packages/core/src/auto-effort.ts` com `resolverAutoEffort` que escolhe
+  Flash (tarefas simples/contexto pequeno) vs Pro (edição, contexto grande, falha). Escala
+  automaticamente — usuário nunca escolhe. 12 testes.
+- **Integração no chat-runtime**: auto-effort ativo a cada turno, com indicador "Flash"/"Pro" no
+  progresso.
+- **Loop de qualidade**: após cada turno com `write_file`/`edit_file`, biome check nos arquivos
+  afetados com feedback "✓ limpo" ou "✗ N problema(s)".
+- **Comandos em português** com aliases EN: `/desfazer`=/undo, `/refazer`=/redo, `/plano`=/plan,
+  `/mapa`=/map, `/lembrar`=/remember, `/sair`=/exit.
+- **Documentação atualizada**: CHECKLIST_MESTRE.md, READMEs das Fases 2/3, CODINGPRO.md.
+- **CI verde**: 615 testes (54 arquivos), typecheck, build e smoke de pacote passando.
+
+### Próximo
+
+Polimento restante (visual Aurora, i18n completo, evals) é pós-1.0. Iniciar Fase 2 (app Windows).

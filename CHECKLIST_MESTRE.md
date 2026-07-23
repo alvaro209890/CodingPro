@@ -29,7 +29,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] Driver DeepSeek com capability flags (`thinking` on/off + effort high/max; sem `budget_tokens`) — F0.2b, 2026-07-22
 - [x] Estratégia fixa de 2 modelos (Pro código / Flash mecânico) com roteamento interno — F0.4, 2026-07-22
 - [ ] Auto-effort v1: heurísticas + roteador Flash + escalada por falha (sem escolha do usuário)
-- [ ] `/cost` com taxa de cache-hit + custo por turno/tarefa/subagente
+- [x] `/cost` com taxa de cache-hit + custo por turno/tarefa/subagente — `formatCost` já inclui cache %; `/custo` no chat
 - [ ] Loop de qualidade: sintaxe→lint→testes→review antes do "pronto" (14.5)
 - [ ] Evals: cache-hit >70% em sessão típica; auto-effort ≤60% do custo de fixo-high
 

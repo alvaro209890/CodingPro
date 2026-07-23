@@ -2,11 +2,14 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   ALL_TOOLS,
+  atualizarAutoEffort,
+  type AutoEffortState,
   type CheckpointMeta,
   CheckpointStore,
   blocoSkill,
   construirRepoMap,
   createReadTracker,
+  criarAutoEffortState,
   criarHookRunner,
   diretrizAtribuicao,
   describeAgentEvent,
@@ -17,7 +20,9 @@ import {
   MEMORY_TOOL_NAMES,
   newSessionId,
   PermissionController,
+  prepararAutoEffort,
   readFileWithin,
+  resolverAutoEffort,
   resumoProjeto,
   rodarHooksStop,
   runAgent,
@@ -33,7 +38,13 @@ import {
   WRITE_FILE_MAX_BYTES,
   writeFileWithin,
 } from "@codingpro/core";
-import { type ChatMessage, type CostBreakdown, formatCost, type Provider } from "@codingpro/llm";
+import {
+  DeepSeekProvider,
+  type ChatMessage,
+  type CostBreakdown,
+  formatCost,
+  type Provider,
+} from "@codingpro/llm";
 import { sanitizarTextoTerminal } from "./headless.js";
 import { criarAprovadorInterativo } from "./interactive.js";
 import { carregarAtribuicao } from "./attribution-runtime.js";
@@ -67,14 +78,15 @@ export interface ChatOptions {
 }
 
 const AJUDA =
-  "Comandos: /sair encerra · /custo mostra o custo do último turno · /limpar esquece o histórico · " +
-  "/undo [N] desfaz as últimas edições · /redo [N] refaz · /checkpoint lista a linha do tempo · " +
-  "/mapa mostra o repo map do projeto · /lembrar <fato> salva na memória · " +
+  "Comandos: /sair | /exit encerra · /custo mostra o custo do último turno · /limpar esquece o histórico · " +
+  "/undo | /desfazer [N] desfaz as últimas edições · /redo | /refazer [N] refaz · /checkpoint lista a linha do tempo · " +
+  "/mapa | /map mostra o repo map do projeto · /lembrar | /remember <fato> salva na memória · " +
   "/memory [list|forget <slug>|edit <slug>] gerencia a memória · " +
-  "/plan <objetivo> gera um plano (subagente arquiteto) · " +
+  "/plan | /plano <objetivo> gera um plano (subagente arquiteto) · " +
   "/review [alvo] revisa o diff (subagente revisor) · " +
   "/skills lista skills · /skill <nome> ativa uma skill · " +
-  "/init gera CODINGPRO.md com o projeto detectado\n";
+  "/init gera CODINGPRO.md com o projeto detectado · " +
+  "/ajuda mostra esta mensagem\n";
 
 /** Revisa o diff (não commitado, ou `git diff <alvo>`) com o subagente revisor. */
 async function comandoReview(
@@ -296,6 +308,8 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
 
   let transcrito: ChatMessage[] = [];
   let ultimoCusto: CostBreakdown | undefined;
+  // Estado do auto-effort: decide automaticamente Flash/Pro a cada turno.
+  const autoEffort: AutoEffortState = criarAutoEffortState();
 
   io.progresso("CodingPro — chat do agente.\n");
   io.progresso(`Projeto: ${resumoProjeto(await detectarProjeto(workspace))}\n`);
@@ -368,7 +382,12 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       }
       continue;
     }
-    if (mensagem === "/undo" || mensagem.startsWith("/undo ")) {
+    if (
+      mensagem === "/undo" ||
+      mensagem === "/desfazer" ||
+      mensagem.startsWith("/undo ") ||
+      mensagem.startsWith("/desfazer ")
+    ) {
       const r = await checkpoints.undo(parseQuantidade(mensagem));
       if (r.passos === 0) {
         io.progresso("· nada a desfazer\n");
@@ -379,7 +398,12 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       }
       continue;
     }
-    if (mensagem === "/redo" || mensagem.startsWith("/redo ")) {
+    if (
+      mensagem === "/redo" ||
+      mensagem === "/refazer" ||
+      mensagem.startsWith("/redo ") ||
+      mensagem.startsWith("/refazer ")
+    ) {
       const r = await checkpoints.redo(parseQuantidade(mensagem));
       if (r.passos === 0) {
         io.progresso("· nada a refazer\n");
@@ -425,7 +449,28 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       ...semSystem,
       { content: mensagem, role: "user" },
     ];
+
+    // Auto-effort: estima contexto, decide Flash/Pro, cria provider adequado.
+    const tokensContexto = Math.round(JSON.stringify(entrada).length / 2);
+    prepararAutoEffort(
+      autoEffort,
+      tokensContexto,
+      Array.from(registry.definitions(), (t) => t.name),
+    );
+    const papel = resolverAutoEffort(autoEffort);
+    const modeloNome = papel === "fast" ? "Flash" : "Pro";
+    let providerTurno: Provider = options.provider;
+    if (options.provider.id === "deepseek" && papel === "fast") {
+      const apiKey = process.env.DEEPSEEK_API_KEY;
+      if (apiKey !== undefined && apiKey.trim().length > 0) {
+        providerTurno = new DeepSeekProvider({ apiKey, role: "fast" });
+      }
+    }
+    io.progresso(`· ${modeloNome}\n`);
+
     let respondeu = false;
+    let houveErro = false;
+    const arquivosEfeito: string[] = [];
     const result = await runAgent({
       context: {
         checkpoints,
@@ -443,12 +488,21 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
           io.saida(sanitizarTextoTerminal(event.text));
           return;
         }
+        if (event.type === "tool-call") {
+          const path = (event.call.input as { path?: string }).path;
+          if (
+            path !== undefined &&
+            (event.call.name === "write_file" || event.call.name === "edit_file")
+          ) {
+            arquivosEfeito.push(path);
+          }
+        }
         const progresso = describeAgentEvent(event);
         if (progresso !== undefined) {
           io.progresso(`· ${sanitizarTextoTerminal(progresso)}\n`);
         }
       },
-      provider: options.provider,
+      provider: providerTurno,
       tools: registry.definitions(),
       ...(options.maxContexto === undefined ? {} : { contextBudget: options.maxContexto }),
       ...(options.signal === undefined ? {} : { signal: options.signal }),
@@ -457,6 +511,49 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
     if (respondeu) {
       io.saida("\n");
     }
+
+    // Atualiza auto-effort: detecta retry/erro nas mensagens de resultado.
+    const houveRetry = result.messages.some(
+      (m) => m.role === "tool" && m.result.type === "error-text",
+    );
+    atualizarAutoEffort(autoEffort, houveErro || houveRetry);
+
+    // Loop de qualidade: verifica arquivos editados/escritos com biome (se disponível).
+    if (arquivosEfeito.length > 0) {
+      io.progresso("· verificando…");
+      try {
+        const { execSync } = await import("node:child_process");
+        let saida = "";
+        try {
+          saida = execSync(`pnpm biome check ${arquivosEfeito.join(" ")}`, {
+            cwd: workspace.root,
+            encoding: "utf8",
+            stdio: "pipe",
+          });
+        } catch (e) {
+          saida =
+            (e as { stdout?: string; stderr?: string }).stdout ??
+            (e as { message?: string }).message ??
+            "";
+        }
+        const problemas =
+          saida.trim().length > 0
+            ? saida
+                .trim()
+                .split("\n")
+                .filter((l) => l.length > 0).length
+            : 0;
+        if (problemas > 0) {
+          io.progresso(` ✗ ${problemas} problema(s)\n`);
+          io.progresso(`${saida.trim()}\n`);
+        } else {
+          io.progresso(" ✓ limpo\n");
+        }
+      } catch {
+        // biome não disponível — non-blocking
+      }
+    }
+
     // Fecha o passo: se o turno escreveu algo, vira um checkpoint desfazível.
     const checkpoint = await checkpoints.commit();
     if (checkpoint !== undefined) {
