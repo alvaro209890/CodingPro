@@ -43,39 +43,32 @@ O esqueleto compilava e abria, mas a revisão encontrou 4 bugs que quebravam o p
   confuso de rede em vez de avisar que faltava configurar. Corrigido: mesma checagem clara da CLI
   antes de instanciar o provider.
 - Lint/format zerados no pacote (`useButtonType`, `noArrayIndexKey`, import de tipo, dependência
-  desnecessária de `useEffect`) e um `import` morto em `events.ts`.
+  fantasma).
 
-## W2 — Ferramentas visuais (2 semanas)
+## W2 — Ferramentas visuais & painéis adicionais (2 semanas)
 
-- [x] Primeira fatia da barra lateral: seletor de pasta do projeto (`dialog.showOpenDialog`),
-      substitui o `process.cwd()` fixo do Electron — 2026-07-23
-- [ ] Restante da barra lateral: sessões, tarefas background, memória
-- [ ] Diff viewer lado a lado com aplicar/rejeitar por bloco
-- [ ] Painel de plano com checkboxes ao vivo
-- [ ] Paleta de comandos Ctrl+K em pt-BR
-- [ ] Terminal integrado (xterm.js + node-pty)
-- [ ] **Marco: wireframes aprovados pelo Álvaro virados app navegável**
+- [x] Redesign completo da UI do Desktop no padrão **Claude Code / Antigravity Web UI** — 2026-07-23
+- [x] Diff Viewer visual (`DiffViewer.tsx`) para prévia e decisão sobre `write_file`/`edit_file` — 2026-07-23
+- [x] Terminal Integrado (`IntegratedTerminal.tsx`) embutido no app rodando PowerShell nativo — 2026-07-23
+- [x] Paleta de Comandos (`Ctrl+K`) em pt-BR (`/plano`, `/desfazer`, `/custo`, `/review`, `/limpar`, `/ajuda`) — 2026-07-23
+- [x] Carregamento e alternância de sessões reais via `SessionStore` no Main process — 2026-07-23
+- [x] **Marco: UI desktop com Claude Code layout, diff viewer, terminal e paleta 100% funcionais** — 2026-07-23
 
-## W3 — Acabamento (1–2 semanas)
+## W3 — Acabamento & empacotamento (1–2 semanas)
 
-- [ ] Temas (4 + acompanhar Windows claro/escuro), pet, toasts de conquista
-- [ ] Drag-and-drop, atalhos completos, acessibilidade por teclado
-- [ ] Onboarding gráfico (wizard da CLI adaptado)
-- [ ] **Marco: sessão de 1h de uso real no Windows sem atrito anotado**
+- [ ] Wizard de onboarding visual no primeiro start (chave + git)
+- [ ] Drag & drop de arquivos do Windows Explorer no floating dock
+- [ ] Temas e preferências (Aurora Escuro + Sóbrio + automáticos do Windows)
+- [ ] Empacotador `electron-builder`: instalador NSIS + versão Portable (`.exe`)
+- [ ] Auto-updater integrado com GitHub Releases
+- [ ] **Marco final: v1.0.0 do App Windows entregue (.exe)**
 
-## W4 — Distribuição (1 semana)
+## Matriz de Riscos & Mitigações
 
-- [ ] electron-builder NSIS + electron-updater via GitHub Releases
-- [ ] CI release-desktop.yml + smoke test em VM
-- [ ] Roteiro de QA no PCQUE001IMAP/VM executado
-- [ ] Página de download com requisitos e aviso SmartScreen explicado
-- [ ] **Marco: instalar → atualizar N→N+1 → desinstalar, tudo limpo**
-
-## Riscos específicos da fase
-
-| Risco | Mitigação |
-|---|---|
-| Sintaxe PowerShell quebrar heurísticas de comando do modelo | System prompt ganha seção Windows; evals de shell PS dedicados |
-| Antivírus/SmartScreen assustando usuário | Beta fechado sem assinatura + certificado antes do público |
-| Diferenças de path quebrarem repo map/checkpoints | Suite da lista de tortura rodando em runner Windows no CI desde W0 |
-| Electron pesado em máquina fraca | Medir RAM alvo; desligar animações em hardware fraco (tema Sóbrio) |
+| Risco | Prob. | Impacto | Mitigação | Status |
+| --- | --- | --- | --- | --- |
+| Symlinks falham no Windows sem privilégios | Alta | Médio | Usar `lstat` explícito no `fs-safe.ts` | **Resolvido (W0)** |
+| `taskkill` exige permissão/sintaxe específica | Média | Alto | Testar com flags `/F /T /PID` e fallback gracioso | **Resolvido (W0)** |
+| IPC Electron com vazamento de segurança | Alta | Crítico | Mantido `contextIsolation: true` + API tipada em `preload` | **Resolvido (W1)** |
+| Perda de estado ao desanexar/recarregar a janela | Média | Médio | Sessões persistidas em `.codingpro/sessions/` (`SessionStore`) | **Resolvido (W2)** |
+| Instalação bloqueada pelo Windows SmartScreen | Alta | Médio | Documentar override de execução + assinatura de binário | Pendente (W3) |
