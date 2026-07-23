@@ -647,6 +647,54 @@ body {
   color: var(--text-muted);
 }
 
+/* Slash command suggestions (autocomplete dock) */
+.slash-suggestions {
+  position: absolute;
+  bottom: 100%;
+  left: 8px;
+  right: 8px;
+  margin-bottom: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--bg-elevated, #13141a);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.4);
+  z-index: 100;
+  padding: 4px;
+}
+
+.slash-suggestion-item {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 120ms;
+}
+
+.slash-suggestion-item:hover,
+.slash-suggestion-item.selected {
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.slash-suggestion-name {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--accent-blue);
+  min-width: 90px;
+  white-space: nowrap;
+}
+
+.slash-suggestion-desc {
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .git-branch-info {
   display: flex;
   align-items: center;

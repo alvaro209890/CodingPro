@@ -27,7 +27,16 @@ export interface SendMessageResult {
     outputTokens: number;
     totalCostUsd: number;
     turns: number;
+    contextTokens: number;
+    contextBudget: number;
   };
+}
+
+export interface SlashCommandMeta {
+  nome: string;
+  aliases: string[];
+  descricao: string;
+  aceitaArgs: boolean;
 }
 
 export interface CodingProDesktopAPI {
@@ -47,6 +56,8 @@ export interface CodingProDesktopAPI {
   runTerminalCommand: (
     command: string,
   ) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
+  getSessionCost: () => Promise<SendMessageResult["cost"]>;
+  getSlashCommands: () => Promise<SlashCommandMeta[]>;
 }
 
 declare global {

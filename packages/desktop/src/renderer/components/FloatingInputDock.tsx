@@ -1,4 +1,63 @@
 import type React from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+
+interface ComandoChat {
+  readonly nome: string;
+  readonly aliases: readonly string[];
+  readonly descricao: string;
+  readonly aceitaArgs: boolean;
+}
+
+interface SugestaoComando {
+  readonly nome: string;
+  readonly descricao: string;
+  readonly aceitaArgs: boolean;
+  readonly match: string;
+}
+
+const COMANDOS_CHAT: readonly ComandoChat[] = Object.freeze([
+  { nome: "/ajuda", aliases: ["/help"], descricao: "lista os comandos disponíveis", aceitaArgs: false },
+  { nome: "/abrir", aliases: ["/open", "/workspace"], descricao: "abre pasta do projeto", aceitaArgs: true },
+  { nome: "/pwd", aliases: [], descricao: "mostra a pasta aberta agora", aceitaArgs: false },
+  { nome: "/custo", aliases: ["/cost", "/gasto"], descricao: "custo e tokens da sessão", aceitaArgs: false },
+  { nome: "/compact", aliases: ["/compactar"], descricao: "compacta o histórico", aceitaArgs: false },
+  { nome: "/limpar", aliases: ["/clear", "/nova", "/new"], descricao: "nova sessão", aceitaArgs: false },
+  { nome: "/desfazer", aliases: ["/undo"], descricao: "desfaz edições ([N] passos)", aceitaArgs: true },
+  { nome: "/refazer", aliases: ["/redo"], descricao: "refaz edições ([N])", aceitaArgs: true },
+  { nome: "/checkpoint", aliases: ["/checkpoints"], descricao: "linha do tempo", aceitaArgs: false },
+  { nome: "/mapa", aliases: ["/map"], descricao: "repo map", aceitaArgs: false },
+  { nome: "/lembrar", aliases: ["/remember"], descricao: "salva fato na memória", aceitaArgs: true },
+  { nome: "/init", aliases: [], descricao: "gera CODINGPRO.md", aceitaArgs: true },
+  { nome: "/plan", aliases: ["/plano"], descricao: "plano interativo", aceitaArgs: true },
+  { nome: "/review", aliases: [], descricao: "revisão de código", aceitaArgs: true },
+  { nome: "/cancelar", aliases: ["/stop"], descricao: "cancela execução", aceitaArgs: false },
+]);
+
+function tokenComando(buffer: string): string | undefined {
+  if (!buffer.startsWith("/")) return undefined;
+  const espaco = buffer.indexOf(" ");
+  return espaco === -1 ? buffer : undefined;
+}
+
+function filtrarSugestoes(
+  buffer: string,
+  catalogo: readonly ComandoChat[] = COMANDOS_CHAT,
+): SugestaoComando[] {
+  const token = tokenComando(buffer);
+  if (token === undefined) return [];
+  const lower = token.toLowerCase();
+  const out: SugestaoComando[] = [];
+  for (const cmd of catalogo) {
+    const candidatos = [cmd.nome, ...cmd.aliases];
+    for (const c of candidatos) {
+      if (c.toLowerCase().startsWith(lower)) {
+        out.push({ aceitaArgs: cmd.aceitaArgs, descricao: cmd.descricao, match: c, nome: cmd.nome });
+        break;
+      }
+    }
+  }
+  return out;
+}
 
 interface FloatingInputDockProps {
   inputPrompt: string;
@@ -9,6 +68,14 @@ interface FloatingInputDockProps {
   branchName?: string;
   modelName?: string;
   effortLevel?: string;
+  cost?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalCostUsd: number;
+    turns: number;
+    contextTokens: number;
+    contextBudget: number;
+  } | null;
 }
 
 export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
@@ -20,8 +87,51 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
   branchName = "master",
   modelName = "DeepSeek V4",
   effortLevel = "Alto",
+  cost = null,
 }) => {
+  const [sugestoes, setSugestoes] = useState<SugestaoComando[]>([]);
+  const [selectedIdx, setSelectedIdx] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const s = filtrarSugestoes(inputPrompt);
+    setSugestoes(s);
+    if (s.length === 0) setSelectedIdx(0);
+    else if (selectedIdx >= s.length) setSelectedIdx(0);
+  }, [inputPrompt]);
+
+  const handleAcceptSuggestion = useCallback(
+    (sug: SugestaoComando) => {
+      onChangeInput(sug.nome + (sug.aceitaArgs ? " " : ""));
+      setSugestoes([]);
+      textareaRef.current?.focus();
+    },
+    [onChangeInput],
+  );
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (sugestoes.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIdx((i) => (i + 1) % sugestoes.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIdx((i) => (i - 1 + sugestoes.length) % sugestoes.length);
+        return;
+      }
+      if (e.key === "Tab" || e.key === "Enter") {
+        e.preventDefault();
+        const s = sugestoes[selectedIdx];
+        if (s) handleAcceptSuggestion(s);
+        return;
+      }
+      if (e.key === "Escape") {
+        setSugestoes([]);
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (!isRunning) onSend();
@@ -34,6 +144,23 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
 
   return (
     <div className="floating-input-dock">
+      {sugestoes.length > 0 && (
+        <div className="slash-suggestions" role="listbox">
+          {sugestoes.map((s, i) => (
+            <div
+              key={s.nome}
+              role="option"
+              aria-selected={i === selectedIdx}
+              className={`slash-suggestion-item${i === selectedIdx ? " selected" : ""}`}
+              onMouseDown={() => handleAcceptSuggestion(s)}
+            >
+              <span className="slash-suggestion-name">{s.nome}</span>
+              <span className="slash-suggestion-desc">{s.descricao}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="dock-git-row">
         <div className="git-branch-info">
           <svg
@@ -53,18 +180,36 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
           <span style={{ color: "var(--accent-blue)" }}>{branchName}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {cost && cost.turns > 0 && (
+            <span
+              style={{
+                fontSize: 10,
+                color: "var(--text-muted)",
+                fontFamily: "var(--font-mono)",
+                background: "rgba(56,189,248,0.08)",
+                padding: "2px 6px",
+                borderRadius: 4,
+              }}
+            >
+              US$ {cost.totalCostUsd.toFixed(4)} · {cost.turns}t
+              {cost.contextTokens > 0 && (
+                <> · {Math.round((cost.contextTokens / cost.contextBudget) * 100)}% ctx</>
+              )}
+            </span>
+          )}
           <span
             style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}
           >
-            Ctrl+K paleta · Ctrl+. cancela
+            Ctrl+K paleta · Ctrl+. cancela · / sugere
           </span>
         </div>
       </div>
 
       <div className="dock-textarea-row">
         <textarea
+          ref={textareaRef}
           className="dock-textarea"
-          placeholder="O que deseja construir? (ex: liste os arquivos, /ajuda, /custo...)"
+          placeholder="O que deseja construir? (ex: liste os arquivos, /ajuda, /custo, /abrir...)"
           value={inputPrompt}
           onChange={(e) => onChangeInput(e.target.value)}
           onKeyDown={handleKeyDown}

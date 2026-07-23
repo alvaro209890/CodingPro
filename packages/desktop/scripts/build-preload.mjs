@@ -58,6 +58,12 @@ const api = {
   runTerminalCommand: (command) => {
     return ipcRenderer.invoke("codingpro:run-terminal-command", command);
   },
+  getSessionCost: () => {
+    return ipcRenderer.invoke("codingpro:get-session-cost");
+  },
+  getSlashCommands: () => {
+    return ipcRenderer.invoke("codingpro:list-slash-commands");
+  },
 };
 
 contextBridge.exposeInMainWorld("codingproAPI", api);

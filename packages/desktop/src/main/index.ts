@@ -1,5 +1,5 @@
 import { type ExecOptions, exec } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,9 +9,14 @@ import {
   type Approval,
   type Approver,
   CheckpointStore,
+  compactMessages,
+  construirRepoMap,
   type CoreUiEvent,
   createReadTracker,
   detectarProjeto,
+  estimateMessageTokens,
+  gerarCodingproMd,
+  indexarRepositorio,
   isNodeSqliteDisponivel,
   MEMORY_TOOL_NAMES,
   MemoryStore,
@@ -30,7 +35,9 @@ import {
   ToolGate,
   ToolRegistry,
   type UiPermissionResponse,
+  WRITE_FILE_MAX_BYTES,
   Workspace,
+  writeFileWithin,
 } from "@codingpro/core";
 import {
   type ChatMessage,
@@ -39,28 +46,14 @@ import {
   type Provider,
 } from "@codingpro/llm";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { COMANDOS_CHAT, textoAjudaComandos } from "../shared/slash-commands.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const TERMINAL_TIMEOUT_MS = 60_000;
-const AJUDA_DESKTOP = [
-  "Comandos do CodingPro Desktop (paridade CLI):",
-  "  /ajuda              — esta lista",
-  "  /pwd                — pasta do projeto aberta agora",
-  "  /abrir [caminho]    — abre outra pasta (sem caminho = diálogo). Ex: /abrir C:\\\\Users\\\\…\\\\Downloads\\\\MeuApp",
-  "  /workspace [caminho]— alias de /abrir",
-  "  /limpar             — limpa o histórico da conversa atual",
-  "  /custo              — custo acumulado da sessão",
-  "  /desfazer           — desfaz o último checkpoint de escrita",
-  "  /refazer            — refaz um checkpoint desfeito",
-  "  /checkpoint         — lista checkpoints",
-  "  /cancelar           — cancela a execução em andamento",
-  "  Ctrl+K              — paleta · Ctrl+. cancela",
-  "",
-  "Escopo: as tools só veem a pasta aberta (igual `codingpro --chat` no Linux após um cd).",
-  "Para analisar Downloads ou outro repo: /abrir ou botão Pasta — não fique na pasta do monorepo CodingPro.",
-].join("\n");
+const CONTEXT_BUDGET = 100_000;
+const CONTEXT_WINDOW = 128_000;
 
 let mainWindow: BrowserWindow | null = null;
 let requestCounter = 0;
@@ -260,11 +253,57 @@ function mensagemUsuario(content: string): ChatMessage {
   return { role: "user", content };
 }
 
-function formatarCusto(cost: SessionCost): string {
+function formatarCusto(session: ChatSession): string {
+  const cost = session.cost;
+  const msgs: ChatMessage[] = [
+    { role: "system", content: SYSTEM_PROMPT_V1 },
+    ...session.transcript,
+  ];
+  const contextTokens = msgs.reduce((acc, m) => acc + estimateMessageTokens(m), 0);
+  const restam = Math.max(0, CONTEXT_BUDGET - contextTokens);
   if (cost.turns === 0) {
-    return "· sem custo ainda nesta sessão";
+    return [
+      "· sem custo de API ainda nesta sessão",
+      `· contexto estimado: ${contextTokens.toLocaleString("pt-BR")} / ${CONTEXT_BUDGET.toLocaleString("pt-BR")} tok · restam ${restam.toLocaleString("pt-BR")} · janela ~${CONTEXT_WINDOW.toLocaleString("pt-BR")}`,
+    ].join("\n");
   }
-  return `sessão: US$ ${cost.totalCostUsd.toFixed(6)} · in ${cost.inputTokens} · out ${cost.outputTokens} · turnos ${cost.turns}`;
+  return [
+    `sessão: US$ ${cost.totalCostUsd.toFixed(6)} · in ${cost.inputTokens} · out ${cost.outputTokens} · turnos ${cost.turns}`,
+    `contexto: ${contextTokens.toLocaleString("pt-BR")} / ${CONTEXT_BUDGET.toLocaleString("pt-BR")} tok · restam ${restam.toLocaleString("pt-BR")} · janela ~${CONTEXT_WINDOW.toLocaleString("pt-BR")}`,
+  ].join("\n");
+}
+
+function snapshotCusto(session: ChatSession | null): {
+  inputTokens: number;
+  outputTokens: number;
+  totalCostUsd: number;
+  turns: number;
+  contextTokens: number;
+  contextBudget: number;
+} {
+  if (session === null) {
+    return {
+      inputTokens: 0,
+      outputTokens: 0,
+      totalCostUsd: 0,
+      turns: 0,
+      contextTokens: 0,
+      contextBudget: CONTEXT_BUDGET,
+    };
+  }
+  const msgs: ChatMessage[] = [
+    { role: "system", content: SYSTEM_PROMPT_V1 },
+    ...session.transcript,
+  ];
+  const contextTokens = msgs.reduce((acc, m) => acc + estimateMessageTokens(m), 0);
+  return {
+    inputTokens: session.cost.inputTokens,
+    outputTokens: session.cost.outputTokens,
+    totalCostUsd: session.cost.totalCostUsd,
+    turns: session.cost.turns,
+    contextTokens,
+    contextBudget: CONTEXT_BUDGET,
+  };
 }
 
 function acumularCusto(session: ChatSession, cost: CostBreakdown | undefined): void {
@@ -273,6 +312,26 @@ function acumularCusto(session: ChatSession, cost: CostBreakdown | undefined): v
   session.cost.inputTokens += cost.inputTokens;
   session.cost.outputTokens += cost.outputTokens;
   session.cost.totalCostUsd += cost.totalCostUsd;
+}
+
+/** Expande /review e /plan em prompts de agente (paridade CLI). */
+function expandirPromptAgente(prompt: string): string | undefined {
+  const msg = prompt.trim();
+  const lower = msg.toLowerCase();
+  if (lower === "/review" || lower.startsWith("/review ")) {
+    const alvo = msg.replace(/^\/review\s*/iu, "").trim();
+    return alvo.length > 0
+      ? `Revise o código relacionado a: ${alvo}. Use as tools (list_dir, read_file, grep, repo_map) e aponte bugs, riscos, cheiros e melhorias concretas.`
+      : "Revise o projeto aberto: estrutura, arquivos-chave e possíveis problemas. Use tools antes de concluir.";
+  }
+  if (lower === "/plan" || lower.startsWith("/plan ") || lower.startsWith("/plano ")) {
+    const obj = msg.replace(/^\/plan(o)?\s*/iu, "").trim();
+    if (obj === "clear" || obj === "limpar") return undefined;
+    return obj.length > 0
+      ? `Elabore um plano de implementação passo a passo para: ${obj}. Liste etapas, arquivos a tocar, riscos e ordem sugerida. Explore o código com tools se precisar.`
+      : "Elabore um plano de trabalho para melhorar/entender este projeto. Explore com tools e liste etapas concretas.";
+  }
+  return undefined;
 }
 
 async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
@@ -440,66 +499,68 @@ async function handleLocalCommand(
 ): Promise<{ handled: true; reply: string } | { handled: false }> {
   const msg = prompt.trim();
   const lower = msg.toLowerCase();
+  const partes = msg.split(/\s+/u);
+  const cmd0 = (partes[0] ?? "").toLowerCase();
 
-  if (lower === "/ajuda" || lower === "/help") {
-    return { handled: true, reply: AJUDA_DESKTOP };
+  if (cmd0 === "/ajuda" || cmd0 === "/help") {
+    return { handled: true, reply: textoAjudaComandos() };
   }
-  if (lower === "/pwd" || lower === "/workspace") {
+  if (cmd0 === "/pwd") {
     return {
       handled: true,
-      reply: `· workspace: ${session.cwd}${ehMonorepoCodingPro(session.cwd) ? "\n· dica: isto é o monorepo CodingPro — use /abrir para o projeto real (ex. Downloads)" : ""}`,
+      reply: `· workspace: ${session.cwd}${ehMonorepoCodingPro(session.cwd) ? "\n· dica: monorepo CodingPro — use /abrir para o projeto real" : ""}`,
     };
   }
-  if (lower === "/limpar" || lower === "/clear") {
+  if (cmd0 === "/limpar" || cmd0 === "/clear" || cmd0 === "/nova" || cmd0 === "/new") {
     session.transcript = [];
     session.sessionId = newSessionId();
-    return { handled: true, reply: "· histórico esquecido" };
+    session.cost = { inputTokens: 0, outputTokens: 0, totalCostUsd: 0, turns: 0 };
+    return { handled: true, reply: "· histórico esquecido · sessão nova" };
   }
-  if (lower === "/custo" || lower === "/cost") {
-    return { handled: true, reply: formatarCusto(session.cost) };
+  if (cmd0 === "/custo" || cmd0 === "/cost" || cmd0 === "/gasto") {
+    return { handled: true, reply: formatarCusto(session) };
   }
-  if (
-    lower === "/desfazer" ||
-    lower === "/undo" ||
-    lower.startsWith("/desfazer ") ||
-    lower.startsWith("/undo ")
-  ) {
-    const n = Number.parseInt(msg.split(/\s+/u)[1] ?? "1", 10);
+  if (cmd0 === "/compact" || cmd0 === "/compactar") {
+    const antes = session.transcript.reduce((a, m) => a + estimateMessageTokens(m), 0);
+    const base: ChatMessage[] = [
+      { role: "system", content: SYSTEM_PROMPT_V1 },
+      ...session.transcript,
+    ];
+    const alvo = Math.max(2_000, Math.floor(CONTEXT_BUDGET * 0.55));
+    const r = compactMessages(base, { maxTokens: alvo });
+    session.transcript = r.messages[0]?.role === "system" ? r.messages.slice(1) : r.messages;
+    const depois = session.transcript.reduce((a, m) => a + estimateMessageTokens(m), 0);
+    return {
+      handled: true,
+      reply: `· compactado: ${antes.toLocaleString("pt-BR")} → ${depois.toLocaleString("pt-BR")} tok (−${r.dropped} msgs)`,
+    };
+  }
+  if (cmd0 === "/desfazer" || cmd0 === "/undo") {
+    const n = Number.parseInt(partes[1] ?? "1", 10);
     const q = Number.isFinite(n) && n > 0 ? n : 1;
     const r = await session.checkpoints.undo(q);
-    if (r.passos === 0) {
-      return { handled: true, reply: "· nada a desfazer" };
-    }
+    if (r.passos === 0) return { handled: true, reply: "· nada a desfazer" };
     const nomes = r.checkpoints.map((c) => c.label).join(", ");
     return { handled: true, reply: `· desfeitos ${r.passos} passo(s): ${nomes}` };
   }
-  if (
-    lower === "/refazer" ||
-    lower === "/redo" ||
-    lower.startsWith("/refazer ") ||
-    lower.startsWith("/redo ")
-  ) {
-    const n = Number.parseInt(msg.split(/\s+/u)[1] ?? "1", 10);
+  if (cmd0 === "/refazer" || cmd0 === "/redo") {
+    const n = Number.parseInt(partes[1] ?? "1", 10);
     const q = Number.isFinite(n) && n > 0 ? n : 1;
     const r = await session.checkpoints.redo(q);
-    if (r.passos === 0) {
-      return { handled: true, reply: "· nada a refazer" };
-    }
+    if (r.passos === 0) return { handled: true, reply: "· nada a refazer" };
     const nomes = r.checkpoints.map((c) => c.label).join(", ");
     return { handled: true, reply: `· refeitos ${r.passos} passo(s): ${nomes}` };
   }
-  if (lower === "/checkpoint" || lower === "/checkpoints") {
+  if (cmd0 === "/checkpoint" || cmd0 === "/checkpoints") {
     const lista = session.checkpoints.list();
-    if (lista.length === 0) {
-      return { handled: true, reply: "· sem checkpoints ainda" };
-    }
+    if (lista.length === 0) return { handled: true, reply: "· sem checkpoints ainda" };
     const linhas = lista
       .slice(-10)
       .map((c) => `  #${c.seq} ${c.label} (${c.files.length} arquivo(s))`)
       .join("\n");
     return { handled: true, reply: `checkpoints recentes:\n${linhas}` };
   }
-  if (lower === "/cancelar" || lower === "/stop") {
+  if (cmd0 === "/cancelar" || cmd0 === "/stop") {
     if (activeAbort) {
       activeAbort.abort();
       rejectPendingPermissions("deny");
@@ -507,6 +568,166 @@ async function handleLocalCommand(
     }
     return { handled: true, reply: "· nada em execução" };
   }
+  if (cmd0 === "/mapa" || cmd0 === "/map") {
+    try {
+      const mapa = await construirRepoMap(session.workspace, {
+        cacheDir: join(session.cwd, ".codingpro"),
+      });
+      const extra = mapa.truncado
+        ? `\n· mapa truncado (${mapa.totalArquivos} arquivos indexados)`
+        : "";
+      return { handled: true, reply: `${mapa.texto}${extra}` };
+    } catch (e) {
+      return {
+        handled: true,
+        reply: `· falha no mapa: ${e instanceof Error ? e.message : String(e)}`,
+      };
+    }
+  }
+  if (cmd0 === "/index" || cmd0 === "/indexar") {
+    if (!isNodeSqliteDisponivel()) {
+      return {
+        handled: true,
+        reply:
+          "· indexação vetorial indisponível neste Electron (Node 20 sem node:sqlite). Use a CLI CodingPro no Node ≥22.5 ou /mapa.",
+      };
+    }
+    try {
+      const result = await indexarRepositorio(session.workspace, {});
+      return {
+        handled: true,
+        reply: `· índice: +${result.updated} · iguais ${result.unchanged} · removidos ${result.removed} · ${result.chunks} chunks · ${result.dbPath}`,
+      };
+    } catch (e) {
+      return {
+        handled: true,
+        reply: `· falha ao indexar: ${e instanceof Error ? e.message : String(e)}`,
+      };
+    }
+  }
+  if (cmd0 === "/init") {
+    const force = (partes[1] ?? "").toLowerCase() === "force" || (partes[1] ?? "") === "--force";
+    const alvo = session.workspace.resolve("CODINGPRO.md");
+    if (existsSync(alvo) && !force) {
+      return {
+        handled: true,
+        reply: "· CODINGPRO.md já existe. Use `/init force` para sobrescrever.",
+      };
+    }
+    try {
+      const info = await detectarProjeto(session.workspace);
+      await writeFileWithin(
+        session.workspace,
+        alvo,
+        gerarCodingproMd(info),
+        WRITE_FILE_MAX_BYTES,
+      );
+      return { handled: true, reply: `· CODINGPRO.md gerado (${resumoProjeto(info)})` };
+    } catch (e) {
+      return {
+        handled: true,
+        reply: `· falha no /init: ${e instanceof Error ? e.message : String(e)}`,
+      };
+    }
+  }
+  if (cmd0 === "/lembrar" || cmd0 === "/remember") {
+    const fato = msg.slice(cmd0.length).trim();
+    if (fato.length === 0) return { handled: true, reply: "· uso: /lembrar <fato>" };
+    try {
+      const m = await session.memoryProjeto.remember(fato, "project");
+      return {
+        handled: true,
+        reply: `· memorizado (projeto): ${m.name} — força ${m.strength}`,
+      };
+    } catch (e) {
+      return {
+        handled: true,
+        reply: `· ${e instanceof Error ? e.message : "falha ao lembrar"}`,
+      };
+    }
+  }
+  if (cmd0 === "/memory") {
+    const sub = (partes[1] ?? "list").toLowerCase();
+    const alvo = partes[2];
+    if (sub === "forget") {
+      if (alvo === undefined) return { handled: true, reply: "· uso: /memory forget <slug>" };
+      const ok =
+        (await session.memoryProjeto.forget(alvo)) || (await session.memoryGlobal.forget(alvo));
+      return { handled: true, reply: ok ? `· esquecido: ${alvo}` : `· não encontrei: ${alvo}` };
+    }
+    if (sub === "edit") {
+      if (alvo === undefined) return { handled: true, reply: "· uso: /memory edit <slug>" };
+      return {
+        handled: true,
+        reply: `· edite à mão: ${join(session.memoryProjeto.dir, `${alvo}.md`)} ou ${join(session.memoryGlobal.dir, `${alvo}.md`)}`,
+      };
+    }
+    const [g, p] = await Promise.all([session.memoryGlobal.list(), session.memoryProjeto.list()]);
+    if (g.length === 0 && p.length === 0) return { handled: true, reply: "· memória vazia" };
+    const linhas = [
+      ...p.map((m) => `· [projeto] ${m.name} (${m.type}, força ${m.strength}) — ${m.description}`),
+      ...g.map((m) => `· [global] ${m.name} (${m.type}, força ${m.strength}) — ${m.description}`),
+    ];
+    return { handled: true, reply: linhas.join("\n") };
+  }
+  if (cmd0 === "/skills") {
+    const dirs = [
+      join(session.cwd, ".codingpro", "skills"),
+      join(homedir(), ".codingpro", "skills"),
+    ];
+    const nomes: string[] = [];
+    for (const d of dirs) {
+      if (!existsSync(d)) continue;
+      try {
+        for (const f of readdirSync(d)) {
+          if (f.endsWith(".md")) nomes.push(f.replace(/\.md$/u, ""));
+        }
+      } catch {
+        // ignore
+      }
+    }
+    if (nomes.length === 0) {
+      return {
+        handled: true,
+        reply: "· nenhuma skill em .codingpro/skills (projeto ou global)",
+      };
+    }
+    return { handled: true, reply: `skills:\n${nomes.map((n) => `  · ${n}`).join("\n")}` };
+  }
+  if (cmd0 === "/skill") {
+    const nome = partes[1];
+    if (nome === undefined) {
+      return { handled: true, reply: "· uso: /skill <nome> — ou /skills para listar" };
+    }
+    return {
+      handled: true,
+      reply: `· no desktop, peça no chat: “use a skill ${nome}” (ativação TUI completa é da CLI)`,
+    };
+  }
+  if (
+    (cmd0 === "/plan" || cmd0 === "/plano") &&
+    ((partes[1] ?? "").toLowerCase() === "clear" || (partes[1] ?? "").toLowerCase() === "limpar")
+  ) {
+    return { handled: true, reply: "· plano ativo limpo (desktop não mantém plano persistente)" };
+  }
+  if (cmd0 === "/sair" || cmd0 === "/exit") {
+    return { handled: true, reply: "· no desktop feche a janela (Alt+F4) — não há /sair" };
+  }
+  if (cmd0 === "/tema" || cmd0 === "/theme" || cmd0 === "/pet") {
+    return {
+      handled: true,
+      reply: "· tema/pet da TUI não se aplicam ao Desktop (UI Aurora fixa por enquanto — W3)",
+    };
+  }
+
+  // /workspace sozinho = pwd
+  if (lower === "/workspace") {
+    return {
+      handled: true,
+      reply: `· workspace: ${session.cwd}`,
+    };
+  }
+
   return { handled: false };
 }
 
@@ -619,14 +840,27 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle("codingpro:new-session", async () => {
-    try {
-      const session = await novaSessaoVazia();
-      return { success: true, sessionId: session.sessionId };
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return { success: false, error: msg };
-    }
-  });
+      try {
+        const session = await novaSessaoVazia();
+        return { success: true, sessionId: session.sessionId };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { success: false, error: msg };
+      }
+    });
+
+    ipcMain.handle("codingpro:get-session-cost", async () => {
+      return snapshotCusto(activeSession);
+    });
+
+    ipcMain.handle("codingpro:list-slash-commands", async () => {
+      return COMANDOS_CHAT.map((c) => ({
+        nome: c.nome,
+        aliases: [...c.aliases],
+        descricao: c.descricao,
+        aceitaArgs: c.aceitaArgs,
+      }));
+    });
 
   ipcMain.handle("codingpro:cancel-run", async () => {
     if (activeAbort) {
@@ -762,76 +996,84 @@ app.whenReady().then(() => {
               const session = await obterOuCriarSessao(targetCwd);
 
               // Comandos locais (não consomem LLM)
-              const local = await handleLocalCommand(session, prompt);
-              if (local.handled) {
-                session.transcript.push(mensagemUsuario(prompt), mensagemAssistente(local.reply));
-                try {
-                  await session.sessionStore.save(session.sessionId, session.transcript);
-                } catch {
-                  // persistência best-effort
-                }
-                sendCoreEvent({ type: "session-updated", messages: session.transcript });
-                return { success: true, local: true, reply: local.reply, cwd: session.cwd };
-              }
+                            const local = await handleLocalCommand(session, prompt);
+                            if (local.handled) {
+                              session.transcript.push(mensagemUsuario(prompt), mensagemAssistente(local.reply));
+                              try {
+                                await session.sessionStore.save(session.sessionId, session.transcript);
+                              } catch {
+                                // persistência best-effort
+                              }
+                              sendCoreEvent({ type: "session-updated", messages: session.transcript });
+                              return {
+                                success: true,
+                                local: true,
+                                reply: local.reply,
+                                cwd: session.cwd,
+                                cost: snapshotCusto(session),
+                              };
+                            }
 
-              session.transcript.push(mensagemUsuario(prompt));
-              session.checkpoints.begin(prompt.slice(0, 80));
+                            const promptAgente = expandirPromptAgente(prompt) ?? prompt;
+                            session.transcript.push(mensagemUsuario(promptAgente));
+                            session.checkpoints.begin(promptAgente.slice(0, 80));
 
-              const systemPrompt = await montarSystemPromptDesktop(session.workspace);
+                            const systemPrompt = await montarSystemPromptDesktop(session.workspace);
 
-              const agentResult = await runAgent({
-                context: {
-                  workspace: session.workspace,
-                  readTracker: session.readTracker,
-                  checkpoints: session.checkpoints,
-                  memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
-                  signal: abort.signal,
-                },
-                gate: session.gate,
-                messages: session.transcript,
-                provider: session.provider,
-                tools: session.registry.definitions(),
-                systemPrompt,
-                signal: abort.signal,
-                onEvent: (agentEvent: AgentEvent) => {
-                  sendCoreEvent({
-                    type: "agent-event",
-                    event: agentEvent,
-                  });
-                },
-              });
+                            const agentResult = await runAgent({
+                              context: {
+                                workspace: session.workspace,
+                                readTracker: session.readTracker,
+                                checkpoints: session.checkpoints,
+                                memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
+                                signal: abort.signal,
+                              },
+                              gate: session.gate,
+                              messages: session.transcript,
+                              provider: session.provider,
+                              tools: session.registry.definitions(),
+                              systemPrompt,
+                              contextBudget: CONTEXT_BUDGET,
+                              signal: abort.signal,
+                              onEvent: (agentEvent: AgentEvent) => {
+                                sendCoreEvent({
+                                  type: "agent-event",
+                                  event: agentEvent,
+                                });
+                              },
+                            });
 
-        const msgs = agentResult.messages;
-        session.transcript = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
-        acumularCusto(session, agentResult.cost);
+                      const msgs = agentResult.messages;
+                      session.transcript = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
+                      acumularCusto(session, agentResult.cost);
 
-        const checkpoint = await session.checkpoints.commit();
-        if (checkpoint !== undefined) {
-          sendCoreEvent({
-            type: "agent-event",
-            event: {
-              type: "text-delta",
-              text: `\n\n_checkpoint #${checkpoint.seq} salvo — /desfazer reverte_`,
-            },
-          });
-        }
+                      const checkpoint = await session.checkpoints.commit();
+                      if (checkpoint !== undefined) {
+                        sendCoreEvent({
+                          type: "agent-event",
+                          event: {
+                            type: "text-delta",
+                            text: `\n\n_checkpoint #${checkpoint.seq} salvo — /desfazer reverte_`,
+                          },
+                        });
+                      }
 
-        try {
-          await session.sessionStore.save(session.sessionId, session.transcript);
-        } catch {
-          // best-effort
-        }
+                      try {
+                        await session.sessionStore.save(session.sessionId, session.transcript);
+                      } catch {
+                        // best-effort
+                      }
 
-        sendCoreEvent({
-          type: "session-updated",
-          messages: session.transcript,
-        });
+                      sendCoreEvent({
+                        type: "session-updated",
+                        messages: session.transcript,
+                      });
 
-        return {
-          success: true,
-          sessionId: session.sessionId,
-          cost: session.cost,
-        };
+                      return {
+                        success: true,
+                        sessionId: session.sessionId,
+                        cost: snapshotCusto(session),
+                      };
       } catch (err: unknown) {
         const isAbort =
           (err instanceof Error && err.name === "AbortError") ||

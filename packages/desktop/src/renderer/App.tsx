@@ -68,6 +68,15 @@ export const App: React.FC = () => {
     { id: "current", title: "Nova sessão", active: true },
   ]);
 
+  const [sessionCost, setSessionCost] = useState<{
+    inputTokens: number;
+    outputTokens: number;
+    totalCostUsd: number;
+    turns: number;
+    contextTokens: number;
+    contextBudget: number;
+  } | null>(null);
+
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef(workspaceInfo.cwd);
   workspaceRef.current = workspaceInfo.cwd;
@@ -303,6 +312,10 @@ export const App: React.FC = () => {
           setMessages([]);
         }
         void refreshSessions();
+        void window.codingproAPI
+          ?.getSessionCost()
+          .then((c) => setSessionCost(c ?? null))
+          .catch(() => undefined);
       } else if (event.type === "error") {
         setIsRunning(false);
         setCurrentPermissionRequest(null);
@@ -661,6 +674,7 @@ export const App: React.FC = () => {
           branchName="master"
           modelName="DeepSeek V4"
           effortLevel="Alto"
+          cost={sessionCost}
         />
 
         <CommandPalette
