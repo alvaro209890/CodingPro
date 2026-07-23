@@ -122,13 +122,22 @@ export function Usuarios() {
                     <td className="fraco">{formatarData(usuario.ultimoLogin)}</td>
                     <td>
                       <div className="linha" style={{ gap: "0.35rem" }}>
-                        {usuario.status !== "ativo" && (
+                        {usuario.status === "pendente" && (
                           <button
                             className="pequeno"
                             onClick={() => alterar(usuario, { status: "ativo" })}
                             type="button"
                           >
                             Aprovar
+                          </button>
+                        )}
+                        {usuario.status === "bloqueado" && (
+                          <button
+                            className="pequeno"
+                            onClick={() => alterar(usuario, { status: "ativo" })}
+                            type="button"
+                          >
+                            Desbloquear
                           </button>
                         )}
                         {usuario.status !== "bloqueado" && (
