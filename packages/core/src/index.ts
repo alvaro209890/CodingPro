@@ -35,6 +35,28 @@ export { CoreError, type CoreErrorCode } from "./errors.js";
 export { readFileWithin, removeFileWithin, writeFileWithin } from "./fs-safe.js";
 export { ToolGate } from "./gate.js";
 export {
+  type BlocoMemoriaEntrada,
+  buscarMemorias,
+  descricaoDe,
+  gerarIndice,
+  hojeIso,
+  type Memoria,
+  montarBlocoMemoria,
+  MEMORY_MAX_BYTES,
+  MEMORY_MAX_NOME,
+  MEMORY_RETRIEVAL_ORCAMENTO,
+  MEMORY_RETRIEVAL_TOP_K,
+  parseMemoria,
+  pareceSegredo,
+  pontuarMemoria,
+  type RetrievalOptions,
+  serializarMemoria,
+  slugify,
+  termosDe,
+  type TipoMemoria,
+} from "./memory.js";
+export { MemoryStore } from "./memory-store.js";
+export {
   type Approval,
   type Approver,
   decidePermission,
@@ -91,6 +113,7 @@ export {
   createReadTracker,
   errorResult,
   type ExecutableTool,
+  type MemoryScope,
   type ReadTracker,
   textResult,
   type ToolContext,
@@ -123,6 +146,7 @@ export {
 } from "./tools/grep.js";
 export { LIST_DIR_MAX_ENTRIES, listDirTool } from "./tools/list-dir.js";
 export { READ_FILE_MAX_BYTES, readFileTool } from "./tools/read-file.js";
+export { rememberTool } from "./tools/remember.js";
 export { repoMapTool } from "./tools/repo-map.js";
 export { WRITE_FILE_MAX_BYTES, writeFileTool } from "./tools/write-file.js";
 export { Workspace } from "./workspace.js";
@@ -132,6 +156,7 @@ import { editFileTool } from "./tools/edit-file.js";
 import { grepTool } from "./tools/grep.js";
 import { listDirTool } from "./tools/list-dir.js";
 import { readFileTool } from "./tools/read-file.js";
+import { rememberTool } from "./tools/remember.js";
 import { repoMapTool } from "./tools/repo-map.js";
 import { writeFileTool } from "./tools/write-file.js";
 
@@ -146,5 +171,18 @@ export const READ_ONLY_TOOLS = Object.freeze([
 /** Tools com efeito colateral — sempre passam pelo gate de permissão. */
 export const EFFECT_TOOLS = Object.freeze([writeFileTool, editFileTool, bashTool] as const);
 
+/**
+ * Tools de memória — escrevem só na loja de memória da CLI, nunca no projeto; pré-autorizadas via
+ * `alwaysAllow`. O nome vive em `MEMORY_TOOL_NAMES` para o gate liberá-las sem prompt.
+ */
+export const MEMORY_TOOLS = Object.freeze([rememberTool] as const);
+
+/** Nomes das tools de memória, para semear `alwaysAllow` na política de permissão. */
+export const MEMORY_TOOL_NAMES = Object.freeze(MEMORY_TOOLS.map((t) => t.definition.name));
+
 /** Todas as tools do núcleo, prontas para registrar. */
-export const ALL_TOOLS = Object.freeze([...READ_ONLY_TOOLS, ...EFFECT_TOOLS] as const);
+export const ALL_TOOLS = Object.freeze([
+  ...READ_ONLY_TOOLS,
+  ...EFFECT_TOOLS,
+  ...MEMORY_TOOLS,
+] as const);

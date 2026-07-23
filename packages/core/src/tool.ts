@@ -1,6 +1,17 @@
 import type { JsonObject, Tool, ToolResult } from "@codingpro/llm";
 import type { CheckpointRecorder } from "./checkpoints.js";
+import type { MemoryStore } from "./memory-store.js";
 import type { Workspace } from "./workspace.js";
+
+/**
+ * Lojas de memória disponíveis à sessão: `projeto` (`.codingpro/memory`) tem prioridade quando
+ * existe; `global` (`~/.codingpro/memory`) é o padrão. A tool `remember` escreve aqui — nunca no
+ * projeto do usuário — por isso é pré-autorizada no gate.
+ */
+export interface MemoryScope {
+  readonly global: MemoryStore;
+  readonly projeto?: MemoryStore;
+}
 
 /**
  * Rastreador de leitura por sessão: `read_file` registra cada arquivo lido e `edit_file`
@@ -31,6 +42,8 @@ export interface ToolContext {
   readonly readTracker?: ReadTracker;
   /** Registro de checkpoints; tools de escrita capturam o estado pré-escrita antes de gravar. */
   readonly checkpoints?: CheckpointRecorder;
+  /** Lojas de memória; a tool `remember` grava aqui. */
+  readonly memory?: MemoryScope;
 }
 
 /**

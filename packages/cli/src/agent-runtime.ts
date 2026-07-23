@@ -2,23 +2,29 @@ import {
   type AgentResult,
   createReadTracker,
   describeAgentEvent,
+  MEMORY_TOOL_NAMES,
+  MEMORY_TOOLS,
   newSessionId,
   PermissionController,
   READ_ONLY_TOOLS,
   runAgent,
   SessionStore,
+  SYSTEM_PROMPT_V1,
   ToolGate,
   ToolRegistry,
   Workspace,
 } from "@codingpro/core";
 import { type ChatMessage, formatCost, type Provider } from "@codingpro/llm";
 import { sanitizarTextoTerminal } from "./headless.js";
+import { criarMemoriaSessao } from "./memory-runtime.js";
 
 export interface AgenteHeadlessOptions {
   /** Retoma a sessão mais recente do `sessaoDir` quando nenhum `resumirId` é dado. */
   readonly continuarUltima?: boolean;
   readonly cwd: string;
   readonly maxContexto?: number;
+  /** Diretório da memória global; ausente usa `~/.codingpro/memory`. */
+  readonly memoriaGlobalDir?: string;
   readonly prompt: string;
   readonly provider: Provider;
   /** Id de sessão a retomar; o transcrito é carregado e o prompt vira o próximo turno. */
@@ -51,10 +57,15 @@ export async function executarAgenteHeadless(
   options.signal?.throwIfAborted();
   const workspace = await Workspace.create(options.cwd);
   const registry = new ToolRegistry();
-  for (const tool of READ_ONLY_TOOLS) {
+  for (const tool of [...READ_ONLY_TOOLS, ...MEMORY_TOOLS]) {
     registry.register(tool);
   }
-  const gate = new ToolGate(registry, new PermissionController({ mode: "ask" }));
+  // Efeitos no projeto exigem aprovação (ausente aqui → negados); memória é pré-autorizada.
+  const gate = new ToolGate(
+    registry,
+    new PermissionController({ alwaysAllow: MEMORY_TOOL_NAMES, mode: "ask" }),
+  );
+  const memoria = criarMemoriaSessao(workspace.root, options.memoriaGlobalDir);
 
   const promptMsg: ChatMessage = { content: options.prompt, role: "user" };
   let store: SessionStore | undefined;
@@ -69,11 +80,16 @@ export async function executarAgenteHeadless(
       mensagens = [...(await store.load(idSessao)), promptMsg];
     }
   }
+  // System prompt fresco com memória (índices + retrieval do prompt), substituindo o antigo ao retomar.
+  const systemPrompt = await memoria.promptDoTurno(SYSTEM_PROMPT_V1, options.prompt);
+  const semSystem = mensagens[0]?.role === "system" ? mensagens.slice(1) : mensagens;
+  mensagens = [{ content: systemPrompt, role: "system" }, ...semSystem];
 
   const readTracker = createReadTracker();
   let respostaCrua = "";
   const result = await runAgent({
     context: {
+      memory: memoria.scope,
       readTracker,
       workspace,
       ...(options.signal === undefined ? {} : { signal: options.signal }),

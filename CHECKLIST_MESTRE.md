@@ -119,10 +119,11 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 
 ## F4 — Memória persistente
 
-- [ ] Store markdown+frontmatter + MEMORY.md + FTS5
-- [ ] Tool remember + retrieval no turno
-- [ ] Consolidador background (extract/merge/prune/changelog)
-- [ ] 🏁 Correção de uma sessão aplicada dias depois
+- [x] Store markdown+frontmatter + `MEMORY.md` — `MemoryStore` (global `~/.codingpro/memory` + projeto `.codingpro/memory`), 1 arquivo=1 fato, frontmatter (name/description/type/created/updated/strength), índice regenerado a cada escrita, reforço em vez de duplicar, guarda contra valores de segredo — 2026-07-22
+- [x] Tool `remember` + retrieval no turno — tool pré-autorizada (`alwaysAllow`, grava só na memória), retrieval léxico (`buscarMemorias`) + índices sempre injetados no system prompt por turno (chat e headless); comandos `/lembrar`, `/memory list|forget|edit` — 2026-07-22
+- [x] Consolidação mecânica: `forget`→`_archive/` (nunca deleta), `_changelog.md` auditável, reindexação; validado ao vivo pela CLI + 41 testes novos (507 no total, `pnpm check` verde) — 2026-07-22
+- [ ] Upgrade F4: índice SQLite/FTS5 e consolidador com DeepSeek Flash (extração/merge/poda por similaridade) — mesmo desenho
+- [~] 🏁 Correção de sessão aplicada depois: mecanismo validado ao vivo (fato persistido + índice + retrieval reinjetado em nova sessão); falta o consolidador LLM
 
 ## F5 — Multi-agente
 

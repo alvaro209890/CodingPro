@@ -42,6 +42,17 @@ describe("decidePermission", () => {
     );
     expect(decidePermission({ ...base, allowlist: [], mode: "allowlist" }, write)).toBe("ask");
   });
+
+  it("alwaysAllow libera efeito sem checkpoint, mas não vence a denylist", () => {
+    const remember: PermissionRequest = { sideEffect: "write", toolName: "remember" };
+    expect(decidePermission({ alwaysAllow: ["remember"], mode: "ask" }, remember)).toBe("allow");
+    expect(
+      decidePermission(
+        { alwaysAllow: ["remember"], denylist: ["remember"], mode: "ask" },
+        remember,
+      ),
+    ).toBe("deny");
+  });
 });
 
 describe("PermissionController", () => {

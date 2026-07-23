@@ -274,3 +274,97 @@ describe("executarChat", () => {
     expect(captura.progresso()).toContain("chat do agente");
   });
 });
+
+describe("executarChat — memória (F4)", () => {
+  let cwd: string;
+  let memGlobal: string;
+
+  beforeEach(async () => {
+    cwd = await mkdtemp(join(tmpdir(), "codingpro-chat-mem-"));
+    memGlobal = join(cwd, "global-mem");
+  });
+
+  afterEach(async () => {
+    await rm(cwd, { force: true, recursive: true });
+  });
+
+  it("/lembrar grava na memória do projeto e /memory list mostra", async () => {
+    const { provider, requests } = scripted([]);
+    const captura = fakeIo(["/lembrar O build usa pnpm", "/memory list", undefined], []);
+    await executarChat({ cwd, memoriaGlobalDir: memGlobal, provider }, captura.io);
+    expect(requests).toEqual([]);
+    expect(captura.progresso()).toContain("memorizado (projeto)");
+    expect(captura.progresso()).toContain("[projeto]");
+    expect(captura.progresso()).toContain("build usa pnpm");
+  });
+
+  it("injeta memória relevante no system prompt do turno", async () => {
+    const { provider, requests } = scripted([
+      [
+        { text: "use pnpm", type: "text-delta" },
+        finish({ content: "use pnpm", role: "assistant" }),
+      ],
+    ]);
+    const captura = fakeIo(
+      ["/lembrar O build usa pnpm sempre", "como faço o build?", undefined],
+      [],
+    );
+    await executarChat({ cwd, memoriaGlobalDir: memGlobal, provider }, captura.io);
+    const req = JSON.parse(requests[0] ?? "{}") as {
+      messages: { role: string; content?: string }[];
+    };
+    const system = req.messages.find((m) => m.role === "system")?.content ?? "";
+    expect(system).toContain("Memória");
+    expect(system).toContain("build usa pnpm");
+  });
+
+  it("/memory forget arquiva a memória", async () => {
+    const { provider } = scripted([]);
+    const captura = fakeIo(
+      [
+        "/lembrar fato descartável qualquer",
+        "/memory forget fato-descartavel-qualquer",
+        "/memory list",
+        undefined,
+      ],
+      [],
+    );
+    await executarChat({ cwd, memoriaGlobalDir: memGlobal, provider }, captura.io);
+    expect(captura.progresso()).toContain("esquecido: fato-descartavel-qualquer");
+    expect(captura.progresso()).toContain("memória vazia");
+  });
+});
+
+describe("executarChat — memória, ramos extras", () => {
+  let cwd: string;
+  let memGlobal: string;
+
+  beforeEach(async () => {
+    cwd = await mkdtemp(join(tmpdir(), "codingpro-chat-mem2-"));
+    memGlobal = join(cwd, "gmem");
+  });
+
+  afterEach(async () => {
+    await rm(cwd, { force: true, recursive: true });
+  });
+
+  it("cobre /memory edit, /lembrar vazio, recusa de segredo e forget inexistente", async () => {
+    const { provider } = scripted([]);
+    const captura = fakeIo(
+      [
+        "/lembrar",
+        "/lembrar token: superSecretoAbc123",
+        "/memory edit algum-slug",
+        "/memory forget nao-existe",
+        undefined,
+      ],
+      [],
+    );
+    await executarChat({ cwd, memoriaGlobalDir: memGlobal, provider }, captura.io);
+    const p = captura.progresso();
+    expect(p).toContain("uso: /lembrar");
+    expect(p).toContain("segredo");
+    expect(p).toContain("edite à mão");
+    expect(p).toContain("não encontrei: nao-existe");
+  });
+});

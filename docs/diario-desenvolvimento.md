@@ -314,3 +314,42 @@ Auto-effort v1 (heurísticas + roteador Flash + escalada por falha) e/ou spikes 
 
 Bater o marco da F3 (pergunta de arquitetura respondida certo em repo médio) e então iniciar a **F4 —
 memória persistente** (store markdown+frontmatter, `MEMORY.md`, tool `remember`, retrieval no turno).
+
+## 2026-07-22 — F4: memória persistente (store + retrieval + remember)
+
+### Entregue
+
+- `memory.ts` (puro): tipos, frontmatter (serializar/parse), `slugify`, índice `MEMORY.md`
+  (`gerarIndice`), retrieval léxico (`buscarMemorias`/`pontuarMemoria`), guarda de segredo
+  (`pareceSegredo`) e composição do bloco de memória do prompt (`montarBlocoMemoria`).
+- `memory-store.ts`: `MemoryStore` sobre um diretório (global `~/.codingpro/memory` e do projeto
+  `.codingpro/memory`). `remember` (reforça em vez de duplicar; recusa segredo), `forget` (arquiva
+  em `_archive/`, registra `_changelog.md`), `list`/`get`/`reindexar`/`indice`/`buscar`. Cria o
+  diretório só na primeira escrita.
+- Tool `remember` (`tools/remember.ts`): grava na memória por tipo/escopo; pré-autorizada no gate.
+- Permissões: `PermissionPolicy.alwaysAllow` libera tools sem efeito no projeto (ex.: `remember`)
+  antes da regra de checkpoint; nunca vence a denylist.
+- Runtime: `memory-runtime.ts` (`criarMemoriaSessao`, `promptDoTurno`) injeta índices + retrieval no
+  system prompt a cada turno, no chat e no headless. Comandos `/lembrar` e `/memory list|forget|edit`.
+  Diretório global injetável (`raizMemoriaGlobal`) para isolar testes do `$HOME` real.
+
+### Decisões
+
+- Retrieval léxico e índice em memória (não SQLite/FTS5): robusto e testável já; FTS5 vira upgrade.
+- `remember` classificada como efeito de escrita, mas pré-autorizada, porque escreve só na memória
+  da CLI — nunca no projeto do usuário. Assim o modelo aprende sem spammar prompts de aprovação.
+- Consolidador: a parte mecânica (arquivar/changelog/reindexar) entrou; a extração/merge por LLM
+  (DeepSeek Flash) fica de upgrade, com regra de nunca escrever fora de `memory/`.
+
+### Validação
+
+- 41 testes offline novos (frontmatter round-trip, retrieval, guarda de segredo, upsert/reforço,
+  arquivamento, comandos de chat, injeção no prompt, `alwaysAllow`); 507 no total.
+- `pnpm check` completo aprovado.
+- Smoke ao vivo pela CLI buildada: `/lembrar` gravou o fato no formato Markdown+frontmatter correto,
+  gerou o `MEMORY.md` e listou; retrieval reinjeta o corpo relevante no turno seguinte.
+
+### Próximo incremento
+
+F5 — multi-agente (modo subagente stdio/JSON-RPC, orquestrador paralelo com tetos de custo, tarefas
+em background com notificação, modo planejamento arquiteto→plano→aprovação).

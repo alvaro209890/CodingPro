@@ -17,6 +17,8 @@ export interface CliServices {
   /** IO interativo (readline) para o modo chat; ausente desabilita `--chat`. */
   readonly criarChatIo?: () => ChatIo;
   readonly criarProvider: (overrides: ProviderOverrides) => Promise<Provider> | Provider;
+  /** Diretório da memória global (`~/.codingpro/memory`); ausente usa o padrão. */
+  readonly raizMemoriaGlobal?: string;
   /** Raiz do projeto (cwd) para o modo agente sandboxar as ferramentas. */
   readonly raizProjeto?: string;
   /** Diretório onde as sessões do agente são salvas/lidas. */
@@ -135,6 +137,9 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
           cwd: services.raizProjeto ?? process.cwd(),
           provider,
           ...(options.maxContexto === undefined ? {} : { maxContexto: options.maxContexto }),
+          ...(services.raizMemoriaGlobal === undefined
+            ? {}
+            : { memoriaGlobalDir: services.raizMemoriaGlobal }),
           ...(services.raizSessoes === undefined ? {} : { sessaoDir: services.raizSessoes }),
           ...(services.signal === undefined ? {} : { signal: services.signal }),
         },
@@ -166,6 +171,9 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
           prompt,
           provider,
           ...(options.maxContexto === undefined ? {} : { maxContexto: options.maxContexto }),
+          ...(services.raizMemoriaGlobal === undefined
+            ? {}
+            : { memoriaGlobalDir: services.raizMemoriaGlobal }),
           ...(options.resume === undefined ? {} : { resumirId: options.resume }),
           ...(services.raizSessoes === undefined ? {} : { sessaoDir: services.raizSessoes }),
           ...(services.signal === undefined ? {} : { signal: services.signal }),

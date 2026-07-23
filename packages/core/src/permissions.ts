@@ -19,6 +19,11 @@ export interface PermissionRequest {
 
 export interface PermissionPolicy {
   readonly allowlist?: readonly string[];
+  /**
+   * Tools sempre liberadas, independentemente de modo/checkpoint, por não terem efeito no projeto
+   * do usuário (ex.: `remember`, que só escreve na loja de memória da própria CLI).
+   */
+  readonly alwaysAllow?: readonly string[];
   /** Enquanto não houver checkpoint (git só na F2), efeitos nunca são automáticos. */
   readonly checkpointAvailable?: boolean;
   readonly denylist?: readonly string[];
@@ -40,6 +45,9 @@ export function decidePermission(
 ): PermissionDecision {
   if (policy.denylist?.includes(request.toolName) === true) {
     return "deny";
+  }
+  if (policy.alwaysAllow?.includes(request.toolName) === true) {
+    return "allow";
   }
   if (request.sideEffect === "read") {
     return "allow";

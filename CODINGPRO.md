@@ -165,3 +165,25 @@ mtime+size, corrompido→frio, abort). 473 testes verdes, `pnpm check` completo 
 Falta na F3: trocar o backend heurístico por **web-tree-sitter** e o cache JSON por **SQLite/FTS5**
 (upgrades do mesmo desenho já entregue) e bater o **marco** ("onde X é tratado?" respondido certo em
 repo médio, ex. Atlas).
+
+## F4 — Memória persistente (em andamento)
+
+A **F4** entregou a **memória entre sessões** em arquivos Markdown legíveis (1 arquivo = 1 fato), no
+mesmo formato que o Álvaro já usa com Claude Code/Hermes. `MemoryStore` gerencia dois diretórios: a
+**global** (`~/.codingpro/memory`) e a **do projeto** (`.codingpro/memory`, materializada só na primeira
+escrita para não poluir repos). Cada fato tem frontmatter (`name`, `description`, `type` ∈
+user/feedback/project/reference, `created`, `updated`, `strength`); o `MEMORY.md` (índice de 1 linha por
+fato) é regenerado a cada escrita. `remember` **reforça** (`strength+1`) em vez de duplicar quando o slug
+bate, **recusa valores de segredo** (heurística `pareceSegredo`) e o `forget` **arquiva** em `_archive/`
+(nunca deleta) registrando em `_changelog.md`. O **retrieval** é léxico (`buscarMemorias`, sem
+embeddings): a cada turno o system prompt recebe os índices global+projeto (sempre) e as memórias
+completas mais relevantes ao pedido, dentro de um orçamento de tokens (`montarBlocoMemoria`,
+`promptDoTurno`). A tool **`remember`** (tipo/escopo) é pré-autorizada no gate (`alwaysAllow` — escreve só
+na memória da CLI, nunca no projeto), disponível no chat e no headless; os comandos manuais são
+**`/lembrar <fato>`** e **`/memory list|forget <slug>|edit <slug>`**. Validado ao vivo pela CLI (fato
+persistido em disco no formato correto, índice gerado, listagem) e por 41 testes offline. 507 testes
+verdes, `pnpm check` completo aprovado.
+
+Falta na F4: **índice SQLite/FTS5** (hoje é varredura+scoring léxico em memória) e o **consolidador
+com DeepSeek Flash** (extração de fatos esquecidos, merge por similaridade, poda por idade×força) — a
+consolidação **mecânica** (arquivar/changelog/reindexar) já está pronta.

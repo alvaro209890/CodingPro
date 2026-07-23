@@ -42,6 +42,7 @@ try {
           },
           controller.signal,
         ),
+      raizMemoriaGlobal: join(homedir(), ".codingpro", "memory"),
       raizProjeto: process.cwd(),
       raizSessoes: join(homedir(), ".codingpro", "sessions"),
       signal: controller.signal,
