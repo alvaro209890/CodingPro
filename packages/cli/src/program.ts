@@ -155,13 +155,22 @@ export function criarPrograma(
         throw new CliUsageError(mensagens.erro.chatIndisponivel);
       }
       services.signal?.throwIfAborted();
-      // Feedback imediato: provider/MCP/hooks podem demorar antes do banner.
+      // UI primeiro: banner na hora, depois init (provider/MCP/workspace).
+      // Assim o usuário nunca fica preso só em "abrindo chat…" sem feedback.
       io.stderr("· abrindo chat…\n");
+      const chatIo = criarChatIo();
+      if (chatIo.abrir !== undefined) {
+        await chatIo.abrir();
+      } else if (services.tema !== undefined) {
+        io.stderr(services.tema.banner());
+      }
+      io.stderr("· carregando provider…\n");
       const provider = await services.criarProvider({
         ...(options.provider === undefined ? {} : { provider: options.provider }),
         ...(options.replayFile === undefined ? {} : { replayFile: options.replayFile }),
       });
       const cwdChat = services.raizProjeto ?? process.cwd();
+      io.stderr("· carregando hooks, skills e MCP…\n");
       const [hooksChat, skillsChat, mcp] = await Promise.all([
         carregarHooks(cwdChat),
         carregarSkills(dirsSkills(cwdChat)),
@@ -177,6 +186,7 @@ export function criarPrograma(
             hooks: hooksChat,
             mcpTools: mcp.tools,
             provider,
+            pularBanner: true,
             skills: skillsChat,
             ...(options.maxContexto === undefined ? {} : { maxContexto: options.maxContexto }),
             ...(services.raizMemoriaGlobal === undefined
@@ -186,7 +196,7 @@ export function criarPrograma(
             ...(services.signal === undefined ? {} : { signal: services.signal }),
             ...(services.tema === undefined ? {} : { tema: services.tema }),
           },
-          criarChatIo(),
+          chatIo,
         );
       } finally {
         mcp.fechar();

@@ -4,18 +4,17 @@
  */
 
 import type { Readable, Writable } from "node:stream";
+import { criarSpinner, FAISCA_FRAMES, frameFaisca, type SpinnerHandle } from "./animacao.js";
 import { COMANDOS_CHAT, type ComandoChat } from "./commands.js";
 import {
   aplicarTecla,
   estadoInicialPrompt,
-  parseTeclas,
   type PromptState,
+  parseTeclas,
 } from "./prompt-input.js";
 import type { Tema } from "./tema.js";
-import { criarSpinner, FAISCA_FRAMES, frameFaisca, type SpinnerHandle } from "./animacao.js";
 
 const ESC = "\u001b";
-const HIDE_CURSOR = `${ESC}[?25l`;
 const SHOW_CURSOR = `${ESC}[?25h`;
 const CLEAR_LINE = `${ESC}[2K`;
 const CURSOR_UP = (n: number): string => (n > 0 ? `${ESC}[${n}A` : "");
@@ -232,15 +231,21 @@ export function criarPromptTty(options: PromptTtyOptions): PromptTty {
     });
 
   /**
-   * Reveal do banner: cada quadro só ACRESCENTA uma linha nova (nunca reescreve linhas
-   * anteriores) — sem CURSOR_UP, então não há risco de duplicar/corromper histórico.
-   * Em `nenhuma` (NO_COLOR/pipe/CI) imprime tudo de uma vez, sem atraso.
+   * Banner de abertura.
+   * Instantâneo por padrão (evita “travar” em “abrindo chat…” se o event loop
+   * estiver ocupado ou o terminal engolir frames com \\r). Animação só com
+   * CODINGPRO_BANNER_ANIM=1.
    */
   const bannerAnimado = async (): Promise<void> => {
-    if (tema.cor === "nenhuma") {
+    const querAnim =
+      tema.cor !== "nenhuma" &&
+      /^(1|true|yes|on)$/iu.test((process.env.CODINGPRO_BANNER_ANIM ?? "").trim());
+
+    if (!querAnim) {
       write(tema.banner());
       return;
     }
+
     const abortado = (): boolean => options.signal?.aborted === true;
 
     // Faísca curta antes da caixa (flourish de abertura, uma única linha reaproveitada).

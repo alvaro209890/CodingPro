@@ -1,19 +1,19 @@
 import { join } from "node:path";
 import {
   ALL_TOOLS,
-  atualizarAutoEffort,
   type AutoEffortState,
+  atualizarAutoEffort,
+  blocoSkill,
   type CheckpointMeta,
   CheckpointStore,
-  blocoSkill,
   compactMessages,
   construirRepoMap,
   createReadTracker,
   criarAutoEffortState,
   criarHookRunner,
-  diretrizAtribuicao,
   describeAgentEvent,
   detectarProjeto,
+  diretrizAtribuicao,
   type ExecutableTool,
   gerarCodingproMd,
   type Hook,
@@ -30,33 +30,34 @@ import {
   SessionStore,
   type Skill,
   type SubagenteSpawner,
-  sugerirSkills,
   SYSTEM_PROMPT_V1,
+  sugerirSkills,
   ToolGate,
   ToolRegistry,
   Workspace,
   WRITE_FILE_MAX_BYTES,
   writeFileWithin,
 } from "@codingpro/core";
-import { DeepSeekProvider, type ChatMessage, type Provider } from "@codingpro/llm";
+import { type ChatMessage, DeepSeekProvider, type Provider } from "@codingpro/llm";
+import type { SpinnerHandle } from "./animacao.js";
+import { carregarAtribuicao } from "./attribution-runtime.js";
+import { textoAjudaComandos } from "./commands.js";
 import { sanitizarTextoTerminal } from "./headless.js";
 import { criarAprovadorInterativo } from "./interactive.js";
-import { carregarAtribuicao } from "./attribution-runtime.js";
 import { criarMemoriaSessao, type MemoriaSessao } from "./memory-runtime.js";
-import {
-  corrigirQualidade,
-  lerOpcoesQualidadeEnv,
-  promptReparoQualidade,
-  type RunnerBiome,
-} from "./quality-runtime.js";
 import {
   blocoPlanoAtivo,
   executarComandoPlan,
   mensagemHistoricoPlano,
   type PlanoAtivo,
 } from "./plan-runtime.js";
+import {
+  corrigirQualidade,
+  lerOpcoesQualidadeEnv,
+  promptReparoQualidade,
+  type RunnerBiome,
+} from "./quality-runtime.js";
 import { obterDiff, promptRevisao } from "./review-runtime.js";
-import { textoAjudaComandos } from "./commands.js";
 import {
   atualizarEstimativaContexto,
   atualizarStatsAposTurno,
@@ -65,9 +66,8 @@ import {
   formatarStatusLinha,
   resolverOrcamentoContexto,
 } from "./status.js";
-import { criarTema, type Tema } from "./tema.js";
 import { carregarTiposCustom, criarSpawnerSubagentes } from "./subagent-runtime.js";
-import type { SpinnerHandle } from "./animacao.js";
+import { criarTema, type Tema } from "./tema.js";
 
 export interface ChatIo {
   /** Faz uma pergunta (aprovações) e resolve com a resposta digitada. */
@@ -97,6 +97,10 @@ export interface ChatOptions {
   readonly mcpTools?: readonly ExecutableTool[];
   /** Diretório da memória global; ausente usa `~/.codingpro/memory`. */
   readonly memoriaGlobalDir?: string;
+  /**
+   * Se true, não imprime o banner (já foi mostrado em `program.ts` antes do init).
+   */
+  readonly pularBanner?: boolean;
   readonly provider: Provider;
   readonly sessaoDir?: string;
   /** Skills disponíveis (`.md`), já carregadas dos diretórios de skills. */
@@ -267,12 +271,23 @@ function descreverCheckpoint(meta: CheckpointMeta): string {
  */
 export async function executarChat(options: ChatOptions, io: ChatIo): Promise<void> {
   options.signal?.throwIfAborted();
+  const tema = options.tema ?? criarTema("nenhuma");
+
+  // Banner ANTES de qualquer I/O pesado — se o init travar, o usuário já vê a UI.
+  if (options.pularBanner !== true) {
+    if (io.abrir !== undefined) {
+      await io.abrir();
+    } else {
+      io.progresso(tema.banner());
+    }
+  }
+
+  io.progresso("· preparando workspace…\n");
   const workspace = await Workspace.create(options.cwd);
   const registry = new ToolRegistry();
   for (const tool of [...ALL_TOOLS, ...(options.mcpTools ?? [])]) {
     registry.register(tool);
   }
-  const tema = options.tema ?? criarTema("nenhuma");
   const aprovador = criarAprovadorInterativo({ pergunta: io.pergunta }, io.progresso, tema);
   const hooks = options.hooks ?? [];
   const gate = new ToolGate(
@@ -315,12 +330,7 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
   // Estado do auto-effort: decide automaticamente Flash/Pro a cada turno.
   const autoEffort: AutoEffortState = criarAutoEffortState();
 
-  // Abertura enxuta: banner + projeto. Sem dump de todos os comandos (use /ajuda).
-  if (io.abrir !== undefined) {
-    await io.abrir();
-  } else {
-    io.progresso(tema.banner());
-  }
+  // Cabeçalho do projeto + prompt. Sem dump de todos os comandos (use /ajuda).
   io.progresso(`${tema.cabecalhoProjeto(resumoProjeto(await detectarProjeto(workspace)))}\n`);
   io.progresso("\n");
 

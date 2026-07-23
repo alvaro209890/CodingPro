@@ -95,6 +95,8 @@ describe("prompt-tty", () => {
 
   it("bannerAnimado (cor ativa) revela em múltiplos quadros, nunca reescrevendo pra cima", async () => {
     vi.useFakeTimers();
+    const prevAnim = process.env.CODINGPRO_BANNER_ANIM;
+    process.env.CODINGPRO_BANNER_ANIM = "1";
     let escritas = 0;
     const chunks: string[] = [];
     const input = new FakeStdin();
@@ -109,18 +111,46 @@ describe("prompt-tty", () => {
       // Força unicode: detectarAscii(process.env) no ambiente de teste pode ser true (TERM=dumb etc.).
       tema: criarTema({ nivel: "truecolor", ascii: false }),
     });
-    const p = prompt.bannerAnimado();
-    await vi.runAllTimersAsync();
-    await p;
-    const texto = chunks.join("");
-    expect(escritas).toBeGreaterThan(10);
-    // Regex montada em runtime (nao literal) para nao disparar noControlCharactersInRegex.
-    expect(texto).not.toMatch(new RegExp(String.fromCharCode(27) + "\\[\\d+A"));
-    expect(texto).toContain("DeepSeek");
-    expect(texto).toContain("╭");
-    expect(texto).toContain("╰");
+    try {
+      const p = prompt.bannerAnimado();
+      await vi.runAllTimersAsync();
+      await p;
+      const texto = chunks.join("");
+      expect(escritas).toBeGreaterThan(10);
+      // Regex montada em runtime (nao literal) para nao disparar noControlCharactersInRegex.
+      expect(texto).not.toMatch(new RegExp(String.fromCharCode(27) + "\\[\\d+A"));
+      expect(texto).toContain("DeepSeek");
+      expect(texto).toContain("╭");
+      expect(texto).toContain("╰");
+    } finally {
+      if (prevAnim === undefined) {
+        delete process.env.CODINGPRO_BANNER_ANIM;
+      } else {
+        process.env.CODINGPRO_BANNER_ANIM = prevAnim;
+      }
+      prompt.close();
+      vi.useRealTimers();
+    }
+  });
+
+  it("bannerAnimado default é instantâneo (sem animação)", async () => {
+    let escritas = 0;
+    const chunks: string[] = [];
+    const input = new FakeStdin();
+    const prompt = criarPromptTty({
+      input: input as never,
+      output: {
+        write: (s: string) => {
+          escritas += 1;
+          chunks.push(s);
+        },
+      } as never,
+      tema: criarTema({ nivel: "truecolor", ascii: false }),
+    });
+    await prompt.bannerAnimado();
+    expect(escritas).toBe(1);
+    expect(chunks.join("")).toContain("DeepSeek");
     prompt.close();
-    vi.useRealTimers();
   });
 
   it("spinner exposto anima via handle", () => {
