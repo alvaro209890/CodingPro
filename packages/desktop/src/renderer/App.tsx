@@ -83,6 +83,8 @@ export const App: React.FC = () => {
 
   const [taskItems, setTaskItems] = useState<ReturnType<typeof toTaskRow>[]>([]);
 
+  const [autoApprove, setAutoApprove] = useState(false);
+
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef(workspaceInfo.cwd);
   workspaceRef.current = workspaceInfo.cwd;
@@ -696,12 +698,18 @@ export const App: React.FC = () => {
         />
 
         <FloatingInputDock
-          inputPrompt={inputPrompt}
-          onChangeInput={setInputPrompt}
-          onSend={() => void handleSend()}
-          onCancel={() => void handleCancel()}
-          isRunning={isRunning}
-          branchName="master"
+                  inputPrompt={inputPrompt}
+                  onChangeInput={setInputPrompt}
+                  onSend={() => void handleSend()}
+                  onCancel={() => void handleCancel()}
+                  isRunning={isRunning}
+                  autoApprove={autoApprove}
+                  onToggleAutoApprove={() => {
+                    const next = !autoApprove;
+                    setAutoApprove(next);
+                    void window.codingproAPI?.setAutoApprove(next);
+                  }}
+                  branchName="master"
           modelName="DeepSeek V4"
           effortLevel="Alto"
           cost={sessionCost}

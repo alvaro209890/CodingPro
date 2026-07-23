@@ -58,6 +58,8 @@ export interface CodingProDesktopAPI {
   ) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
   getSessionCost: () => Promise<SendMessageResult["cost"]>;
   getSlashCommands: () => Promise<SlashCommandMeta[]>;
+  setAutoApprove: (enabled: boolean) => Promise<{ success: boolean; autoApprove: boolean }>;
+  getAutoApprove: () => Promise<boolean>;
 }
 
 declare global {

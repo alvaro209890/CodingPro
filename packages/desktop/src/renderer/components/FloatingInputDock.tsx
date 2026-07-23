@@ -65,6 +65,8 @@ interface FloatingInputDockProps {
   onSend: () => void;
   onCancel?: () => void;
   isRunning: boolean;
+  autoApprove?: boolean;
+  onToggleAutoApprove?: () => void;
   branchName?: string;
   modelName?: string;
   effortLevel?: string;
@@ -84,6 +86,8 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
   onSend,
   onCancel,
   isRunning,
+  autoApprove = false,
+  onToggleAutoApprove,
   branchName = "master",
   modelName = "DeepSeek V4",
   effortLevel = "Alto",
@@ -269,6 +273,27 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
             </svg>
             Automático
           </div>
+          {onToggleAutoApprove && (
+            <button
+              type="button"
+              className={`toolbar-badge ${autoApprove ? "auto-approve-on" : ""}`}
+              onClick={onToggleAutoApprove}
+              title={autoApprove ? "Auto-aprovar LIGADO" : "Auto-aprovar desligado"}
+              style={{
+                marginLeft: 4,
+                background: autoApprove ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
+                border: autoApprove ? "1px solid rgba(34,197,94,0.35)" : "1px solid rgba(255,255,255,0.08)",
+                color: autoApprove ? "var(--accent-green)" : "var(--text-muted)",
+                cursor: "pointer",
+                borderRadius: 6,
+                padding: "3px 8px",
+                fontSize: 10.5,
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              {autoApprove ? "✓ Auto" : "Auto"}
+            </button>
+          )}
         </div>
 
         <div className="toolbar-right">

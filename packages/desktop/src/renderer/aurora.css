@@ -1124,3 +1124,37 @@ body {
 }
 .md-list li { padding: 2px 0; padding-left: 16px; position: relative; }
 .md-list li::before { content: "·"; position: absolute; left: 4px; color: var(--accent-blue); }
+
+/* ─── Markdown tables ─── */
+
+.md-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  font-family: var(--font-mono);
+  margin: 8px 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.md-table th {
+  background: rgba(56,189,248,0.08);
+  color: var(--accent-blue);
+  font-weight: 600;
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.md-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: var(--text-primary);
+}
+
+.md-table tr:last-child td { border-bottom: none; }
+
+.md-h2 { font-size: 15px; font-weight: 600; margin: 10px 0 4px; color: var(--text-primary); }
+.md-h3 { font-size: 13.5px; font-weight: 600; margin: 8px 0 3px; color: var(--text-secondary); }
+.md-hr { border: none; border-top: 1px solid var(--border-subtle); margin: 12px 0; }

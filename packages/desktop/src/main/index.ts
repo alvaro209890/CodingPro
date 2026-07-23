@@ -65,6 +65,7 @@ const pendingPermissions = new Map<string, (approval: Approval) => void>();
 let selectedWorkspacePath: string = process.cwd();
 let runInFlight = false;
 let activeAbort: AbortController | null = null;
+let autoApprove = false;
 let _runStartMs = 0;
 let _tokenCount = 0;
 let _stepCount = 0;
@@ -191,6 +192,7 @@ function rejectPendingPermissions(reason: Approval = "deny"): void {
 
 const approver: Approver = {
   async request(request: PermissionRequest, context: ToolContext): Promise<Approval> {
+    if (autoApprove) return "approve-once";
     const requestId = `perm-${++requestCounter}`;
     let previa: PreviaEscrita | undefined;
     if (
@@ -904,34 +906,57 @@ app.whenReady().then(() => {
     rejectPendingPermissions("deny");
     runInFlight = false;
     return { success: true };
-  });
+      });
 
-  ipcMain.on("codingpro:permission-response", (_, response: UiPermissionResponse) => {
-    const resolver = pendingPermissions.get(response.requestId);
-    if (!resolver) return;
-    pendingPermissions.delete(response.requestId);
-    const action = response.decision.action;
-    const approval: Approval =
-      action === "always" ? "approve-always" : action === "allow" ? "approve-once" : "deny";
-    resolver(approval);
-  });
+      ipcMain.on("codingpro:permission-response", (_, response: UiPermissionResponse) => {
+      const resolver = pendingPermissions.get(response.requestId);
+      if (!resolver) return;
+      pendingPermissions.delete(response.requestId);
+      const action = response.decision.action;
+      const approval: Approval =
+        action === "always" ? "approve-always" : action === "allow" ? "approve-once" : "deny";
+      resolver(approval);
+    });
+
+    ipcMain.handle("codingpro:set-auto-approve", async (_, enabled: boolean) => {
+        autoApprove = enabled;
+        return { success: true, autoApprove };
+      });
+
+      ipcMain.handle("codingpro:get-auto-approve", async () => {
+        return autoApprove;
+      });
 
   ipcMain.handle("codingpro:list-sessions", async () => {
-    try {
-      const cwd = activeSession?.cwd ?? selectedWorkspacePath;
-      const store = await SessionStore.create(join(cwd, ".codingpro", "sessions"));
-      const ids = await store.list();
-      // mais recentes primeiro
-      const ordered = [...ids].reverse();
-      return ordered.map((id: string) => ({
-        id,
-        preview: `Sessão ${id.slice(0, 19)}`,
-        updatedAt: id.slice(0, 19).replace("T", " "),
-      }));
-    } catch {
-      return [];
-    }
-  });
+      try {
+        const cwd = activeSession?.cwd ?? selectedWorkspacePath;
+        const store = await SessionStore.create(join(cwd, ".codingpro", "sessions"));
+        const ids = await store.list();
+        const ordered = [...ids].reverse();
+        return await Promise.all(
+          ordered.map(async (id: string) => {
+            let preview = `Sessão ${id.slice(0, 19)}`;
+            try {
+              const msgs = await store.load(id);
+              const firstUser = msgs.find((m) => m.role === "user") as { role: "user"; content: string } | undefined;
+                            if (firstUser && firstUser.content.length > 0) {
+                              preview = firstUser.content.slice(0, 60).replace(/\n/g, " ");
+                              if (firstUser.content.length > 60) preview += "\u2026";
+                            }
+            } catch {
+              // usa timestamp
+            }
+            return {
+              id,
+              preview,
+              updatedAt: id.slice(0, 19).replace("T", " "),
+            };
+          }),
+        );
+      } catch {
+        return [];
+      }
+    });
 
   ipcMain.handle("codingpro:load-session", async (_, sessionId: string) => {
     try {

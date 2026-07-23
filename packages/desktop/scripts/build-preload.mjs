@@ -62,9 +62,15 @@ const api = {
     return ipcRenderer.invoke("codingpro:get-session-cost");
   },
   getSlashCommands: () => {
-    return ipcRenderer.invoke("codingpro:list-slash-commands");
-  },
-};
+      return ipcRenderer.invoke("codingpro:list-slash-commands");
+    },
+    setAutoApprove: (enabled) => {
+      return ipcRenderer.invoke("codingpro:set-auto-approve", enabled);
+    },
+    getAutoApprove: () => {
+      return ipcRenderer.invoke("codingpro:get-auto-approve");
+    },
+  };
 
 contextBridge.exposeInMainWorld("codingproAPI", api);
 `;

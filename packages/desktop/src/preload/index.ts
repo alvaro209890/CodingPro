@@ -49,6 +49,12 @@ const api: CodingProDesktopAPI = {
   getSlashCommands: () => {
     return ipcRenderer.invoke("codingpro:list-slash-commands");
   },
+  setAutoApprove: (enabled: boolean) => {
+    return ipcRenderer.invoke("codingpro:set-auto-approve", enabled);
+  },
+  getAutoApprove: () => {
+    return ipcRenderer.invoke("codingpro:get-auto-approve");
+  },
 };
 
 contextBridge.exposeInMainWorld("codingproAPI", api);
