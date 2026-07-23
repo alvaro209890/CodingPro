@@ -12,7 +12,7 @@ import {
   type PromptState,
 } from "./prompt-input.js";
 import type { Tema } from "./tema.js";
-import { criarSpinner, type SpinnerHandle } from "./animacao.js";
+import { criarSpinner, FAISCA_FRAMES, frameFaisca, type SpinnerHandle } from "./animacao.js";
 
 const ESC = "\u001b";
 const HIDE_CURSOR = `${ESC}[?25l`;
@@ -116,6 +116,10 @@ export function criarPromptTty(options: PromptTtyOptions): PromptTty {
     },
     80,
     tema.ascii,
+    {
+      pintarFrame: (frame, tick) => tema.pulso(frame, tick),
+      pintarLabel: (rotulo) => tema.nota(rotulo),
+    },
   );
 
   const apagarBloco = (): void => {
@@ -221,9 +225,39 @@ export function criarPromptTty(options: PromptTtyOptions): PromptTty {
     });
   };
 
+  const esperar = (ms: number): Promise<void> =>
+    new Promise((resolve) => {
+      const t = setTimeout(resolve, ms);
+      t.unref?.();
+    });
+
+  /**
+   * Reveal do banner: cada quadro só ACRESCENTA uma linha nova (nunca reescreve linhas
+   * anteriores) — sem CURSOR_UP, então não há risco de duplicar/corromper histórico.
+   * Em `nenhuma` (NO_COLOR/pipe/CI) imprime tudo de uma vez, sem atraso.
+   */
   const bannerAnimado = async (): Promise<void> => {
-    // Uma única impressão do banner do tema (sem multi-frame / CURSOR_UP que duplicava linhas).
-    write(tema.banner());
+    if (tema.cor === "nenhuma") {
+      write(tema.banner());
+      return;
+    }
+    const abortado = (): boolean => options.signal?.aborted === true;
+
+    // Faísca curta antes da caixa (flourish de abertura, uma única linha reaproveitada).
+    for (let i = 0; i < FAISCA_FRAMES.length && !abortado(); i += 1) {
+      write(`\r${CLEAR_LINE}  ${tema.pulso(frameFaisca(i), i)}`);
+      await esperar(35);
+    }
+    write(`\r${CLEAR_LINE}`);
+
+    const linhas = tema.bannerLinhas();
+    write("\n");
+    for (const linha of linhas) {
+      write(`${linha}\n`);
+      if (!abortado()) {
+        await esperar(16);
+      }
+    }
   };
 
   return {

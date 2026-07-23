@@ -94,6 +94,14 @@ export interface SpinnerHandle {
   readonly ativo: () => boolean;
 }
 
+/** Formatadores opcionais (cor) aplicados ao frame do spinner — injetados pelo tema. */
+export interface SpinnerFormatadores {
+  /** Colore só o glifo giratório; `tick` permite um pulso cíclico de cor. */
+  readonly pintarFrame?: (frame: string, tick: number) => string;
+  /** Colore o rótulo (ex.: esmaecido, como as demais linhas de progresso). */
+  readonly pintarLabel?: (rotulo: string) => string;
+}
+
 const ESC = "\u001b";
 /** Limpa a linha atual e volta ao início (não sobe linhas anteriores). */
 const CLEAR_LINE = `\r${ESC}[2K`;
@@ -106,6 +114,7 @@ export function criarSpinner(
   escrever: (texto: string) => void,
   intervaloMs = 80,
   ascii = false,
+  formatadores: SpinnerFormatadores = {},
 ): SpinnerHandle {
   let timer: ReturnType<typeof setInterval> | undefined;
   let tick = 0;
@@ -113,9 +122,17 @@ export function criarSpinner(
   let ligado = false;
 
   const pintar = (): void => {
-    const linha = linhaSpinnerModo(tick, rotulo, ascii);
+    // Sem formatadores: saída idêntica à anterior (compatibilidade total).
+    if (formatadores.pintarFrame === undefined && formatadores.pintarLabel === undefined) {
+      escrever(`${CLEAR_LINE}${linhaSpinnerModo(tick, rotulo, ascii)}`);
+      return;
+    }
+    const frame = frameSpinnerModo(tick, ascii);
+    const pontos = framePontos(tick);
+    const frameFmt = formatadores.pintarFrame?.(frame, tick) ?? frame;
+    const rotuloFmt = formatadores.pintarLabel?.(rotulo) ?? rotulo;
     // Só reescreve a linha atual; padding curto para não estourar o wrap
-    escrever(`${CLEAR_LINE}${linha}`);
+    escrever(`${CLEAR_LINE}${frameFmt} ${rotuloFmt}${pontos}`);
   };
 
   return {

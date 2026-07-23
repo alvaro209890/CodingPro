@@ -93,6 +93,30 @@ describe("prompt-tty", () => {
     vi.useRealTimers();
   });
 
+  it("bannerAnimado (cor ativa) revela em múltiplos quadros, nunca reescrevendo pra cima", async () => {
+    vi.useFakeTimers();
+    let escritas = 0;
+    const chunks: string[] = [];
+    const input = new FakeStdin();
+    const prompt = criarPromptTty({
+      input: input as never,
+      output: { write: (s: string) => { escritas += 1; chunks.push(s); } } as never,
+      tema: criarTema("truecolor"),
+    });
+    const p = prompt.bannerAnimado();
+    await vi.runAllTimersAsync();
+    await p;
+    const texto = chunks.join("");
+    expect(escritas).toBeGreaterThan(10);
+    // Regex montada em runtime (nao literal) para nao disparar noControlCharactersInRegex.
+    expect(texto).not.toMatch(new RegExp(String.fromCharCode(27) + "\\[\\d+A"));
+    expect(texto).toContain("DeepSeek");
+    expect(texto).toContain("╭");
+    expect(texto).toContain("╰");
+    prompt.close();
+    vi.useRealTimers();
+  });
+
   it("spinner exposto anima via handle", () => {
     vi.useFakeTimers();
     const out = capturarSaida();

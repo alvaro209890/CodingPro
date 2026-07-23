@@ -35,30 +35,36 @@ describe("detectarNivelCor", () => {
     expect(detectarNivelCor({ FORCE_COLOR: "2" }, false)).toBe("256");
   });
 
-  it("TTY sem pistas → 16; Windows CMD → 16; WT → truecolor", () => {
-    expect(detectarNivelCor({ TERM: "xterm" }, true)).toBe("16");
-    expect(detectarNivelCor({}, true, "win32")).toBe("16");
+  it("TTY sem pistas → 16; Windows 7/8.1 → 16; Windows 10/11 → truecolor; WT → truecolor", () => {
+    expect(detectarNivelCor({ TERM: "xterm" }, true, "linux")).toBe("16");
+    expect(detectarNivelCor({}, true, "win32", "6.1.7601")).toBe("16");
+    expect(detectarNivelCor({}, true, "win32", "6.3.9600")).toBe("16");
+    expect(detectarNivelCor({}, true, "win32", "10.0.19045")).toBe("truecolor");
+    expect(detectarNivelCor({}, true, "win32", "10.0.22631")).toBe("truecolor");
     expect(detectarNivelCor({ WT_SESSION: "1" }, true, "win32")).toBe("truecolor");
   });
 });
 
 describe("detectarAscii / glifos", () => {
-  it("Windows sem WT → ascii; WT e VS Code → unicode", () => {
-    expect(detectarAscii({}, "win32")).toBe(true);
+  it("Windows 7/8.1 → ascii; Windows 10/11 sem WT → unicode; WT e VS Code → unicode", () => {
+    expect(detectarAscii({}, "win32", "6.1.7601")).toBe(true);
+    expect(detectarAscii({}, "win32", "10.0.19045")).toBe(false);
     expect(detectarAscii({ WT_SESSION: "1" }, "win32")).toBe(false);
     expect(detectarAscii({ TERM_PROGRAM: "vscode" }, "linux")).toBe(false);
     expect(detectarAscii({ CODINGPRO_ASCII: "1" }, "linux")).toBe(true);
-    expect(detectarAscii({ CODINGPRO_ASCII: "0" }, "win32")).toBe(false);
+    expect(detectarAscii({ CODINGPRO_ASCII: "0" }, "win32", "6.1.7601")).toBe(false);
     expect(detectarAscii({ TERM: "dumb" }, "linux")).toBe(true);
   });
 
   it("glifos ASCII usam +-| e >", () => {
     const a = glifosPara(true);
-    expect(a.boxTop.startsWith("+")).toBe(true);
+    expect(a.cantoTL).toBe("+");
+    expect(a.linhaH).toBe("-");
     expect(a.prompt).toBe("> ");
     expect(a.ok).toBe("+");
     const u = glifosPara(false);
     expect(u.prompt).toContain("❯");
+    expect(u.cantoTL).toBe("╭");
   });
 });
 
@@ -107,4 +113,32 @@ describe("criarTema", () => {
       expect(t.statusLinha("tok")).toContain("tok");
     },
   );
+
+  it("bannerLinhas() é uma caixa sólida cujas linhas concatenadas batem com banner()", () => {
+    const t = criarTema({ ascii: false, nivel: "truecolor" });
+    const linhas = t.bannerLinhas();
+    expect(`\n${linhas.join("\n")}\n`).toBe(t.banner());
+    const semCor = linhas.map(semAnsi);
+    expect(semCor[0]?.startsWith("╭")).toBe(true);
+    expect(semCor[0]?.endsWith("╮")).toBe(true);
+    expect(semCor.at(-3)?.startsWith("╰")).toBe(true);
+    // todas as linhas da caixa (exceto o rodapé fora dela) têm a mesma largura visual
+    const largurasCaixa = semCor.slice(0, -2).map((l) => [...l].length);
+    expect(new Set(largurasCaixa).size).toBe(1);
+  });
+
+  it("bannerLinhas() em ascii usa caixa +-| (sem unicode)", () => {
+    const t = criarTema({ ascii: true, nivel: "16" });
+    const linhas = t.bannerLinhas().map(semAnsi);
+    expect(linhas[0]?.startsWith("+")).toBe(true);
+    expect(linhas.some((l) => l.includes("╭"))).toBe(false);
+  });
+
+  it("pulso() cicla cores e é identidade em nível 'nenhuma'", () => {
+    const t = criarTema({ ascii: false, nivel: "nenhuma" });
+    expect(t.pulso("⠋", 0)).toBe("⠋");
+    const cor = criarTema({ ascii: false, nivel: "truecolor" });
+    expect(cor.pulso("⠋", 0)).toContain(ESC);
+    expect(semAnsi(cor.pulso("⠋", 0))).toBe("⠋");
+  });
 });

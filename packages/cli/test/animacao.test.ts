@@ -56,6 +56,18 @@ describe("animacao", () => {
     expect(chunks.join("")).toContain("já parado");
   });
 
+  it("criarSpinner com formatadores colore frame e rótulo sem alterar o texto visível", () => {
+    vi.useFakeTimers();
+    const chunks: string[] = [];
+    const sp = criarSpinner((t) => chunks.push(t), 50, false, {
+      pintarFrame: (frame) => `<F>${frame}</F>`,
+      pintarLabel: (rotulo) => `<L>${rotulo}</L>`,
+    });
+    sp.start("pensando");
+    expect(chunks.some((c) => c.includes("<F>") && c.includes("<L>pensando</L>"))).toBe(true);
+    sp.stop();
+  });
+
   it("stop sem start e stop vazio não rebentam", () => {
     const chunks: string[] = [];
     const sp = criarSpinner((t) => chunks.push(t), 30);

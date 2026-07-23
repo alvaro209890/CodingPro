@@ -4,6 +4,8 @@
  * (truecolor → 256 → 16 → nenhuma) e glifos modernos ou **ASCII** para Windows CMD / SSH legado.
  */
 
+import { release as osRelease } from "node:os";
+
 export type NivelCor = "16" | "256" | "nenhuma" | "truecolor";
 
 /** Cor RGB da paleta Aurora (esmeralda → ciano → violeta) + tons auxiliares. */
@@ -34,14 +36,25 @@ const ESC = "\u001b";
 const RESET = `${ESC}[0m`;
 
 /**
+ * Windows 10/11 (kernel NT ≥ 10) tem VT/truecolor no `conhost` clássico, não só no Windows
+ * Terminal — o Node já habilita `ENABLE_VIRTUAL_TERMINAL_PROCESSING` sozinho nesses builds.
+ * Windows 7/8.1 (NT 6.x) não têm essa via, daí o fallback rígido para 16 cores/ASCII.
+ */
+function windowsModerno(release: string): boolean {
+  const major = Number.parseInt(release.split(".")[0] ?? "", 10);
+  return Number.isFinite(major) && major >= 10;
+}
+
+/**
  * Detecta o nível de cor. Ordem: `NO_COLOR` desliga; `FORCE_COLOR` liga; sem TTY → nenhuma;
- * Windows Terminal / COLORTERM truecolor → truecolor; `TERM` com `256` → 256; Windows CMD → 16;
- * senão 16.
+ * Windows Terminal / COLORTERM truecolor → truecolor; `TERM` com `256` → 256;
+ * Windows 10/11 (CMD/PowerShell "cru") → truecolor; Windows 7/8.1 → 16.
  */
 export function detectarNivelCor(
   env: Record<string, string | undefined>,
   isTTY: boolean,
   platform: string = process.platform,
+  release: string = osRelease(),
 ): NivelCor {
   if (env.NO_COLOR !== undefined && env.NO_COLOR !== "") {
     return "nenhuma";
@@ -74,20 +87,22 @@ export function detectarNivelCor(
   if (term.includes("256")) {
     return "256";
   }
-  // CMD clássico / ConEmu: 16 cores brilhantes bastam e renderizam bem
+  // CMD / PowerShell "crus" no Windows 10/11 já têm VT truecolor; só Win7/8.1 caem para 16.
   if (platform === "win32") {
-    return "16";
+    return windowsModerno(release) ? "truecolor" : "16";
   }
   return "16";
 }
 
 /**
- * Glifos ASCII quando o terminal não lida bem com Unicode (CMD Windows legado, TERM=dumb,
- * locale sem UTF-8, ou CODINGPRO_ASCII=1). Windows Terminal / VS Code / iTerm → Unicode.
+ * Glifos ASCII quando o terminal não lida bem com Unicode (Windows 7/8.1, TERM=dumb,
+ * locale sem UTF-8, ou CODINGPRO_ASCII=1). Windows Terminal / VS Code / iTerm / Windows 10+ →
+ * Unicode (conhost moderno usa fonte TrueType com codepage UTF-8 disponível).
  */
 export function detectarAscii(
   env: Record<string, string | undefined>,
   platform: string = process.platform,
+  release: string = osRelease(),
 ): boolean {
   const flag = (env.CODINGPRO_ASCII ?? "").trim().toLowerCase();
   if (flag === "1" || flag === "true" || flag === "yes" || flag === "on") {
@@ -106,9 +121,9 @@ export function detectarAscii(
   if (term === "dumb" || term === "cygwin" || term === "win32") {
     return true;
   }
-  // CMD / PowerShell “cru” sem WT: code page legada quebra box-drawing
+  // CMD / PowerShell "cru" sem WT: só o Windows 7/8.1 tem code page legada que quebra box-drawing
   if (platform === "win32") {
-    return true;
+    return !windowsModerno(release);
   }
   const lang = `${env.LANG ?? ""}${env.LC_ALL ?? ""}${env.LC_CTYPE ?? ""}`.toLowerCase();
   if (lang.length > 0 && !lang.includes("utf-8") && !lang.includes("utf8")) {
@@ -127,19 +142,26 @@ export interface Glifos {
   readonly warn: string;
   readonly project: string;
   readonly rule: string;
-  readonly boxTop: string;
-  readonly boxBot: string;
-  readonly boxSide: string;
+  /** Cantos e traços da caixa do banner (dimensionada em runtime, largura variável). */
+  readonly cantoTL: string;
+  readonly cantoTR: string;
+  readonly cantoBL: string;
+  readonly cantoBR: string;
+  readonly linhaH: string;
+  readonly linhaV: string;
 }
 
 export function glifosPara(ascii: boolean): Glifos {
   if (ascii) {
     return {
-      boxBot: "+----------------------------------------------------+",
-      boxSide: "|",
-      boxTop: "+----------------------------------------------------+",
       bullet: "*",
+      cantoBL: "+",
+      cantoBR: "+",
+      cantoTL: "+",
+      cantoTR: "+",
       fail: "x",
+      linhaH: "-",
+      linhaV: "|",
       logo: "* CodingPro",
       ok: "+",
       project: ">",
@@ -150,11 +172,14 @@ export function glifosPara(ascii: boolean): Glifos {
     };
   }
   return {
-    boxBot: "╰────────────────────────────────────────────────────╯",
-    boxSide: "│",
-    boxTop: "╭────────────────────────────────────────────────────╮",
     bullet: "·",
+    cantoBL: "╰",
+    cantoBR: "╯",
+    cantoTL: "╭",
+    cantoTR: "╮",
     fail: "✗",
+    linhaH: "─",
+    linhaV: "│",
     logo: "◈ CodingPro",
     ok: "✓",
     project: "▸",
@@ -231,13 +256,18 @@ function interpolar(a: CorRGB, b: CorRGB, t: number): CorRGB {
   };
 }
 
-function gradiente(texto: string, nivel: NivelCor): string {
+/**
+ * Gradiente por caractere. `largura` é a referência de coluna 0..largura-1 — passar a MESMA
+ * largura para todas as linhas de um bloco multi-linha faz as faixas de cor alinharem
+ * verticalmente (sweep coerente), em vez de cada linha recomeçar o degradê do zero.
+ */
+function gradienteColuna(texto: string, nivel: NivelCor, largura: number): string {
   if (nivel === "nenhuma" || nivel === "16") {
     // Gradiente por caractere não vale a pena em 16 cores (CMD)
     return nivel === "nenhuma" ? texto : pintar(texto, AURORA.esmeralda, nivel);
   }
   const chars = [...texto];
-  const n = Math.max(1, chars.length - 1);
+  const n = Math.max(1, largura - 1);
   const segmentos = GRADIENTE.length - 1;
   const corpo = chars
     .map((ch, i) => {
@@ -257,6 +287,10 @@ export interface Tema {
   readonly cor: NivelCor;
   readonly ascii: boolean;
   banner(): string;
+  /** Mesmo conteúdo de `banner()`, como linhas separadas — usado para revelar com animação. */
+  bannerLinhas(): readonly string[];
+  /** Colore um glifo (ex.: spinner) em pulso cíclico pela paleta Aurora — `tick` define a fase. */
+  pulso(glifo: string, tick: number): string;
   prompt(): string;
   progresso(texto: string): string;
   ferramenta(texto: string): string;
@@ -295,25 +329,70 @@ export function criarTema(
   const preferCinza = opcoes.preferCinza ?? (ascii || process.platform === "win32");
   const g = glifosPara(ascii);
 
+  /**
+   * Bloco do banner: wordmark dentro de uma caixa sólida (estilo Claude Code), largura
+   * calculada a partir do próprio wordmark — gradiente por coluna alinhado entre as linhas.
+   */
+  function montarBlocoBanner(): readonly string[] {
+    const wordmarkBruto = logoLinhas(ascii);
+    const largura = Math.max(...wordmarkBruto.map((l) => l.length));
+    const preencher = (s: string): string => s + " ".repeat(Math.max(0, largura - s.length));
+
+    const linhaWordmark = (l: string): string => {
+      const padded = preencher(l);
+      if (nivel === "nenhuma") {
+        return padded;
+      }
+      if (nivel === "16") {
+        return pintar(padded, AURORA.esmeralda, nivel);
+      }
+      return `${ESC}[1m${gradienteColuna(padded, nivel, largura)}${RESET}`;
+    };
+
+    const subFmt = esmaecer(
+      preencher("DeepSeek V4 Pro/Flash  ·  1M context  ·  pt-BR"),
+      nivel,
+      preferCinza,
+    );
+    const vazio = " ".repeat(largura);
+
+    const bordar = (s: string): string => (nivel === "nenhuma" ? s : esmaecer(s, nivel, preferCinza));
+    const topo = bordar(`${g.cantoTL}${g.linhaH.repeat(largura + 2)}${g.cantoTR}`);
+    const fundo = bordar(`${g.cantoBL}${g.linhaH.repeat(largura + 2)}${g.cantoBR}`);
+    const lado = bordar(g.linhaV);
+    const envolver = (conteudo: string): string => `${lado} ${conteudo} ${lado}`;
+
+    const dica = esmaecer("digite / para comandos   ·   /ajuda lista tudo", nivel, preferCinza);
+
+    return [
+      topo,
+      envolver(vazio),
+      ...wordmarkBruto.map((l) => envolver(linhaWordmark(l))),
+      envolver(vazio),
+      envolver(subFmt),
+      envolver(vazio),
+      fundo,
+      "",
+      `  ${dica}`,
+    ];
+  }
+
   return {
     ascii,
     cor: nivel,
     banner() {
-      // Wordmark GRANDE (estilo Claude Code) — 6 linhas, impressão única (sem CURSOR_UP).
-      const linhas = logoLinhas(ascii).map((l) => {
-        if (nivel === "nenhuma") {
-          return `  ${l}`;
-        }
-        if (nivel === "16") {
-          return `  ${pintar(l, AURORA.esmeralda, nivel)}`;
-        }
-        return `  ${ESC}[1m${gradiente(l, nivel)}${RESET}`;
-      });
-      const sub = esmaecer("  DeepSeek V4 Pro/Flash  ·  1M context  ·  pt-BR", nivel, preferCinza);
-      const dica = esmaecer("  digite / para comandos   ·   /ajuda lista tudo", nivel, preferCinza);
-      const h = ascii ? "-" : "─";
-      const regua = esmaecer(`  ${h.repeat(50)}`, nivel, preferCinza);
-      return `\n${linhas.join("\n")}\n${sub}\n${dica}\n${regua}\n`;
+      return `\n${montarBlocoBanner().join("\n")}\n`;
+    },
+    bannerLinhas() {
+      return montarBlocoBanner();
+    },
+    pulso(glifo, tick) {
+      if (nivel === "nenhuma") {
+        return glifo;
+      }
+      const paleta = GRADIENTE;
+      const i = ((tick % paleta.length) + paleta.length) % paleta.length;
+      return pintar(glifo, paleta[i] as CorRGB, nivel);
     },
     prompt() {
       const sim = g.prompt.trimEnd();
