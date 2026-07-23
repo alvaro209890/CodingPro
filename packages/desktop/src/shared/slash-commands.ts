@@ -80,21 +80,27 @@ export const COMANDOS_CHAT: readonly ComandoChat[] = Object.freeze([
   {
     nome: "/plan",
     aliases: ["/plano"],
-    descricao: "pede um plano ao agente; /plan clear limpa o aviso",
+    descricao: "arquiteto planeja (Q&A se precisar) e salva em .codingpro/plans; /plan clear limpa",
     aceitaArgs: true,
   },
   {
     nome: "/review",
     aliases: [],
-    descricao: "revisa o projeto/diff com o agente",
+    descricao: "revisa o diff git (ou <alvo>) com o subagente reviewer",
     aceitaArgs: true,
   },
-  { nome: "/skills", aliases: [], descricao: "lista skills do projeto (se houver)", aceitaArgs: false },
+  { nome: "/skills", aliases: [], descricao: "lista skills do projeto (● = ativa)", aceitaArgs: false },
   {
     nome: "/skill",
     aliases: [],
-    descricao: "mostra uso de skill (desktop: use o chat para ativar)",
+    descricao: "ativa uma skill para a sessão",
     aceitaArgs: true,
+  },
+  {
+    nome: "/doctor",
+    aliases: [],
+    descricao: "diagnóstico do ambiente (provider, git, permissões)",
+    aceitaArgs: false,
   },
   { nome: "/init", aliases: [], descricao: "gera CODINGPRO.md do projeto", aceitaArgs: true },
   {

@@ -129,6 +129,12 @@ export const COMANDOS_CHAT: readonly ComandoChat[] = Object.freeze([
     descricao: "mostra o companheiro/XP da sessão (desligável)",
     nome: "/pet",
   },
+  {
+    aceitaArgs: false,
+    aliases: ["/trust"],
+    descricao: "liga/desliga aprovação automática de tudo nesta sessão (cuidado)",
+    nome: "/confiar",
+  },
 ]);
 
 export interface SugestaoComando {

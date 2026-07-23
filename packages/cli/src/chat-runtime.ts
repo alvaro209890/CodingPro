@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import {
   ALL_TOOLS,
+  type Approver,
   type AutoEffortState,
   atualizarAutoEffort,
   blocoSkill,
@@ -304,7 +305,13 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
   for (const tool of [...ALL_TOOLS, ...(options.mcpTools ?? [])]) {
     registry.register(tool);
   }
-  const aprovador = criarAprovadorInterativo({ pergunta: io.pergunta }, io.progresso, tema);
+  const aprovadorInterativo = criarAprovadorInterativo({ pergunta: io.pergunta }, io.progresso, tema);
+  // /confiar: bypass global de aprovação (espelha o "autoApprove" do Desktop) — cuidado.
+  let confiarTudo = false;
+  const aprovador: Approver = {
+    request: (request, context) =>
+      confiarTudo ? Promise.resolve("approve-once") : aprovadorInterativo.request(request, context),
+  };
   const hooks = options.hooks ?? [];
   const gate = new ToolGate(
     registry,
@@ -456,6 +463,15 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       tema = criarTema({ ascii: tema.ascii, nivel: tema.cor, paleta: nomeTemaValido(alvo) });
       io.progresso(
         `${tema.sucesso(`tema: ${tema.nome}`)} ${tema.nota("(prompt/banner aplicam no próximo início)")}\n`,
+      );
+      continue;
+    }
+    if (mensagem === "/confiar" || mensagem === "/trust") {
+      confiarTudo = !confiarTudo;
+      io.progresso(
+        confiarTudo
+          ? `${tema.aviso("· confiar ligado — TODA ferramenta de efeito roda sem perguntar até /confiar de novo ou /sair")}\n`
+          : `${tema.nota("· confiar desligado — voltou a perguntar antes de escrever/rodar")}\n`,
       );
       continue;
     }

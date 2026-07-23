@@ -23,6 +23,7 @@
     "build": "tsdown"
   },
   "dependencies": {
-    "@codingpro/llm": "workspace:*"
+    "@codingpro/llm": "workspace:*",
+    "jsonc-parser": "3.3.1"
   }
 }

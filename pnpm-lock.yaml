@@ -53,6 +53,9 @@ importers:
       '@codingpro/llm':
         specifier: workspace:*
         version: link:../llm
+      jsonc-parser:
+        specifier: 3.3.1
+        version: 3.3.1
 
   packages/desktop:
     dependencies:

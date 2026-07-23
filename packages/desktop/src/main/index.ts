@@ -1,5 +1,5 @@
 import { type ExecOptions, exec } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,37 +8,69 @@ import {
   ALL_TOOLS,
   type Approval,
   type Approver,
+  type AutoEffortState,
+  atualizarAutoEffort,
+  blocoPlanoAtivo,
   blocoSkill,
+  carregarHooks,
+  carregarSkills,
+  carregarTiposCustom,
   CheckpointStore,
+  classificarRespostaArquiteto,
+  coletarSondas,
   compactMessages,
   construirRepoMap,
+  corrigirQualidade,
+  criarAutoEffortState,
+  criarHookRunner,
+  criarSpawnerSubagentes,
   type CoreUiEvent,
   createReadTracker,
   detectarProjeto,
+  dirsSkills,
   estimateMessageTokens,
-  executarSubagente,
+  formatarPerguntaUi,
+  formatarRelatorioDoctor,
   gerarCodingproMd,
+  type Hook,
   indexarRepositorio,
+  iniciarServidoresMcp,
+  interpretarResposta,
   isNodeSqliteDisponivel,
+  lerOpcoesQualidadeEnv,
   MEMORY_TOOL_NAMES,
   MemoryStore,
+  mensagemHistoricoPlano,
+  montarDiagnosticos,
   newSessionId,
-  parseSkill,
+  obterDiff,
+  parsePerguntas,
+  type PerguntaPlano,
   PermissionController,
   type PermissionRequest,
+  type PlanoAtivo,
+  prepararAutoEffort,
   type PreviaEscrita,
+  promptFasePerguntas,
+  promptFasePlano,
+  promptReparoQualidade,
+  promptRevisao,
   type ReadTracker,
+  resolverAutoEffort,
   resolverPreviaDeEscrita,
+  type RespostaPergunta,
   resumoProjeto,
   runAgent,
-  resolverTipoAgente,
+  salvarPlanoEmDisco,
   sanitizeMessagesForProvider,
+  type ServidoresMcp,
   SessionStore,
+  type Skill,
+  sugerirSkills,
   type SubagenteSpawner,
   SYSTEM_PROMPT_V1,
-  TIPOS_AGENTE_PADRAO,
-    type ToolContext,
-    ToolGate,
+  type ToolContext,
+  ToolGate,
   ToolRegistry,
   type UiPermissionResponse,
   WRITE_FILE_MAX_BYTES,
@@ -111,7 +143,8 @@ function ehMonorepoCodingPro(cwd: string): boolean {
   return existsSync(join(cwd, "pnpm-workspace.yaml")) && existsSync(join(cwd, "packages", "desktop"));
 }
 
-async function montarSystemPromptDesktop(workspace: Workspace): Promise<string> {
+async function montarSystemPromptDesktop(session: ChatSession): Promise<string> {
+  const workspace = session.workspace;
   let projetoLinha = "";
   try {
     const info = await detectarProjeto(workspace);
@@ -120,32 +153,13 @@ async function montarSystemPromptDesktop(workspace: Workspace): Promise<string> 
     projetoLinha = "(detecção indisponível)";
   }
 
-  // Carrega skills do projeto (.codingpro/skills/*.md) e globais (~/.codingpro/skills/*.md)
-  const skillsBlocos: string[] = [];
-  for (const dir of [
-    join(workspace.root, ".codingpro", "skills"),
-    join(homedir(), ".codingpro", "skills"),
-  ]) {
-    if (!existsSync(dir)) continue;
-    try {
-      for (const entry of readdirSync(dir)) {
-        if (!entry.endsWith(".md")) continue;
-        try {
-          const texto = readFileSync(join(dir, entry), "utf8");
-          const skill = parseSkill(entry.replace(/\.md$/u, ""), texto);
-          if (skill !== undefined) {
-            skillsBlocos.push(blocoSkill(skill));
-          }
-        } catch {
-          // skill ilegível → ignora
-        }
-      }
-    } catch {
-      // diretório não escaneável → ignora
-    }
-  }
-
-  const skillsStr = skillsBlocos.length > 0 ? `\n\n--- Skills ativas (.codingpro/skills/):\n${skillsBlocos.join("\n\n")}` : "";
+  // Só as skills ATIVAS (/skill <nome>) entram no prompt — paridade com o chat da CLI.
+  const blocosSkill = [...session.skillsAtivas]
+    .map((nome) => session.skills.find((s) => s.nome === nome))
+    .filter((s): s is Skill => s !== undefined)
+    .map((s) => blocoSkill(s));
+  const skillsStr =
+    blocosSkill.length > 0 ? `\n\n--- Skills ativas (/skill <nome> para ativar):\n${blocosSkill.join("\n\n")}` : "";
 
   const extra = [
     "",
@@ -158,7 +172,8 @@ async function montarSystemPromptDesktop(workspace: Workspace): Promise<string> 
     "- Não diga que só pode trabalhar no monorepo CodingPro: a raiz é a pasta que o usuário abriu.",
     skillsStr,
   ].join("\n");
-  return `${SYSTEM_PROMPT_V1}\n${extra}`;
+  const base = `${SYSTEM_PROMPT_V1}\n${extra}`;
+  return session.planoAtivo === undefined ? base : `${base}\n\n${blocoPlanoAtivo(session.planoAtivo)}`;
 }
 
 async function escolherPastaProjeto(defaultPath?: string): Promise<string | undefined> {
@@ -224,6 +239,14 @@ interface SessionCost {
   turns: number;
 }
 
+/** Pergunta pendente de um /plan em andamento (Q&A do arquiteto ao longo de vários turnos). */
+interface PlanoPendente {
+  readonly objetivo: string;
+  readonly perguntas: readonly PerguntaPlano[];
+  indice: number;
+  respostas: RespostaPergunta[];
+}
+
 interface ChatSession {
   readonly cwd: string;
   readonly gate: ToolGate;
@@ -236,9 +259,16 @@ interface ChatSession {
   readonly memoryGlobal: MemoryStore;
   readonly memoryProjeto: MemoryStore;
   readonly subagentes?: SubagenteSpawner;
+  readonly hooks: readonly Hook[];
+  readonly mcp: ServidoresMcp;
+  readonly skills: readonly Skill[];
+  readonly skillsAtivas: Set<string>;
+  readonly autoEffort: AutoEffortState;
   sessionId: string;
   transcript: ChatMessage[];
   cost: SessionCost;
+  planoAtivo?: PlanoAtivo | undefined;
+  planoPendente?: PlanoPendente | undefined;
 }
 
 let activeSession: ChatSession | null = null;
@@ -356,23 +386,10 @@ function acumularCusto(session: ChatSession, cost: CostBreakdown | undefined): v
   session.cost.totalCostUsd += cost.totalCostUsd;
 }
 
-/** Expande /review e /plan em prompts de agente (paridade CLI). */
+/** Expande /goal em prompt de agente (/review e /plan já são tratados em handleLocalCommand). */
 function expandirPromptAgente(prompt: string): string | undefined {
   const msg = prompt.trim();
   const lower = msg.toLowerCase();
-  if (lower === "/review" || lower.startsWith("/review ")) {
-    const alvo = msg.replace(/^\/review\s*/iu, "").trim();
-    return alvo.length > 0
-      ? `Revise o código relacionado a: ${alvo}. Use as tools (list_dir, read_file, grep, repo_map) e aponte bugs, riscos, cheiros e melhorias concretas.`
-      : "Revise o projeto aberto: estrutura, arquivos-chave e possíveis problemas. Use tools antes de concluir.";
-  }
-  if (lower === "/plan" || lower.startsWith("/plan ") || lower.startsWith("/plano ")) {
-    const obj = msg.replace(/^\/plan(o)?\s*/iu, "").trim();
-    if (obj === "clear" || obj === "limpar") return undefined;
-    return obj.length > 0
-      ? `Elabore um plano de implementação passo a passo para: ${obj}. Liste etapas, arquivos a tocar, riscos e ordem sugerida. Explore o código com tools se precisar.`
-      : "Elabore um plano de trabalho para melhorar/entender este projeto. Explore com tools e liste etapas concretas.";
-  }
   if (lower === "/goal" || lower.startsWith("/goal ") || lower === "/meta" || lower.startsWith("/meta ")) {
     const obj = msg.replace(/^\/(goal|meta)\s*/iu, "").trim();
     return obj.length > 0
@@ -394,6 +411,13 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
     activeAbort.abort();
     activeAbort = null;
   }
+  if (activeSession !== null) {
+    try {
+      activeSession.mcp.fechar();
+    } catch {
+      // best-effort
+    }
+  }
 
   const workspace = await Workspace.create(normalized);
   const registry = new ToolRegistry();
@@ -406,11 +430,27 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
     registry.register(tool);
   }
 
+  // Hooks (pre/post-tool, stop) + MCP (servidores externos) + skills — paridade com a CLI.
+  const [hooks, mcp, skills, tiposCustom] = await Promise.all([
+    carregarHooks(normalized),
+    iniciarServidoresMcp(normalized),
+    carregarSkills(dirsSkills(normalized)),
+    carregarTiposCustom(join(normalized, ".codingpro", "agents")),
+  ]);
+  for (const tool of mcp.tools) {
+    registry.register(tool);
+  }
+  if (mcp.avisos.length > 0) {
+    for (const aviso of mcp.avisos) {
+      sendCoreEvent({ type: "agent-event", event: { type: "notice", text: aviso } });
+    }
+  }
+
   const permissionController = new PermissionController(
     { alwaysAllow: MEMORY_TOOL_NAMES, mode: "ask" },
     approver,
   );
-  const gate = new ToolGate(registry, permissionController);
+  const gate = new ToolGate(registry, permissionController, hooks.length > 0 ? criarHookRunner(hooks) : undefined);
   const provider = criarProvider();
   const sessionStore = await SessionStore.create(join(normalized, ".codingpro", "sessions"));
   const checkpoints = await CheckpointStore.create(
@@ -421,29 +461,21 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
   const memoryGlobal = MemoryStore.create(join(homedir(), ".codingpro", "memory"));
   const memoryProjeto = MemoryStore.create(join(normalized, ".codingpro", "memory"));
 
-  // SubagenteSpawner: fábrica de subagentes para a tool `task`
-  const poolTools = ALL_TOOLS.filter((t) => t.definition.name !== "code_search" || isNodeSqliteDisponivel());
-    const spawner: SubagenteSpawner = {
-      tiposDisponiveis: Object.keys(TIPOS_AGENTE_PADRAO),
-      maxParalelo: 3,
-      async executar(tipo, prompt, sgn) {
-        const tipoAgente = resolverTipoAgente(tipo);
-        if (!tipoAgente) throw new Error(`Tipo de subagente desconhecido: ${tipo}`);
-        const relatorio = await executarSubagente({
-          tipo: tipoAgente,
-          prompt,
-          provider,
-          toolPool: poolTools,
-          context: { workspace, readTracker, memory: { global: memoryGlobal, projeto: memoryProjeto } },
-          ...(sgn ? { signal: sgn } : {}),
-        });
-        return relatorio;
-      },
-    };
+  // SubagenteSpawner: fábrica de subagentes para a tool `task` e para /plan e /review —
+  // inclui tipos customizados de `.codingpro/agents/*.md` (paridade com a CLI).
+  const spawner = criarSpawnerSubagentes({
+    custom: tiposCustom,
+    memory: { global: memoryGlobal, projeto: memoryProjeto },
+    provider,
+    workspace,
+  });
 
-  const sess = {
+  const sess: ChatSession = {
+    autoEffort: criarAutoEffortState(),
     cwd: normalized,
     gate,
+    hooks,
+    mcp,
     provider,
     registry,
     sessionStore,
@@ -451,6 +483,8 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
     readTracker,
     memoryGlobal,
     memoryProjeto,
+    skills,
+    skillsAtivas: new Set<string>(),
     subagentes: spawner,
     sessionId: newSessionId(),
     transcript: [],
@@ -566,14 +600,180 @@ function execCommand(
   });
 }
 
+/** Extrai um checklist best-effort da seção "## Passos" do plano, para o PlanTracker da UI. */
+function extrairPassosPlano(texto: string): Array<{ id: string; label: string; status: "pending" }> {
+  const linhas = texto.replaceAll("\r\n", "\n").split("\n");
+  const inicio = linhas.findIndex((l) => /^##\s*Passos/iu.test(l.trim()));
+  if (inicio === -1) return [];
+  const passos: Array<{ id: string; label: string; status: "pending" }> = [];
+  for (let i = inicio + 1; i < linhas.length; i += 1) {
+    const linha = (linhas[i] ?? "").trim();
+    if (/^##\s/u.test(linha)) break;
+    const m = /^(?:\d+[.)]\s*|[-*]\s*(?:\[[ xX]\]\s*)?)(.+)$/u.exec(linha);
+    if (m?.[1] && m[1].trim().length > 0) {
+      passos.push({ id: `plano-${passos.length}`, label: m[1].trim().slice(0, 120), status: "pending" });
+    }
+    if (passos.length >= 20) break;
+  }
+  return passos;
+}
+
+/** Persiste o plano, ativa-o na sessão e emite os passos para o PlanTracker. */
+async function salvarEIniciarPlano(
+  session: ChatSession,
+  objetivo: string,
+  texto: string,
+  respostas: RespostaPergunta[],
+  linhasProgresso: string[],
+): Promise<{ handled: true; reply: string }> {
+  const resultado = await salvarPlanoEmDisco(session.workspace.root, objetivo, texto, respostas, {
+    progresso: (t: string) => linhasProgresso.push(t.replace(/\n$/u, "")),
+    saida: () => {
+      // o texto do plano já é anexado abaixo — evita duplicar na resposta do chat
+    },
+  });
+  if (resultado.plano !== undefined) {
+    session.planoAtivo = resultado.plano;
+    for (const passo of extrairPassosPlano(texto)) {
+      sendCoreEvent({ type: "plan-task", task: passo });
+    }
+  }
+  linhasProgresso.push("", texto);
+  return { handled: true, reply: linhasProgresso.join("\n") };
+}
+
+/** Inicia (ou responde a Q&A pendente de) `/plan`: arquiteto → perguntas → plano em disco. */
+async function iniciarComandoPlano(
+  session: ChatSession,
+  msg: string,
+  signal?: AbortSignal,
+): Promise<{ handled: true; reply: string }> {
+  const arg = msg.replace(/^\/plan(o)?\s*/iu, "").trim();
+  const argLower = arg.toLowerCase();
+  if (argLower === "clear" || argLower === "limpar" || argLower === "none") {
+    session.planoAtivo = undefined;
+    session.planoPendente = undefined;
+    return { handled: true, reply: "· plano ativo limpo" };
+  }
+  if (arg.length === 0) {
+    return { handled: true, reply: "· uso: /plan <objetivo>  ·  /plan clear limpa o plano ativo" };
+  }
+  if (session.subagentes === undefined) {
+    return { handled: true, reply: "· subagentes indisponíveis nesta sessão" };
+  }
+
+  const linhasProgresso = ["· arquiteto: verificando se precisa de decisões…"];
+  const fase1 = await session.subagentes.executar("architect", promptFasePerguntas(arg), signal);
+  const texto1 = fase1.texto.trim();
+  const classe = classificarRespostaArquiteto(texto1);
+
+  if (classe === "plano") {
+    return salvarEIniciarPlano(session, arg, texto1, [], linhasProgresso);
+  }
+
+  const respostas: RespostaPergunta[] = [];
+  if (classe === "perguntas") {
+    const perguntas = parsePerguntas(texto1);
+    if (perguntas.length > 0) {
+      session.planoPendente = { objetivo: arg, perguntas, indice: 0, respostas: [] };
+      const p = perguntas[0] as PerguntaPlano;
+      linhasProgresso.push(
+        `· ${perguntas.length} pergunta(s) — responda pelo número ou texto livre`,
+        "",
+        formatarPerguntaUi(p, perguntas.length),
+      );
+      return { handled: true, reply: linhasProgresso.join("\n") };
+    }
+    linhasProgresso.push("· arquiteto pediu perguntas, mas o formato veio inválido — planejando direto…");
+  } else {
+    linhasProgresso.push("· sem perguntas extras — montando o plano…");
+  }
+
+  linhasProgresso.push("· arquiteto redigindo o plano…");
+  const fase2 = await session.subagentes.executar("architect", promptFasePlano(arg, respostas), signal);
+  const planoTexto = fase2.texto.trim().length > 0 ? fase2.texto.trim() : "(o arquiteto não produziu plano)";
+  return salvarEIniciarPlano(session, arg, planoTexto, respostas, linhasProgresso);
+}
+
+/** Trata a resposta do usuário a uma pergunta pendente do `/plan` em andamento. */
+async function responderPerguntaPlano(
+  session: ChatSession,
+  resposta: string,
+  signal?: AbortSignal,
+): Promise<{ handled: true; reply: string }> {
+  const pendente = session.planoPendente;
+  if (pendente === undefined) {
+    return { handled: true, reply: "" };
+  }
+  const perguntaAtual = pendente.perguntas[pendente.indice];
+  if (perguntaAtual === undefined) {
+    session.planoPendente = undefined;
+    return { handled: true, reply: "· plano cancelado (estado inconsistente)" };
+  }
+  const { escolha, livre } = interpretarResposta(resposta, perguntaAtual);
+  pendente.respostas.push({
+    escolha,
+    enunciado: perguntaAtual.enunciado,
+    numero: perguntaAtual.numero,
+    ...(livre ? { livre: true } : {}),
+  });
+  pendente.indice += 1;
+
+  const linhasProgresso = [`· ✓ ${perguntaAtual.numero}: ${escolha}`];
+  const proxima = pendente.perguntas[pendente.indice];
+  if (proxima !== undefined) {
+    linhasProgresso.push("", formatarPerguntaUi(proxima, pendente.perguntas.length));
+    return { handled: true, reply: linhasProgresso.join("\n") };
+  }
+
+  const objetivo = pendente.objetivo;
+  const respostas = pendente.respostas;
+  session.planoPendente = undefined;
+  if (session.subagentes === undefined) {
+    return { handled: true, reply: "· subagentes indisponíveis nesta sessão" };
+  }
+  linhasProgresso.push("· arquiteto redigindo o plano…");
+  const fase2 = await session.subagentes.executar("architect", promptFasePlano(objetivo, respostas), signal);
+  const planoTexto = fase2.texto.trim().length > 0 ? fase2.texto.trim() : "(o arquiteto não produziu plano)";
+  return salvarEIniciarPlano(session, objetivo, planoTexto, respostas, linhasProgresso);
+}
+
+/** `/review`: diff real (git) + subagente reviewer — paridade com o chat da CLI. */
+async function executarReviewDesktop(
+  session: ChatSession,
+  msg: string,
+  signal?: AbortSignal,
+): Promise<{ handled: true; reply: string }> {
+  const alvo = msg.replace(/^\/review\s*/iu, "").trim();
+  const { diff, erro } = await obterDiff(session.workspace.root, alvo.length > 0 ? alvo : undefined);
+  if (erro !== undefined) {
+    return { handled: true, reply: `· ${erro}` };
+  }
+  if (session.subagentes === undefined) {
+    return { handled: true, reply: "· subagentes indisponíveis nesta sessão" };
+  }
+  const rel = await session.subagentes.executar("reviewer", promptRevisao(diff), signal);
+  return { handled: true, reply: rel.texto.length > 0 ? rel.texto : "(sem achados)" };
+}
+
 async function handleLocalCommand(
   session: ChatSession,
   prompt: string,
+  signal?: AbortSignal,
 ): Promise<{ handled: true; reply: string } | { handled: false }> {
   const msg = prompt.trim();
   const lower = msg.toLowerCase();
   const partes = msg.split(/\s+/u);
   const cmd0 = (partes[0] ?? "").toLowerCase();
+
+  // /plan em Q&A: qualquer mensagem enquanto pendente é tratada como resposta à pergunta atual.
+  if (session.planoPendente !== undefined) {
+    if (lower === "/plan clear" || lower === "/plano limpar" || lower === "/plan" || lower === "/plano") {
+      session.planoPendente = undefined;
+      return { handled: true, reply: "· plano cancelado" };
+    }
+    return responderPerguntaPlano(session, msg, signal);
+  }
 
   if (cmd0 === "/ajuda" || cmd0 === "/help") {
     return { handled: true, reply: textoAjudaComandos() };
@@ -744,53 +944,51 @@ async function handleLocalCommand(
     return { handled: true, reply: linhas.join("\n") };
   }
   if (cmd0 === "/skills") {
-    const dirs = [
-      join(session.cwd, ".codingpro", "skills"),
-      join(homedir(), ".codingpro", "skills"),
-    ];
-    const nomes: string[] = [];
-    for (const d of dirs) {
-      if (!existsSync(d)) continue;
-      try {
-        for (const f of readdirSync(d)) {
-          if (f.endsWith(".md")) nomes.push(f.replace(/\.md$/u, ""));
-        }
-      } catch {
-        // ignore
-      }
-    }
-    if (nomes.length === 0) {
+    if (session.skills.length === 0) {
       return {
         handled: true,
         reply: "· nenhuma skill em .codingpro/skills (projeto ou global)",
       };
     }
-    return { handled: true, reply: `skills:\n${nomes.map((n) => `  · ${n}`).join("\n")}` };
+    const linhas = session.skills.map(
+      (s) => `  ${session.skillsAtivas.has(s.nome) ? "●" : "○"} ${s.nome} — ${s.descricao}`,
+    );
+    return { handled: true, reply: `skills:\n${linhas.join("\n")}` };
   }
   if (cmd0 === "/skill") {
     const nome = partes[1];
     if (nome === undefined) {
       return { handled: true, reply: "· uso: /skill <nome> — ou /skills para listar" };
     }
-    return {
-      handled: true,
-      reply: `· no desktop, peça no chat: “use a skill ${nome}” (ativação TUI completa é da CLI)`,
-    };
+    if (!session.skills.some((s) => s.nome === nome)) {
+      return { handled: true, reply: `· skill não encontrada: ${nome}` };
+    }
+    session.skillsAtivas.add(nome);
+    return { handled: true, reply: `· skill ativada: ${nome}` };
   }
-  if (
-    (cmd0 === "/plan" || cmd0 === "/plano") &&
-    ((partes[1] ?? "").toLowerCase() === "clear" || (partes[1] ?? "").toLowerCase() === "limpar")
-  ) {
-    return { handled: true, reply: "· plano ativo limpo (desktop não mantém plano persistente)" };
+  if (cmd0 === "/plan" || cmd0 === "/plano") {
+    return iniciarComandoPlano(session, msg, signal);
+  }
+  if (cmd0 === "/review") {
+    return executarReviewDesktop(session, msg, signal);
+  }
+  if (cmd0 === "/doctor") {
+    const sondas = await coletarSondas(session.cwd, homedir(), process.env);
+    const { texto } = formatarRelatorioDoctor(montarDiagnosticos(sondas));
+    return { handled: true, reply: texto.trim() };
   }
   if (cmd0 === "/sair" || cmd0 === "/exit") {
     return { handled: true, reply: "· no desktop feche a janela (Alt+F4) — não há /sair" };
   }
-  if (cmd0 === "/tema" || cmd0 === "/theme" || cmd0 === "/pet") {
+  if (cmd0 === "/tema" || cmd0 === "/theme") {
     return {
       handled: true,
-      reply: "· tema/pet da TUI não se aplicam ao Desktop (UI Aurora fixa por enquanto — W3)",
+      reply:
+        "· temas: use o painel de Configurações (ícone na barra lateral) — aurora/solar/neon/mono, aplica na hora e fica salvo",
     };
+  }
+  if (cmd0 === "/pet") {
+    return { handled: true, reply: "· pet/XP ainda não tem equivalente visual no Desktop" };
   }
 
   // /workspace sozinho = pwd
@@ -971,7 +1169,6 @@ app.whenReady().then(() => {
         const ordered = [...ids].reverse();
         return await Promise.all(
           ordered.map(async (id: string) => {
-            const _isRunning = activeSession !== null && id === activeSession.sessionId && runInFlight;
             let preview = `Sessão ${id.slice(0, 19)}`;
             try {
               const msgs = await store.load(id);
@@ -1108,7 +1305,7 @@ app.whenReady().then(() => {
                     }
 
               // Comandos locais (não consomem LLM)
-                            const local = await handleLocalCommand(session, prompt);
+                            const local = await handleLocalCommand(session, prompt, abort.signal);
                             if (local.handled) {
                               session.transcript.push(mensagemUsuario(prompt), mensagemAssistente(local.reply));
                               try {
@@ -1141,43 +1338,138 @@ app.whenReady().then(() => {
                               }
                             }
 
-                            const systemPrompt = await montarSystemPromptDesktop(session.workspace);
+                            const systemPrompt = await montarSystemPromptDesktop(session);
+
+                            // Auto-effort: estima contexto, decide Flash/Pro (paridade com o chat da CLI).
+                            const entradaEstimativa = [
+                              { content: systemPrompt, role: "system" as const },
+                              ...session.transcript,
+                            ];
+                            const tokensContexto = Math.round(JSON.stringify(entradaEstimativa).length / 2);
+                            prepararAutoEffort(
+                              session.autoEffort,
+                              tokensContexto,
+                              Array.from(session.registry.definitions(), (t) => t.name),
+                            );
+                            const papel = resolverAutoEffort(session.autoEffort);
+                            const modeloNome = papel === "fast" ? "DeepSeek V4 Flash" : "DeepSeek V4 Pro";
+                            let providerTurno: Provider = session.provider;
+                            if (session.provider.id === "deepseek" && papel === "fast") {
+                              const apiKey = obterApiKey();
+                              if (apiKey !== undefined) {
+                                providerTurno = new DeepSeekProvider({ apiKey, role: "fast" });
+                              }
+                            }
+                            sendCoreEvent({ type: "model-info", modelName: modeloNome, effort: papel });
+
+                            const arquivosEfeito: string[] = [];
+                            const onAgentEvent = (agentEvent: AgentEvent): void => {
+                              if (agentEvent.type === "step" && agentEvent.usage) {
+                                _tokenCount = (agentEvent.usage.inputTokens || 0) + (agentEvent.usage.outputTokens || 0);
+                                _stepCount = agentEvent.step;
+                              }
+                              if (agentEvent.type === "reasoning-delta") {
+                                _thinkingMs += Math.round(agentEvent.text.length * 3);
+                              }
+                              if (agentEvent.type === "tool-call") {
+                                const path = (agentEvent.call.input as { path?: string }).path;
+                                if (
+                                  path !== undefined &&
+                                  (agentEvent.call.name === "write_file" || agentEvent.call.name === "edit_file")
+                                ) {
+                                  arquivosEfeito.push(path);
+                                }
+                              }
+                              sendCoreEvent({ type: "agent-event", event: agentEvent });
+                            };
 
                             const agentResult = await runAgent({
-                                                                                      context: {
-                                                                                        workspace: session.workspace,
-                                                                                        readTracker: session.readTracker,
-                                                                                        checkpoints: session.checkpoints,
-                                                                                        memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
-                                                                                        subagentes: session.subagentes!,
-                                                                                      },
-                                                          gate: session.gate,
-                                                          messages: session.transcript,
-                                                          provider: session.provider,
-                                                          tools: session.registry.definitions(),
-                                                          systemPrompt,
-                                                          contextBudget: CONTEXT_BUDGET,
-                                                          onEvent: (agentEvent: AgentEvent) => {
-                                                            if (agentEvent.type === "step" && agentEvent.usage) {
-                                                                                                                          _tokenCount =
-                                                                                                                            (agentEvent.usage.inputTokens || 0) +
-                                                                                                                            (agentEvent.usage.outputTokens || 0);
-                                                                                                                          _stepCount = agentEvent.step;
-                                                                                                                        }
-                                                                                                                        if (agentEvent.type === "reasoning-delta") {
-                                                                                                                                                                                                                                                  _thinkingMs += Math.round(agentEvent.text.length * 3);
-                                                                                                                                                                                                                                                }
-                                                                                                                                                                                                                                                sendCoreEvent({
-                                                              type: "agent-event",
-                                                              event: agentEvent,
-                                                            });
-                                                          },
-                                                        });
+                              context: {
+                                workspace: session.workspace,
+                                readTracker: session.readTracker,
+                                checkpoints: session.checkpoints,
+                                memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
+                                subagentes: session.subagentes!,
+                              },
+                              gate: session.gate,
+                              messages: session.transcript,
+                              provider: providerTurno,
+                              tools: session.registry.definitions(),
+                              systemPrompt,
+                              contextBudget: CONTEXT_BUDGET,
+                              onEvent: onAgentEvent,
+                            });
 
-                                                  const msgs = agentResult.messages;
-                                                  session.transcript = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
-                                                  acumularCusto(session, agentResult.cost);
-                                                  _stepCount = agentResult.steps;
+                            let msgs = agentResult.messages;
+                            session.transcript = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
+                            acumularCusto(session, agentResult.cost);
+                            _stepCount = agentResult.steps;
+
+                            // Auto-effort: erro de tool no turno escala o próximo pra Pro.
+                            const houveErroDeTool = msgs.some(
+                              (m) => m.role === "tool" && m.result.type === "error-text",
+                            );
+                            atualizarAutoEffort(session.autoEffort, houveErroDeTool);
+
+                            // Qualidade: biome --write (auto-fix) + check; residual gera re-turno da IA.
+                            const qaEnv = lerOpcoesQualidadeEnv();
+                            let arquivosQa = [...arquivosEfeito];
+                            let resultadoQa = await corrigirQualidade(session.workspace.root, arquivosQa, {
+                              progresso: (t: string) =>
+                                sendCoreEvent({ type: "agent-event", event: { type: "notice", text: t.trim() } }),
+                            }, { autoFix: qaEnv.autoFix });
+
+                            let reparos = 0;
+                            while (
+                              !resultadoQa.limpo &&
+                              !resultadoQa.ignorado &&
+                              resultadoQa.diagnostico.length > 0 &&
+                              reparos < qaEnv.maxRepairTurns
+                            ) {
+                              reparos += 1;
+                              const promptReparo = promptReparoQualidade(resultadoQa.diagnostico, resultadoQa.arquivos);
+                              const systemReparo = await montarSystemPromptDesktop(session);
+                              const entradaReparo: ChatMessage[] = [
+                                { content: systemReparo, role: "system" },
+                                ...(msgs[0]?.role === "system" ? msgs.slice(1) : msgs),
+                                { content: promptReparo, role: "user" },
+                              ];
+                              const arquivosReparo: string[] = [];
+                              const repairResult = await runAgent({
+                                context: {
+                                  workspace: session.workspace,
+                                  readTracker: session.readTracker,
+                                  checkpoints: session.checkpoints,
+                                  memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
+                                  subagentes: session.subagentes!,
+                                },
+                                gate: session.gate,
+                                messages: entradaReparo,
+                                provider: providerTurno,
+                                tools: session.registry.definitions(),
+                                contextBudget: CONTEXT_BUDGET,
+                                onEvent: (agentEvent: AgentEvent) => {
+                                  if (agentEvent.type === "tool-call") {
+                                    const path = (agentEvent.call.input as { path?: string }).path;
+                                    if (
+                                      path !== undefined &&
+                                      (agentEvent.call.name === "write_file" || agentEvent.call.name === "edit_file")
+                                    ) {
+                                      arquivosReparo.push(path);
+                                    }
+                                  }
+                                  sendCoreEvent({ type: "agent-event", event: agentEvent });
+                                },
+                              });
+                              msgs = repairResult.messages;
+                              session.transcript = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
+                              acumularCusto(session, repairResult.cost);
+                              arquivosQa = [...arquivosQa, ...arquivosReparo];
+                              resultadoQa = await corrigirQualidade(session.workspace.root, arquivosQa, {
+                                progresso: (t: string) =>
+                                  sendCoreEvent({ type: "agent-event", event: { type: "notice", text: t.trim() } }),
+                              }, { autoFix: qaEnv.autoFix });
+                            }
 
                       const checkpoint = await session.checkpoints.commit();
                       if (checkpoint !== undefined) {

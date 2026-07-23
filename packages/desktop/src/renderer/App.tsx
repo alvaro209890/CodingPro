@@ -11,6 +11,7 @@ import { type ToolItem, ToolSummaryBlock } from "./components/ToolSummaryBlock.j
 import { TaskTracker, toTaskRow } from "./components/TaskTracker.js";
 import { SubagentPanel } from "./components/SubagentPanel.js";
 import { SettingsPanel } from "./components/SettingsPanel.js";
+import { PlanTracker, type PlanTask } from "./components/PlanTracker.js";
 import { renderMarkdown } from "./components/MarkdownRenderer.js";
 import { useTheme } from "./useTheme.js";
 import "./aurora.css";
@@ -104,6 +105,8 @@ export const App: React.FC = () => {
     const [_runStartTime, setRunStartTime] = useState<number | null>(null);
 
   const [taskItems, setTaskItems] = useState<ReturnType<typeof toTaskRow>[]>([]);
+  const [planTasks, setPlanTasks] = useState<PlanTask[]>([]);
+  const [modelInfo, setModelInfo] = useState<{ modelName: string; effort: string } | null>(null);
 
     const [autoApprove, setAutoApprove] = useState(false);
 
@@ -376,6 +379,16 @@ export const App: React.FC = () => {
             ];
           });
         }
+      } else if (event.type === "plan-task") {
+        setPlanTasks((prev) => {
+          const idx = prev.findIndex((t) => t.id === event.task.id);
+          if (idx === -1) return [...prev, event.task];
+          const copy = [...prev];
+          copy[idx] = event.task;
+          return copy;
+        });
+      } else if (event.type === "model-info") {
+        setModelInfo({ modelName: event.modelName, effort: event.effort === "fast" ? "Rápido" : "Alto" });
       } else if (event.type === "session-updated") {
         setIsRunning(false);
         setCurrentPermissionRequest(null);
@@ -535,6 +548,7 @@ export const App: React.FC = () => {
 
   const handleNewSession = async () => {
     setMessages([]);
+    setPlanTasks([]);
     setRecentSessions((prev) => [
       { id: `new-${Date.now()}`, title: "Nova sessão", active: true },
       ...prev.map((s) => ({ ...s, active: false })),
@@ -580,8 +594,8 @@ export const App: React.FC = () => {
                     setAutoApprove(next);
                     void window.codingproAPI?.setAutoApprove(next);
                   }}
-                  modelName="DeepSeek V4 Pro"
-                  effortLevel="Alto"
+                  modelName={modelInfo?.modelName ?? "DeepSeek V4"}
+                  effortLevel={modelInfo?.effort ?? "—"}
                   tema={tema}
                   onTemaChange={setTema}
                 />
@@ -766,6 +780,8 @@ export const App: React.FC = () => {
           <div ref={chatEndRef} />
                   </div>
 
+                  <PlanTracker tasks={planTasks} isRunning={isRunning} />
+
                   <TaskTracker
                     items={taskItems}
                     isRunning={isRunning}
@@ -790,8 +806,8 @@ export const App: React.FC = () => {
                     void window.codingproAPI?.setAutoApprove(next);
                   }}
                   branchName="master"
-          modelName="DeepSeek V4"
-          effortLevel="Alto"
+          modelName={modelInfo?.modelName ?? "DeepSeek V4"}
+          effortLevel={modelInfo?.effort ?? "—"}
           cost={sessionCost}
         />
 

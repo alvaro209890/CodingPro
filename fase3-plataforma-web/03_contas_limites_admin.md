@@ -20,7 +20,7 @@ audit_log      id, ator_id, acao (criar_user, mudar_limite, bloquear...), alvo, 
 ## Limites (definidos pelo Álvaro, por usuário)
 
 - Unidade: **US$/mês** (acompanha o custo real DeepSeek; cache-hit barato beneficia o usuário) + limite diário opcional (anti-estouro num dia só).
-- **Presets** editáveis: `teste` (ex. US$ 1/mês), `padrao` (US$ 5), `power` (US$ 20), `ilimitado` (só o Álvaro) — e **override individual** por usuário (o requisito: "cada usuário terá um limite definido por mim").
+- **Presets** editáveis: `teste` (US$ 2/mês — mínimo), `padrao` (US$ 5), `power` (US$ 20), `ilimitado` (só o Álvaro) — e **override individual** por usuário (o requisito: "cada usuário terá um limite definido por mim").
 - Comportamento ao atingir: corta com `402` + mensagem clara na CLI ("Seu limite do mês acabou — renova dia 01/08. Fale com o admin p/ aumentar."); avisos automáticos em 80% e 95% (e-mail + banner na CLI via campo no response).
 - Renovação: virada de mês (fuso America/Cuiabá).
 - Novos cadastros: entram como `pendente` (**aprovação manual do admin no beta**) — o Álvaro controla quem entra.

@@ -1,9 +1,16 @@
-import type { ChatMessage, FinishReason, TokenUsage, ToolCall, ToolResult } from "@codingpro/llm";
+import type {
+  ChatMessage,
+  FinishReason,
+  ModelRole,
+  TokenUsage,
+  ToolCall,
+  ToolResult,
+} from "@codingpro/llm";
 import type { PermissionRequest } from "./permissions.js";
 import type { PreviaEscrita } from "./preview.js";
 
 /** Versão atual do protocolo de eventos Core <-> UI. */
-export const CORE_UI_EVENT_PROTOCOL_VERSION = "1.3.0";
+export const CORE_UI_EVENT_PROTOCOL_VERSION = "1.4.0";
 
 /**
  * Eventos brutos emitidos pelo loop agêntico durante a execução de um turno.
@@ -45,7 +52,9 @@ export type CoreUiEvent =
   | UiPermissionEvent
   | { readonly type: "session-updated"; readonly messages: readonly ChatMessage[] }
   | { readonly type: "error"; readonly code: string; readonly message: string }
-  | { readonly type: "plan-task"; readonly task: { id: string; label: string; status: "pending" | "running" | "done" | "failed" } };
+  | { readonly type: "plan-task"; readonly task: { id: string; label: string; status: "pending" | "running" | "done" | "failed" } }
+  /** Modelo/effort real usado no turno (aditivo v1.4.0) — substitui strings fixas na UI. */
+  | { readonly type: "model-info"; readonly modelName: string; readonly effort: ModelRole };
 
 /** Envelope tipado para envio de mensagens IPC no Electron Renderer/Main. */
 export interface IpcEnvelope<T = unknown> {

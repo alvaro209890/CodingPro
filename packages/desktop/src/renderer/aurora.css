@@ -469,9 +469,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
+  border: none;
+  appearance: none;
   padding: 9px 12px;
   background: rgba(255, 255, 255, 0.015);
   cursor: pointer;
+  font: inherit;
   font-size: 12.5px;
   color: var(--text-secondary);
   transition: background 0.15s ease;
@@ -511,11 +515,17 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
+  appearance: none;
+  text-align: left;
   padding: 8px 12px;
+  background: transparent;
+  border: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   font-size: 12.5px;
   color: var(--text-primary);
   font-family: var(--font-mono);
+  cursor: default;
   transition: background 0.12s ease;
 }
 

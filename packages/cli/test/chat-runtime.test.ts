@@ -214,6 +214,20 @@ describe("executarChat", () => {
     expect(out).toContain("tema desconhecido: banana");
   });
 
+  it("/confiar liga aprovação automática — efeito roda sem perguntar (espelha o autoApprove do Desktop)", async () => {
+    const call: ToolCall = { id: "1", input: { content: "oi", path: "novo.txt" }, name: "write_file" };
+    const { provider } = scripted([
+      [finish({ content: "", role: "assistant", toolCalls: [call] })],
+      [finish({ content: "pronto", role: "assistant" })],
+    ]);
+    // respostas vazio: se /confiar não bypassasse, a pergunta cairia no default "n" (nega).
+    const captura = fakeIo(["/confiar", "cria o arquivo", undefined], []);
+    await executarChat({ cwd, provider }, captura.io);
+    const criado = await readFile(join(cwd, "novo.txt"), "utf8");
+    expect(criado).toBe("oi");
+    expect(captura.progresso()).toContain("confiar ligado");
+  });
+
   it("/pet mostra o companheiro quando ligado e avisa quando desligado", async () => {
     const petArquivo = join(cwd, "pet.json");
     const ligado = scripted([]);
