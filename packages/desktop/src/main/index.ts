@@ -1,5 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { exec } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import {
   ALL_TOOLS,
@@ -52,11 +54,39 @@ interface ChatSession {
 
 let activeSession: ChatSession | null = null;
 
+function obterApiKey(): string | undefined {
+  if (process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY.trim().length > 0) {
+    return process.env.DEEPSEEK_API_KEY.trim();
+  }
+
+  const envPaths = [
+    join(homedir(), ".hermes", ".env"),
+    join(homedir(), ".codingpro", ".env"),
+    join(process.cwd(), ".env"),
+  ];
+
+  for (const envPath of envPaths) {
+    if (existsSync(envPath)) {
+      try {
+        const content = readFileSync(envPath, "utf8");
+        const match = content.match(/^DEEPSEEK_API_KEY=(.+)$/m);
+        if (match && match[1]) {
+          return match[1].trim().replace(/^["']|["']$/g, "");
+        }
+      } catch {
+        // Ignora erro
+      }
+    }
+  }
+
+  return undefined;
+}
+
 function criarProvider(): Provider {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
+  const apiKey = obterApiKey();
   if (apiKey === undefined || apiKey.trim().length === 0) {
     throw new Error(
-      "Variável de ambiente DEEPSEEK_API_KEY não definida. Configure-a no arquivo 0600 das credenciais do projeto.",
+      "Variável de ambiente DEEPSEEK_API_KEY não encontrada em ~/.hermes/.env ou ambiente.",
     );
   }
   return new DeepSeekProvider({ apiKey });
@@ -108,7 +138,7 @@ function createWindow(): void {
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
-    mainWindow.loadFile(join(__dirname, "../index.html"));
+    mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
   }
 }
 
