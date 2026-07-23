@@ -241,11 +241,7 @@ interface ChatSession {
   cost: SessionCost;
 }
 
-const activeSessions = new Map<string, ChatSession>();
-let selectedSessionId: string | undefined = undefined;
-function currentSession(): ChatSession | undefined {
-  return selectedSessionId ? activeSessions.get(selectedSessionId) : undefined;
-}
+let activeSession: ChatSession | null = null;
 
 function obterApiKey(): string | undefined {
   if (process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY.trim().length > 0) {
@@ -388,9 +384,8 @@ function expandirPromptAgente(prompt: string): string | undefined {
 
 async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
   const normalized = resolvePath(cwd);
-  const existing = activeSessions.get(selectedSessionId ?? "");
-  if (existing !== undefined && existing.cwd === normalized) {
-    return existing;
+  if (activeSession !== null && activeSession.cwd === normalized) {
+    return activeSession;
   }
 
   // troca de pasta → descarta sessão anterior
@@ -463,8 +458,7 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
     cost: { inputTokens: 0, outputTokens: 0, totalCostUsd: 0, turns: 0 },
   };
   selectedWorkspacePath = normalized;
-  selectedSessionId = sess.sessionId;
-  activeSessions.set(sess.sessionId, sess);
+  activeSession = sess;
   return sess;
 }
 
@@ -475,8 +469,7 @@ async function novaSessaoVazia(): Promise<ChatSession> {
   session.transcript = [];
   session.sessionId = newSessionId();
   session.cost = { inputTokens: 0, outputTokens: 0, totalCostUsd: 0, turns: 0 };
-  selectedSessionId = session.sessionId;
-  activeSessions.set(session.sessionId, session);
+  activeSession = session;
   session.readTracker; // mantém tracker
   sendCoreEvent({ type: "session-updated", messages: [] });
   return session;
@@ -930,7 +923,7 @@ app.whenReady().then(() => {
     });
 
     ipcMain.handle("codingpro:get-session-cost", async () => {
-      return snapshotCusto(currentSession() ?? null);
+      return snapshotCusto(activeSession);
     });
 
     ipcMain.handle("codingpro:list-slash-commands", async () => {
@@ -972,13 +965,13 @@ app.whenReady().then(() => {
 
   ipcMain.handle("codingpro:list-sessions", async () => {
       try {
-        const cwd = (currentSession()?.cwd) ?? selectedWorkspacePath;
+        const cwd = (activeSession?.cwd) ?? selectedWorkspacePath;
         const store = await SessionStore.create(join(cwd, ".codingpro", "sessions"));
         const ids = await store.list();
         const ordered = [...ids].reverse();
         return await Promise.all(
           ordered.map(async (id: string) => {
-            const isRunning = id === selectedSessionId && runInFlight;
+            const _isRunning = activeSession !== null && id === activeSession.sessionId && runInFlight;
             let preview = `Sessão ${id.slice(0, 19)}`;
             try {
               const msgs = await store.load(id);
@@ -994,7 +987,7 @@ app.whenReady().then(() => {
               id,
               preview,
               updatedAt: id.slice(0, 19).replace("T", " "),
-              isRunning: id === selectedSessionId && runInFlight,
+              isRunning: activeSession !== null && id === activeSession.sessionId && runInFlight,
             };
           }),
         );
@@ -1022,7 +1015,7 @@ app.whenReady().then(() => {
     "codingpro:get-diff-preview",
     async (_, args: { targetFile: string; newContent: string }) => {
       try {
-        const cwd = (currentSession()?.cwd) ?? selectedWorkspacePath;
+        const cwd = (activeSession?.cwd) ?? selectedWorkspacePath;
         const workspace = await Workspace.create(cwd);
         return await resolverPreviaDeEscrita(workspace, "write_file", {
           path: args.targetFile,
@@ -1044,7 +1037,7 @@ app.whenReady().then(() => {
     }
     const isWin = process.platform === "win32";
     const shellOption = isWin ? process.env.COMSPEC || "cmd.exe" : "/bin/sh";
-    const cwd = (currentSession()?.cwd) ?? selectedWorkspacePath;
+    const cwd = (activeSession?.cwd) ?? selectedWorkspacePath;
     return execCommand(command, {
       cwd,
       shell: shellOption,
@@ -1234,16 +1227,15 @@ app.whenReady().then(() => {
 
                 // reverte begin de checkpoint se o turno falhou no meio
                 try {
-                  await currentSession()?.checkpoints.commit();
+                  await activeSession?.checkpoints.commit();
                 } catch {
                   // ignore
                 }
 
                 // limpa transcript sujo para o próximo turno não herdar invalid-request
-                                const s = currentSession();
-                                                                if (s !== undefined) {
-                                                                  s.transcript = sanitizeMessagesForProvider(
-                                                                    s.transcript,
+                                if (activeSession !== null) {
+                                                                  activeSession.transcript = sanitizeMessagesForProvider(
+                                                                    activeSession.transcript,
                                   );
                                 }
 
