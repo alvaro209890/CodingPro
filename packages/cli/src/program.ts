@@ -8,6 +8,7 @@ import { ConfigError, type ProviderOverrides } from "./config.js";
 import { executarPromptHeadless } from "./headless.js";
 import { carregarHooks } from "./hooks-runtime.js";
 import { mensagens } from "./i18n/pt-BR.js";
+import { iniciarServidoresMcp } from "./mcp-runtime.js";
 import { carregarSkills, dirsSkills } from "./skills-runtime.js";
 
 export interface CliIo {
@@ -135,25 +136,34 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
         ...(options.replayFile === undefined ? {} : { replayFile: options.replayFile }),
       });
       const cwdChat = services.raizProjeto ?? process.cwd();
-      const [hooksChat, skillsChat] = await Promise.all([
+      const [hooksChat, skillsChat, mcp] = await Promise.all([
         carregarHooks(cwdChat),
         carregarSkills(dirsSkills(cwdChat)),
+        iniciarServidoresMcp(cwdChat),
       ]);
-      await executarChat(
-        {
-          cwd: cwdChat,
-          hooks: hooksChat,
-          provider,
-          skills: skillsChat,
-          ...(options.maxContexto === undefined ? {} : { maxContexto: options.maxContexto }),
-          ...(services.raizMemoriaGlobal === undefined
-            ? {}
-            : { memoriaGlobalDir: services.raizMemoriaGlobal }),
-          ...(services.raizSessoes === undefined ? {} : { sessaoDir: services.raizSessoes }),
-          ...(services.signal === undefined ? {} : { signal: services.signal }),
-        },
-        criarChatIo(),
-      );
+      for (const aviso of mcp.avisos) {
+        io.stderr(`· ${aviso}\n`);
+      }
+      try {
+        await executarChat(
+          {
+            cwd: cwdChat,
+            hooks: hooksChat,
+            mcpTools: mcp.tools,
+            provider,
+            skills: skillsChat,
+            ...(options.maxContexto === undefined ? {} : { maxContexto: options.maxContexto }),
+            ...(services.raizMemoriaGlobal === undefined
+              ? {}
+              : { memoriaGlobalDir: services.raizMemoriaGlobal }),
+            ...(services.raizSessoes === undefined ? {} : { sessaoDir: services.raizSessoes }),
+            ...(services.signal === undefined ? {} : { signal: services.signal }),
+          },
+          criarChatIo(),
+        );
+      } finally {
+        mcp.fechar();
+      }
       return;
     }
 

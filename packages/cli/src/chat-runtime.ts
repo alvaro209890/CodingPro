@@ -10,6 +10,7 @@ import {
   criarHookRunner,
   describeAgentEvent,
   detectarProjeto,
+  type ExecutableTool,
   gerarCodingproMd,
   type Hook,
   MEMORY_TOOL_NAMES,
@@ -51,6 +52,8 @@ export interface ChatOptions {
   /** Hooks de shell (pre/post-tool, stop), já carregados do settings. */
   readonly hooks?: readonly Hook[];
   readonly maxContexto?: number;
+  /** Tools de servidores MCP já conectados (registradas junto às nativas). */
+  readonly mcpTools?: readonly ExecutableTool[];
   /** Diretório da memória global; ausente usa `~/.codingpro/memory`. */
   readonly memoriaGlobalDir?: string;
   readonly provider: Provider;
@@ -232,7 +235,7 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
   options.signal?.throwIfAborted();
   const workspace = await Workspace.create(options.cwd);
   const registry = new ToolRegistry();
-  for (const tool of ALL_TOOLS) {
+  for (const tool of [...ALL_TOOLS, ...(options.mcpTools ?? [])]) {
     registry.register(tool);
   }
   const aprovador = criarAprovadorInterativo({ pergunta: io.pergunta }, io.progresso);

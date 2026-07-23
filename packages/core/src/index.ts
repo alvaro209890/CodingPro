@@ -77,6 +77,14 @@ export {
 } from "./memory.js";
 export { MemoryStore } from "./memory-store.js";
 export {
+  MCP_DEFAULT_TIMEOUT_MS,
+  MCP_PROTOCOL_VERSION,
+  McpClient,
+  type McpServerConfig,
+  nomeMcpTool,
+  toolsDoServidorMcp,
+} from "./mcp.js";
+export {
   type Approval,
   type Approver,
   decidePermission,
