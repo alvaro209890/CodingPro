@@ -1065,12 +1065,7 @@ app.whenReady().then(() => {
                               _thinkingMs = 0;
 
             try {
-                    const targetCwd =
-                      args.workspacePath && args.workspacePath.trim() !== ""
-                        ? args.workspacePath.trim()
-                        : selectedWorkspacePath;
-
-                    // /abrir antes de criar sessão — troca a raiz como `cd` na CLI Linux
+                          // /abrir antes de criar sessão — troca a raiz como `cd` na CLI Linux
                     const aberto = await tentarAbrirWorkspace(prompt);
                     if (aberto !== undefined) {
                       selectedWorkspacePath = aberto.cwd;
