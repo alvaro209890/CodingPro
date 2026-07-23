@@ -84,3 +84,21 @@ export function formatCost(breakdown: CostBreakdown): string {
     `saída ${formatInteger(breakdown.outputTokens)} tok · modelo ${label}`
   );
 }
+
+/** Soma dois breakdowns (mesma sessão; modelo do `b` prevalece se diferirem). */
+export function somarCustos(a: CostBreakdown, b: CostBreakdown): CostBreakdown {
+  const inputTokens = a.inputTokens + b.inputTokens;
+  const cacheReadTokens = a.cacheReadTokens + b.cacheReadTokens;
+  return {
+    cacheHitRate: inputTokens > 0 ? cacheReadTokens / inputTokens : 0,
+    cacheMissTokens: a.cacheMissTokens + b.cacheMissTokens,
+    cacheReadTokens,
+    inputCostUsd: a.inputCostUsd + b.inputCostUsd,
+    inputTokens,
+    model: b.model,
+    outputCostUsd: a.outputCostUsd + b.outputCostUsd,
+    outputTokens: a.outputTokens + b.outputTokens,
+    reasoningTokens: a.reasoningTokens + b.reasoningTokens,
+    totalCostUsd: a.totalCostUsd + b.totalCostUsd,
+  };
+}

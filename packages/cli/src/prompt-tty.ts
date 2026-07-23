@@ -223,24 +223,25 @@ export function criarPromptTty(options: PromptTtyOptions): PromptTty {
 
   const bannerAnimado = async (): Promise<void> => {
     write(HIDE_CURSOR);
-    const frames = 8;
+    const frames = 10;
+    const linhasBanner = 6;
     for (let t = 0; t < frames; t += 1) {
       if (t > 0) {
-        // 4 linhas do banner
-        write(`${CURSOR_UP(3)}\r`);
+        write(`${CURSOR_UP(linhasBanner - 1)}\r`);
       }
       const corpo = framesBannerAbertura(t, tema.ascii);
       const colorido = corpo
         .split("\n")
         .map((linha, i) => {
-          if (i === 1) {
+          // palavra CodingPro no meio
+          if (i === 2) {
             return tema.destaque(linha);
           }
           return tema.nota(linha);
         })
         .join("\n");
       write(`${colorido}\n`);
-      await new Promise((r) => setTimeout(r, 45));
+      await new Promise((r) => setTimeout(r, 40));
     }
     write(SHOW_CURSOR);
     write(`\n${tema.regua()}\n`);

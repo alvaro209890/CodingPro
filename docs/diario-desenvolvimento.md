@@ -568,3 +568,19 @@ pedir “execute o plano” depois fazia o modelo agir sem o conteúdo planejado
 
 ### Uso
 `/plan <objetivo>` → (perguntas) → plano → “execute o plano”.
+
+## 2026-07-23 — Front moderno + status de tokens + /compact + auto-compact 1M
+
+### Visual
+- Logo wordmark multi-linha (Unicode ou ASCII p/ CMD), banner animado ampliado.
+- `statusLinha` no tema: cantinho com custo da sessão, in/out, cache, ctx, barra, restante e janela 1M.
+
+### Contexto / custo
+- `status.ts`: `DEEPSEEK_CONTEXT_WINDOW=1_000_000`, default budget **800_000**, stats de sessão.
+- Auto-compact **sempre ativo** no chat/agente via `contextBudget` (antes só com `--max-contexto`).
+- `/compact` e `/compactar` forçam compactação (~45% do orçamento).
+- `/custo` mostra **sessão** acumulada + contexto restante (não só o último turno).
+- `somarCustos` em `@codingpro/llm`.
+
+### Validação
+- `pnpm check` verde; testes status/tema/chat/cost.

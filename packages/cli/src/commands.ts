@@ -29,9 +29,15 @@ export const COMANDOS_CHAT: readonly ComandoChat[] = Object.freeze([
   },
   {
     aceitaArgs: false,
-    aliases: [],
-    descricao: "custo e tokens do último turno",
+    aliases: ["/cost"],
+    descricao: "custo e tokens da sessão + contexto restante",
     nome: "/custo",
+  },
+  {
+    aceitaArgs: false,
+    aliases: ["/compactar"],
+    descricao: "compacta o histórico agora (auto-compact já roda no orçamento)",
+    nome: "/compact",
   },
   {
     aceitaArgs: false,

@@ -138,7 +138,11 @@ export async function executarAgenteHeadless(
     },
     provider: options.provider,
     tools: registry.definitions(),
-    ...(options.maxContexto === undefined ? {} : { contextBudget: options.maxContexto }),
+    // Default alinhado ao chat: 800k dentro da janela DeepSeek 1M (folga p/ saída).
+    contextBudget:
+      options.maxContexto !== undefined && options.maxContexto > 0
+        ? Math.min(Math.trunc(options.maxContexto), 999_000)
+        : 800_000,
     ...(options.signal === undefined ? {} : { signal: options.signal }),
   });
 

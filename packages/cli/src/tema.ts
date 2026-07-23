@@ -135,34 +135,56 @@ export interface Glifos {
 export function glifosPara(ascii: boolean): Glifos {
   if (ascii) {
     return {
-      boxBot: "+------------------------------------------+",
+      boxBot: "+----------------------------------------------------+",
       boxSide: "|",
-      boxTop: "+------------------------------------------+",
+      boxTop: "+----------------------------------------------------+",
       bullet: "*",
       fail: "x",
       logo: "* CodingPro",
       ok: "+",
       project: ">",
       prompt: "> ",
-      rule: "-".repeat(44),
+      rule: "-".repeat(52),
       tool: "#",
       warn: "!",
     };
   }
   return {
-    boxBot: "╰──────────────────────────────────────────╯",
+    boxBot: "╰────────────────────────────────────────────────────╯",
     boxSide: "│",
-    boxTop: "╭──────────────────────────────────────────╮",
+    boxTop: "╭────────────────────────────────────────────────────╮",
     bullet: "·",
     fail: "✗",
     logo: "◈ CodingPro",
     ok: "✓",
     project: "▸",
     prompt: "❯ ",
-    rule: "─".repeat(44),
+    rule: "─".repeat(52),
     tool: "⚙",
     warn: "!",
   };
+}
+
+/** Logo multi-linha (wordmark). ASCII para CMD; Unicode para terminais modernos. */
+export function logoLinhas(ascii: boolean): readonly string[] {
+  if (ascii) {
+    return [
+      "   ____          _ _             ____",
+      "  / ___|___   __| (_)_ __   __ _|  _ \\ _ __ ___",
+      " | |   / _ \\ / _` | | '_ \\ / _` | |_) | '__/ _ \\",
+      " | |__| (_) | (_| | | | | | (_| |  __/| | | (_) |",
+      "  \\____\\___/ \\__,_|_|_| |_|\\__, |_|   |_|  \\___/",
+      "                           |___/",
+    ];
+  }
+  return [
+    "   ██████╗ ██████╗ ██████╗ ██╗███╗   ██╗ ██████╗ ██████╗ ██████╗  ██████╗",
+    "  ██╔════╝██╔═══██╗██╔══██╗██║████╗  ██║██╔════╝ ██╔══██╗██╔══██╗██╔═══██╗",
+    "  ██║     ██║   ██║██║  ██║██║██╔██╗ ██║██║  ███╗██████╔╝██████╔╝██║   ██║",
+    "  ██║     ██║   ██║██║  ██║██║██║╚██╗██║██║   ██║██╔═══╝ ██╔══██╗██║   ██║",
+    "  ╚██████╗╚██████╔╝██████╔╝██║██║ ╚████║╚██████╔╝██║     ██║  ██║╚██████╔╝",
+    "   ╚═════╝ ╚═════╝ ╚═════╝ ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝ ╚═════╝",
+  ];
 }
 
 function codigoFg(cor: CorRGB, nivel: NivelCor): string {
@@ -246,6 +268,11 @@ export interface Tema {
   nota(texto: string): string;
   cabecalhoProjeto(resumo: string): string;
   regua(): string;
+  /**
+   * Cantinho de status (custo da sessão, tokens, contexto restante).
+   * `linha` já vem formatada (ver `formatarStatusLinha` em status.ts).
+   */
+  statusLinha(linha: string): string;
 }
 
 export interface OpcoesTema {
@@ -273,24 +300,28 @@ export function criarTema(
     ascii,
     cor: nivel,
     banner() {
-      const marca = nivel === "nenhuma" ? g.logo : `${ESC}[1m${gradiente(g.logo, nivel)}${RESET}`;
+      const linhasLogo = logoLinhas(ascii).map((l) =>
+        nivel === "nenhuma" ? l : `${ESC}[1m${gradiente(l, nivel)}${RESET}`,
+      );
       const sub = esmaecer(
-        ascii ? "assistente de codigo · pt-BR" : "assistente de código · pt-BR",
+        ascii
+          ? "CLI de codigo · DeepSeek V4 · janela 1M tok · pt-BR"
+          : "CLI de código · DeepSeek V4 · janela 1M tok · pt-BR",
         nivel,
         preferCinza,
       );
       const dica = esmaecer(
         ascii
-          ? "digite / para comandos  ·  setas Tab Enter"
-          : "digite / para comandos  ·  ↑↓ Tab Enter",
+          ? "/ comandos · setas Tab Enter · /compact · /custo"
+          : "/ comandos · ↑↓ Tab Enter · /compact · /custo",
         nivel,
         preferCinza,
       );
       const top = esmaecer(g.boxTop, nivel, preferCinza);
       const bot = esmaecer(g.boxBot, nivel, preferCinza);
-      const side = (inner: string): string =>
-        `${esmaecer(g.boxSide, nivel, preferCinza)}  ${inner}`;
-      return `\n${top}\n${side(marca)}\n${side(sub)}\n${side(dica)}\n${bot}\n`;
+      const side = (inner: string): string => `${esmaecer(g.boxSide, nivel, preferCinza)} ${inner}`;
+      // Logo larga: sem moldura lateral em cada linha (evita quebra no CMD estreito).
+      return `\n${top}\n${linhasLogo.join("\n")}\n${side(sub)}\n${side(dica)}\n${bot}\n`;
     },
     prompt() {
       const sim = g.prompt.trimEnd();
@@ -322,6 +353,16 @@ export function criarTema(
     },
     regua() {
       return esmaecer(g.rule, nivel, preferCinza);
+    },
+    statusLinha(linha: string) {
+      const tag = ascii ? "[$]" : "◈";
+      const corpo = esmaecer(linha, nivel, preferCinza);
+      const left = pintar(tag, AURORA.violeta, nivel);
+      if (ascii) {
+        return `${left} ${corpo}`;
+      }
+      // Cantinho: fundo sutil com borda
+      return `${pintar("┌─", AURORA.violeta, nivel)} ${corpo}`;
     },
   };
 }

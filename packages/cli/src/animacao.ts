@@ -59,20 +59,24 @@ export function framesBannerAbertura(tick: number, ascii = false): string {
   if (ascii) {
     const f = tick % 2 === 0 ? "*" : "+";
     return [
-      `  ${f}  +--------------------------------------+`,
-      `     |  *  CodingPro                       |`,
-      `     |  assistente de codigo · pt-BR       |`,
-      `  ${f}  +--------------------------------------+`,
+      `  ${f}  +------------------------------------------+`,
+      `     |                                          |`,
+      `     |   *  C O D I N G P R O                   |`,
+      `     |   DeepSeek V4 · 1M ctx · pt-BR           |`,
+      `     |                                          |`,
+      `  ${f}  +------------------------------------------+`,
     ].join("\n");
   }
   const f = frameFaisca(tick);
   const f2 = frameFaisca(tick + 2);
   const f3 = frameFaisca(tick + 4);
   return [
-    `  ${f}  ╭──────────────────────────────────────╮  ${f2}`,
-    `     │  ◈  CodingPro                    │`,
-    `     │  assistente de código · pt-BR    │`,
-    `  ${f3}  ╰──────────────────────────────────────╯  ${f}`,
+    `  ${f}  ╭──────────────────────────────────────────╮  ${f2}`,
+    `     │                                          │`,
+    `     │   ◈  C O D I N G P R O                   │`,
+    `     │   DeepSeek V4 · 1M ctx · pt-BR           │`,
+    `     │                                          │`,
+    `  ${f3}  ╰──────────────────────────────────────────╯  ${f}`,
   ].join("\n");
 }
 

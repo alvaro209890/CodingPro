@@ -66,15 +66,22 @@ codingpro --chat
 
 Sessões do agente são salvas; retome com `--resume <id>` ou `--continuar` (a mais recente).
 
-### Chat interativo (TTY) — autocomplete e animações
+### Chat interativo (TTY) — visual, status e autocomplete
 
 No terminal interativo (`codingpro --chat`):
 
-1. **Banner animado** Aurora na abertura (faíscas + caixa).
-2. Digite **`/`** → abre a **lista de comandos** (estilo Claude Code).
-3. **↑ / ↓** navegam a seleção; **Tab** completa o comando; **Enter** envia; **Esc** fecha a lista.
-4. Enquanto o agente trabalha, um **spinner** roda na linha de status; cada ferramenta
-   aparece na timeline.
+1. **Logo/banner** Aurora (wordmark + animação de abertura).
+2. **Cantinho de status** antes de cada prompt: custo da sessão, tokens in/out, cache %,  
+   uso de contexto (`ctx usado/orçamento`), barra e **contexto restante** (janela DeepSeek = **1M**).
+3. Digite **`/`** → lista de comandos; **↑↓** seleciona; **Tab** completa; **Enter** envia; **Esc** fecha.
+4. **Spinner** enquanto o agente trabalha; tools na timeline.
+5. **Auto-compact**: o histórico é compactado automaticamente ao se aproximar do orçamento  
+   (padrão **800k** tokens, folga dentro do 1M). Use `/compact` para forçar.
+
+```bash
+codingpro --chat
+codingpro --chat --max-contexto 200000   # orçamento custom (máx. ~999k)
+```
 
 Em pipe/não-TTY o chat degrada para o leitor de linhas clássico (sem raw mode).
 
@@ -113,7 +120,8 @@ Segurança: caminhos vão como argumentos do processo (sem shell). Biome ausente
 |---|---|
 | `/ajuda` | lista os comandos |
 | `/sair` · `/exit` | encerra o chat |
-| `/custo` | custo e tokens do último turno |
+| `/custo` · `/cost` | custo e tokens **da sessão** + contexto restante (janela DeepSeek 1M) |
+| `/compact` · `/compactar` | compacta o histórico agora (o auto-compact já roda no orçamento) |
 | `/limpar` | esquece o histórico da conversa |
 | `/undo [N]` · `/desfazer` | desfaz as últimas edições |
 | `/redo [N]` · `/refazer` | refaz as últimas edições |

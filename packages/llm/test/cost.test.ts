@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEEPSEEK_PRICING, estimateCost, formatCost } from "../src/cost.js";
+import { DEEPSEEK_PRICING, estimateCost, formatCost, somarCustos } from "../src/cost.js";
 import { DEEPSEEK_MODEL_FLASH, DEEPSEEK_MODEL_PRO } from "../src/providers/deepseek.js";
 import type { TokenUsage } from "../src/provider.js";
 
@@ -74,5 +74,20 @@ describe("formatCost", () => {
       estimateCost({ inputTokens: 10, outputTokens: 2 }, DEEPSEEK_MODEL_FLASH),
     );
     expect(line).toContain("modelo Flash");
+  });
+});
+
+describe("somarCustos", () => {
+  it("acumula tokens e USD de dois turnos", () => {
+    const a = estimateCost(
+      { cacheReadInputTokens: 100, inputTokens: 200, outputTokens: 10 },
+      DEEPSEEK_MODEL_PRO,
+    );
+    const b = estimateCost({ inputTokens: 50, outputTokens: 5 }, DEEPSEEK_MODEL_FLASH);
+    const s = somarCustos(a, b);
+    expect(s.inputTokens).toBe(250);
+    expect(s.outputTokens).toBe(15);
+    expect(s.totalCostUsd).toBeCloseTo(a.totalCostUsd + b.totalCostUsd);
+    expect(s.model).toBe(DEEPSEEK_MODEL_FLASH);
   });
 });

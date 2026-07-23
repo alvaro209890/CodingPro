@@ -23,6 +23,7 @@ export {
   estimateCost,
   formatCost,
   type ModelPricing,
+  somarCustos,
 } from "./cost.js";
 export {
   copyChatMessage,

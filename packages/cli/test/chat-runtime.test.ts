@@ -87,6 +87,53 @@ describe("executarChat", () => {
     const captura = fakeIo(["oi", undefined], []);
     await executarChat({ cwd, provider }, captura.io);
     expect(captura.saida()).toContain("Olá!");
+    // status de sessão / contexto aparece no progresso
+    expect(captura.progresso()).toMatch(/ctx|rest|janela|auto-compact/iu);
+  });
+
+  it("/compact reduz o histórico e /custo mostra a sessão", async () => {
+    const { provider } = scripted([
+      [{ text: "ok", type: "text-delta" }, finish({ content: "ok", role: "assistant" })],
+    ]);
+    const captura = fakeIo(
+      ["primeira mensagem bem longa ".repeat(20), "/compact", "/custo", undefined],
+      [],
+    );
+    await executarChat({ cwd, maxContexto: 50_000, provider }, captura.io);
+    expect(captura.progresso()).toMatch(/compactado|ctx|sem custo|sessão|contexto/iu);
+  });
+
+  it("/custo e /cost sem turnos; /compactar alias", async () => {
+    const { provider } = scripted([]);
+    const captura = fakeIo(["/custo", "/cost", "/compactar", undefined], []);
+    await executarChat({ cwd, maxContexto: 10_000, provider }, captura.io);
+    expect(captura.progresso()).toMatch(/sem custo/iu);
+    expect(captura.progresso()).toMatch(/compactado/iu);
+  });
+
+  it("acumula custo da sessão quando o provider reporta usage DeepSeek", async () => {
+    const provider: Provider = {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "deepseek",
+      model: "deepseek-v4-pro",
+      async *stream() {
+        yield { text: "ok", type: "text-delta" };
+        yield {
+          message: { content: "ok", role: "assistant" },
+          reason: "stop",
+          type: "finish",
+          usage: {
+            cacheReadInputTokens: 40,
+            inputTokens: 100,
+            outputTokens: 10,
+          },
+        };
+      },
+    };
+    const captura = fakeIo(["oi", "/custo", undefined], []);
+    await executarChat({ cwd, provider }, captura.io);
+    expect(captura.saida()).toContain("ok");
+    expect(captura.progresso()).toMatch(/sessão:|US\$|turnos/iu);
   });
 
   it("sai imediatamente em /sair sem chamar o provider", async () => {
@@ -271,7 +318,7 @@ describe("executarChat", () => {
     ]);
     const captura = fakeIo(["oi", undefined], []);
     await executarChat({ cwd, provider, sessaoDir }, captura.io);
-    expect(captura.progresso()).toContain("CodingPro");
+    expect(captura.progresso()).toMatch(/DeepSeek|1M|auto-compact|ctx|janela/iu);
   });
 });
 

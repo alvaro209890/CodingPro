@@ -66,11 +66,12 @@ describe("criarTema", () => {
   it("nível 'nenhuma' + unicode padrão produz texto limpo", () => {
     const t = criarTema({ ascii: false, nivel: "nenhuma" });
     expect(t.banner()).not.toContain(ESC);
-    expect(t.banner()).toContain("CodingPro");
+    expect(t.banner()).toMatch(/DeepSeek|1M|pt-BR|████|___/u);
     expect(t.progresso("Lendo")).toBe("· Lendo");
     expect(t.cabecalhoProjeto("TS")).toBe("▸ Projeto: TS");
     expect(t.prompt()).toBe("❯ ");
     expect(t.nota("x")).toBe("x");
+    expect(t.statusLinha("sessão $0 · ctx 1k")).toContain("ctx 1k");
   });
 
   it("modo ascii é legível no CMD (sem box unicode)", () => {
@@ -78,12 +79,13 @@ describe("criarTema", () => {
     expect(t.ascii).toBe(true);
     const ban = semAnsi(t.banner());
     expect(ban).toContain("+--");
-    expect(ban).toContain("CodingPro");
+    expect(ban).toMatch(/DeepSeek|1M|pt-BR|____/u);
     expect(ban).not.toContain("╭");
     expect(t.prompt()).toContain(">");
     expect(semAnsi(t.progresso("ok"))).toMatch(/^\* /u);
     expect(semAnsi(t.sucesso("feito"))).toContain("+");
     expect(semAnsi(t.regua())).toMatch(/^-{10,}/u);
+    expect(semAnsi(t.statusLinha("$0.01 · ctx"))).toContain("ctx");
   });
 
   it.each<NivelCor>(["truecolor", "256", "16"])(
@@ -93,7 +95,7 @@ describe("criarTema", () => {
       expect(t.cor).toBe(nivel);
       const banner = t.banner();
       expect(banner).toContain(ESC);
-      expect(semAnsi(banner)).toContain("CodingPro");
+      expect(semAnsi(banner).length).toBeGreaterThan(20);
       expect(t.ferramenta("edit")).toContain("edit");
       expect(t.sucesso("ok")).toContain("ok");
       expect(t.erro("ruim")).toContain("ruim");
@@ -101,6 +103,7 @@ describe("criarTema", () => {
       expect(t.destaque("nome")).toContain("nome");
       expect(t.regua().length).toBeGreaterThan(10);
       expect(t.progresso("x")).toContain(`${ESC}[0m`);
+      expect(t.statusLinha("tok")).toContain("tok");
     },
   );
 });

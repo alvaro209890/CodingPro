@@ -6,6 +6,7 @@ import {
   type CheckpointMeta,
   CheckpointStore,
   blocoSkill,
+  compactMessages,
   construirRepoMap,
   createReadTracker,
   criarAutoEffortState,
@@ -36,13 +37,7 @@ import {
   WRITE_FILE_MAX_BYTES,
   writeFileWithin,
 } from "@codingpro/core";
-import {
-  DeepSeekProvider,
-  type ChatMessage,
-  type CostBreakdown,
-  formatCost,
-  type Provider,
-} from "@codingpro/llm";
+import { DeepSeekProvider, type ChatMessage, type Provider } from "@codingpro/llm";
 import { sanitizarTextoTerminal } from "./headless.js";
 import { criarAprovadorInterativo } from "./interactive.js";
 import { carregarAtribuicao } from "./attribution-runtime.js";
@@ -61,6 +56,14 @@ import {
 } from "./plan-runtime.js";
 import { obterDiff, promptRevisao } from "./review-runtime.js";
 import { textoAjudaComandos } from "./commands.js";
+import {
+  atualizarEstimativaContexto,
+  atualizarStatsAposTurno,
+  COMPACT_TARGET_RATIO,
+  criarSessionStats,
+  formatarStatusLinha,
+  resolverOrcamentoContexto,
+} from "./status.js";
 import { criarTema, type Tema } from "./tema.js";
 import { carregarTiposCustom, criarSpawnerSubagentes } from "./subagent-runtime.js";
 import type { SpinnerHandle } from "./animacao.js";
@@ -303,7 +306,9 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
   );
 
   let transcrito: ChatMessage[] = [];
-  let ultimoCusto: CostBreakdown | undefined;
+  // Orçamento de contexto (default 800k dentro da janela DeepSeek 1M) — auto-compact no runAgent.
+  const orcamentoContexto = resolverOrcamentoContexto(options.maxContexto);
+  let stats = criarSessionStats(orcamentoContexto);
   // Plano da sessão: injetado no system prompt até /plan clear ou novo /plan.
   let planoAtivo: PlanoAtivo | undefined;
   // Estado do auto-effort: decide automaticamente Flash/Pro a cada turno.
@@ -320,9 +325,16 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
     `${tema.nota("digite / para ver comandos · ↑↓ seleciona · Tab completa · Enter envia")}\n`,
   );
   io.progresso(`${tema.nota(AJUDA.trimEnd())}\n`);
+  io.progresso(
+    `${tema.nota(`auto-compact em ${orcamentoContexto.toLocaleString("pt-BR")} tok (janela DeepSeek 1M) · /compact força`)}\n`,
+  );
 
   for (;;) {
     options.signal?.throwIfAborted();
+    // Cantinho de status: custo da sessão + contexto restante (antes de cada prompt).
+    stats = atualizarEstimativaContexto(stats, transcrito);
+    io.progresso(`${tema.statusLinha(formatarStatusLinha(stats, tema.ascii))}\n`);
+
     const linha = await io.proximaMensagem();
     if (linha === undefined) {
       break;
@@ -336,6 +348,7 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
     }
     if (mensagem === "/limpar") {
       transcrito = [];
+      stats = atualizarEstimativaContexto(stats, transcrito);
       // Mantém o plano ativo (está em disco + estado); só o chat some.
       io.progresso(
         planoAtivo === undefined
@@ -344,9 +357,40 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       );
       continue;
     }
-    if (mensagem === "/custo") {
+    if (mensagem === "/custo" || mensagem === "/cost") {
+      if (stats.turns === 0) {
+        io.progresso("· sem custo ainda nesta sessão\n");
+      } else {
+        io.progresso(
+          `${tema.progresso(
+            `sessão: US$ ${stats.totalCostUsd.toFixed(6)} · in ${stats.inputTokens} · out ${stats.outputTokens} · turnos ${stats.turns}`,
+          )}\n`,
+        );
+        io.progresso(
+          `${tema.progresso(
+            `contexto: ${stats.contextTokens.toLocaleString("pt-BR")} / ${stats.contextBudget.toLocaleString("pt-BR")} tok · restam ${(stats.contextBudget - stats.contextTokens).toLocaleString("pt-BR")} · janela ${stats.contextWindow.toLocaleString("pt-BR")}`,
+          )}\n`,
+        );
+      }
+      continue;
+    }
+    if (mensagem === "/compact" || mensagem === "/compactar") {
+      const antes = stats.contextTokens;
+      const alvo = Math.max(2_000, Math.floor(orcamentoContexto * COMPACT_TARGET_RATIO));
+      const base: ChatMessage[] =
+        transcrito[0]?.role === "system"
+          ? transcrito
+          : [{ content: promptBase, role: "system" }, ...transcrito];
+      const r = compactMessages(base, { maxTokens: alvo });
+      transcrito = r.messages[0]?.role === "system" ? r.messages.slice(1) : r.messages;
+      stats = atualizarEstimativaContexto(stats, [
+        { content: promptBase, role: "system" },
+        ...transcrito,
+      ]);
       io.progresso(
-        ultimoCusto === undefined ? "· sem custo ainda\n" : `${formatCost(ultimoCusto)}\n`,
+        `${tema.sucesso(
+          `compactado: ${antes.toLocaleString("pt-BR")} → ${stats.contextTokens.toLocaleString("pt-BR")} tok (−${r.dropped} msgs)`,
+        )}\n`,
       );
       continue;
     }
@@ -552,7 +596,7 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
         },
         provider: providerTurno,
         tools: registry.definitions(),
-        ...(options.maxContexto === undefined ? {} : { contextBudget: options.maxContexto }),
+        contextBudget: orcamentoContexto,
         ...(options.signal === undefined ? {} : { signal: options.signal }),
       });
     } finally {
@@ -639,7 +683,7 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
           },
           provider: providerTurno,
           tools: registry.definitions(),
-          ...(options.maxContexto === undefined ? {} : { contextBudget: options.maxContexto }),
+          contextBudget: orcamentoContexto,
           ...(options.signal === undefined ? {} : { signal: options.signal }),
         });
         result = repairResult;
@@ -663,10 +707,15 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
         `${tema.progresso(`checkpoint ${descreverCheckpoint(checkpoint)} (/undo desfaz)`)}\n`,
       );
     }
-    transcrito = [...result.messages];
-    ultimoCusto = result.cost;
+    // Persistimos o histórico sem o system (ele é refeito a cada turno).
+    const msgs = result.messages;
+    transcrito = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
+    stats = atualizarStatsAposTurno(stats, result.cost, msgs, modeloNome);
+    if (result.cost !== undefined) {
+      io.progresso(`${tema.nota(formatarStatusLinha(stats, tema.ascii))}\n`);
+    }
     if (store !== undefined) {
-      await store.save(sessaoId, transcrito);
+      await store.save(sessaoId, msgs);
     }
   }
   if (hooks.length > 0) {
