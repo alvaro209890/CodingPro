@@ -78,7 +78,7 @@ export const COMANDOS_CHAT: readonly ComandoChat[] = Object.freeze([
   {
     aceitaArgs: true,
     aliases: ["/plano"],
-    descricao: "gera um plano (subagente arquiteto)",
+    descricao: "plano interativo (perguntas + ativo na sessão); /plan clear limpa",
     nome: "/plan",
   },
   {

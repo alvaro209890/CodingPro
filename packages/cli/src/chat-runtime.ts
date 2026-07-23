@@ -1,4 +1,3 @@
-import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   ALL_TOOLS,
@@ -28,7 +27,6 @@ import {
   runAgent,
   SessionStore,
   type Skill,
-  slugify,
   type SubagenteSpawner,
   sugerirSkills,
   SYSTEM_PROMPT_V1,
@@ -55,6 +53,12 @@ import {
   promptReparoQualidade,
   type RunnerBiome,
 } from "./quality-runtime.js";
+import {
+  blocoPlanoAtivo,
+  executarComandoPlan,
+  mensagemHistoricoPlano,
+  type PlanoAtivo,
+} from "./plan-runtime.js";
 import { obterDiff, promptRevisao } from "./review-runtime.js";
 import { textoAjudaComandos } from "./commands.js";
 import { criarTema, type Tema } from "./tema.js";
@@ -155,33 +159,6 @@ function comandoSkill(
   for (const s of skills) {
     const marca = ativas.has(s.nome) ? "●" : "○";
     io.progresso(`· ${marca} ${s.nome} — ${s.descricao}\n`);
-  }
-}
-
-/** Roda o subagente arquiteto para produzir um plano, salva em `.codingpro/plans/` e o exibe. */
-async function comandoPlan(
-  spawner: SubagenteSpawner,
-  root: string,
-  objetivo: string,
-  io: ChatIo,
-  signal?: AbortSignal,
-): Promise<void> {
-  if (objetivo.trim().length === 0) {
-    io.progresso("· uso: /plan <objetivo>\n");
-    return;
-  }
-  io.progresso("· arquiteto planejando…\n");
-  const rel = await spawner.executar("architect", objetivo, signal);
-  const plano = rel.texto.length > 0 ? rel.texto : "(o arquiteto não produziu plano)";
-  io.saida(`${plano}\n`);
-  try {
-    const dir = join(root, ".codingpro", "plans");
-    await mkdir(dir, { recursive: true });
-    const arquivo = join(dir, `${new Date().toISOString().slice(0, 10)}-${slugify(objetivo)}.md`);
-    await writeFile(arquivo, `# Plano: ${objetivo}\n\n${plano}\n`, "utf8");
-    io.progresso(`· plano salvo em ${arquivo}\n`);
-  } catch {
-    io.progresso("· não consegui salvar o plano em disco\n");
   }
 }
 
@@ -327,6 +304,8 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
 
   let transcrito: ChatMessage[] = [];
   let ultimoCusto: CostBreakdown | undefined;
+  // Plano da sessão: injetado no system prompt até /plan clear ou novo /plan.
+  let planoAtivo: PlanoAtivo | undefined;
   // Estado do auto-effort: decide automaticamente Flash/Pro a cada turno.
   const autoEffort: AutoEffortState = criarAutoEffortState();
 
@@ -357,7 +336,12 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
     }
     if (mensagem === "/limpar") {
       transcrito = [];
-      io.progresso("· histórico esquecido\n");
+      // Mantém o plano ativo (está em disco + estado); só o chat some.
+      io.progresso(
+        planoAtivo === undefined
+          ? "· histórico esquecido\n"
+          : "· histórico esquecido (plano ativo mantido — /plan clear para limpar)\n",
+      );
       continue;
     }
     if (mensagem === "/custo") {
@@ -387,7 +371,29 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
     }
     if (mensagem === "/plan" || mensagem.startsWith("/plan ") || mensagem.startsWith("/plano ")) {
       const objetivo = mensagem.replace(/^\/plan(o)?\s*/u, "");
-      await comandoPlan(spawner, workspace.root, objetivo, io, options.signal);
+      if (objetivo.trim() === "clear" || objetivo.trim() === "limpar") {
+        planoAtivo = undefined;
+        io.progresso("· plano ativo limpo\n");
+        continue;
+      }
+      const resultado = await executarComandoPlan(
+        spawner,
+        workspace.root,
+        objetivo,
+        io,
+        options.signal,
+      );
+      if (resultado.plano !== undefined) {
+        planoAtivo = resultado.plano;
+        // Injeta no histórico para o modelo "ver" o plano nos turnos seguintes.
+        transcrito = [
+          ...transcrito.filter((m) => m.role !== "system"),
+          { content: `Comando /plan: ${resultado.plano.objetivo}`, role: "user" },
+          { content: mensagemHistoricoPlano(resultado.plano), role: "assistant" },
+        ];
+      } else if (resultado.cancelado === true && objetivo.trim().length > 0) {
+        planoAtivo = undefined;
+      }
       continue;
     }
     if (mensagem === "/review" || mensagem.startsWith("/review ")) {
@@ -468,7 +474,9 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       .filter((s): s is Skill => s !== undefined)
       .map((s) => blocoSkill(s))
       .join("\n\n");
-    const base = blocosSkill.length > 0 ? `${promptBase}\n\n${blocosSkill}` : promptBase;
+    const baseSkills = blocosSkill.length > 0 ? `${promptBase}\n\n${blocosSkill}` : promptBase;
+    const base =
+      planoAtivo === undefined ? baseSkills : `${baseSkills}\n\n${blocoPlanoAtivo(planoAtivo)}`;
     const systemPrompt = await memoria.promptDoTurno(base, mensagem);
     const semSystem = transcrito[0]?.role === "system" ? transcrito.slice(1) : transcrito;
     const entrada: ChatMessage[] = [

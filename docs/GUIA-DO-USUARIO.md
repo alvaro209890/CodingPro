@@ -121,7 +121,8 @@ Segurança: caminhos vão como argumentos do processo (sem shell). Biome ausente
 | `/mapa` · `/map` | repo map (arquivos e assinaturas ranqueados) |
 | `/lembrar` · `/remember <fato>` | salva um fato na memória do projeto |
 | `/memory [list\|forget <slug>\|edit <slug>]` | gerencia a memória |
-| `/plan` · `/plano <objetivo>` | gera um plano (subagente arquiteto) e salva em `.codingpro/plans/` |
+| `/plan` · `/plano <objetivo>` | plano interativo: perguntas com opções `[1]/[2]`…, salva em `.codingpro/plans/` e **fica ativo na sessão** (o chat lembra ao executar) |
+| `/plan clear` · `/plan limpar` | remove o plano ativo da sessão |
 | `/review [alvo]` | revisa o diff com o subagente revisor |
 | `/skills` · `/skill <nome>` | lista skills / ativa uma skill na sessão |
 | `/init` | gera `CODINGPRO.md` com o projeto detectado |
@@ -164,8 +165,20 @@ tools: read_file, grep, repo_map
 Você é um subagente que localiza onde um assunto é tratado no código.
 ```
 
-O agente delega em paralelo pela ferramenta `task` (ex.: "revise com 3 revisores e consolide"). O
-comando `/plan <objetivo>` roda o arquiteto e salva o plano em `.codingpro/plans/AAAA-MM-DD-slug.md`.
+O agente delega em paralelo pela ferramenta `task` (ex.: "revise com 3 revisores e consolide").
+
+### `/plan` — planejamento interativo
+
+```bash
+# no chat:
+/plan migrar o armazenamento para SQLite
+```
+
+1. O arquiteto pode fazer **perguntas** com opções numeradas (`[1] A) …`, `[2] B) …`).  
+   Responda com o **número**, a **letra**, ou digite texto livre (`[0]` = outro).
+2. Com as respostas, ele gera o plano, grava em `.codingpro/plans/` e marca como **plano ativo**.
+3. Nos turnos seguintes (ex.: “execute o plano”), o plano entra no system prompt — o agente **não esquece**.
+4. `/plan clear` limpa o plano ativo.
 
 ## Hooks
 

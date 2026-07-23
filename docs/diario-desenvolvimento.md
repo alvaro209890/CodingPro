@@ -552,3 +552,19 @@ codingpro --chat
 # após uma edição com biome.json no projeto: veja "formatando…" e "✓ limpo (auto-corrigido)"
 CODINGPRO_ASCII=1 codingpro --chat   # simula CMD
 ```
+
+## 2026-07-23 — /plan interativo + plano ativo na sessão
+
+### Problema
+`/plan` salvava o plano em disco e exibia, mas **não** injetava no histórico/system prompt;
+pedir “execute o plano” depois fazia o modelo agir sem o conteúdo planejado.
+
+### Correção
+- `plan-runtime.ts`: fase de **perguntas** (Markdown `# PERGUNTAS` + opções A/B) com seleção
+  numérica; depois plano final; `blocoPlanoAtivo` no system prompt a cada turno.
+- Histórico da sessão: mensagens user/assistant com o plano.
+- `/plan clear` limpa o plano ativo.
+- Testes unitários + chat (relembrar no 2º turno; Q&A com opção 2).
+
+### Uso
+`/plan <objetivo>` → (perguntas) → plano → “execute o plano”.

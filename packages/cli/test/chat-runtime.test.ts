@@ -380,23 +380,38 @@ describe("executarChat — subagentes e /plan (F5)", () => {
     await rm(cwd, { force: true, recursive: true });
   });
 
-  it("/plan roda o arquiteto e salva o plano em .codingpro/plans", async () => {
-    // provider ecoa: o subagente arquiteto responde com base no objetivo.
+  it("/plan salva o plano e o relembra no próximo turno (system prompt)", async () => {
+    // 1ª chamada architect: SEM_PERGUNTAS; 2ª: plano; 3ª: agente principal ecoa
+    let n = 0;
     const provider: Provider = {
       capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
       id: "fake",
       model: "fake",
       async *stream(request) {
+        n += 1;
         const u = [...request.messages].reverse().find((m) => m.role === "user");
-        const c = u?.role === "user" ? `PLANO para ${u.content}` : "PLANO";
+        const user = u?.role === "user" ? u.content : "";
+        let c: string;
+        if (n === 1) {
+          c = "# SEM_PERGUNTAS";
+        } else if (n === 2) {
+          c = "# Plano\n## Passos\n1. migrar para SQLite\n## Critério de pronto\n- ok";
+        } else {
+          // deve ver o plano no system
+          const sys = request.messages.find((m) => m.role === "system");
+          const s = sys?.role === "system" ? sys.content : "";
+          c = s.includes("Plano ativo") ? "LEMBRO DO PLANO" : "ESQUECI";
+        }
         yield { text: c, type: "text-delta" };
         yield { message: { content: c, role: "assistant" }, reason: "stop", type: "finish" };
+        void user;
       },
     };
-    const captura = fakeIo(["/plan migrar para SQLite", undefined], []);
+    const captura = fakeIo(["/plan migrar para SQLite", "execute o plano", undefined], []);
     await executarChat({ cwd, memoriaGlobalDir: join(cwd, "gmem"), provider }, captura.io);
-    expect(captura.saida()).toContain("PLANO para migrar para SQLite");
     expect(captura.progresso()).toContain("plano salvo em");
+    expect(captura.progresso()).toContain("plano ativo na sessão");
+    expect(captura.saida()).toContain("LEMBRO DO PLANO");
     const planos = await readFile(
       join(
         cwd,
@@ -406,14 +421,52 @@ describe("executarChat — subagentes e /plan (F5)", () => {
       ),
       "utf8",
     );
-    expect(planos).toContain("PLANO para migrar para SQLite");
+    expect(planos).toContain("migrar para SQLite");
   });
 
-  it("/plan sem objetivo mostra uso", async () => {
+  it("/plan com perguntas pede seleção e usa a resposta no plano", async () => {
+    let n = 0;
+    const provider: Provider = {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "fake",
+      model: "fake",
+      async *stream(request) {
+        n += 1;
+        const u = [...request.messages].reverse().find((m) => m.role === "user");
+        const user = u?.role === "user" ? u.content : "";
+        let c: string;
+        if (n === 1) {
+          c = [
+            "# PERGUNTAS",
+            "## 1. Qual banco?",
+            "- A) SQLite",
+            "- B) Postgres",
+            "- C) MySQL",
+          ].join("\n");
+        } else {
+          // fase 2: plano deve mencionar a escolha embutida no prompt do user
+          c = user.includes("Postgres")
+            ? "# Plano\nUsar Postgres conforme decisão"
+            : "# Plano\nsem decisao";
+        }
+        yield { text: c, type: "text-delta" };
+        yield { message: { content: c, role: "assistant" }, reason: "stop", type: "finish" };
+      },
+    };
+    // fakeIo: mensagens do chat + respostas de pergunta (2 = Postgres)
+    const captura = fakeIo(["/plan migrar banco", undefined], ["2"]);
+    await executarChat({ cwd, memoriaGlobalDir: join(cwd, "gmem"), provider }, captura.io);
+    expect(captura.progresso()).toContain("pergunta");
+    expect(captura.progresso()).toMatch(/Postgres|✓ 1/u);
+    expect(captura.saida()).toContain("Postgres");
+  });
+
+  it("/plan clear limpa o plano ativo; /plan sem objetivo mostra uso", async () => {
     const { provider } = scripted([]);
-    const captura = fakeIo(["/plan", undefined], []);
+    const captura = fakeIo(["/plan", "/plan clear", undefined], []);
     await executarChat({ cwd, memoriaGlobalDir: join(cwd, "gmem"), provider }, captura.io);
     expect(captura.progresso()).toContain("uso: /plan");
+    expect(captura.progresso()).toContain("plano ativo limpo");
   });
 });
 
