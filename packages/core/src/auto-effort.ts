@@ -44,11 +44,7 @@ export function resolverAutoEffort(state: AutoEffortState): ModelRole {
   }
 
   // Tools pesadas → Pro lida melhor com edições e orquestração.
-  if (
-    state.toolsAtivas.some(
-      (n) => n === "edit_file" || n === "task" || n === "repo_map" || n === "bash",
-    )
-  ) {
+  if (state.toolsAtivas.some((n) => HEAVY_TOOL_NAMES.includes(n))) {
     return "auto";
   }
 

@@ -100,7 +100,7 @@ function combina(hook: Hook, event: HookEvent, toolName: string | undefined): bo
   if (hook.matcher === undefined || hook.matcher.length === 0) {
     return true;
   }
-  return toolName !== undefined && toolName.includes(hook.matcher);
+  return toolName?.includes(hook.matcher) === true;
 }
 
 /**

@@ -1,12 +1,13 @@
-# CodingPro — Plano de Desenvolvimento
+# CodingPro — CLI de código assistida por IA (pt-BR)
 
-> CLI de código assistida por IA com **DeepSeek V4 Pro e V4 Flash** como únicos modelos LLM de código.
-> Desenvolvimento iniciado pela fundação executável e offline da CLI.
+> CLI local-first com **DeepSeek V4 Pro e V4 Flash** como únicos modelos LLM de código.
+> Interface em português, roda em Node.js 24.
 
-**Data do plano:** 2026-07-22
-**Stack decidida:** TypeScript / Node.js ≥ 24 · comando `codingpro` (alias `cpro`)
+**Stack:** TypeScript / Node.js ≥ 24 · monorepo pnpm · comando `codingpro` (alias `cpro`)
 **Licença:** proprietária source-available (ver `LICENSE`; código de terceiros portado mantém a licença original)
-**Status geral:** 🟠 F0 em andamento — roteamento interno Pro/Flash (F0.4) concluído em 2026-07-22
+**Status geral:** 🟢 **Fase 1 (a CLI local) funcionalmente completa** — F0–F6 + F8 essenciais (`/review`, undercover) + F9 (install.sh, `doctor`, guia). 614 testes offline, `pnpm check` verde. Falta só polimento visual cosmético (TUI Aurora, adiada) e `npm publish`.
+
+📖 **Guia do usuário:** [`docs/GUIA-DO-USUARIO.md`](docs/GUIA-DO-USUARIO.md) — instalação, configuração, comandos, skills, hooks, MCP, memória.
 
 ## Desenvolvimento local
 
@@ -38,11 +39,10 @@ O único provider de LLM para código em produção é a API oficial DeepSeek. V
 codificação, arquitetura e revisão; V4 Flash atende caminhos mecânicos internos via `role: "fast"`.
 `replay` é apenas infraestrutura determinística de testes, sem inferência.
 
-O contrato F0.3 aceita descritores puros de tools, valida schemas/argumentos, transmite chamadas
-completas e preserva `reasoning_content` na continuação. O F0.4 expõe o mapeamento de papéis
-sem alterar a execução de tools. O provider nunca executa a função: o loop, as permissões e as
-tools reais entram na F1. O modo headless atual falha fechado se receber uma tool call, pois
-ainda não há executor aprovado nessa fronteira.
+**Modos:** `-p` (headless, sem tools) · `--agente -p` (loop com ferramentas de leitura) ·
+`--chat` (chat interativo com aprovação de efeitos) · `--doctor` (diagnóstico do ambiente). O
+roteamento de esforço é automático (auto-effort): o turno usa Flash por padrão e escala para Pro em
+contexto grande, ferramentas pesadas ou após erro. Detalhes de uso no guia do usuário.
 
 > **Privacidade:** ao selecionar `deepseek`, o prompt e qualquer conteúdo incluído nele são
 > enviados à API da DeepSeek. Os testes comuns nunca selecionam esse caminho nem carregam chaves.
@@ -94,9 +94,9 @@ permanecer dentro dele e a fixture é lida em snapshot seguro. Consulte o
 
 | Fase | O quê | Planos | Status |
 |---|---|---|---|
-| **1** | **CLI executada localmente e funcional** (sem backend próprio; inferência via DeepSeek) | [`planos/`](planos/) — docs 01–16 | 🟠 em desenvolvimento (F0) |
-| **2** | **App Windows** (Electron, estilo Claude Code desktop; core da CLI reaproveitado) | [`fase2-app-windows/`](fase2-app-windows/) | 📋 planejada, aguarda F1 |
-| **3** | **Plataforma web**: site, contas, proxy LLM com **limites por usuário** (backend neste PC + Cloudflare Tunnel em `cursar.space`) | [`fase3-plataforma-web/`](fase3-plataforma-web/) | 📋 planejada, aguarda F1 |
+| **1** | **CLI executada localmente e funcional** (sem backend próprio; inferência via DeepSeek) | [`planos/`](planos/) — docs 01–16 | 🟢 funcionalmente completa (falta polimento visual + `npm publish`) |
+| **2** | **App Windows** (Electron, estilo Claude Code desktop; core da CLI reaproveitado) | [`fase2-app-windows/`](fase2-app-windows/) | 📋 planejada, pronta para começar |
+| **3** | **Plataforma web**: site, contas, proxy LLM com **limites por usuário** (backend neste PC + Cloudflare Tunnel em `cursar.space`) | [`fase3-plataforma-web/`](fase3-plataforma-web/) | 📋 planejada |
 
 **API de desenvolvimento/testes (todas as fases):** a origem da chave DeepSeek neste PC é o
 Hermes. Para executar o CodingPro, disponibilize somente `DEEPSEEK_API_KEY` no arquivo dedicado

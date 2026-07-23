@@ -49,6 +49,7 @@ import { sanitizarTextoTerminal } from "./headless.js";
 import { criarAprovadorInterativo } from "./interactive.js";
 import { carregarAtribuicao } from "./attribution-runtime.js";
 import { criarMemoriaSessao, type MemoriaSessao } from "./memory-runtime.js";
+import { verificarQualidade } from "./quality-runtime.js";
 import { obterDiff, promptRevisao } from "./review-runtime.js";
 import { carregarTiposCustom, criarSpawnerSubagentes } from "./subagent-runtime.js";
 
@@ -469,7 +470,6 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
     io.progresso(`· ${modeloNome}\n`);
 
     let respondeu = false;
-    let houveErro = false;
     const arquivosEfeito: string[] = [];
     const result = await runAgent({
       context: {
@@ -512,47 +512,14 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       io.saida("\n");
     }
 
-    // Atualiza auto-effort: detecta retry/erro nas mensagens de resultado.
-    const houveRetry = result.messages.some(
+    // Atualiza auto-effort: um erro de ferramenta neste turno escala o próximo para Pro.
+    const houveErroDeTool = result.messages.some(
       (m) => m.role === "tool" && m.result.type === "error-text",
     );
-    atualizarAutoEffort(autoEffort, houveErro || houveRetry);
+    atualizarAutoEffort(autoEffort, houveErroDeTool);
 
-    // Loop de qualidade: verifica arquivos editados/escritos com biome (se disponível).
-    if (arquivosEfeito.length > 0) {
-      io.progresso("· verificando…");
-      try {
-        const { execSync } = await import("node:child_process");
-        let saida = "";
-        try {
-          saida = execSync(`pnpm biome check ${arquivosEfeito.join(" ")}`, {
-            cwd: workspace.root,
-            encoding: "utf8",
-            stdio: "pipe",
-          });
-        } catch (e) {
-          saida =
-            (e as { stdout?: string; stderr?: string }).stdout ??
-            (e as { message?: string }).message ??
-            "";
-        }
-        const problemas =
-          saida.trim().length > 0
-            ? saida
-                .trim()
-                .split("\n")
-                .filter((l) => l.length > 0).length
-            : 0;
-        if (problemas > 0) {
-          io.progresso(` ✗ ${problemas} problema(s)\n`);
-          io.progresso(`${saida.trim()}\n`);
-        } else {
-          io.progresso(" ✓ limpo\n");
-        }
-      } catch {
-        // biome não disponível — non-blocking
-      }
-    }
+    // Loop de qualidade: passa os arquivos editados pelo biome do projeto (se houver). Non-blocking.
+    await verificarQualidade(workspace.root, arquivosEfeito, io);
 
     // Fecha o passo: se o turno escreveu algo, vira um checkpoint desfazível.
     const checkpoint = await checkpoints.commit();

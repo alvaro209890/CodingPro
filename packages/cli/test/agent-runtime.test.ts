@@ -219,17 +219,13 @@ describe("executarAgenteHeadless", () => {
 describe("executarAgenteHeadless — skills e hooks (F6)", () => {
   let cwd2: string;
   let saida2: string;
-  let progresso2: string;
   let io2: AgenteHeadlessIo;
 
   beforeEach(async () => {
     cwd2 = await mkdtemp(join(tmpdir(), "codingpro-cli-f6-"));
     saida2 = "";
-    progresso2 = "";
     io2 = {
-      progresso: (t) => {
-        progresso2 += t;
-      },
+      progresso: () => {},
       saida: (t) => {
         saida2 += t;
       },

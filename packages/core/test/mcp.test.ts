@@ -81,6 +81,45 @@ describe("McpClient", () => {
     await expect(client.chamar("echo", { texto: "x" })).rejects.toBeInstanceOf(Error);
   });
 
+  it("rejeita novas requisições após fechar (flag fechado)", async () => {
+    const c = await McpClient.conectar("fake", { args: [SERVER], command: process.execPath });
+    c.fechar();
+    await expect(c.listarTools()).rejects.toThrow("cliente MCP fechado");
+    await expect(c.chamar("echo", { texto: "x" })).rejects.toThrow("cliente MCP fechado");
+  });
+
+  it("fechar é idempotente (não lança ao chamar duas vezes)", async () => {
+    const c = await McpClient.conectar("fake", { args: [SERVER], command: process.execPath });
+    c.fechar();
+    expect(() => c.fechar()).not.toThrow();
+  });
+
+  it("detecta colisão de ID de requisição (guarda defensiva)", async () => {
+    client = await McpClient.conectar("fake", { args: [SERVER], command: process.execPath });
+    const interno = client as unknown as {
+      proximoId: number;
+      pendentes: Map<number, { resolve: () => void; reject: () => void; timer: NodeJS.Timeout }>;
+    };
+    // Força o cenário impossível em fluxo normal: o próximo id já está pendente.
+    interno.proximoId = 99;
+    interno.pendentes.set(99, {
+      reject: () => {},
+      resolve: () => {},
+      timer: setTimeout(() => {}, 0),
+    });
+    await expect(client.listarTools()).rejects.toThrow("duplicado");
+    interno.pendentes.clear();
+  });
+
+  it("rejeita quando o write no stdin lança de forma síncrona", async () => {
+    client = await McpClient.conectar("fake", { args: [SERVER], command: process.execPath });
+    const interno = client as unknown as { filho: { stdin: { write: () => never } } };
+    interno.filho.stdin.write = () => {
+      throw new Error("pipe quebrado");
+    };
+    await expect(client.chamar("echo", { texto: "x" })).rejects.toThrow();
+  });
+
   it("nomeMcpTool prefixa servidor e tool", () => {
     expect(nomeMcpTool("srv", "t")).toBe("mcp__srv__t");
   });

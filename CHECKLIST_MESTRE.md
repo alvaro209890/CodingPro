@@ -30,7 +30,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] Estratégia fixa de 2 modelos (Pro código / Flash mecânico) com roteamento interno — F0.4, 2026-07-22
 - [x] Auto-effort v1: heurísticas + roteador Flash + escalada por falha (sem escolha do usuário) — F1.10, 2026-07-23
 - [x] `/cost` com taxa de cache-hit + custo por turno/tarefa/subagente — `formatCost` já inclui cache %; `/custo` no chat
-- [x] Loop de qualidade: biome check automático após write/edit — 2026-07-23
+- [x] Loop de qualidade: biome check automático após write/edit — só em projetos com `biome.json`; via `execFile` (sem shell → imune a injeção); non-blocking. Módulo `quality-runtime.ts` testável — 2026-07-23
 - [ ] Evals: cache-hit >70% em sessão típica; auto-effort ≤60% do custo de fixo-high
 
 ## Transversal — Português & Visual Aurora *(docs 15/16)*
@@ -38,7 +38,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [~] verbos de progresso por evento (`describeAgentEvent`: "Lendo…", "Rodando…", "Pensando…") — F1.10, 2026-07-22; falta i18n canônico completo da UI
 - [ ] Raciocínio interno livre, colapsado na TUI (Ctrl+O expande o bruto)
 - [x] Comandos em português com alias inglês (/plano, /desfazer, /custo…) — 2026-07-23
-- [ ] Design tokens + tema Aurora escuro + trilho de timeline + spinner gradiente
+- [ ] Design tokens + tema Aurora escuro + trilho de timeline + spinner gradiente — ⚠️ um 1º protótipo Ink 5/React 19 (`packages/tui`) foi escrito e **removido do build** (incompleto: `--tui` não integrado, input não resolvia, sem testes); preservado no git (`fd6f3b1`) para retomar quando for integrado+testado de verdade. Interface v1 = readline `--chat` (funcional, testada)
 - [ ] 4 temas + detecção truecolor/256/16/NO_COLOR + fallback de glyphs
 - [ ] 3 propostas de banner/logo p/ o Álvaro escolher
 - [ ] Eval A/B idioma do system prompt (en+diretiva-pt vs 100% pt)
