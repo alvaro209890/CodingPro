@@ -2,12 +2,15 @@ export {
   AGENT_DEFAULT_MAX_RETRIES,
   AGENT_DEFAULT_MAX_STEPS,
   AGENT_DEFAULT_RETRY_BASE_MS,
+  AGENT_MAX_INVALID_REQUEST_FIXES,
+  AGENT_MAX_TOOL_CALL_FIXES,
   type AgentEvent,
   type AgentFinishReason,
   type AgentResult,
   type RetryOptions,
   type RunAgentOptions,
   runAgent,
+  sanitizeMessagesForProvider,
 } from "./agent.js";
 export {
   AGENTE_ARCHITECT,
@@ -182,6 +185,7 @@ export {
   errorResult,
   type MemoryScope,
   type ReadTracker,
+  sanitizeToolText,
   type ToolContext,
   type ToolSideEffect,
   textResult,

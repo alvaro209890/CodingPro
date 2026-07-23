@@ -196,6 +196,16 @@ export const App: React.FC = () => {
               { id: newId("asst"), role: "assistant", content: "", reasoning: ae.text },
             ];
           });
+        } else if (ae.type === "notice") {
+          setStatusNote(ae.text);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: newId("notice"),
+              role: "assistant",
+              content: `· ${ae.text}`,
+            },
+          ]);
         } else if (ae.type === "tool-call") {
           setMessages((prev) => {
             const last = prev[prev.length - 1];

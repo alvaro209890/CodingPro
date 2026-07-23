@@ -97,6 +97,9 @@ As tools **só enxergam a pasta aberta** (sandbox do `Workspace`) — se a pasta
 7. **Terminal podia ficar em “executando”** — timeout + try/finally no renderer.
 8. **Sem script de start** — `pnpm desktop` / `scripts/start.mjs`.
 9. **“Não tenho acesso a Downloads”** — o app abria no monorepo CodingPro e o modelo falava como se só existisse essa pasta. Fix W2.5: prompt com raiz explícita, `/abrir`/`/pwd`, default Downloads no diálogo, último workspace salvo, UI de home com botão de abrir projeto.
+10. **“Requisição ao provider é inválida” em cascata (Windows)** — após `read_file`, tool results com `
+` invalidavam `isChatRequest` no turno seguinte. Fix: `sanitizeToolText` + histórico sanitizado no loop + recovery de `invalid-tool-call`/`invalid-request`.
+
 
 ## W3 (próximo)
 

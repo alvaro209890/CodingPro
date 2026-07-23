@@ -66,10 +66,26 @@ export interface ExecutableTool {
   execute(input: JsonObject, context: ToolContext): Promise<ToolResult>;
 }
 
+/**
+ * Normaliza texto de tool result para o contrato do provider:
+ * - CRLF/CR → LF (Windows)
+ * - remove controles perigosos (mantém \\n e \\t)
+ * Sem isto, `isChatRequest` rejeita o histórico no turno seguinte
+ * (“A requisição ao provider é inválida”) após um `read_file` com CRLF.
+ */
+export function sanitizeToolText(text: string): string {
+  return (
+    text
+      .replace(/\r\n?/gu, "\n")
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: sanitização intencional.
+      .replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/gu, "")
+  );
+}
+
 export function textResult(value: string): ToolResult {
-  return { type: "text", value };
+  return { type: "text", value: sanitizeToolText(value) };
 }
 
 export function errorResult(value: string): ToolResult {
-  return { type: "error-text", value };
+  return { type: "error-text", value: sanitizeToolText(value) };
 }

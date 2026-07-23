@@ -75,6 +75,15 @@ Objetivo: o Desktop deve se comportar como a CLI Linux após `cd <projeto> && co
 - [x] UI: aviso se monorepo CodingPro; botão **Abrir pasta do projeto…**; paleta com `/abrir`
 - [x] Escopo das tools = pasta aberta (igual CLI) — Downloads entra **depois** de `/abrir` nessa pasta
 
+### Hotfix estabilidade provider (2026-07-23)
+
+Sintomas: `A DeepSeek retornou uma chamada de ferramenta inválida` e em sequência `A requisição ao provider é inválida` a cada mensagem (app “cai”).
+
+- [x] **Causa CRLF Windows:** `read_file` devolvia texto com `\\r\\n`; `isChatRequest` rejeita `\\r` em tool text → próximo turno morre. Fix: `sanitizeToolText` em `textResult`/`errorResult` + sanitização do histórico no loop.
+- [x] Recuperação `invalid-tool-call` até 5×; 1 retry em `invalid-request` com histórico limpo
+- [x] Drop de rodadas tool incompletas no fim do transcript; UI mostra eventos `notice`
+- [x] Desktop limpa transcript após erro de agente
+
 ## W3 — Acabamento & empacotamento (1–2 semanas)
 
 - [ ] Wizard de onboarding visual no primeiro start (chave + git)

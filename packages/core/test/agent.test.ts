@@ -396,8 +396,8 @@ describe("runAgent", () => {
     await expect(
       runAgent({ context, gate, messages: [{ content: "oi", role: "user" }], provider }),
     ).rejects.toMatchObject({ code: "invalid-tool-call" });
-    // 1 tentativa original + 3 correções
-    expect(calls).toBe(4);
+    // 1 tentativa original + 5 correções
+        expect(calls).toBe(6);
   });
 
   it("não re-tenta erro não-transitório nem após emitir", async () => {

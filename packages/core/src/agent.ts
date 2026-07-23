@@ -16,7 +16,7 @@ import {
 import { compactMessages } from "./compaction.js";
 import type { ToolGate } from "./gate.js";
 import { SYSTEM_PROMPT_V1 } from "./system-prompt.js";
-import type { ToolContext } from "./tool.js";
+import { sanitizeToolText, type ToolContext } from "./tool.js";
 
 /** Teto de passos do loop, para nunca girar sem fim quando o modelo insiste em ferramentas. */
 export const AGENT_DEFAULT_MAX_STEPS = 40;
@@ -26,7 +26,10 @@ export const AGENT_DEFAULT_MAX_RETRIES = 2;
 export const AGENT_DEFAULT_RETRY_BASE_MS = 500;
 
 /** Correções máximas de chamada de ferramenta inválida antes de desistir do turno. */
-export const AGENT_MAX_TOOL_CALL_FIXES = 3;
+export const AGENT_MAX_TOOL_CALL_FIXES = 5;
+
+/** Uma tentativa extra se a requisição for rejeitada por histórico sujo (ex. CRLF em tool text). */
+export const AGENT_MAX_INVALID_REQUEST_FIXES = 1;
 
 export interface RetryOptions {
   readonly baseDelayMs?: number;
@@ -200,6 +203,79 @@ function isPricedModel(model: string): model is DeepSeekModel {
   return Object.hasOwn(DEEPSEEK_PRICING, model);
 }
 
+function sanitizeToolResult(result: ToolResult): ToolResult {
+  if (result.type === "text" || result.type === "error-text") {
+    return { type: result.type, value: sanitizeToolText(result.value) };
+  }
+  if (result.type === "execution-denied") {
+    return {
+      type: result.type,
+      ...(result.reason === undefined ? {} : { reason: sanitizeToolText(result.reason) }),
+    };
+  }
+  return result;
+}
+
+/**
+ * Limpa o histórico antes de mandar ao provider — corrige sessões antigas no Windows
+ * com CR/LF em tool text (read_file) que fazem isChatRequest falhar.
+ */
+export function sanitizeMessagesForProvider(messages: readonly ChatMessage[]): ChatMessage[] {
+  const cleaned = messages.map((message) => {
+    if (message.role === "tool") {
+      return {
+        result: sanitizeToolResult(message.result),
+        role: "tool" as const,
+        toolCallId: message.toolCallId,
+        toolName: message.toolName,
+      };
+    }
+    if (message.role === "assistant") {
+      return {
+        content: sanitizeToolText(message.content),
+        ...(message.reasoning === undefined
+          ? {}
+          : { reasoning: sanitizeToolText(message.reasoning) }),
+        role: "assistant" as const,
+        ...(message.toolCalls === undefined ? {} : { toolCalls: message.toolCalls }),
+      };
+    }
+    return {
+      content: sanitizeToolText(message.content),
+      role: message.role,
+    };
+  });
+  return dropIncompleteToolRound(cleaned);
+}
+
+/** Remove rodadas assistant+tools incompletas no fim (abort/crash) que invalidam a API. */
+function dropIncompleteToolRound(messages: ChatMessage[]): ChatMessage[] {
+  const pending = new Set<string>();
+  let lastAssistantWithTools = -1;
+  for (let i = 0; i < messages.length; i += 1) {
+    const message = messages[i];
+    if (message === undefined) continue;
+    if (message.role === "tool") {
+      pending.delete(message.toolCallId);
+      continue;
+    }
+    if (pending.size > 0) {
+      // mensagem no meio de tool results — corta a rodada aberta
+      return messages.slice(0, lastAssistantWithTools >= 0 ? lastAssistantWithTools : i);
+    }
+    if (message.role === "assistant" && message.toolCalls !== undefined) {
+      lastAssistantWithTools = i;
+      for (const call of message.toolCalls) {
+        pending.add(call.id);
+      }
+    }
+  }
+  if (pending.size > 0 && lastAssistantWithTools >= 0) {
+    return messages.slice(0, lastAssistantWithTools);
+  }
+  return messages;
+}
+
 /**
  * Loop agêntico mínimo: transmite um turno do provider, executa as ferramentas pedidas pelo
  * `ToolGate` (que aplica permissão) e realimenta os resultados até o modelo parar de pedir
@@ -221,10 +297,11 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
   let usage = ZERO_USAGE;
   let steps = 0;
   let finishReason: AgentFinishReason = "max-steps";
-  let working = messages;
+  let working = sanitizeMessagesForProvider(messages);
   // Auto-recuperação: uma chamada de ferramenta inválida do modelo não deve matar a tarefa.
   // Realimentamos o erro como mensagem e deixamos o modelo refazer, com um teto pequeno.
   let correcoesToolCall = 0;
+  let correcoesInvalidRequest = 0;
 
   while (steps < maxSteps) {
     options.signal?.throwIfAborted();
@@ -233,6 +310,7 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
     if (options.contextBudget !== undefined) {
       working = compactMessages(working, { maxTokens: options.contextBudget }).messages;
     }
+    working = sanitizeMessagesForProvider(working);
     const request: ChatRequest = { messages: working, ...(tools.length > 0 ? { tools } : {}) };
     let turn: TurnOutcome;
     try {
@@ -270,6 +348,21 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
         ];
         continue;
       }
+      // Histórico inválido (ex.: sessão antiga com CRLF em tool text no Windows).
+      if (
+        error instanceof ProviderError &&
+        error.code === "invalid-request" &&
+        correcoesInvalidRequest < AGENT_MAX_INVALID_REQUEST_FIXES
+      ) {
+        correcoesInvalidRequest += 1;
+        options.onEvent?.({
+          text: "corrigindo histórico da sessão e tentando de novo…",
+          type: "notice",
+        });
+        working = sanitizeMessagesForProvider(working);
+        steps -= 1; // não conta o passo abortado
+        continue;
+      }
       throw error;
     }
     correcoesToolCall = 0; // turno bem-sucedido: zera o orçamento de correções consecutivas
@@ -299,7 +392,7 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
         options.signal?.throwIfAborted();
         const result = await options.gate.run(call.name, call.input, options.context);
         working.push({
-          result,
+          result: sanitizeToolResult(result),
           role: "tool",
           toolCallId: call.id,
           toolName: call.name,

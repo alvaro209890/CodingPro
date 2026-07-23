@@ -23,6 +23,7 @@ import {
   resolverPreviaDeEscrita,
   resumoProjeto,
   runAgent,
+  sanitizeMessagesForProvider,
   SessionStore,
   SYSTEM_PROMPT_V1,
   type ToolContext,
@@ -838,25 +839,37 @@ app.whenReady().then(() => {
             err instanceof DOMException &&
             err.name === "AbortError");
         const msg = isAbort
-          ? "Execução cancelada."
-          : err instanceof Error
-            ? err.message
-            : String(err);
+                  ? "Execução cancelada."
+                  : err !== null &&
+                      typeof err === "object" &&
+                      "safeMessage" in err &&
+                      typeof (err as { safeMessage: unknown }).safeMessage === "string"
+                    ? (err as { safeMessage: string }).safeMessage
+                    : err instanceof Error
+                      ? err.message
+                      : String(err);
 
-        // reverte begin de checkpoint se o turno falhou no meio
-        try {
-          await activeSession?.checkpoints.commit();
-        } catch {
-          // ignore
-        }
+                // reverte begin de checkpoint se o turno falhou no meio
+                try {
+                  await activeSession?.checkpoints.commit();
+                } catch {
+                  // ignore
+                }
 
-        rejectPendingPermissions("deny");
-        sendCoreEvent({
-          type: "error",
-          code: isAbort ? "CANCELLED" : "AGENT_ERROR",
-          message: msg,
-        });
-        return { success: false, error: msg };
+                // limpa transcript sujo para o próximo turno não herdar invalid-request
+                                if (activeSession !== null) {
+                                  activeSession.transcript = sanitizeMessagesForProvider(
+                                    activeSession.transcript,
+                                  );
+                                }
+
+                rejectPendingPermissions("deny");
+                sendCoreEvent({
+                  type: "error",
+                  code: isAbort ? "CANCELLED" : "AGENT_ERROR",
+                  message: msg,
+                });
+                return { success: false, error: msg };
       } finally {
         runInFlight = false;
         if (activeAbort === abort) {
