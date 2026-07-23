@@ -1403,3 +1403,108 @@ body {
   color: var(--accent-blue);
   font-weight: 700;
 }
+
+/* ─── Reasoning Blocks ─── */
+
+.reasoning-blocks {
+  margin: 6px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reasoning-block-item {
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.reasoning-block-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: rgba(167,139,250,0.04);
+  border: none;
+  color: var(--accent-purple);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 5px 8px;
+  text-align: left;
+  border-radius: 4px;
+  transition: background 0.12s;
+}
+
+.reasoning-block-toggle:hover { background: rgba(167,139,250,0.08); }
+
+.reasoning-block-icon { font-size: 10px; width: 12px; flex-shrink: 0; }
+.reasoning-block-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+
+.reasoning-block-body {
+  padding: 8px 12px;
+  margin: 2px 0 4px 8px;
+  border-left: 2px solid rgba(167,139,250,0.3);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+  
+/* ��� Theme Selector (Settings) ��� */  
+  
+.settings-theme-grid {  
+  display: grid;  
+  grid-template-columns: 1fr 1fr;  
+  gap: 8px;  
+  margin: 8px 0 4px;  
+} 
+/* ═══ Theme Selector (Settings) ═══ */
+
+.settings-theme-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+
+.settings-theme-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-theme-chip:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-card-hover);
+}
+
+.settings-theme-chip.active {
+  border-color: var(--theme-primaria);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.15);
+}
+
+.settings-theme-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.settings-theme-name {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 500;
+}

@@ -12,6 +12,7 @@ import { TaskTracker, toTaskRow } from "./components/TaskTracker.js";
 import { SubagentPanel } from "./components/SubagentPanel.js";
 import { SettingsPanel } from "./components/SettingsPanel.js";
 import { renderMarkdown } from "./components/MarkdownRenderer.js";
+import { useTheme } from "./useTheme.js";
 import "./aurora.css";
 
 const CollapsibleReasoning: React.FC<{ text?: string | undefined }> = ({ text }) => {
@@ -105,6 +106,8 @@ export const App: React.FC = () => {
   const [taskItems, setTaskItems] = useState<ReturnType<typeof toTaskRow>[]>([]);
 
     const [autoApprove, setAutoApprove] = useState(false);
+
+    const { tema, setTema } = useTheme();
 
     const [subAgents, setSubAgents] = useState<Array<{ id: string; label: string; status: "running" | "done" | "failed" }>>([]);
 
@@ -574,6 +577,8 @@ export const App: React.FC = () => {
                   }}
                   modelName="DeepSeek V4 Pro"
                   effortLevel="Alto"
+                  tema={tema}
+                  onTemaChange={setTema}
                 />
               }
             />
