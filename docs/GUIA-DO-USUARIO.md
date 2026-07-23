@@ -73,10 +73,39 @@ No terminal interativo (`codingpro --chat`):
 1. **Banner animado** Aurora na abertura (faíscas + caixa).
 2. Digite **`/`** → abre a **lista de comandos** (estilo Claude Code).
 3. **↑ / ↓** navegam a seleção; **Tab** completa o comando; **Enter** envia; **Esc** fecha a lista.
-4. Enquanto o agente trabalha, um **spinner** braille roda na linha de status; cada ferramenta
-   aparece na timeline com ícone ⚙.
+4. Enquanto o agente trabalha, um **spinner** roda na linha de status; cada ferramenta
+   aparece na timeline.
 
 Em pipe/não-TTY o chat degrada para o leitor de linhas clássico (sem raw mode).
+
+#### Windows CMD, PowerShell e SSH
+
+A CLI detecta o terminal e **adapta glifos e cores**:
+
+| Ambiente | Comportamento |
+|----------|----------------|
+| Windows Terminal / VS Code | Unicode + truecolor |
+| **CMD / PowerShell “cru”** | **ASCII** (`+--`, `>`, `*`) + 16 cores brilhantes |
+| SSH com locale sem UTF-8 / `TERM=dumb` | ASCII |
+| Forçar ASCII | `CODINGPRO_ASCII=1` |
+| Forçar Unicode | `CODINGPRO_ASCII=0` |
+
+No CMD legado, prefira Windows Terminal se puder; com ASCII a UI continua legível e colorida.
+
+### Auto-correção de lint e formatação
+
+Depois de um turno que **escreve/edita** arquivos, se o projeto tiver `biome.json` / `biome.jsonc`:
+
+1. Roda `biome check --write` **só nos arquivos tocados** (format + fixes seguros).
+2. Revalida com `biome check`.
+3. Se ainda houver problemas, **reenvia o diagnóstico ao modelo** (até 1 re-turno por padrão) para a IA corrigir o residual.
+
+| Variável | Padrão | Efeito |
+|----------|--------|--------|
+| `CODINGPRO_QUALITY_AUTOFIX` | `true` | `false` / `0` / `off` desliga o `--write` |
+| `CODINGPRO_QUALITY_MAX_REPAIR` | `1` | `0` = só reporta residual; máx. `2` |
+
+Segurança: caminhos vão como argumentos do processo (sem shell). Biome ausente não quebra o turno.
 
 ## Comandos do chat
 

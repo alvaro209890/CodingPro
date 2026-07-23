@@ -157,6 +157,7 @@ arquivos tocados
 - [ ] Doc de usuário (`GUIA-DO-USUARIO`) atualizado
 
 - [x] v1: biome **check** pós-edição (report only) — 2026-07-23
+- [x] Auto-correção 14.5.1: mecânica (`--write`) + re-turno residual (env `CODINGPRO_QUALITY_*`) — 2026-07-23
 - [ ] Definir política de quando cada camada roda (custo × benefício por tamanho de mudança)
 - [ ] Contrato do "pronto": turno de código só encerra com sintaxe+lint ok e testes rodados (ou justificativa explícita)
-- [ ] Implementar auto-correção 14.5.1 (mecânica + re-turno)
+- [ ] Settings JSONC `quality.autoFix` (hoje só env) + ESLint/ruff por detecção de projeto

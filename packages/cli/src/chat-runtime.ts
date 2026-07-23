@@ -49,7 +49,12 @@ import { sanitizarTextoTerminal } from "./headless.js";
 import { criarAprovadorInterativo } from "./interactive.js";
 import { carregarAtribuicao } from "./attribution-runtime.js";
 import { criarMemoriaSessao, type MemoriaSessao } from "./memory-runtime.js";
-import { verificarQualidade } from "./quality-runtime.js";
+import {
+  corrigirQualidade,
+  lerOpcoesQualidadeEnv,
+  promptReparoQualidade,
+  type RunnerBiome,
+} from "./quality-runtime.js";
 import { obterDiff, promptRevisao } from "./review-runtime.js";
 import { textoAjudaComandos } from "./commands.js";
 import { criarTema, type Tema } from "./tema.js";
@@ -91,6 +96,12 @@ export interface ChatOptions {
   readonly signal?: AbortSignal;
   /** Tema visual; ausente = sem cor (usado nos testes). */
   readonly tema?: Tema;
+  /** Runner do biome (testes); default = pnpm exec biome. */
+  readonly qualityRunner?: RunnerBiome;
+  /** Sobrescreve auto-fix (default: env / true). */
+  readonly qualityAutoFix?: boolean;
+  /** Sobrescreve teto de re-turnos de reparo (default: env / 1). */
+  readonly qualityMaxRepairTurns?: number;
 }
 
 const AJUDA = textoAjudaComandos();
@@ -550,13 +561,99 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
     );
     atualizarAutoEffort(autoEffort, houveErroDeTool);
 
-    // Loop de qualidade: passa os arquivos editados pelo biome do projeto (se houver). Non-blocking.
-    await verificarQualidade(workspace.root, arquivosEfeito, io);
+    // Qualidade: biome --write (auto-fix) + check; residual pode gerar re-turno da IA.
+    const qaEnv = lerOpcoesQualidadeEnv();
+    const qaAutoFix = options.qualityAutoFix ?? qaEnv.autoFix;
+    const qaMaxRepair = options.qualityMaxRepairTurns ?? qaEnv.maxRepairTurns;
+    let arquivosQa = [...arquivosEfeito];
+    let resultadoQa = await corrigirQualidade(workspace.root, arquivosQa, io, {
+      autoFix: qaAutoFix,
+      ...(options.qualityRunner === undefined ? {} : { runner: options.qualityRunner }),
+    });
+
+    let reparos = 0;
+    while (
+      !resultadoQa.limpo &&
+      !resultadoQa.ignorado &&
+      resultadoQa.diagnostico.length > 0 &&
+      reparos < qaMaxRepair
+    ) {
+      reparos += 1;
+      io.progresso(
+        `${tema.progresso(`reenviando diagnóstico ao modelo (${reparos}/${qaMaxRepair})`)}\n`,
+      );
+      const promptReparo = promptReparoQualidade(resultadoQa.diagnostico, resultadoQa.arquivos);
+      const systemReparo = await memoria.promptDoTurno(promptBase, promptReparo);
+      const entradaReparo: ChatMessage[] = [
+        { content: systemReparo, role: "system" },
+        ...(result.messages[0]?.role === "system" ? result.messages.slice(1) : result.messages),
+        { content: promptReparo, role: "user" },
+      ];
+      const arquivosReparo: string[] = [];
+      let respondeuReparo = false;
+      io.spinner?.start("corrigindo lint…");
+      try {
+        const repairResult = await runAgent({
+          context: {
+            checkpoints,
+            memory: memoria.scope,
+            readTracker,
+            subagentes: spawner,
+            workspace,
+            ...(options.signal === undefined ? {} : { signal: options.signal }),
+          },
+          gate,
+          messages: entradaReparo,
+          onEvent: (event) => {
+            if (event.type === "text-delta") {
+              io.spinner?.stop();
+              respondeuReparo = true;
+              io.saida(sanitizarTextoTerminal(event.text));
+              return;
+            }
+            if (event.type === "tool-call") {
+              const path = (event.call.input as { path?: string }).path;
+              if (
+                path !== undefined &&
+                (event.call.name === "write_file" || event.call.name === "edit_file")
+              ) {
+                arquivosReparo.push(path);
+              }
+            }
+            const progresso = describeAgentEvent(event);
+            if (progresso !== undefined) {
+              const texto = sanitizarTextoTerminal(progresso);
+              const linha =
+                event.type === "tool-call" ? tema.ferramenta(texto) : tema.progresso(texto);
+              io.spinner?.stop();
+              io.progresso(`${linha}\n`);
+            }
+          },
+          provider: providerTurno,
+          tools: registry.definitions(),
+          ...(options.maxContexto === undefined ? {} : { contextBudget: options.maxContexto }),
+          ...(options.signal === undefined ? {} : { signal: options.signal }),
+        });
+        result = repairResult;
+        if (respondeuReparo) {
+          io.saida("\n");
+        }
+        arquivosQa = [...arquivosQa, ...arquivosReparo];
+        resultadoQa = await corrigirQualidade(workspace.root, arquivosQa, io, {
+          autoFix: qaAutoFix,
+          ...(options.qualityRunner === undefined ? {} : { runner: options.qualityRunner }),
+        });
+      } finally {
+        io.spinner?.stop();
+      }
+    }
 
     // Fecha o passo: se o turno escreveu algo, vira um checkpoint desfazível.
     const checkpoint = await checkpoints.commit();
     if (checkpoint !== undefined) {
-      io.progresso(`· checkpoint ${descreverCheckpoint(checkpoint)} (/undo desfaz)\n`);
+      io.progresso(
+        `${tema.progresso(`checkpoint ${descreverCheckpoint(checkpoint)} (/undo desfaz)`)}\n`,
+      );
     }
     transcrito = [...result.messages];
     ultimoCusto = result.cost;

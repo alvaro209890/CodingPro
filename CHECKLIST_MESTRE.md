@@ -31,7 +31,8 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] Auto-effort v1: heurísticas + roteador Flash + escalada por falha (sem escolha do usuário) — F1.10, 2026-07-23
 - [x] `/cost` com taxa de cache-hit + custo por turno/tarefa/subagente — `formatCost` já inclui cache %; `/custo` no chat
 - [x] Loop de qualidade v1: biome **check** após write/edit (só com `biome.json`; `execFile` sem shell; non-blocking) — `quality-runtime.ts` — 2026-07-23
-- [ ] **Auto-correção** de lint/formatação: biome `--write` nos arquivos tocados + re-turno do modelo se restar diagnóstico (ver planos 07.6 / 14.5) — próximo incremento
+- [x] **Auto-correção** de lint/formatação: `corrigirQualidade` (`biome check --write` + recheck) + re-turno da IA se residual (`qualityMaxRepairTurns`, env `CODINGPRO_QUALITY_*`) — 2026-07-23
+- [x] Tema **Windows CMD / SSH**: glifos ASCII + 16 cores (`detectarAscii`, `CODINGPRO_ASCII`) — banner/prompt legíveis no CMD — 2026-07-23
 - [ ] Evals **com LLM real** (opt-in): cache-hit >70% em sessão típica; auto-effort ≤60% do custo de fixo-high — fora do gate CI offline; ver `pnpm smoke:deepseek`
 
 ## Transversal — Português & Visual Aurora *(docs 15/16)*

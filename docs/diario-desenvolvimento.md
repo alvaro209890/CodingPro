@@ -527,3 +527,28 @@ Após `pnpm build` na raiz do repo: `codingpro --chat`.
 
 Sem mudança de runtime nesta rodada — só alinhamento documental e especificação do próximo
 incremento de qualidade.
+
+## 2026-07-23 — Auto-correção lint/format + tema Windows CMD/SSH
+
+### Código
+
+- **`corrigirQualidade`**: `biome check --write` nos arquivos tocados → recheck; resultado
+  estruturado; env `CODINGPRO_QUALITY_AUTOFIX` / `CODINGPRO_QUALITY_MAX_REPAIR`.
+- **Chat**: após turno com escrita, auto-fix mecânico; se residual, re-turno da IA com
+  `promptReparoQualidade` (teto configurável).
+- **Tema**: `detectarAscii` + glifos ASCII (`+--`, `>`, `*`) e 16 cores no CMD Windows / TERM=dumb;
+  Windows Terminal / VS Code mantêm Unicode + truecolor. Spinner ASCII `|/-\\` no modo ascii.
+- Banner animado e prompt TTY respeitam `tema.ascii`.
+
+### Validação
+
+- `pnpm check` verde; testes quality/tema/chat (reparo) incluídos.
+- Launcher local `~/.local/bin/codingpro` → `dist/index.mjs` (Node 24).
+
+### Como testar
+
+```bash
+codingpro --chat
+# após uma edição com biome.json no projeto: veja "formatando…" e "✓ limpo (auto-corrigido)"
+CODINGPRO_ASCII=1 codingpro --chat   # simula CMD
+```

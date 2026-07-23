@@ -109,10 +109,14 @@ export function criarPromptTty(options: PromptTtyOptions): PromptTty {
     output.write(s);
   };
 
-  const spinner = criarSpinner((s) => {
-    // Spinner em stderr/stdout do caller; limpa linha única
-    write(s);
-  });
+  const spinner = criarSpinner(
+    (s) => {
+      // Spinner em stderr/stdout do caller; limpa linha única
+      write(s);
+    },
+    80,
+    tema.ascii,
+  );
 
   const apagarBloco = (): void => {
     if (linhasOcupadas <= 0) {
@@ -225,7 +229,7 @@ export function criarPromptTty(options: PromptTtyOptions): PromptTty {
         // 4 linhas do banner
         write(`${CURSOR_UP(3)}\r`);
       }
-      const corpo = framesBannerAbertura(t);
+      const corpo = framesBannerAbertura(t, tema.ascii);
       const colorido = corpo
         .split("\n")
         .map((linha, i) => {

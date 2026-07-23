@@ -1,8 +1,7 @@
 /**
  * Tema visual "Aurora" da CLI: cor e composição da interface de chat (banner, prompt, bolhas de
- * progresso, status). Puro e sem dependências — usa ANSI direto com detecção de capacidade do
- * terminal (truecolor → 256 → 16 → nenhuma) e respeito a `NO_COLOR`. Degradação graciosa: em pipe
- * ou terminal sem cor, tudo vira texto limpo.
+ * progresso, status). Puro e sem dependências — usa ANSI com detecção de capacidade
+ * (truecolor → 256 → 16 → nenhuma) e glifos modernos ou **ASCII** para Windows CMD / SSH legado.
  */
 
 export type NivelCor = "16" | "256" | "nenhuma" | "truecolor";
@@ -31,16 +30,18 @@ const AURORA = {
 /** Gradiente do banner (esmeralda → ciano → violeta). */
 const GRADIENTE: readonly CorRGB[] = [AURORA.esmeralda, AURORA.ciano, AURORA.violeta];
 
-const ESC = "";
+const ESC = "\u001b";
 const RESET = `${ESC}[0m`;
 
 /**
  * Detecta o nível de cor. Ordem: `NO_COLOR` desliga; `FORCE_COLOR` liga; sem TTY → nenhuma;
- * `COLORTERM=truecolor/24bit` → truecolor; `TERM` com `256` → 256; senão 16.
+ * Windows Terminal / COLORTERM truecolor → truecolor; `TERM` com `256` → 256; Windows CMD → 16;
+ * senão 16.
  */
 export function detectarNivelCor(
   env: Record<string, string | undefined>,
   isTTY: boolean,
+  platform: string = process.platform,
 ): NivelCor {
   if (env.NO_COLOR !== undefined && env.NO_COLOR !== "") {
     return "nenhuma";
@@ -52,15 +53,116 @@ export function detectarNivelCor(
   if (!isTTY && forcado === undefined) {
     return "nenhuma";
   }
+  if (forcado === "3") {
+    return "truecolor";
+  }
+  if (forcado === "2") {
+    return "256";
+  }
+  if (forcado === "1") {
+    return "16";
+  }
   const colorterm = (env.COLORTERM ?? "").toLowerCase();
-  if (colorterm.includes("truecolor") || colorterm.includes("24bit") || forcado === "3") {
+  if (colorterm.includes("truecolor") || colorterm.includes("24bit")) {
+    return "truecolor";
+  }
+  // Windows Terminal e VS Code suportam truecolor
+  if (env.WT_SESSION !== undefined || env.TERM_PROGRAM === "vscode") {
     return "truecolor";
   }
   const term = (env.TERM ?? "").toLowerCase();
-  if (term.includes("256") || forcado === "2") {
+  if (term.includes("256")) {
     return "256";
   }
+  // CMD clássico / ConEmu: 16 cores brilhantes bastam e renderizam bem
+  if (platform === "win32") {
+    return "16";
+  }
   return "16";
+}
+
+/**
+ * Glifos ASCII quando o terminal não lida bem com Unicode (CMD Windows legado, TERM=dumb,
+ * locale sem UTF-8, ou CODINGPRO_ASCII=1). Windows Terminal / VS Code / iTerm → Unicode.
+ */
+export function detectarAscii(
+  env: Record<string, string | undefined>,
+  platform: string = process.platform,
+): boolean {
+  const flag = (env.CODINGPRO_ASCII ?? "").trim().toLowerCase();
+  if (flag === "1" || flag === "true" || flag === "yes" || flag === "on") {
+    return true;
+  }
+  if (flag === "0" || flag === "false" || flag === "no" || flag === "off") {
+    return false;
+  }
+  if (env.WT_SESSION !== undefined) {
+    return false;
+  }
+  if (env.TERM_PROGRAM === "vscode" || env.TERM_PROGRAM === "iTerm.app") {
+    return false;
+  }
+  const term = (env.TERM ?? "").toLowerCase();
+  if (term === "dumb" || term === "cygwin" || term === "win32") {
+    return true;
+  }
+  // CMD / PowerShell “cru” sem WT: code page legada quebra box-drawing
+  if (platform === "win32") {
+    return true;
+  }
+  const lang = `${env.LANG ?? ""}${env.LC_ALL ?? ""}${env.LC_CTYPE ?? ""}`.toLowerCase();
+  if (lang.length > 0 && !lang.includes("utf-8") && !lang.includes("utf8")) {
+    return true;
+  }
+  return false;
+}
+
+export interface Glifos {
+  readonly logo: string;
+  readonly prompt: string;
+  readonly bullet: string;
+  readonly tool: string;
+  readonly ok: string;
+  readonly fail: string;
+  readonly warn: string;
+  readonly project: string;
+  readonly rule: string;
+  readonly boxTop: string;
+  readonly boxBot: string;
+  readonly boxSide: string;
+}
+
+export function glifosPara(ascii: boolean): Glifos {
+  if (ascii) {
+    return {
+      boxBot: "+------------------------------------------+",
+      boxSide: "|",
+      boxTop: "+------------------------------------------+",
+      bullet: "*",
+      fail: "x",
+      logo: "* CodingPro",
+      ok: "+",
+      project: ">",
+      prompt: "> ",
+      rule: "-".repeat(44),
+      tool: "#",
+      warn: "!",
+    };
+  }
+  return {
+    boxBot: "╰──────────────────────────────────────────╯",
+    boxSide: "│",
+    boxTop: "╭──────────────────────────────────────────╮",
+    bullet: "·",
+    fail: "✗",
+    logo: "◈ CodingPro",
+    ok: "✓",
+    project: "▸",
+    prompt: "❯ ",
+    rule: "─".repeat(44),
+    tool: "⚙",
+    warn: "!",
+  };
 }
 
 function codigoFg(cor: CorRGB, nivel: NivelCor): string {
@@ -84,11 +186,19 @@ function negrito(texto: string, nivel: NivelCor): string {
   return nivel === "nenhuma" ? texto : `${ESC}[1m${texto}${RESET}`;
 }
 
-function esmaecer(texto: string, nivel: NivelCor): string {
-  return nivel === "nenhuma" ? texto : `${ESC}[2m${texto}${RESET}`;
+/**
+ * Esmaecer: em Windows CMD o SGR 2 (dim) é fraco/inexistente — usa cinza brilhante em nível 16.
+ */
+function esmaecer(texto: string, nivel: NivelCor, preferCinza: boolean): string {
+  if (nivel === "nenhuma") {
+    return texto;
+  }
+  if (preferCinza || nivel === "16") {
+    return pintar(texto, AURORA.cinza, nivel);
+  }
+  return `${ESC}[2m${texto}${RESET}`;
 }
 
-/** Interpola duas cores RGB em `t` ∈ [0,1]. */
 function interpolar(a: CorRGB, b: CorRGB, t: number): CorRGB {
   const lerp = (x: number, y: number): number => Math.round(x + (y - x) * t);
   return {
@@ -100,10 +210,10 @@ function interpolar(a: CorRGB, b: CorRGB, t: number): CorRGB {
   };
 }
 
-/** Aplica o gradiente Aurora caractere a caractere sobre um texto. */
 function gradiente(texto: string, nivel: NivelCor): string {
-  if (nivel === "nenhuma") {
-    return texto;
+  if (nivel === "nenhuma" || nivel === "16") {
+    // Gradiente por caractere não vale a pena em 16 cores (CMD)
+    return nivel === "nenhuma" ? texto : pintar(texto, AURORA.esmeralda, nivel);
   }
   const chars = [...texto];
   const n = Math.max(1, chars.length - 1);
@@ -124,73 +234,94 @@ function gradiente(texto: string, nivel: NivelCor): string {
 
 export interface Tema {
   readonly cor: NivelCor;
-  /** Banner de abertura do chat (wordmark com gradiente Aurora). */
+  readonly ascii: boolean;
   banner(): string;
-  /** Linha do prompt de entrada do usuário. */
   prompt(): string;
-  /** Linha de progresso/evento (bolha discreta). */
   progresso(texto: string): string;
-  /** Linha de ferramenta em execução (destaque ciano). */
   ferramenta(texto: string): string;
   sucesso(texto: string): string;
   erro(texto: string): string;
   aviso(texto: string): string;
-  /** Realce inline (esmeralda) para nomes/valores. */
   destaque(texto: string): string;
-  /** Texto secundário esmaecido (ajuda, dicas). */
   nota(texto: string): string;
-  /** Cabeçalho com o resumo do projeto detectado. */
   cabecalhoProjeto(resumo: string): string;
-  /** Régua divisória sutil. */
   regua(): string;
 }
 
-const LOGO = "◈ CodingPro";
+export interface OpcoesTema {
+  readonly nivel?: NivelCor;
+  readonly ascii?: boolean;
+  /** Preferir cinza em vez de SGR dim (melhor no CMD). Default: true se ascii ou win32. */
+  readonly preferCinza?: boolean;
+}
 
-/** Cria o tema para um nível de cor (default: detecta do `process.stdout`). */
+/** Cria o tema (default: detecta cor + ASCII do ambiente). */
 export function criarTema(
-  nivel: NivelCor = detectarNivelCor(process.env, Boolean(process.stdout.isTTY)),
+  nivelOuOpcoes: NivelCor | OpcoesTema = detectarNivelCor(
+    process.env,
+    Boolean(process.stdout.isTTY),
+  ),
 ): Tema {
+  const opcoes: OpcoesTema =
+    typeof nivelOuOpcoes === "string" ? { nivel: nivelOuOpcoes } : nivelOuOpcoes;
+  const nivel = opcoes.nivel ?? detectarNivelCor(process.env, Boolean(process.stdout.isTTY));
+  const ascii = opcoes.ascii ?? detectarAscii(process.env);
+  const preferCinza = opcoes.preferCinza ?? (ascii || process.platform === "win32");
+  const g = glifosPara(ascii);
+
   return {
+    ascii,
     cor: nivel,
     banner() {
-      const marca = nivel === "nenhuma" ? LOGO : `${ESC}[1m${gradiente(LOGO, nivel)}`;
-      const sub = esmaecer("assistente de código · pt-BR", nivel);
-      const dica = esmaecer("digite / para comandos  ·  ↑↓ Tab Enter", nivel);
-      const top = esmaecer("╭────────────────────────────────────────╮", nivel);
-      const bot = esmaecer("╰────────────────────────────────────────╯", nivel);
-      const side = (inner: string): string => `${esmaecer("│", nivel)}  ${inner}`;
+      const marca = nivel === "nenhuma" ? g.logo : `${ESC}[1m${gradiente(g.logo, nivel)}${RESET}`;
+      const sub = esmaecer(
+        ascii ? "assistente de codigo · pt-BR" : "assistente de código · pt-BR",
+        nivel,
+        preferCinza,
+      );
+      const dica = esmaecer(
+        ascii
+          ? "digite / para comandos  ·  setas Tab Enter"
+          : "digite / para comandos  ·  ↑↓ Tab Enter",
+        nivel,
+        preferCinza,
+      );
+      const top = esmaecer(g.boxTop, nivel, preferCinza);
+      const bot = esmaecer(g.boxBot, nivel, preferCinza);
+      const side = (inner: string): string =>
+        `${esmaecer(g.boxSide, nivel, preferCinza)}  ${inner}`;
       return `\n${top}\n${side(marca)}\n${side(sub)}\n${side(dica)}\n${bot}\n`;
     },
     prompt() {
-      return `${pintar("❯", AURORA.violeta, nivel)} `;
+      const sim = g.prompt.trimEnd();
+      return `${pintar(sim, AURORA.violeta, nivel)} `;
     },
     progresso(texto) {
-      return `${pintar("·", AURORA.cinza, nivel)} ${esmaecer(texto, nivel)}`;
+      return `${pintar(g.bullet, AURORA.cinza, nivel)} ${esmaecer(texto, nivel, preferCinza)}`;
     },
     ferramenta(texto) {
-      return `${pintar("⚙", AURORA.ciano, nivel)} ${pintar(texto, AURORA.ciano, nivel)}`;
+      return `${pintar(g.tool, AURORA.ciano, nivel)} ${pintar(texto, AURORA.ciano, nivel)}`;
     },
     sucesso(texto) {
-      return `${pintar("✓", AURORA.esmeralda, nivel)} ${texto}`;
+      return `${pintar(g.ok, AURORA.esmeralda, nivel)} ${texto}`;
     },
     erro(texto) {
-      return `${pintar("✗", AURORA.vermelho, nivel)} ${pintar(texto, AURORA.vermelho, nivel)}`;
+      return `${pintar(g.fail, AURORA.vermelho, nivel)} ${pintar(texto, AURORA.vermelho, nivel)}`;
     },
     aviso(texto) {
-      return `${pintar("!", AURORA.amarelo, nivel)} ${pintar(texto, AURORA.amarelo, nivel)}`;
+      return `${pintar(g.warn, AURORA.amarelo, nivel)} ${pintar(texto, AURORA.amarelo, nivel)}`;
     },
     destaque(texto) {
       return pintar(texto, AURORA.esmeralda, nivel);
     },
     nota(texto) {
-      return esmaecer(texto, nivel);
+      return esmaecer(texto, nivel, preferCinza);
     },
     cabecalhoProjeto(resumo) {
-      return `${pintar("▸", AURORA.ciano, nivel)} ${negrito("Projeto:", nivel)} ${resumo}`;
+      return `${pintar(g.project, AURORA.ciano, nivel)} ${negrito("Projeto:", nivel)} ${resumo}`;
     },
     regua() {
-      return esmaecer("─".repeat(48), nivel);
+      return esmaecer(g.rule, nivel, preferCinza);
     },
   };
 }

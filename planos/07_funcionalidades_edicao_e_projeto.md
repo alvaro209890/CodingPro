@@ -63,13 +63,13 @@ pedir “roda o linter” ou “formata isso”.
 | Camada | Status |
 |--------|--------|
 | Detectar projeto com Biome (`biome.json`) | ✅ `quality-runtime.projetoUsaBiome` |
-| Rodar `biome check` nos arquivos tocados (`execFile`, sem shell) | ✅ `verificarQualidade` |
+| Rodar `biome check` nos arquivos tocados (`execFile`, sem shell) | ✅ `verificarQualidade` / `corrigirQualidade` |
 | Reportar ✓ / ✗ no progresso do chat | ✅ |
-| **`biome check --write`** (format + fixes seguros) nos tocados | ☐ a implementar |
-| Revalidar após o write | ☐ |
-| Se ainda houver diagnóstico → **re-turno automático da IA** com o texto do linter | ☐ |
-| Teto de iterações + config `quality.autoFix` | ☐ |
-| Checkpoint/undo inclui o auto-fix mecânico | ☐ |
+| **`biome check --write`** (format + fixes seguros) nos tocados | ✅ `corrigirQualidade` (padrão on) |
+| Revalidar após o write | ✅ |
+| Se ainda houver diagnóstico → **re-turno automático da IA** com o texto do linter | ✅ chat-runtime (teto 1, env) |
+| Teto de iterações + env `CODINGPRO_QUALITY_*` | ✅ |
+| Checkpoint/undo: snapshot pré-edição da IA; undo reverte IA+biome do turno | ✅ |
 
 ### Algoritmo (resumo)
 
@@ -88,5 +88,5 @@ O Aider devolve lint ao modelo (`linter.py`). CodingPro faz **primeiro** o que f
 
 Detalhe de produto, segurança e critérios de pronto: **doc 14.5.1**.
 
-- [ ] Implementar `corrigirQualidade` + re-turno (ver 14.5.1)
-- [ ] Settings + testes + guia do usuário
+- [x] Implementar `corrigirQualidade` + re-turno (ver 14.5.1) — 2026-07-23
+- [x] Env + testes + guia do usuário — 2026-07-23

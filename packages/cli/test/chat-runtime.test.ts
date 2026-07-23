@@ -486,6 +486,54 @@ describe("executarChat — skills e hooks (F6)", () => {
     // o read foi vetado pelo hook (execution-denied), não executou de fato
     expect(captura.saida()).toContain("não li");
   });
+
+  it("auto-correção: residual do biome gera re-turno e limpa no 2º check", async () => {
+    await writeFile(join(cwd, "biome.json"), "{}", "utf8");
+    const call: ToolCall = {
+      id: "w1",
+      input: { content: "export const x = 1\n", path: "sujo.ts" },
+      name: "write_file",
+    };
+    // Turno 1: escreve; turno 2 (reparo): só responde texto
+    const { provider, requests } = scripted([
+      [{ call, type: "tool-call" }, finish({ content: "", role: "assistant", toolCalls: [call] })],
+      [{ text: "pronto", type: "text-delta" }, finish({ content: "pronto", role: "assistant" })],
+      [
+        { text: "corrigido", type: "text-delta" },
+        finish({ content: "corrigido", role: "assistant" }),
+      ],
+    ]);
+    let checks = 0;
+    const qualityRunner = async (_root: string, args: readonly string[]) => {
+      if (args.includes("--write")) {
+        return "";
+      }
+      checks += 1;
+      if (checks === 1) {
+        const erro = new Error("lint") as Error & { stdout: string };
+        erro.stdout = "sujo.ts:1:1 lint/style/useConst\n";
+        throw erro;
+      }
+      return "";
+    };
+    const captura = fakeIo(["escreva sujo.ts", undefined], ["s"]);
+    await executarChat(
+      {
+        cwd,
+        memoriaGlobalDir: join(cwd, "gm"),
+        provider,
+        qualityAutoFix: true,
+        qualityMaxRepairTurns: 1,
+        qualityRunner,
+      },
+      captura.io,
+    );
+    expect(await readFile(join(cwd, "sujo.ts"), "utf8")).toContain("export");
+    expect(captura.progresso()).toContain("formatando");
+    expect(captura.progresso()).toMatch(/reenviando diagnóstico/u);
+    // 1º turno + 1 reparo (pelo menos 2 stream requests de agent multi-step)
+    expect(requests.length).toBeGreaterThanOrEqual(2);
+  });
 });
 
 describe("executarChat — /review e atribuição (F8)", () => {

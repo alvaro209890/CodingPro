@@ -127,6 +127,6 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 
 Itens que **não** bloqueiam o uso diário da Fase 1, mas fecham o ciclo de qualidade e polish:
 
-- [ ] **Auto-correção lint/formatação** (doc 14.5.1 / 07.6): `biome check --write` nos arquivos
-  tocados + re-turno do modelo se restar diagnóstico; config `quality.autoFix`; testes + guia
-- [ ] Upgrades opcionais: tree-sitter/SQLite, subagente subprocesso, 4 temas, voz (F7 = 1.1)
+- [x] **Auto-correção lint/formatação** (doc 14.5.1 / 07.6): `biome check --write` + re-turno residual — 2026-07-23
+- [x] Tema ASCII / 16 cores para Windows CMD e SSH legado — 2026-07-23
+- [ ] Upgrades opcionais: tree-sitter/SQLite, subagente subprocesso, 4 temas, voz (F7 = 1.1), quality no settings JSONC

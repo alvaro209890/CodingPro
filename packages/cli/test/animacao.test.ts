@@ -28,6 +28,8 @@ describe("animacao", () => {
     expect(linhaSpinner(0, "oi")).toContain("oi");
     expect(framesBannerAbertura(0)).toContain("CodingPro");
     expect(framesBannerAbertura(3)).toContain("╭");
+    expect(framesBannerAbertura(0, true)).toContain("+--");
+    expect(framesBannerAbertura(0, true)).not.toContain("╭");
   });
 
   it("criarSpinner anima, atualiza e limpa ao parar", () => {

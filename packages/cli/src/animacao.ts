@@ -53,9 +53,18 @@ export function linhaSpinner(tick: number, rotulo: string): string {
 
 /**
  * Frames do banner de abertura (texto puro, sem ANSI). Cada frame é multi-linha.
- * O tema aplica o gradiente na hora de imprimir.
+ * `ascii=true` usa caixa +-* compatível com Windows CMD / SSH legado.
  */
-export function framesBannerAbertura(tick: number): string {
+export function framesBannerAbertura(tick: number, ascii = false): string {
+  if (ascii) {
+    const f = tick % 2 === 0 ? "*" : "+";
+    return [
+      `  ${f}  +--------------------------------------+`,
+      `     |  *  CodingPro                       |`,
+      `     |  assistente de codigo · pt-BR       |`,
+      `  ${f}  +--------------------------------------+`,
+    ].join("\n");
+  }
   const f = frameFaisca(tick);
   const f2 = frameFaisca(tick + 2);
   const f3 = frameFaisca(tick + 4);
@@ -65,6 +74,21 @@ export function framesBannerAbertura(tick: number): string {
     `     │  assistente de código · pt-BR    │`,
     `  ${f3}  ╰──────────────────────────────────────╯  ${f}`,
   ].join("\n");
+}
+
+/** Spinner ASCII quando braille não renderiza (CMD). */
+export const SPINNER_ASCII = Object.freeze(["|", "/", "-", "\\"] as const);
+
+export function frameSpinnerModo(tick: number, ascii: boolean): string {
+  if (ascii) {
+    const i = ((tick % SPINNER_ASCII.length) + SPINNER_ASCII.length) % SPINNER_ASCII.length;
+    return SPINNER_ASCII[i] as string;
+  }
+  return frameSpinner(tick);
+}
+
+export function linhaSpinnerModo(tick: number, rotulo: string, ascii: boolean): string {
+  return `${frameSpinnerModo(tick, ascii)} ${rotulo}${framePontos(tick)}`;
 }
 
 export interface SpinnerHandle {
@@ -78,7 +102,11 @@ export interface SpinnerHandle {
  * Spinner de uma linha (reescrita com CR). `escrever` recebe o texto a cada tick
  * (inclui `\r` e limpeza). Não assume ANSI — o caller pode colorir o `rotulo`.
  */
-export function criarSpinner(escrever: (texto: string) => void, intervaloMs = 80): SpinnerHandle {
+export function criarSpinner(
+  escrever: (texto: string) => void,
+  intervaloMs = 80,
+  ascii = false,
+): SpinnerHandle {
   let timer: ReturnType<typeof setInterval> | undefined;
   let tick = 0;
   let rotulo = "trabalhando";
@@ -86,7 +114,7 @@ export function criarSpinner(escrever: (texto: string) => void, intervaloMs = 80
 
   const pintar = (): void => {
     // Limpa até 80 colunas e reescreve
-    const linha = linhaSpinner(tick, rotulo);
+    const linha = linhaSpinnerModo(tick, rotulo, ascii);
     escrever(`\r${linha}${" ".repeat(Math.max(0, 48 - linha.length))}`);
   };
 
