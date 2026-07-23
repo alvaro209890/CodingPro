@@ -68,6 +68,8 @@ Contrato de eventos: `@codingpro/core` → `events.ts` (**v1.2.0**), com `reques
 
 ## Bugs corrigidos (2026-07-23)
 
+0. **Preload ESM não carrega (app abre mas não responde)** — com `"type":"module"`, Electron falha no preload `.js` (`ERR_UNSUPPORTED_ESM_URL_SCHEME` / protocol `electron:`). Sem `window.codingproAPI` a UI fica morta. Fix: gerar `dist/preload/index.cjs` (CJS) via `scripts/build-preload.mjs` e apontar `webPreferences.preload` para o `.cjs`. Verificar log: `[codingpro] preload API: object`.
+
 1. **App não abria no Electron** — import estático de `node:sqlite` no core derrubava o main (Electron = Node 20). SQLite passou a ser lazy; `code_search` é omitido no desktop.
 2. **UI “travava” / não respondia** — `isRunning` só limpava em eventos; agora também no `finally` do send. Cancelamento com `AbortController` + deny de permissões pendentes.
 3. **Sessão sem memória / tools incompletas** — main recria sessão com `readTracker`, `CheckpointStore`, `alwaysAllow` de memória e transcript persistido (antes só `[user]` solto, sem tracker → `edit_file` quebrava).

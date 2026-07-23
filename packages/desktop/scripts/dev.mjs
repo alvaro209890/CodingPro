@@ -43,11 +43,13 @@ function run(cmd, args, opts = {}) {
   });
 }
 
-// 1) compila main+preload
-console.log("[dev] tsc main/preload…");
-const tsc = run("pnpm", ["exec", "tsc", "-p", "tsconfig.json"], { stdio: "inherit" });
+// 1) compila main (tsc) + preload CJS (esbuild)
+console.log("[dev] build main + preload…");
+const buildMain = run("pnpm", ["run", "build:main"], { stdio: "inherit" });
 await new Promise((resolvePromise, reject) => {
-  tsc.on("exit", (code) => (code === 0 ? resolvePromise() : reject(new Error(`tsc exit ${code}`))));
+  buildMain.on("exit", (code) =>
+    code === 0 ? resolvePromise() : reject(new Error(`build:main exit ${code}`)),
+  );
 });
 
 // 2) vite dev server

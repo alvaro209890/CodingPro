@@ -267,7 +267,10 @@ function createWindow(): void {
     backgroundColor: "#0b0e14",
     show: false,
     webPreferences: {
-      preload: join(__dirname, "../preload/index.js"),
+      // Preload DEVE ser CommonJS (.cjs). Com "type":"module", o .js ESM falha no
+      // renderer com ERR_UNSUPPORTED_ESM_URL_SCHEME (protocol 'electron:') e a UI
+      // sobe sem window.codingproAPI — app “abre mas não responde”.
+      preload: join(__dirname, "../preload/index.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
@@ -276,6 +279,22 @@ function createWindow(): void {
 
   mainWindow.once("ready-to-show", () => {
     mainWindow?.show();
+  });
+
+  mainWindow.webContents.on("did-finish-load", () => {
+    void mainWindow?.webContents
+      .executeJavaScript("typeof window.codingproAPI")
+      .then((t) => {
+        console.log(`[codingpro] preload API: ${String(t)}`);
+        if (t !== "object") {
+          console.error(
+            "[codingpro] window.codingproAPI ausente — preload não carregou (use dist/preload/index.cjs).",
+          );
+        }
+      })
+      .catch((err: unknown) => {
+        console.error("[codingpro] falha ao inspecionar preload:", err);
+      });
   });
 
   mainWindow.webContents.on("did-fail-load", (_e, code, desc) => {

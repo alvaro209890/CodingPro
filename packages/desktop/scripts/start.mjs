@@ -13,6 +13,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(__dirname, "..");
 const repoRoot = resolve(pkgRoot, "..", "..");
 const mainEntry = join(pkgRoot, "dist", "main", "index.js");
+const preloadEntry = join(pkgRoot, "dist", "preload", "index.cjs");
 const rendererHtml = join(pkgRoot, "dist", "renderer", "index.html");
 
 function loadEnvFile(path) {
@@ -36,8 +37,11 @@ loadEnvFile(
   join(process.env.USERPROFILE || process.env.HOME || "", ".config", "codingpro", "deepseek.env"),
 );
 
-if (!existsSync(mainEntry) || !existsSync(rendererHtml)) {
+if (!existsSync(mainEntry) || !existsSync(preloadEntry) || !existsSync(rendererHtml)) {
   console.error("[codingpro-desktop] Build ausente. Rode: pnpm --filter @codingpro/desktop build");
+  console.error("  precisa:", mainEntry);
+  console.error("  precisa:", preloadEntry);
+  console.error("  precisa:", rendererHtml);
   process.exit(1);
 }
 
