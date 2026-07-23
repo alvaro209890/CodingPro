@@ -65,6 +65,16 @@ O app abria em alguns builds, mas na prática **travava / não respondia**. Revi
 - **Workspace / start:** path selecionável na UI; scripts `pnpm desktop` e `pnpm desktop:dev`; smokes `smoke-core` / `smoke-int`.
 - Doc: [`packages/desktop/README.md`](../packages/desktop/README.md).
 
+### W2.5 — Paridade CLI no workspace (2026-07-23)
+
+Objetivo: o Desktop deve se comportar como a CLI Linux após `cd <projeto> && codingpro --chat`.
+
+- [x] System prompt com **raiz do sandbox** + `detectarProjeto`/`resumoProjeto` a cada turno
+- [x] `/abrir [caminho]` · `/pwd` · diálogo com default **Downloads**
+- [x] Persistência do último workspace (`userData/last-workspace.json`)
+- [x] UI: aviso se monorepo CodingPro; botão **Abrir pasta do projeto…**; paleta com `/abrir`
+- [x] Escopo das tools = pasta aberta (igual CLI) — Downloads entra **depois** de `/abrir` nessa pasta
+
 ## W3 — Acabamento & empacotamento (1–2 semanas)
 
 - [ ] Wizard de onboarding visual no primeiro start (chave + git)

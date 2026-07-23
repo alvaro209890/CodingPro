@@ -51,6 +51,8 @@ export const App: React.FC = () => {
     cwd: string;
     platform: string;
     hasApiKey?: boolean;
+    isCodingProMonorepo?: boolean;
+    projectSummary?: string;
   }>({
     cwd: "Carregando...",
     platform: "win32",
@@ -147,6 +149,10 @@ export const App: React.FC = () => {
         if (info.hasApiKey === false) {
           setStatusNote(
             "DEEPSEEK_API_KEY não encontrada. Coloque em .codingpro/.env ou ~/.config/codingpro/deepseek.env e reinicie.",
+          );
+        } else if (info.isCodingProMonorepo) {
+          setStatusNote(
+            "Pasta aberta = monorepo CodingPro. Para analisar outro projeto (ex. Downloads), clique em Pasta ou digite /abrir",
           );
         } else {
           setStatusNote(null);
@@ -338,6 +344,16 @@ export const App: React.FC = () => {
             : undefined;
         const result = await window.codingproAPI.sendMessage(textToSend, cwd);
 
+        if (result.cwd) {
+          // atualiza resumo após /abrir
+          void window.codingproAPI
+            .getWorkspaceInfo()
+            .then(setWorkspaceInfo)
+            .catch(() => {
+              setWorkspaceInfo((prev) => ({ ...prev, cwd: result.cwd as string }));
+            });
+        }
+
         if (result.local && result.reply) {
           setMessages((prev) => [
             ...prev,
@@ -421,9 +437,10 @@ export const App: React.FC = () => {
     if (!window.codingproAPI) return;
     const chosen = await window.codingproAPI.chooseWorkspaceFolder();
     if (!chosen) return;
-    setWorkspaceInfo((prev) => ({ ...prev, cwd: chosen }));
     setMessages([]);
-    setStatusNote(`Workspace: ${chosen}`);
+    const info = await window.codingproAPI.getWorkspaceInfo();
+    setWorkspaceInfo(info);
+    setStatusNote(`Projeto aberto: ${chosen}${info.projectSummary ? ` · ${info.projectSummary}` : ""}`);
     void refreshSessions();
   };
 
@@ -524,20 +541,61 @@ export const App: React.FC = () => {
                 style={{
                   fontSize: 13,
                   color: "var(--text-muted)",
-                  maxWidth: 420,
+                  maxWidth: 480,
                   textAlign: "center",
                   lineHeight: 1.5,
                 }}
               >
-                Assistente de desenvolvimento com DeepSeek. Digite um pedido abaixo,{" "}
-                <strong style={{ color: "var(--accent-blue)" }}>Ctrl+K</strong> abre a paleta,{" "}
+                Igual à CLI Linux: o agente analisa a <strong>pasta aberta</strong>. Use tools
+                (list_dir, read_file…) nela.{" "}
+                <strong style={{ color: "var(--accent-blue)" }}>Ctrl+K</strong> paleta ·{" "}
                 <strong style={{ color: "var(--accent-blue)" }}>Ctrl+.</strong> cancela.
               </div>
               <div
-                style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}
+                style={{
+                  fontSize: 12,
+                  color: "var(--text-secondary)",
+                  fontFamily: "var(--font-mono)",
+                  maxWidth: 520,
+                  textAlign: "center",
+                  wordBreak: "break-all",
+                }}
               >
                 {workspaceInfo.cwd}
+                {workspaceInfo.projectSummary ? ` · ${workspaceInfo.projectSummary}` : ""}
               </div>
+              {workspaceInfo.isCodingProMonorepo && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--text-muted)",
+                    maxWidth: 440,
+                    textAlign: "center",
+                  }}
+                >
+                  Você está no monorepo do CodingPro. Para analisar um app em Downloads (como
+                  `cd` + CLI), abra a pasta do projeto.
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  void handleChooseWorkspace();
+                }}
+                style={{
+                  marginTop: 8,
+                  padding: "10px 18px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(56, 189, 248, 0.35)",
+                  background: "rgba(56, 189, 248, 0.12)",
+                  color: "var(--accent-blue)",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontSize: 13,
+                }}
+              >
+                Abrir pasta do projeto…
+              </button>
             </div>
           )}
 
@@ -601,6 +659,10 @@ export const App: React.FC = () => {
           onSelectCommand={(cmd) => {
             if (cmd === "/limpar") {
               void handleNewSession();
+              return;
+            }
+            if (cmd === "/abrir") {
+              void handleChooseWorkspace();
               return;
             }
             void handleSend(cmd);

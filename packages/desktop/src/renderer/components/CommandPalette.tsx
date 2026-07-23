@@ -8,6 +8,8 @@ interface CommandItem {
 
 const COMMANDS: CommandItem[] = [
   { command: "/ajuda", description: "Lista comandos e atalhos disponíveis." },
+  { command: "/abrir", description: "Abre outra pasta (diálogo; padrão Downloads)." },
+  { command: "/pwd", description: "Mostra a pasta do projeto aberta agora." },
   { command: "/limpar", description: "Limpa o histórico da conversa atual." },
   { command: "/custo", description: "Exibe o custo acumulado de tokens da sessão." },
   { command: "/desfazer", description: "Desfaz o último checkpoint de escrita." },

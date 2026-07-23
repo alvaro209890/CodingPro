@@ -1,5 +1,5 @@
 import { type ExecOptions, exec } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +11,7 @@ import {
   CheckpointStore,
   type CoreUiEvent,
   createReadTracker,
+  detectarProjeto,
   isNodeSqliteDisponivel,
   MEMORY_TOOL_NAMES,
   MemoryStore,
@@ -20,6 +21,7 @@ import {
   type PreviaEscrita,
   type ReadTracker,
   resolverPreviaDeEscrita,
+  resumoProjeto,
   runAgent,
   SessionStore,
   SYSTEM_PROMPT_V1,
@@ -42,15 +44,21 @@ const __dirname = dirname(__filename);
 
 const TERMINAL_TIMEOUT_MS = 60_000;
 const AJUDA_DESKTOP = [
-  "Comandos do CodingPro Desktop:",
-  "  /ajuda       — esta lista",
-  "  /limpar      — limpa o histórico da conversa atual",
-  "  /custo       — custo acumulado da sessão",
-  "  /desfazer    — desfaz o último checkpoint de escrita",
-  "  /refazer     — refaz um checkpoint desfeito",
-  "  /checkpoint  — lista checkpoints",
-  "  /cancelar    — cancela a execução em andamento",
-  "  Ctrl+K       — paleta de comandos",
+  "Comandos do CodingPro Desktop (paridade CLI):",
+  "  /ajuda              — esta lista",
+  "  /pwd                — pasta do projeto aberta agora",
+  "  /abrir [caminho]    — abre outra pasta (sem caminho = diálogo). Ex: /abrir C:\\\\Users\\\\…\\\\Downloads\\\\MeuApp",
+  "  /workspace [caminho]— alias de /abrir",
+  "  /limpar             — limpa o histórico da conversa atual",
+  "  /custo              — custo acumulado da sessão",
+  "  /desfazer           — desfaz o último checkpoint de escrita",
+  "  /refazer            — refaz um checkpoint desfeito",
+  "  /checkpoint         — lista checkpoints",
+  "  /cancelar           — cancela a execução em andamento",
+  "  Ctrl+K              — paleta · Ctrl+. cancela",
+  "",
+  "Escopo: as tools só veem a pasta aberta (igual `codingpro --chat` no Linux após um cd).",
+  "Para analisar Downloads ou outro repo: /abrir ou botão Pasta — não fique na pasta do monorepo CodingPro.",
 ].join("\n");
 
 let mainWindow: BrowserWindow | null = null;
@@ -61,6 +69,83 @@ const pendingPermissions = new Map<string, (approval: Approval) => void>();
 let selectedWorkspacePath: string = process.cwd();
 let runInFlight = false;
 let activeAbort: AbortController | null = null;
+
+function lastWorkspaceFile(): string {
+  return join(app.getPath("userData"), "last-workspace.json");
+}
+
+function carregarUltimoWorkspace(): string | undefined {
+  try {
+    const raw = readFileSync(lastWorkspaceFile(), "utf8");
+    const data = JSON.parse(raw) as { cwd?: string };
+    if (typeof data.cwd === "string" && data.cwd.trim() !== "" && existsSync(data.cwd)) {
+      return resolvePath(data.cwd);
+    }
+  } catch {
+    // best-effort
+  }
+  return undefined;
+}
+
+function salvarUltimoWorkspace(cwd: string): void {
+  try {
+    const dir = dirname(lastWorkspaceFile());
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(lastWorkspaceFile(), JSON.stringify({ cwd }, null, 2), "utf8");
+  } catch {
+    // best-effort
+  }
+}
+
+function pastaDownloads(): string {
+  const dl = join(homedir(), "Downloads");
+  return existsSync(dl) ? dl : homedir();
+}
+
+function ehMonorepoCodingPro(cwd: string): boolean {
+  return existsSync(join(cwd, "pnpm-workspace.yaml")) && existsSync(join(cwd, "packages", "desktop"));
+}
+
+async function montarSystemPromptDesktop(workspace: Workspace): Promise<string> {
+  let projetoLinha = "";
+  try {
+    const info = await detectarProjeto(workspace);
+    projetoLinha = resumoProjeto(info);
+  } catch {
+    projetoLinha = "(detecção indisponível)";
+  }
+  const extra = [
+    "",
+    "Contexto do workspace (Desktop — paridade com a CLI após `cd` no projeto):",
+    `- Raiz aberta (sandbox): ${workspace.root}`,
+    `- Projeto detectado: ${projetoLinha}`,
+    "- Toda tool (list_dir, read_file, write_file, bash, …) opera SÓ dentro desta raiz.",
+    "- Paths relativos são relativos a esta raiz. Use list_dir / read_file / repo_map antes de afirmar o que existe.",
+    "- Se o usuário pedir algo fora desta pasta (ex.: outro drive ou Downloads), diga a raiz atual e peça `/abrir <caminho>` ou o botão Pasta — não invente acesso externo.",
+    "- Não diga que só pode trabalhar no monorepo CodingPro: a raiz é a pasta que o usuário abriu.",
+  ].join("\n");
+  return `${SYSTEM_PROMPT_V1}\n${extra}`;
+}
+
+async function escolherPastaProjeto(defaultPath?: string): Promise<string | undefined> {
+  if (mainWindow === null) return undefined;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openDirectory"],
+    title: "Selecionar pasta do projeto a analisar",
+    defaultPath: defaultPath ?? pastaDownloads(),
+    buttonLabel: "Abrir projeto",
+  });
+  if (result.canceled || result.filePaths.length === 0) return undefined;
+  const chosen = result.filePaths[0];
+  return chosen ? resolvePath(chosen) : undefined;
+}
+
+function definirWorkspace(cwd: string): string {
+  selectedWorkspacePath = resolvePath(cwd);
+  activeSession = null;
+  salvarUltimoWorkspace(selectedWorkspacePath);
+  return selectedWorkspacePath;
+}
 
 function sendCoreEvent(event: CoreUiEvent): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -358,6 +443,12 @@ async function handleLocalCommand(
   if (lower === "/ajuda" || lower === "/help") {
     return { handled: true, reply: AJUDA_DESKTOP };
   }
+  if (lower === "/pwd" || lower === "/workspace") {
+    return {
+      handled: true,
+      reply: `· workspace: ${session.cwd}${ehMonorepoCodingPro(session.cwd) ? "\n· dica: isto é o monorepo CodingPro — use /abrir para o projeto real (ex. Downloads)" : ""}`,
+    };
+  }
   if (lower === "/limpar" || lower === "/clear") {
     session.transcript = [];
     session.sessionId = newSessionId();
@@ -418,38 +509,100 @@ async function handleLocalCommand(
   return { handled: false };
 }
 
+/**
+ * Troca de workspace antes da sessão — `/abrir` / `/workspace <path>`.
+ * Retorna reply se tratou; undefined se não for comando de abrir.
+ */
+async function tentarAbrirWorkspace(
+  prompt: string,
+): Promise<{ reply: string; cwd: string } | undefined> {
+  const msg = prompt.trim();
+  const lower = msg.toLowerCase();
+
+  // /workspace e /pwd sozinhos = mostrar path (handleLocalCommand)
+  if (lower === "/workspace" || lower === "/pwd") return undefined;
+
+  const isAbrir =
+    lower === "/abrir" ||
+    lower.startsWith("/abrir ") ||
+    lower === "/open" ||
+    lower.startsWith("/open ") ||
+    lower.startsWith("/workspace ");
+  if (!isAbrir) return undefined;
+
+  const arg = msg
+    .replace(/^\/(abrir|open|workspace)\s*/iu, "")
+    .trim()
+    .replace(/^["']|["']$/g, "");
+  let target = arg;
+  if (target.length === 0) {
+    const chosen = await escolherPastaProjeto(pastaDownloads());
+    if (!chosen) return { reply: "· abertura cancelada", cwd: selectedWorkspacePath };
+    target = chosen;
+  }
+  const resolved = resolvePath(target);
+  if (!existsSync(resolved)) {
+    return {
+      reply: `· pasta não encontrada: ${resolved}\n· tente /abrir sem argumentos para o diálogo, ou um caminho absoluto`,
+      cwd: selectedWorkspacePath,
+    };
+  }
+  const cwd = definirWorkspace(resolved);
+  try {
+    const ws = await Workspace.create(cwd);
+    const info = await detectarProjeto(ws);
+    return {
+      cwd,
+      reply: `· workspace aberto: ${cwd}\n· ${resumoProjeto(info)}\n· pode pedir: “liste a estrutura”, “explique o README”, etc. (escopo = esta pasta)`,
+    };
+  } catch {
+    return {
+      cwd,
+      reply: `· workspace aberto: ${cwd}\n· (detecção de projeto falhou — ainda assim as tools usam esta raiz)`,
+    };
+  }
+}
+
 app.whenReady().then(() => {
-  // Preferir pasta do monorepo quando o app sobe de packages/desktop
-  const guessRoot = resolvePath(join(__dirname, "..", "..", "..", ".."));
-  if (existsSync(join(guessRoot, "pnpm-workspace.yaml"))) {
-    selectedWorkspacePath = guessRoot;
+  // Último projeto do usuário > monorepo CodingPro (só se for dev do próprio app)
+  const ultimo = carregarUltimoWorkspace();
+  if (ultimo !== undefined) {
+    selectedWorkspacePath = ultimo;
+  } else {
+    const guessRoot = resolvePath(join(__dirname, "..", "..", "..", ".."));
+    if (existsSync(join(guessRoot, "pnpm-workspace.yaml"))) {
+      selectedWorkspacePath = guessRoot;
+    } else {
+      selectedWorkspacePath = pastaDownloads();
+    }
   }
 
   createWindow();
 
   ipcMain.handle("codingpro:get-workspace-info", async () => {
+    let projectSummary: string | undefined;
+    try {
+      const ws = await Workspace.create(selectedWorkspacePath);
+      projectSummary = resumoProjeto(await detectarProjeto(ws));
+    } catch {
+      projectSummary = undefined;
+    }
     return {
       cwd: selectedWorkspacePath,
       platform: process.platform,
       running: runInFlight,
       hasApiKey: obterApiKey() !== undefined,
+      isCodingProMonorepo: ehMonorepoCodingPro(selectedWorkspacePath),
+      ...(projectSummary !== undefined ? { projectSummary } : {}),
     };
   });
 
   ipcMain.handle("codingpro:choose-workspace-folder", async () => {
-    if (mainWindow === null) return undefined;
-    const result = await dialog.showOpenDialog(mainWindow, {
-      properties: ["openDirectory"],
-      title: "Selecionar Pasta do Projeto",
-      defaultPath: selectedWorkspacePath,
-    });
-    if (result.canceled || result.filePaths.length === 0) {
-      return undefined;
-    }
-    const chosen = result.filePaths[0];
+    const chosen = await escolherPastaProjeto(
+      ehMonorepoCodingPro(selectedWorkspacePath) ? pastaDownloads() : selectedWorkspacePath,
+    );
     if (!chosen) return undefined;
-    selectedWorkspacePath = chosen;
-    activeSession = null;
+    definirWorkspace(chosen);
     return chosen;
   });
 
@@ -457,9 +610,11 @@ app.whenReady().then(() => {
     if (typeof cwd !== "string" || cwd.trim() === "") {
       return { success: false, error: "Caminho inválido" };
     }
-    selectedWorkspacePath = resolvePath(cwd.trim());
-    activeSession = null;
-    return { success: true, cwd: selectedWorkspacePath };
+    if (!existsSync(cwd.trim())) {
+      return { success: false, error: "Pasta não existe" };
+    }
+    const path = definirWorkspace(cwd.trim());
+    return { success: true, cwd: path };
   });
 
   ipcMain.handle("codingpro:new-session", async () => {
@@ -578,50 +733,72 @@ app.whenReady().then(() => {
       activeAbort = abort;
 
       try {
-        const targetCwd =
-          args.workspacePath && args.workspacePath.trim() !== ""
-            ? args.workspacePath.trim()
-            : selectedWorkspacePath;
+              // /abrir antes de criar sessão — troca a raiz como `cd` na CLI Linux
+              const aberto = await tentarAbrirWorkspace(prompt);
+              if (aberto !== undefined) {
+                selectedWorkspacePath = aberto.cwd;
+                const sessionOpen = await obterOuCriarSessao(aberto.cwd);
+                sessionOpen.transcript.push(mensagemUsuario(prompt), mensagemAssistente(aberto.reply));
+                try {
+                  await sessionOpen.sessionStore.save(sessionOpen.sessionId, sessionOpen.transcript);
+                } catch {
+                  // best-effort
+                }
+                sendCoreEvent({ type: "session-updated", messages: sessionOpen.transcript });
+                return {
+                  success: true,
+                  local: true,
+                  reply: aberto.reply,
+                  cwd: aberto.cwd,
+                };
+              }
 
-        const session = await obterOuCriarSessao(targetCwd);
+              const targetCwd =
+                args.workspacePath && args.workspacePath.trim() !== ""
+                  ? args.workspacePath.trim()
+                  : selectedWorkspacePath;
 
-        // Comandos locais (não consomem LLM)
-        const local = await handleLocalCommand(session, prompt);
-        if (local.handled) {
-          session.transcript.push(mensagemUsuario(prompt), mensagemAssistente(local.reply));
-          try {
-            await session.sessionStore.save(session.sessionId, session.transcript);
-          } catch {
-            // persistência best-effort
-          }
-          sendCoreEvent({ type: "session-updated", messages: session.transcript });
-          return { success: true, local: true, reply: local.reply };
-        }
+              const session = await obterOuCriarSessao(targetCwd);
 
-        session.transcript.push(mensagemUsuario(prompt));
-        session.checkpoints.begin(prompt.slice(0, 80));
+              // Comandos locais (não consomem LLM)
+              const local = await handleLocalCommand(session, prompt);
+              if (local.handled) {
+                session.transcript.push(mensagemUsuario(prompt), mensagemAssistente(local.reply));
+                try {
+                  await session.sessionStore.save(session.sessionId, session.transcript);
+                } catch {
+                  // persistência best-effort
+                }
+                sendCoreEvent({ type: "session-updated", messages: session.transcript });
+                return { success: true, local: true, reply: local.reply, cwd: session.cwd };
+              }
 
-        const agentResult = await runAgent({
-          context: {
-            workspace: session.workspace,
-            readTracker: session.readTracker,
-            checkpoints: session.checkpoints,
-            memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
-            signal: abort.signal,
-          },
-          gate: session.gate,
-          messages: session.transcript,
-          provider: session.provider,
-          tools: session.registry.definitions(),
-          systemPrompt: SYSTEM_PROMPT_V1,
-          signal: abort.signal,
-          onEvent: (agentEvent: AgentEvent) => {
-            sendCoreEvent({
-              type: "agent-event",
-              event: agentEvent,
-            });
-          },
-        });
+              session.transcript.push(mensagemUsuario(prompt));
+              session.checkpoints.begin(prompt.slice(0, 80));
+
+              const systemPrompt = await montarSystemPromptDesktop(session.workspace);
+
+              const agentResult = await runAgent({
+                context: {
+                  workspace: session.workspace,
+                  readTracker: session.readTracker,
+                  checkpoints: session.checkpoints,
+                  memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
+                  signal: abort.signal,
+                },
+                gate: session.gate,
+                messages: session.transcript,
+                provider: session.provider,
+                tools: session.registry.definitions(),
+                systemPrompt,
+                signal: abort.signal,
+                onEvent: (agentEvent: AgentEvent) => {
+                  sendCoreEvent({
+                    type: "agent-event",
+                    event: agentEvent,
+                  });
+                },
+              });
 
         const msgs = agentResult.messages;
         session.transcript = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];

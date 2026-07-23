@@ -58,13 +58,31 @@ Contrato de eventos: `@codingpro/core` → `events.ts` (**v1.2.0**), com `reques
 | Histórico multi-turno (sessão no main) | ✅ |
 | Aprovação de efeitos + diff (`write_file`/`edit_file`) | ✅ |
 | Cancelar execução (botão / `Ctrl+.` / `/cancelar`) | ✅ |
-| Comandos locais `/ajuda` `/limpar` `/custo` `/desfazer` `/refazer` `/checkpoint` | ✅ |
+| Comandos locais `/ajuda` `/abrir` `/pwd` `/limpar` `/custo` `/desfazer` `/refazer` `/checkpoint` | ✅ |
 | Checkpoints + `readTracker` (mesma semântica da CLI) | ✅ |
-| Escolher pasta do projeto | ✅ |
+| Escolher pasta do projeto (default Downloads; último path persistido) | ✅ |
+| System prompt com raiz do sandbox + detecção de projeto | ✅ |
 | Sessões JSONL (listar / carregar / gravar) | ✅ |
 | Terminal integrado (timeout 60s) | ✅ |
 | Paleta `Ctrl+K` | ✅ |
 | `code_search` (node:sqlite) | ⚠️ só na CLI Node ≥22.5; omitido no Electron 34 |
+
+## Paridade com a CLI Linux
+
+Na CLI você faz:
+
+```bash
+cd ~/Downloads/MeuApp
+codingpro --chat
+```
+
+No Desktop o equivalente é:
+
+1. Botão **Abrir pasta do projeto…** / **Pasta** / comando `/abrir` (diálogo abre em Downloads)
+2. Ou `/abrir C:\Users\…\Downloads\MeuApp`
+3. Depois pedir: “liste a estrutura”, “explique o README”, etc.
+
+As tools **só enxergam a pasta aberta** (sandbox do `Workspace`) — se a pasta for o monorepo CodingPro, o agente não “vê” Downloads até você abrir essa pasta. Isso é o mesmo modelo da CLI, não um bloqueio do Windows.
 
 ## Bugs corrigidos (2026-07-23)
 
@@ -78,6 +96,11 @@ Contrato de eventos: `@codingpro/core` → `events.ts` (**v1.2.0**), com `reques
 6. **Comandos da paleta eram prompts cegos** — `/limpar`, `/custo`, `/desfazer` etc. tratados no main sem LLM.
 7. **Terminal podia ficar em “executando”** — timeout + try/finally no renderer.
 8. **Sem script de start** — `pnpm desktop` / `scripts/start.mjs`.
+9. **“Não tenho acesso a Downloads”** — o app abria no monorepo CodingPro e o modelo falava como se só existisse essa pasta. Fix W2.5: prompt com raiz explícita, `/abrir`/`/pwd`, default Downloads no diálogo, último workspace salvo, UI de home com botão de abrir projeto.
+
+## W3 (próximo)
+
+Empacotamento NSIS/portable, onboarding de chave, temas, auto-update — ver `fase2-app-windows/04_roadmap_checklist.md`.
 
 ## Atalhos
 

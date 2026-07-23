@@ -11,6 +11,8 @@ export interface WorkspaceInfo {
   platform: string;
   running?: boolean;
   hasApiKey?: boolean;
+  isCodingProMonorepo?: boolean;
+  projectSummary?: string;
 }
 
 export interface SendMessageResult {
@@ -19,6 +21,7 @@ export interface SendMessageResult {
   local?: boolean;
   reply?: string;
   sessionId?: string;
+  cwd?: string;
   cost?: {
     inputTokens: number;
     outputTokens: number;
