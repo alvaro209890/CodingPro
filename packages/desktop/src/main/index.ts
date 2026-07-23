@@ -176,7 +176,7 @@ async function escolherPastaProjeto(defaultPath?: string): Promise<string | unde
 
 function definirWorkspace(cwd: string): string {
   selectedWorkspacePath = resolvePath(cwd);
-  activeSession = null;
+  // multi-session: não limpa;
   salvarUltimoWorkspace(selectedWorkspacePath);
   return selectedWorkspacePath;
 }
@@ -241,7 +241,11 @@ interface ChatSession {
   cost: SessionCost;
 }
 
-let activeSession: ChatSession | null = null;
+const activeSessions = new Map<string, ChatSession>();
+let selectedSessionId: string | undefined = undefined;
+function currentSession(): ChatSession | undefined {
+  return selectedSessionId ? activeSessions.get(selectedSessionId) : undefined;
+}
 
 function obterApiKey(): string | undefined {
   if (process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY.trim().length > 0) {
@@ -384,8 +388,9 @@ function expandirPromptAgente(prompt: string): string | undefined {
 
 async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
   const normalized = resolvePath(cwd);
-  if (activeSession !== null && activeSession.cwd === normalized) {
-    return activeSession;
+  const existing = activeSessions.get(selectedSessionId ?? "");
+  if (existing !== undefined && existing.cwd === normalized) {
+    return existing;
   }
 
   // troca de pasta → descarta sessão anterior
@@ -441,7 +446,7 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
       },
     };
 
-  activeSession = {
+  const sess = {
     cwd: normalized,
     gate,
     provider,
@@ -458,15 +463,21 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
     cost: { inputTokens: 0, outputTokens: 0, totalCostUsd: 0, turns: 0 },
   };
   selectedWorkspacePath = normalized;
-  return activeSession;
+  selectedSessionId = sess.sessionId;
+  activeSessions.set(sess.sessionId, sess);
+  return sess;
 }
 
 async function novaSessaoVazia(): Promise<ChatSession> {
-  const session = await obterOuCriarSessao(selectedWorkspacePath);
+  const cwd = selectedWorkspacePath;
+  const normalized = resolvePath(cwd);
+  const session = await obterOuCriarSessao(normalized);
   session.transcript = [];
   session.sessionId = newSessionId();
   session.cost = { inputTokens: 0, outputTokens: 0, totalCostUsd: 0, turns: 0 };
-  session.readTracker; // mantém tracker (leituras ainda valem para edit)
+  selectedSessionId = session.sessionId;
+  activeSessions.set(session.sessionId, session);
+  session.readTracker; // mantém tracker
   sendCoreEvent({ type: "session-updated", messages: [] });
   return session;
 }
@@ -919,7 +930,7 @@ app.whenReady().then(() => {
     });
 
     ipcMain.handle("codingpro:get-session-cost", async () => {
-      return snapshotCusto(activeSession);
+      return snapshotCusto(currentSession() ?? null);
     });
 
     ipcMain.handle("codingpro:list-slash-commands", async () => {
@@ -961,12 +972,13 @@ app.whenReady().then(() => {
 
   ipcMain.handle("codingpro:list-sessions", async () => {
       try {
-        const cwd = activeSession?.cwd ?? selectedWorkspacePath;
+        const cwd = (currentSession()?.cwd) ?? selectedWorkspacePath;
         const store = await SessionStore.create(join(cwd, ".codingpro", "sessions"));
         const ids = await store.list();
         const ordered = [...ids].reverse();
         return await Promise.all(
           ordered.map(async (id: string) => {
+            const isRunning = id === selectedSessionId && runInFlight;
             let preview = `Sessão ${id.slice(0, 19)}`;
             try {
               const msgs = await store.load(id);
@@ -982,6 +994,7 @@ app.whenReady().then(() => {
               id,
               preview,
               updatedAt: id.slice(0, 19).replace("T", " "),
+              isRunning: id === selectedSessionId && runInFlight,
             };
           }),
         );
@@ -1009,7 +1022,7 @@ app.whenReady().then(() => {
     "codingpro:get-diff-preview",
     async (_, args: { targetFile: string; newContent: string }) => {
       try {
-        const cwd = activeSession?.cwd ?? selectedWorkspacePath;
+        const cwd = (currentSession()?.cwd) ?? selectedWorkspacePath;
         const workspace = await Workspace.create(cwd);
         return await resolverPreviaDeEscrita(workspace, "write_file", {
           path: args.targetFile,
@@ -1031,7 +1044,7 @@ app.whenReady().then(() => {
     }
     const isWin = process.platform === "win32";
     const shellOption = isWin ? process.env.COMSPEC || "cmd.exe" : "/bin/sh";
-    const cwd = activeSession?.cwd ?? selectedWorkspacePath;
+    const cwd = (currentSession()?.cwd) ?? selectedWorkspacePath;
     return execCommand(command, {
       cwd,
       shell: shellOption,
@@ -1221,15 +1234,16 @@ app.whenReady().then(() => {
 
                 // reverte begin de checkpoint se o turno falhou no meio
                 try {
-                  await activeSession?.checkpoints.commit();
+                  await currentSession()?.checkpoints.commit();
                 } catch {
                   // ignore
                 }
 
                 // limpa transcript sujo para o próximo turno não herdar invalid-request
-                                if (activeSession !== null) {
-                                  activeSession.transcript = sanitizeMessagesForProvider(
-                                    activeSession.transcript,
+                                const s = currentSession();
+                                                                if (s !== undefined) {
+                                                                  s.transcript = sanitizeMessagesForProvider(
+                                                                    s.transcript,
                                   );
                                 }
 

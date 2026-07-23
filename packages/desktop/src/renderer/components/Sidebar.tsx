@@ -3,7 +3,7 @@ import type React from "react";
 interface SidebarProps {
   activeTab: "code" | "settings";
   onSelectTab: (tab: "code" | "settings") => void;
-  recentSessions: { id: string; title: string; active?: boolean; updatedAt?: string }[];
+  recentSessions: { id: string; title: string; active?: boolean; updatedAt?: string; isRunning?: boolean }[];
   onSelectSession: (id: string) => void;
   onNewSession: () => void;
   onChooseWorkspace: () => void;
@@ -98,7 +98,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 <span className="recent-number">{index + 1}</span>
                 <div style={{ flex: 1, overflow: "hidden" }}>
-                  <div style={{ fontSize: 12.5, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div style={{ fontSize: 12.5, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}>
+                    {session.isRunning && <span className="session-running-dot" title="Em execução" />}
                     {session.title}
                   </div>
                   {session.updatedAt && (
