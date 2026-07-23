@@ -613,3 +613,40 @@ Testes de chunking/embeddings/store/tool; `pnpm check` verde.
 ```bash
 codingpro --chat
 ```
+
+## 2026-07-23 — Instalação via WSL + chat "travando" na abertura (unsettled top-level await)
+
+### Contexto
+CLI instalada num 2º ambiente (WSL Ubuntu, Node 24 via `nvm`, chave DeepSeek em
+`~/.config/codingpro/deepseek.env`, provider fixado em `~/.codingpro/settings.json`). Ao rodar
+`codingpro --chat` num terminal WSL real, o processo imprimia
+`Warning: Detected unsettled top-level await` e voltava direto pro prompt do shell — o chat nunca
+abria.
+
+### Causa
+No reveal animado do banner (`prompt-tty.ts`), os timers do `await esperar(ms)` usavam
+`setTimeout(...).unref()`. Isso diz ao Node "não conte comigo pra manter o processo vivo". Bem no
+início da execução — antes do stdin entrar em modo raw e de qualquer outro handle referenciado —
+não sobrava nada segurando o event loop, então o runtime concluía que não havia mais trabalho
+pendente e encerrava o processo no meio da animação, emitindo o aviso em vez de esperar a Promise
+assentar.
+
+Em paralelo (outra sessão, mesmo repositório), foi enviado um fix complementar e mais abrangente
+para a mesma classe de sintoma ("chat parece travado ao abrir"): banner instantâneo por padrão
+(animação vira opt-in via `CODINGPRO_BANNER_ANIM=1`), banner impresso *antes* do
+provider/hooks/MCP carregarem (com mensagens de progresso intermediárias), recusa clara quando
+`stdin` não é um TTY real (antes o chat "piscava" o banner e saía no primeiro EOF), 2º Ctrl+C força
+saída, e `process.exit` adiado com `setImmediate` pra não cortar stdout/stderr no meio do flush.
+Esse fix não removia o `unref()` — só deixou de exercitar aquele caminho por padrão. Sem a correção
+abaixo, o mesmo travamento voltaria a acontecer para quem ligasse `CODINGPRO_BANNER_ANIM=1`.
+
+### Correção
+- `prompt-tty.ts`: removido o `unref()` dos timers do reveal do banner — eles estão no caminho
+  principal (`await` direto), então precisam manter uma ref ativa até resolver.
+
+### Validação
+- `pnpm typecheck` / `pnpm lint` / `pnpm vitest run packages/cli` verdes (as 2 falhas de
+  `config.test.ts` são checagem de permissão via `chmod`/symlink, específicas de NTFS no Windows,
+  pré-existentes e não relacionadas).
+- Smoke real num pty do WSL (`script -qec "codingpro --chat" log`): banner completo aparece, chat
+  chega no prompt interativo e fica esperando input — sem o aviso.

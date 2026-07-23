@@ -224,11 +224,10 @@ export function criarPromptTty(options: PromptTtyOptions): PromptTty {
     });
   };
 
-  const esperar = (ms: number): Promise<void> =>
-    new Promise((resolve) => {
-      const t = setTimeout(resolve, ms);
-      t.unref?.();
-    });
+  // Sem unref(): este timer está no caminho principal (await direto) do banner de abertura,
+  // antes do stdin entrar em modo raw — sem uma ref ativa, o Node encerra o processo cedo
+  // ("Detected unsettled top-level await") em vez de esperar a animação terminar.
+  const esperar = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
   /**
    * Banner de abertura.
