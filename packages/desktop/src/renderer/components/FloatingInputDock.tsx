@@ -98,7 +98,7 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
     setSugestoes(s);
     if (s.length === 0) setSelectedIdx(0);
     else if (selectedIdx >= s.length) setSelectedIdx(0);
-  }, [inputPrompt]);
+  }, [inputPrompt, selectedIdx]);
 
   const handleAcceptSuggestion = useCallback(
     (sug: SugestaoComando) => {
@@ -151,6 +151,7 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
               key={s.nome}
               role="option"
               aria-selected={i === selectedIdx}
+              tabIndex={-1}
               className={`slash-suggestion-item${i === selectedIdx ? " selected" : ""}`}
               onMouseDown={() => handleAcceptSuggestion(s)}
             >

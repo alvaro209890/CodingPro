@@ -8,6 +8,7 @@ import {
   ALL_TOOLS,
   type Approval,
   type Approver,
+  blocoSkill,
   CheckpointStore,
   compactMessages,
   construirRepoMap,
@@ -21,6 +22,7 @@ import {
   MEMORY_TOOL_NAMES,
   MemoryStore,
   newSessionId,
+  parseSkill,
   PermissionController,
   type PermissionRequest,
   type PreviaEscrita,
@@ -63,6 +65,10 @@ const pendingPermissions = new Map<string, (approval: Approval) => void>();
 let selectedWorkspacePath: string = process.cwd();
 let runInFlight = false;
 let activeAbort: AbortController | null = null;
+let runStartMs = 0;
+let tokenCount = 0;
+let stepCount = 0;
+let thinkingMs = 0;
 
 function lastWorkspaceFile(): string {
   return join(app.getPath("userData"), "last-workspace.json");
@@ -108,6 +114,34 @@ async function montarSystemPromptDesktop(workspace: Workspace): Promise<string> 
   } catch {
     projetoLinha = "(detecção indisponível)";
   }
+
+  // Carrega skills do projeto (.codingpro/skills/*.md) e globais (~/.codingpro/skills/*.md)
+  const skillsBlocos: string[] = [];
+  for (const dir of [
+    join(workspace.root, ".codingpro", "skills"),
+    join(homedir(), ".codingpro", "skills"),
+  ]) {
+    if (!existsSync(dir)) continue;
+    try {
+      for (const entry of readdirSync(dir)) {
+        if (!entry.endsWith(".md")) continue;
+        try {
+          const texto = readFileSync(join(dir, entry), "utf8");
+          const skill = parseSkill(entry.replace(/\.md$/u, ""), texto);
+          if (skill !== undefined) {
+            skillsBlocos.push(blocoSkill(skill));
+          }
+        } catch {
+          // skill ilegível → ignora
+        }
+      }
+    } catch {
+      // diretório não escaneável → ignora
+    }
+  }
+
+  const skillsStr = skillsBlocos.length > 0 ? `\n\n--- Skills ativas (.codingpro/skills/):\n${skillsBlocos.join("\n\n")}` : "";
+
   const extra = [
     "",
     "Contexto do workspace (Desktop — paridade com a CLI após `cd` no projeto):",
@@ -117,6 +151,7 @@ async function montarSystemPromptDesktop(workspace: Workspace): Promise<string> 
     "- Paths relativos são relativos a esta raiz. Use list_dir / read_file / repo_map antes de afirmar o que existe.",
     "- Se o usuário pedir algo fora desta pasta (ex.: outro drive ou Downloads), diga a raiz atual e peça `/abrir <caminho>` ou o botão Pasta — não invente acesso externo.",
     "- Não diga que só pode trabalhar no monorepo CodingPro: a raiz é a pasta que o usuário abriu.",
+    skillsStr,
   ].join("\n");
   return `${SYSTEM_PROMPT_V1}\n${extra}`;
 }
@@ -964,8 +999,12 @@ app.whenReady().then(() => {
       }
 
       runInFlight = true;
-      const abort = new AbortController();
-      activeAbort = abort;
+            const abort = new AbortController();
+            activeAbort = abort;
+            runStartMs = Date.now();
+            tokenCount = 0;
+            stepCount = 0;
+            thinkingMs = 0;
 
       try {
               // /abrir antes de criar sessão — troca a raiz como `cd` na CLI Linux
@@ -1021,31 +1060,44 @@ app.whenReady().then(() => {
                             const systemPrompt = await montarSystemPromptDesktop(session.workspace);
 
                             const agentResult = await runAgent({
-                              context: {
-                                workspace: session.workspace,
-                                readTracker: session.readTracker,
-                                checkpoints: session.checkpoints,
-                                memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
-                                signal: abort.signal,
-                              },
-                              gate: session.gate,
-                              messages: session.transcript,
-                              provider: session.provider,
-                              tools: session.registry.definitions(),
-                              systemPrompt,
-                              contextBudget: CONTEXT_BUDGET,
-                              signal: abort.signal,
-                              onEvent: (agentEvent: AgentEvent) => {
-                                sendCoreEvent({
-                                  type: "agent-event",
-                                  event: agentEvent,
-                                });
-                              },
-                            });
+                                                          context: {
+                                                            workspace: session.workspace,
+                                                            readTracker: session.readTracker,
+                                                            checkpoints: session.checkpoints,
+                                                            memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
+                                                            signal: abort.signal,
+                                                          },
+                                                          gate: session.gate,
+                                                          messages: session.transcript,
+                                                          provider: session.provider,
+                                                          tools: session.registry.definitions(),
+                                                          systemPrompt,
+                                                          contextBudget: CONTEXT_BUDGET,
+                                                          signal: abort.signal,
+                                                          onEvent: (agentEvent: AgentEvent) => {
+                                                            if (agentEvent.type === "step" && agentEvent.usage) {
+                                                              tokenCount =
+                                                                (agentEvent.usage.inputTokens || 0) +
+                                                                (agentEvent.usage.outputTokens || 0);
+                                                              stepCount = agentEvent.step;
+                                                            }
+                                                            if (agentEvent.type === "reasoning-delta") {
+                                                              // aprox: reasoning em ms
+                                                              thinkingMs += Math.round(
+                                                                agentEvent.text.length * 3,
+                                                              );
+                                                            }
+                                                            sendCoreEvent({
+                                                              type: "agent-event",
+                                                              event: agentEvent,
+                                                            });
+                                                          },
+                                                        });
 
-                      const msgs = agentResult.messages;
-                      session.transcript = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
-                      acumularCusto(session, agentResult.cost);
+                                                  const msgs = agentResult.messages;
+                                                  session.transcript = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
+                                                  acumularCusto(session, agentResult.cost);
+                                                  stepCount = agentResult.steps;
 
                       const checkpoint = await session.checkpoints.commit();
                       if (checkpoint !== undefined) {

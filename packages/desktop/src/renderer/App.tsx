@@ -8,6 +8,7 @@ import { IntegratedTerminal } from "./components/IntegratedTerminal.js";
 import { PermissionModal } from "./components/PermissionModal.js";
 import { Sidebar } from "./components/Sidebar.js";
 import { type ToolItem, ToolSummaryBlock } from "./components/ToolSummaryBlock.js";
+import { RuntimeStatusRow } from "./components/RuntimeStatusRow.js";
 import "./aurora.css";
 
 interface ChatMessageUI {
@@ -69,13 +70,15 @@ export const App: React.FC = () => {
   ]);
 
   const [sessionCost, setSessionCost] = useState<{
-    inputTokens: number;
-    outputTokens: number;
-    totalCostUsd: number;
-    turns: number;
-    contextTokens: number;
-    contextBudget: number;
-  } | null>(null);
+      inputTokens: number;
+      outputTokens: number;
+      totalCostUsd: number;
+      turns: number;
+      contextTokens: number;
+      contextBudget: number;
+    } | null>(null);
+
+    const [runStartTime, setRunStartTime] = useState<number | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef(workspaceInfo.cwd);
@@ -358,6 +361,7 @@ export const App: React.FC = () => {
       }
 
       setIsRunning(true);
+      setRunStartTime(Date.now());
       setMessages((prev) => [...prev, { id: newId("user"), role: "user", content: textToSend }]);
 
       try {
@@ -657,9 +661,17 @@ export const App: React.FC = () => {
           )}
 
           <div ref={chatEndRef} />
-        </div>
+                  </div>
 
-        <IntegratedTerminal
+                  <RuntimeStatusRow
+                    elapsedMs={sessionCost ? Date.now() - (runStartTime ?? Date.now()) : 0}
+                    totalTokens={(sessionCost?.inputTokens ?? 0) + (sessionCost?.outputTokens ?? 0)}
+                    steps={sessionCost?.turns ?? 0}
+                    thinkingMs={0}
+                    isRunning={isRunning}
+                  />
+
+                  <IntegratedTerminal
           isOpen={isTerminalOpen}
           onClose={() => setIsTerminalOpen(false)}
           cwd={workspaceInfo.cwd}

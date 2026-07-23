@@ -608,7 +608,7 @@ body {
 
 .floating-input-dock {
   position: absolute;
-  bottom: 20px;
+  bottom: 44px;
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 48px);
@@ -621,7 +621,7 @@ body {
     0 0 0 1px rgba(255, 255, 255, 0.03) inset;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
   backdrop-filter: blur(20px);
   animation: fadeInUp 0.5s var(--ease-out-expo);
   transition:
@@ -975,4 +975,42 @@ body {
 .btn-allow:hover {
   box-shadow: 0 4px 16px rgba(52, 211, 153, 0.4);
   transform: translateY(-1px);
+}
+
+/* ─── Runtime Status Row ─── */
+
+.runtime-status-row {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 12px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.runtime-status-icon {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.runtime-status-icon.running {
+  background: var(--accent-amber, #f59e0b);
+  animation: statusPulse 1.2s ease-in-out infinite;
+}
+
+.runtime-status-icon.done {
+  background: var(--accent-green, #22c55e);
+}
+
+.runtime-status-running-text {
+  color: var(--accent-amber, #f59e0b);
+  font-weight: 500;
 }
