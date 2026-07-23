@@ -64,6 +64,7 @@ interface FloatingInputDockProps {
   onChangeInput: (text: string) => void;
   onSend: () => void;
   onCancel?: () => void;
+  onImagePaste?: (base64: string) => void;
   isRunning: boolean;
   autoApprove?: boolean;
   onToggleAutoApprove?: () => void;
@@ -80,11 +81,34 @@ interface FloatingInputDockProps {
   } | null;
 }
 
+
+/** Handler de colagem de imagem: converte para base64 e chama callback. */
+function handleImagePaste(cb: (b64: string) => void) {
+  return async (e: React.ClipboardEvent) => {
+    const items = Array.from(e.clipboardData?.items ?? []);
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        const blob = item.getAsFile();
+        if (!blob) continue;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const b64 = (reader.result as string).split(",")[1];
+          if (b64) cb(b64);
+        };
+        reader.readAsDataURL(blob);
+        e.preventDefault();
+        return;
+      }
+    }
+  };
+}
+
 export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
   inputPrompt,
   onChangeInput,
   onSend,
   onCancel,
+  onImagePaste,
   isRunning,
   autoApprove = false,
   onToggleAutoApprove,
@@ -213,6 +237,7 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
       <div className="dock-textarea-row">
         <textarea
           ref={textareaRef}
+          onPaste={onImagePaste ? handleImagePaste(onImagePaste) : undefined}
           className="dock-textarea"
           placeholder="O que deseja construir? (ex: liste os arquivos, /ajuda, /custo, /abrir...)"
           value={inputPrompt}

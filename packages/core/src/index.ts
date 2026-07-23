@@ -220,7 +220,8 @@ export { LIST_DIR_MAX_ENTRIES, listDirTool } from "./tools/list-dir.js";
 export { READ_FILE_MAX_BYTES, readFileTool } from "./tools/read-file.js";
 export { rememberTool } from "./tools/remember.js";
 export { repoMapTool } from "./tools/repo-map.js";
-export { TASK_MAX_TAREFAS, taskTool } from "./tools/task.js";
+export { taskTool } from "./tools/task.js";
+export { webExtractTool, webSearchTool } from "./tools/web-search.js";
 export { WRITE_FILE_MAX_BYTES, writeFileTool } from "./tools/write-file.js";
 // Busca vetorial local (SQLite FTS5 + embeddings offline)
 export {
@@ -269,6 +270,7 @@ import { readFileTool } from "./tools/read-file.js";
 import { rememberTool } from "./tools/remember.js";
 import { repoMapTool } from "./tools/repo-map.js";
 import { taskTool } from "./tools/task.js";
+import { webExtractTool, webSearchTool } from "./tools/web-search.js";
 import { writeFileTool } from "./tools/write-file.js";
 
 /** Tools de leitura seguras — não têm efeito colateral e dispensam permissão. */
@@ -278,6 +280,8 @@ export const READ_ONLY_TOOLS = Object.freeze([
   grepTool,
   repoMapTool,
   codeSearchTool,
+  webSearchTool,
+  webExtractTool,
 ] as const);
 
 /** Tools com efeito colateral — sempre passam pelo gate de permissão. */
