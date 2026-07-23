@@ -67,12 +67,13 @@ export const webSearchTool: ExecutableTool = {
       const html = await resp.text();
       // Extrai links do DuckDuckGo Lite
       const linkRegex = /<a[^>]*href="([^"]*)"[^>]*class="result-link"[^>]*>([^<]*)<\/a>/gi;
-      const snippetRegex = /<td[^>]*class="result-snippet"[^>]*>([^<]*)<\/td>/gi;
+      const _snippetRegex = /<td[^>]*class="result-snippet"[^>]*>([^<]*)<\/td>/gi;
 
       const links: Array<{ url: string; title: string }> = [];
-      let m: RegExpExecArray | null;
-      while ((m = linkRegex.exec(html)) !== null && links.length < 5) {
+      let m = linkRegex.exec(html);
+      while (m !== null && links.length < 5) {
         links.push({ url: m[1]?.replace(/^\/\/duckduckgo\.com\/l\/\?uddg=/, "").split("&")[0] ?? m[1] ?? "", title: m[2]?.trim() ?? "" });
+        m = linkRegex.exec(html);
       }
 
       if (links.length === 0) return textResult(`Nenhum resultado para: ${query}`);
