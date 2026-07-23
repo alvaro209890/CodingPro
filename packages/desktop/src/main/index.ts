@@ -1055,6 +1055,8 @@ app.whenReady().then(() => {
       }
 
       runInFlight = true;
+      // Garante que nenhum abort anterior contamine esta execução
+      if (activeAbort) { try { activeAbort.abort(); } catch { /* ok */ } }
             const abort = new AbortController();
             activeAbort = abort;
             _runStartMs = Date.now();

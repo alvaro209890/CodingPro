@@ -1,0 +1,57 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Temas CodingPro — variáveis CSS dinâmicas por tema
+   Aplica via data-theme="aurora|solar|neon|mono" no <html>
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Aurora (padrão) ─── */
+:root,
+[data-theme="aurora"] {
+  --theme-primaria: #10b981;
+  --theme-acento: #06b6d4;
+  --theme-prompt: #8b5cf6;
+  --theme-sucesso: #10b981;
+  --theme-erro: #ef5c5c;
+  --theme-aviso: #f5bf47;
+  --theme-cinza: #949494;
+  --theme-gradiente: linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #8b5cf6 100%);
+  --theme-gradiente-brand: linear-gradient(135deg, #10b981, #8b5cf6);
+}
+
+/* ─── Solar ─── */
+[data-theme="solar"] {
+  --theme-primaria: #f97316;
+  --theme-acento: #facb15;
+  --theme-prompt: #f43f5e;
+  --theme-sucesso: #84cc16;
+  --theme-erro: #f43f5e;
+  --theme-aviso: #facb15;
+  --theme-cinza: #949494;
+  --theme-gradiente: linear-gradient(135deg, #facb15 0%, #f97316 50%, #f43f5e 100%);
+  --theme-gradiente-brand: linear-gradient(135deg, #f97316, #f43f5e);
+}
+
+/* ─── Neon ─── */
+[data-theme="neon"] {
+  --theme-primaria: #22d3ee;
+  --theme-acento: #ff3ca0;
+  --theme-prompt: #ff3ca0;
+  --theme-sucesso: #10e6a0;
+  --theme-erro: #ef5c5c;
+  --theme-aviso: #facb15;
+  --theme-cinza: #949494;
+  --theme-gradiente: linear-gradient(135deg, #ff3ca0 0%, #6078ff 50%, #22d3ee 100%);
+  --theme-gradiente-brand: linear-gradient(135deg, #ff3ca0, #22d3ee);
+}
+
+/* ─── Mono ─── */
+[data-theme="mono"] {
+  --theme-primaria: #f5f5f5;
+  --theme-acento: #b4b4b4;
+  --theme-prompt: #f5f5f5;
+  --theme-sucesso: #f5f5f5;
+  --theme-erro: #ef5c5c;
+  --theme-aviso: #f5bf47;
+  --theme-cinza: #787878;
+  --theme-gradiente: linear-gradient(135deg, #f5f5f5 0%, #b4b4b4 50%, #787878 100%);
+  --theme-gradiente-brand: linear-gradient(135deg, #b4b4b4, #f5f5f5);
+}

@@ -84,14 +84,14 @@ Sintomas: `A DeepSeek retornou uma chamada de ferramenta inválida` e em sequên
 - [x] Drop de rodadas tool incompletas no fim do transcript; UI mostra eventos `notice`
 - [x] Desktop limpa transcript após erro de agente
 
-## W3 — Acabamento & empacotamento (1–2 semanas)
+## W3 — Acabamento & empacotamento (1–2 semanas) 🔶
 
 - [ ] Wizard de onboarding visual no primeiro start (chave + git)
-- [ ] Drag & drop de arquivos do Windows Explorer no floating dock
-- [ ] Temas e preferências (Aurora Escuro + Sóbrio + automáticos do Windows)
-- [ ] Empacotador `electron-builder`: instalador NSIS + versão Portable (`.exe`)
-- [ ] Auto-updater integrado com GitHub Releases
-- [ ] **Marco final: v1.0.0 do App Windows entregue (.exe)**
+- [x] Drag & drop de arquivos do Windows Explorer no floating dock — 2026-07-23
+- [x] Temas e preferências (Aurora Escuro + Sóbrio + automáticos do Windows) — 2026-07-23
+- [ ] Empacotador `electron-builder`: instalador NSIS + versão Portable (`.exe`) — W3 final
+- [ ] Auto-updater integrado com GitHub Releases — W3 final
+- [ ] **Marco final: v1.0.0 do App Windows entregue (.exe)** — W3 final
 
 ## Matriz de Riscos & Mitigações
 

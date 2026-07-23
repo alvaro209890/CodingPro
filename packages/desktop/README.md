@@ -97,13 +97,20 @@ As tools **só enxergam a pasta aberta** (sandbox do `Workspace`) — se a pasta
 7. **Terminal podia ficar em “executando”** — timeout + try/finally no renderer.
 8. **Sem script de start** — `pnpm desktop` / `scripts/start.mjs`.
 9. **“Não tenho acesso a Downloads”** — o app abria no monorepo CodingPro e o modelo falava como se só existisse essa pasta. Fix W2.5: prompt com raiz explícita, `/abrir`/`/pwd`, default Downloads no diálogo, último workspace salvo, UI de home com botão de abrir projeto.
-10. **“Requisição ao provider é inválida” em cascata (Windows)** — após `read_file`, tool results com `
+10. **“Requisição ao provider é inválida” em cascata (Windows)** — após `read_file`, tool results com `
+
 ` invalidavam `isChatRequest` no turno seguinte. Fix: `sanitizeToolText` + histórico sanitizado no loop + recovery de `invalid-tool-call`/`invalid-request`.
 
 
-## W3 (próximo)
+## W3 (em andamento)
 
-Empacotamento NSIS/portable, onboarding de chave, temas, auto-update — ver `fase2-app-windows/04_roadmap_checklist.md`.
+- [x] **Temas** (2026-07-23): sistema multi-tema com paletas da CLI (`aurora`, `solar`, `neon`, `mono`). CSS via `data-theme`, hook `useTheme`, seletor no `SettingsPanel`, persistência em `localStorage`, detecção automática do tema Windows (`prefers-color-scheme`).
+- [ ] Wizard de onboarding (chave + git)
+- [ ] Drag & drop de arquivos
+- [ ] Empacotador electron-builder (NSIS + Portable)
+- [ ] Auto-updater
+
+Ver `fase2-app-windows/04_roadmap_checklist.md`.
 
 ## Atalhos
 
@@ -119,7 +126,7 @@ Empacotamento NSIS/portable, onboarding de chave, temas, auto-update — ver `fa
 
 - Sem instalador NSIS / auto-update ainda
 - Sem onboarding visual da API key
-- Sem temas além do Aurora escuro
+- [x] Temas: 4 temas selecionáveis (aurora/solar/neon/mono)
 - `code_search` vetorial só na CLI até Electron com Node ≥ 22.5 (ou bundling de sql.js)
 - Subagentes/`task` disponíveis, mas UI ainda não mostra árvore de agentes
 
@@ -129,3 +136,20 @@ Empacotamento NSIS/portable, onboarding de chave, temas, auto-update — ver `fa
 - Credenciais só no main (preload não expõe fs/env)
 - Efeitos passam por `PermissionController` (fail-closed)
 - Terminal embutido bloqueia multilinha; timeout 60s
+
+## Status W3 (em andamento)
+
+- [x] Wizard de onboarding visual — detecta chave e Git no 1º start
+- [x] Drag & drop — arquivos do Explorer no dock via drop handler
+- [x] Temas selecionáveis — Aurora, Solar, Neon, Mono
+- [ ] Empacotador electron-builder — NSIS + Portable (.exe)
+- [ ] Auto-updater via GitHub Releases
+- [ ] Marco v1.0.0
+
+## Abas
+
+| Aba | Função |
+|---|---|
+| Início | Chat estilo Claude Code, busca de docs |
+| Code | Editor de código com tools integradas |
+| Config | Temas, modelo, auto-aprovar, atalhos |

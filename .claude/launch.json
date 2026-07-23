@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "codingpro-desktop-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@codingpro/desktop", "dev"],
+      "port": 5173
+    }
+  ]
+}
