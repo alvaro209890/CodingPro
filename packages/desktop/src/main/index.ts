@@ -1209,6 +1209,7 @@ app.whenReady().then(() => {
                         cost: snapshotCusto(session),
                       };
       } catch (err: unknown) {
+        console.error("[codingpro] agent error:", err instanceof Error ? `${err.name}: ${err.message}` : String(err));
         const isAbort =
           (err instanceof Error && err.name === "AbortError") ||
           (typeof DOMException !== "undefined" &&
@@ -1225,7 +1226,7 @@ app.whenReady().then(() => {
                       ? err.message
                       : String(err);
 
-                // reverte begin de checkpoint se o turno falhou no meio
+                // reverte checkpoint (rollback no erro)
                 try {
                   await activeSession?.checkpoints.commit();
                 } catch {
