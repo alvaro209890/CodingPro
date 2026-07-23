@@ -47,8 +47,8 @@ export function classificarRespostaArquiteto(texto: string): ClassificacaoArquit
   }
   // Sem header, mas com ## N. + opções A/B, também trata como perguntas.
   if (
-    /^##\s*\d+[\.)]\s+/mu.test(texto) &&
-    (/^[\s]*[-*]\s*[A-Da-d][\)\].:]/mu.test(texto) || /\b[A-D]\)\s+\S/u.test(texto))
+    /^##\s*\d+[.)]\s+/mu.test(texto) &&
+    (/^[\s]*[-*]\s*[A-Da-d][)\].:]/mu.test(texto) || /\b[A-D]\)\s+\S/u.test(texto))
   ) {
     return "perguntas";
   }
@@ -80,7 +80,7 @@ export function parsePerguntas(texto: string): PerguntaPlano[] {
 
   for (const bruta of linhas) {
     const linha = bruta.trim();
-    const mP = /^##\s*(\d+)[\.)]?\s+(.+)$/u.exec(linha);
+    const mP = /^##\s*(\d+)[.)]?\s+(.+)$/u.exec(linha);
     if (mP !== null) {
       flush();
       atual = {
@@ -90,7 +90,7 @@ export function parsePerguntas(texto: string): PerguntaPlano[] {
       };
       continue;
     }
-    const mO = /^[-*•]\s*([A-Da-d])[\)\].:]\s*(.+)$/u.exec(linha);
+    const mO = /^[-*•]\s*([A-Da-d])[)\].:]\s*(.+)$/u.exec(linha);
     if (mO !== null && atual !== undefined) {
       atual.opcoes.push({
         letra: (mO[1] ?? "A").toUpperCase(),
@@ -139,7 +139,7 @@ export function interpretarResposta(
     }
   }
   const letra =
-    t.length === 1 ? t.toUpperCase() : /^([A-D])[\)\].:]?\s*/iu.exec(t)?.[1]?.toUpperCase();
+    t.length === 1 ? t.toUpperCase() : /^([A-D])[)\].:]?\s*/iu.exec(t)?.[1]?.toUpperCase();
   if (letra !== undefined) {
     const o = pergunta.opcoes.find((x) => x.letra === letra);
     if (o !== undefined) {

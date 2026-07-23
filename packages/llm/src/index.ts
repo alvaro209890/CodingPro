@@ -41,6 +41,7 @@ export {
   type DeepSeekModel,
   DeepSeekProvider,
   type DeepSeekProviderOptions,
+  normalizarBaseUrl,
   resolveDeepSeekProviderModel,
 } from "./providers/deepseek.js";
 export {

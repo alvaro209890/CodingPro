@@ -5,5 +5,5 @@
     "types": ["node", "vitest/globals"]
   },
   "include": ["packages/**/*.ts", "vitest.config.ts"],
-  "exclude": ["packages/desktop"]
+  "exclude": ["packages/desktop", "packages/web", "packages/admin"]
 }

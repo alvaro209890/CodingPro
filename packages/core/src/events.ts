@@ -52,7 +52,14 @@ export type CoreUiEvent =
   | UiPermissionEvent
   | { readonly type: "session-updated"; readonly messages: readonly ChatMessage[] }
   | { readonly type: "error"; readonly code: string; readonly message: string }
-  | { readonly type: "plan-task"; readonly task: { id: string; label: string; status: "pending" | "running" | "done" | "failed" } }
+  | {
+      readonly type: "plan-task";
+      readonly task: {
+        id: string;
+        label: string;
+        status: "pending" | "running" | "done" | "failed";
+      };
+    }
   /** Modelo/effort real usado no turno (aditivo v1.4.0) — substitui strings fixas na UI. */
   | { readonly type: "model-info"; readonly modelName: string; readonly effort: ModelRole };
 

@@ -31,7 +31,13 @@ export const PlanTracker: React.FC<PlanTrackerProps> = ({ tasks, isRunning }) =>
             className={`plan-tracker-row ${t.status === "failed" ? "failed" : t.status === "running" ? "running" : ""}`}
           >
             <span className="plan-tracker-icon">
-              {t.status === "done" ? "✓" : t.status === "failed" ? "✗" : t.status === "running" ? "…" : "○"}
+              {t.status === "done"
+                ? "✓"
+                : t.status === "failed"
+                  ? "✗"
+                  : t.status === "running"
+                    ? "…"
+                    : "○"}
             </span>
             <span className="plan-tracker-label">{t.label}</span>
           </div>

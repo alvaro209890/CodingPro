@@ -39,8 +39,7 @@ export const ToolSummaryBlock: React.FC<ToolSummaryBlockProps> = ({
   const [expanded, setExpanded] = useState(true);
   const [expandedOutputs, setExpandedOutputs] = useState<Record<string, boolean>>({});
 
-  const toggleOutput = (id: string) =>
-    setExpandedOutputs((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggleOutput = (id: string) => setExpandedOutputs((prev) => ({ ...prev, [id]: !prev[id] }));
 
   return (
     <div className="tool-summary-card">
@@ -54,8 +53,19 @@ export const ToolSummaryBlock: React.FC<ToolSummaryBlockProps> = ({
             <span className="diff-badge-del">-{totalDel}</span>
           )}
         </div>
-        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s ease" }}>
+        <svg
+          aria-hidden="true"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          style={{
+            transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 0.15s ease",
+          }}
+        >
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
@@ -67,7 +77,7 @@ export const ToolSummaryBlock: React.FC<ToolSummaryBlockProps> = ({
               <button
                 type="button"
                 className={`tool-action-item ${item.status === "failed" ? "failed" : ""} ${item.output ? "has-output" : ""}`}
-                onClick={() => item.output ? toggleOutput(item.id) : undefined}
+                onClick={() => (item.output ? toggleOutput(item.id) : undefined)}
                 title={item.output ? "Clique para expandir a saída" : undefined}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>

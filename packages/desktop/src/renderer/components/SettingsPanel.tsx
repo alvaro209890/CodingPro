@@ -95,11 +95,21 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     <div className="settings-section">
       <div className="settings-label">Atalhos</div>
       <div className="settings-shortcuts">
-        <div><kbd>Ctrl+K</kbd> Paleta de comandos</div>
-        <div><kbd>Ctrl+.</kbd> Cancelar execução</div>
-        <div><kbd>Enter</kbd> Enviar mensagem</div>
-        <div><kbd>Shift+Enter</kbd> Nova linha</div>
-        <div><kbd>/</kbd> Sugestão de comandos</div>
+        <div>
+          <kbd>Ctrl+K</kbd> Paleta de comandos
+        </div>
+        <div>
+          <kbd>Ctrl+.</kbd> Cancelar execução
+        </div>
+        <div>
+          <kbd>Enter</kbd> Enviar mensagem
+        </div>
+        <div>
+          <kbd>Shift+Enter</kbd> Nova linha
+        </div>
+        <div>
+          <kbd>/</kbd> Sugestão de comandos
+        </div>
       </div>
     </div>
 

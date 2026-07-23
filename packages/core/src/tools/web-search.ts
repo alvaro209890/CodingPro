@@ -72,7 +72,10 @@ export const webSearchTool: ExecutableTool = {
       const links: Array<{ url: string; title: string }> = [];
       let m = linkRegex.exec(html);
       while (m !== null && links.length < 5) {
-        links.push({ url: m[1]?.replace(/^\/\/duckduckgo\.com\/l\/\?uddg=/, "").split("&")[0] ?? m[1] ?? "", title: m[2]?.trim() ?? "" });
+        links.push({
+          url: m[1]?.replace(/^\/\/duckduckgo\.com\/l\/\?uddg=/, "").split("&")[0] ?? m[1] ?? "",
+          title: m[2]?.trim() ?? "",
+        });
         m = linkRegex.exec(html);
       }
 
@@ -117,7 +120,9 @@ export const webExtractTool: ExecutableTool = {
           .replace(/\s+/g, " ")
           .trim()
           .slice(0, 8000);
-        return textResult(`Conteúdo de ${url}:\n\n${text}${text.length >= 8000 ? "\n\n(truncado em 8k caracteres)" : ""}`);
+        return textResult(
+          `Conteúdo de ${url}:\n\n${text}${text.length >= 8000 ? "\n\n(truncado em 8k caracteres)" : ""}`,
+        );
       }
 
       const text = await resp.text();

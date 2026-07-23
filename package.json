@@ -8,12 +8,12 @@
     "node": ">=24.11 <25"
   },
   "scripts": {
-    "build": "pnpm --filter @codingpro/llm build && pnpm --filter @codingpro/core build && pnpm --filter codingpro build && pnpm --filter @codingpro/desktop build && pnpm --filter @codingpro/api build && pnpm --filter @codingpro/web build",
+    "build": "pnpm --filter @codingpro/llm build && pnpm --filter @codingpro/core build && pnpm --filter codingpro build && pnpm --filter @codingpro/desktop build && pnpm plataforma:build",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build && pnpm test:package",
     "desktop": "pnpm --filter @codingpro/desktop start",
     "desktop:dev": "pnpm --filter @codingpro/desktop dev",
     "desktop:build": "pnpm --filter @codingpro/llm build && pnpm --filter @codingpro/core build && pnpm --filter @codingpro/desktop build",
-    "plataforma:build": "pnpm --filter @codingpro/api build && pnpm --filter @codingpro/web build",
+    "plataforma:build": "pnpm --filter @codingpro/llm build && pnpm --filter @codingpro/admin build && pnpm --filter @codingpro/api build && pnpm --filter @codingpro/web build",
     "plataforma:restart": "systemctl --user restart codingpro-api codingpro-web",
     "format": "biome format --write .",
     "format:check": "biome format .",
@@ -23,7 +23,8 @@
     "test:coverage": "vitest run --coverage",
     "test:evals": "vitest run packages/core/test/hardening-evals.test.ts packages/cli/test/hardening-evals.test.ts",
     "test:package": "node scripts/smoke-package.mjs",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json && pnpm --filter @codingpro/web typecheck && pnpm --filter @codingpro/admin typecheck",
+    "plataforma:deploy": "pnpm install && pnpm plataforma:build && pnpm plataforma:restart"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.5",
@@ -32,5 +33,11 @@
     "tsdown": "0.22.13",
     "typescript": "6.0.3",
     "vitest": "4.1.10"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "electron"
+    ]
   }
 }

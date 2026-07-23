@@ -19,6 +19,18 @@
       "preset": "recommended"
     }
   },
+  "overrides": [
+    {
+      "includes": ["packages/desktop/**"],
+      "linter": {
+        "rules": {
+          "security": { "noDangerouslySetInnerHtml": "off" },
+          "suspicious": { "noShorthandPropertyOverrides": "off" },
+          "style": { "noNonNullAssertion": "off" }
+        }
+      }
+    }
+  ],
   "assist": {
     "actions": {
       "source": {

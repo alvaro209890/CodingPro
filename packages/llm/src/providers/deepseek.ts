@@ -52,6 +52,12 @@ type FetchFunction = NonNullable<OpenAICompatibleProviderSettings["fetch"]>;
 
 export interface DeepSeekProviderOptions {
   readonly apiKey: string;
+  /**
+   * Base da API. Padrão: DeepSeek direto. No modo cloud da plataforma aponta para o proxy
+   * (ex. `https://codingpro-api.cursar.space/v1`), que fala o mesmo protocolo — muda só
+   * a base e a credencial (token `cp_` em vez da chave DeepSeek).
+   */
+  readonly baseUrl?: string;
   readonly chunkTimeoutMs?: number;
   readonly fetch?: FetchFunction;
   readonly maxOutputTokens?: number;
@@ -125,12 +131,42 @@ export function resolveDeepSeekProviderModel(options: {
   return resolveDeepSeekModelForRole(DEFAULT_MODEL_ROLE);
 }
 
-function createRestrictedFetch(delegate: FetchFunction): FetchFunction {
+/**
+ * Normaliza e valida a base da API. Além do DeepSeek direto, aceita o proxy da plataforma
+ * (`access.mode = cloud`), que é OpenAI-compatible e recebe o mesmo corpo de requisição.
+ *
+ * Fail-closed: só `https:` — exceto `127.0.0.1`/`localhost`, liberados para desenvolvimento
+ * local do próprio proxy. Nada de credenciais embutidas na URL nem query/hash.
+ */
+export function normalizarBaseUrl(bruto: string): string {
+  let url: URL;
+  try {
+    url = new URL(bruto);
+  } catch {
+    throw new ProviderError("not-configured", "A URL base da API é inválida.");
+  }
+
+  const local = url.hostname === "127.0.0.1" || url.hostname === "localhost";
+  if (
+    (url.protocol !== "https:" && !(url.protocol === "http:" && local)) ||
+    url.search.length > 0 ||
+    url.hash.length > 0 ||
+    url.username.length > 0 ||
+    url.password.length > 0
+  ) {
+    throw new ProviderError("not-configured", "A URL base da API é inválida.");
+  }
+
+  // Sem barra final: o caminho é concatenado com "/chat/completions".
+  return url.pathname === "/" ? url.origin : `${url.origin}${url.pathname.replace(/\/+$/u, "")}`;
+}
+
+function createRestrictedFetch(delegate: FetchFunction, baseUrl: string): FetchFunction {
+  const permitido = `${baseUrl}/chat/completions`;
   return async (input, init) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
     if (
-      url.origin !== DEEPSEEK_BASE_URL ||
-      url.pathname !== "/chat/completions" ||
+      `${url.origin}${url.pathname}` !== permitido ||
       url.search.length > 0 ||
       url.hash.length > 0 ||
       url.username.length > 0 ||
@@ -411,11 +447,12 @@ export class DeepSeekProvider implements Provider {
     this.#thinking = thinking;
     const reasoningEffort = options.reasoningEffort ?? "high";
 
+    const baseUrl = normalizarBaseUrl(options.baseUrl ?? DEEPSEEK_BASE_URL);
     const provider = createOpenAICompatible({
       apiKey: options.apiKey,
-      baseURL: DEEPSEEK_BASE_URL,
+      baseURL: baseUrl,
       convertUsage: convertDeepSeekUsage,
-      fetch: createRestrictedFetch(options.fetch ?? globalThis.fetch),
+      fetch: createRestrictedFetch(options.fetch ?? globalThis.fetch, baseUrl),
       includeUsage: true,
       name: "deepseek",
       transformRequestBody: (body) => ({

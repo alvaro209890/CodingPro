@@ -305,7 +305,11 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
   for (const tool of [...ALL_TOOLS, ...(options.mcpTools ?? [])]) {
     registry.register(tool);
   }
-  const aprovadorInterativo = criarAprovadorInterativo({ pergunta: io.pergunta }, io.progresso, tema);
+  const aprovadorInterativo = criarAprovadorInterativo(
+    { pergunta: io.pergunta },
+    io.progresso,
+    tema,
+  );
   // /confiar: bypass global de aprovação (espelha o "autoApprove" do Desktop) — cuidado.
   let confiarTudo = false;
   const aprovador: Approver = {

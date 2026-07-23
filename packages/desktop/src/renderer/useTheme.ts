@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  type TemaNome,
-  TEMAS,
-  nomeTemaValido,
-} from "../shared/temas-paleta.js";
+import { type TemaNome, TEMAS, nomeTemaValido } from "../shared/temas-paleta.js";
 
 const STORAGE_KEY = "codingpro-theme";
 

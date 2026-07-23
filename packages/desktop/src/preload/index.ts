@@ -19,6 +19,19 @@ const api: CodingProDesktopAPI = {
   getWorkspaceInfo: () => {
     return ipcRenderer.invoke("codingpro:get-workspace-info");
   },
+  /** Conta do CodingPro Cloud — mesmo device flow e mesmo arquivo da CLI. */
+  estadoAcesso: () => {
+    return ipcRenderer.invoke("codingpro:estado-acesso");
+  },
+  contaLogin: (apiUrl?: string) => {
+    return ipcRenderer.invoke("codingpro:conta-login", apiUrl);
+  },
+  contaConsultar: (apiUrl: string, codigoDispositivo: string) => {
+    return ipcRenderer.invoke("codingpro:conta-consultar", apiUrl, codigoDispositivo);
+  },
+  contaLogout: () => {
+    return ipcRenderer.invoke("codingpro:conta-logout");
+  },
   chooseWorkspaceFolder: () => {
     return ipcRenderer.invoke("codingpro:choose-workspace-folder");
   },

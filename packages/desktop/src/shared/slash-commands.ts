@@ -19,7 +19,12 @@ export interface SugestaoComando {
 
 /** Comandos canônicos (CLI + desktop). */
 export const COMANDOS_CHAT: readonly ComandoChat[] = Object.freeze([
-  { nome: "/ajuda", aliases: ["/help"], descricao: "lista os comandos disponíveis", aceitaArgs: false },
+  {
+    nome: "/ajuda",
+    aliases: ["/help"],
+    descricao: "lista os comandos disponíveis",
+    aceitaArgs: false,
+  },
   {
     nome: "/abrir",
     aliases: ["/open", "/workspace"],
@@ -39,7 +44,12 @@ export const COMANDOS_CHAT: readonly ComandoChat[] = Object.freeze([
     descricao: "compacta o histórico da conversa",
     aceitaArgs: false,
   },
-  { nome: "/limpar", aliases: ["/clear"], descricao: "esquece o histórico da conversa", aceitaArgs: false },
+  {
+    nome: "/limpar",
+    aliases: ["/clear"],
+    descricao: "esquece o histórico da conversa",
+    aceitaArgs: false,
+  },
   {
     nome: "/desfazer",
     aliases: ["/undo"],
@@ -58,7 +68,12 @@ export const COMANDOS_CHAT: readonly ComandoChat[] = Object.freeze([
     descricao: "linha do tempo de checkpoints",
     aceitaArgs: false,
   },
-  { nome: "/mapa", aliases: ["/map"], descricao: "repo map (arquivos e assinaturas)", aceitaArgs: false },
+  {
+    nome: "/mapa",
+    aliases: ["/map"],
+    descricao: "repo map (arquivos e assinaturas)",
+    aceitaArgs: false,
+  },
   {
     nome: "/index",
     aliases: ["/indexar"],
@@ -89,7 +104,12 @@ export const COMANDOS_CHAT: readonly ComandoChat[] = Object.freeze([
     descricao: "revisa o diff git (ou <alvo>) com o subagente reviewer",
     aceitaArgs: true,
   },
-  { nome: "/skills", aliases: [], descricao: "lista skills do projeto (● = ativa)", aceitaArgs: false },
+  {
+    nome: "/skills",
+    aliases: [],
+    descricao: "lista skills do projeto (● = ativa)",
+    aceitaArgs: false,
+  },
   {
     nome: "/skill",
     aliases: [],

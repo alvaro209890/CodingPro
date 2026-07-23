@@ -1,4 +1,5 @@
 import type { CoreUiEvent, PermissionRequest, PreviaEscrita } from "@codingpro/core";
+import type { EstadoAcesso } from "../types/electron.js";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CommandPalette } from "./components/CommandPalette.js";
@@ -12,6 +13,7 @@ import { TaskTracker, toTaskRow } from "./components/TaskTracker.js";
 import { SubagentPanel } from "./components/SubagentPanel.js";
 import { SettingsPanel } from "./components/SettingsPanel.js";
 import { PlanTracker, type PlanTask } from "./components/PlanTracker.js";
+import { TelaConta } from "./components/TelaConta.js";
 import { renderMarkdown } from "./components/MarkdownRenderer.js";
 import { useTheme } from "./useTheme.js";
 import "./aurora.css";
@@ -76,12 +78,20 @@ export const App: React.FC = () => {
     cwd: string;
     platform: string;
     hasApiKey?: boolean;
+    acesso?: EstadoAcesso;
     isCodingProMonorepo?: boolean;
     projectSummary?: string;
   }>({
     cwd: "Carregando...",
     platform: "win32",
   });
+
+  /**
+   * Portão de acesso do app distribuído: sem conta conectada e sem chave própria,
+   * mostramos a tela de login em vez de deixar o usuário digitar e só então descobrir
+   * que não há credencial nenhuma.
+   */
+  const [acesso, setAcesso] = useState<EstadoAcesso | null>(null);
 
   const [currentPermissionRequest, setCurrentPermissionRequest] = useState<{
     request: PermissionRequest;
@@ -94,25 +104,27 @@ export const App: React.FC = () => {
   ]);
 
   const [sessionCost, setSessionCost] = useState<{
-      inputTokens: number;
-      outputTokens: number;
-      totalCostUsd: number;
-      turns: number;
-      contextTokens: number;
-      contextBudget: number;
-    } | null>(null);
+    inputTokens: number;
+    outputTokens: number;
+    totalCostUsd: number;
+    turns: number;
+    contextTokens: number;
+    contextBudget: number;
+  } | null>(null);
 
-    const [_runStartTime, setRunStartTime] = useState<number | null>(null);
+  const [_runStartTime, setRunStartTime] = useState<number | null>(null);
 
   const [taskItems, setTaskItems] = useState<ReturnType<typeof toTaskRow>[]>([]);
   const [planTasks, setPlanTasks] = useState<PlanTask[]>([]);
   const [modelInfo, setModelInfo] = useState<{ modelName: string; effort: string } | null>(null);
 
-    const [autoApprove, setAutoApprove] = useState(false);
+  const [autoApprove, setAutoApprove] = useState(false);
 
-    const { tema, setTema } = useTheme();
+  const { tema, setTema } = useTheme();
 
-    const [subAgents, setSubAgents] = useState<Array<{ id: string; label: string; status: "running" | "done" | "failed" }>>([]);
+  const [subAgents, setSubAgents] = useState<
+    Array<{ id: string; label: string; status: "running" | "done" | "failed" }>
+  >([]);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const chatFeedRef = useRef<HTMLDivElement | null>(null);
@@ -194,11 +206,8 @@ export const App: React.FC = () => {
       .then((info) => {
         if (cancelled) return;
         setWorkspaceInfo(info);
-        if (info.hasApiKey === false) {
-          setStatusNote(
-            "DEEPSEEK_API_KEY não encontrada. Coloque em .codingpro/.env ou ~/.config/codingpro/deepseek.env e reinicie.",
-          );
-        } else if (info.isCodingProMonorepo) {
+        setAcesso(info.acesso ?? { modo: info.hasApiKey ? "chave-propria" : "sem-acesso" });
+        if (info.isCodingProMonorepo) {
           setStatusNote(
             "Pasta aberta = monorepo CodingPro. Para analisar outro projeto (ex. Downloads), clique em Pasta ou digite /abrir",
           );
@@ -255,94 +264,104 @@ export const App: React.FC = () => {
             },
           ]);
         } else if (ae.type === "tool-call") {
-                  // Cada tool ganha seu próprio bloco de raciocínio
-                  setMessages((prev) => {
-                    const last = prev[prev.length - 1];
-                    const input = ae.call.input as Record<string, unknown> | undefined;
-                    const target =
-                      (typeof input?.path === "string" && input.path) ||
-                      (typeof input?.command === "string" && input.command) ||
-                      ae.call.name;
-                    const newItem: ToolItem = {
-                      id: `${ae.call.name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                      name: ae.call.name,
-                      target: String(target),
-                      status: "running",
-                    };
+          // Cada tool ganha seu próprio bloco de raciocínio
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            const input = ae.call.input as Record<string, unknown> | undefined;
+            const target =
+              (typeof input?.path === "string" && input.path) ||
+              (typeof input?.command === "string" && input.command) ||
+              ae.call.name;
+            const newItem: ToolItem = {
+              id: `${ae.call.name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              name: ae.call.name,
+              target: String(target),
+              status: "running",
+            };
 
-                    // Atualiza task tracker em tempo real (só task tool = tarefas planejadas)
-                                        if (ae.call.name === "task") {
-                                                              const tRow = toTaskRow({ ...newItem, status: "running" });
-                                                              setTaskItems((prev) => [...prev, tRow]);
-                                                            }
+            // Atualiza task tracker em tempo real (só task tool = tarefas planejadas)
+            if (ae.call.name === "task") {
+              const tRow = toTaskRow({ ...newItem, status: "running" });
+              setTaskItems((prev) => [...prev, tRow]);
+            }
 
-                                                            // Painel de subagentes visuais
-                                                            if (ae.call.name === "task") {
-                                                              const input = ae.call.input as Record<string, unknown> | undefined;
-                                                              const taskList = Array.isArray(input?.tarefas) ? input.tarefas as Array<{ prompt?: string }> : [];
-                                                              taskList.forEach((t, idx) => {
-                                                                const label = t?.prompt ? t.prompt.slice(0, 50) : `Subtarefa ${idx + 1}`;
-                                                                setSubAgents((prev) => [...prev, { id: `${ae.call.name}-${idx}-${Date.now()}`, label, status: "running" }]);
-                                                              });
-                                                            }
+            // Painel de subagentes visuais
+            if (ae.call.name === "task") {
+              const input = ae.call.input as Record<string, unknown> | undefined;
+              const taskList = Array.isArray(input?.tarefas)
+                ? (input.tarefas as Array<{ prompt?: string }>)
+                : [];
+              taskList.forEach((t, idx) => {
+                const label = t?.prompt ? t.prompt.slice(0, 50) : `Subtarefa ${idx + 1}`;
+                setSubAgents((prev) => [
+                  ...prev,
+                  { id: `${ae.call.name}-${idx}-${Date.now()}`, label, status: "running" },
+                ]);
+              });
+            }
 
-                    if (last && last.role === "assistant") {
-                      const group = last.toolGroup ?? {
-                        summaryText: `Executando ${ae.call.name}`,
-                        items: [],
-                      };
-                      return [
-                        ...prev.slice(0, -1),
-                        {
-                          ...last,
-                          toolGroup: {
-                            ...group,
-                            items: [...group.items, newItem],
-                            summaryText: `Executando ${group.items.length + 1} ferramenta(s)`,
-                          },
-                        },
-                      ];
-                    }
+            if (last && last.role === "assistant") {
+              const group = last.toolGroup ?? {
+                summaryText: `Executando ${ae.call.name}`,
+                items: [],
+              };
+              return [
+                ...prev.slice(0, -1),
+                {
+                  ...last,
+                  toolGroup: {
+                    ...group,
+                    items: [...group.items, newItem],
+                    summaryText: `Executando ${group.items.length + 1} ferramenta(s)`,
+                  },
+                },
+              ];
+            }
 
-                    return [
-                      ...prev,
-                      {
-                        id: newId("asst"),
-                        role: "assistant",
-                        content: "",
-                        toolGroup: {
-                          summaryText: `Executando ${ae.call.name}`,
-                          items: [newItem],
-                        },
-                      },
-                    ];
-                  });
-                } else if (ae.type === "tool-result") {
-                  const ok =
-                    ae.result.type !== "error-text" &&
-                    ae.result.type !== "error-json" &&
-                    ae.result.type !== "execution-denied";
+            return [
+              ...prev,
+              {
+                id: newId("asst"),
+                role: "assistant",
+                content: "",
+                toolGroup: {
+                  summaryText: `Executando ${ae.call.name}`,
+                  items: [newItem],
+                },
+              },
+            ];
+          });
+        } else if (ae.type === "tool-result") {
+          const ok =
+            ae.result.type !== "error-text" &&
+            ae.result.type !== "error-json" &&
+            ae.result.type !== "execution-denied";
 
-                  // Atualiza task tracker
-                  if (ae.call.name === "task") {
-                              setTaskItems((prev) =>
-                                prev.map((t) =>
-                                  t.id.startsWith("task-") ? { ...t, status: ok ? "done" : ("failed" as const) } : t,
-                                ),
-                              );
-                              // Marca subagentes como done/failed
-                              setSubAgents((prev) =>
-                                prev.map((a) =>
-                                  a.id.startsWith("task-") ? { ...a, status: ok ? "done" : ("failed" as const) } : a,
-                                ),
-                              );
-                            }
+          // Atualiza task tracker
+          if (ae.call.name === "task") {
+            setTaskItems((prev) =>
+              prev.map((t) =>
+                t.id.startsWith("task-") ? { ...t, status: ok ? "done" : ("failed" as const) } : t,
+              ),
+            );
+            // Marca subagentes como done/failed
+            setSubAgents((prev) =>
+              prev.map((a) =>
+                a.id.startsWith("task-") ? { ...a, status: ok ? "done" : ("failed" as const) } : a,
+              ),
+            );
+          }
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (!last?.toolGroup) return prev;
             const items = last.toolGroup.items.map((it) => {
               if (it.name === ae.call.name && it.status === "running") {
-                const out = ae.result.type === "text" ? ae.result.value : ae.result.type === "error-text" ? ae.result.value : undefined;
+                const out =
+                  ae.result.type === "text"
+                    ? ae.result.value
+                    : ae.result.type === "error-text"
+                      ? ae.result.value
+                      : undefined;
                 const updated = { ...it, status: ok ? ("success" as const) : ("failed" as const) };
                 if (out !== undefined) (updated as any).output = out;
                 return updated;
@@ -388,7 +407,10 @@ export const App: React.FC = () => {
           return copy;
         });
       } else if (event.type === "model-info") {
-        setModelInfo({ modelName: event.modelName, effort: event.effort === "fast" ? "Rápido" : "Alto" });
+        setModelInfo({
+          modelName: event.modelName,
+          effort: event.effort === "fast" ? "Rápido" : "Alto",
+        });
       } else if (event.type === "session-updated") {
         setIsRunning(false);
         setCurrentPermissionRequest(null);
@@ -418,23 +440,23 @@ export const App: React.FC = () => {
   }, [apiReady, refreshSessions]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll inteligente.
-    useEffect(() => {
-      if (autoScrollRef.current) {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }
-    }, [messages, isRunning]);
+  useEffect(() => {
+    if (autoScrollRef.current) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isRunning]);
 
-    // Detecta scroll manual do usuário
-    useEffect(() => {
-      const el = chatFeedRef.current;
-      if (!el) return;
-      const handleScroll = () => {
-        const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-        autoScrollRef.current = atBottom;
-      };
-      el.addEventListener("scroll", handleScroll, { passive: true });
-      return () => el.removeEventListener("scroll", handleScroll);
-    }, []);
+  // Detecta scroll manual do usuário
+  useEffect(() => {
+    const el = chatFeedRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+      autoScrollRef.current = atBottom;
+    };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleSend = useCallback(
     async (customPrompt?: string) => {
@@ -457,8 +479,8 @@ export const App: React.FC = () => {
       }
 
       setIsRunning(true);
-            setRunStartTime(Date.now());
-            setTaskItems([]);
+      setRunStartTime(Date.now());
+      setTaskItems([]);
       setMessages((prev) => [...prev, { id: newId("user"), role: "user", content: textToSend }]);
 
       try {
@@ -565,42 +587,58 @@ export const App: React.FC = () => {
     setMessages([]);
     const info = await window.codingproAPI.getWorkspaceInfo();
     setWorkspaceInfo(info);
-    setStatusNote(`Projeto aberto: ${chosen}${info.projectSummary ? ` · ${info.projectSummary}` : ""}`);
+    setStatusNote(
+      `Projeto aberto: ${chosen}${info.projectSummary ? ` · ${info.projectSummary}` : ""}`,
+    );
     void refreshSessions();
   };
 
   const cwdShort =
     workspaceInfo.cwd.split(/[/\\]/).filter(Boolean).slice(-1)[0] || workspaceInfo.cwd;
 
+  // Portão: sem conta e sem chave própria, só a tela de login.
+  if (acesso?.modo === "sem-acesso") {
+    return (
+      <TelaConta
+        aoConectar={() => {
+          void window.codingproAPI.getWorkspaceInfo().then((info) => {
+            setWorkspaceInfo(info);
+            setAcesso(info.acesso ?? { modo: "conta" });
+          });
+        }}
+      />
+    );
+  }
+
   return (
     <div className="app-container">
       <Sidebar
-              activeTab={activeTab}
-              onSelectTab={setActiveTab}
-              recentSessions={recentSessions}
-              onSelectSession={handleSelectSession}
-              onNewSession={() => {
-                void handleNewSession();
-              }}
-              onChooseWorkspace={() => {
-                void handleChooseWorkspace();
-              }}
-              workspacePath={workspaceInfo.cwd}
-              settingsPanel={
-                <SettingsPanel
-                  autoApprove={autoApprove}
-                  onToggleAutoApprove={() => {
-                    const next = !autoApprove;
-                    setAutoApprove(next);
-                    void window.codingproAPI?.setAutoApprove(next);
-                  }}
-                  modelName={modelInfo?.modelName ?? "DeepSeek V4"}
-                  effortLevel={modelInfo?.effort ?? "—"}
-                  tema={tema}
-                  onTemaChange={setTema}
-                />
-              }
-            />
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        recentSessions={recentSessions}
+        onSelectSession={handleSelectSession}
+        onNewSession={() => {
+          void handleNewSession();
+        }}
+        onChooseWorkspace={() => {
+          void handleChooseWorkspace();
+        }}
+        workspacePath={workspaceInfo.cwd}
+        settingsPanel={
+          <SettingsPanel
+            autoApprove={autoApprove}
+            onToggleAutoApprove={() => {
+              const next = !autoApprove;
+              setAutoApprove(next);
+              void window.codingproAPI?.setAutoApprove(next);
+            }}
+            modelName={modelInfo?.modelName ?? "DeepSeek V4"}
+            effortLevel={modelInfo?.effort ?? "—"}
+            tema={tema}
+            onTemaChange={setTema}
+          />
+        }
+      />
 
       <div className="main-content">
         <Header
@@ -642,10 +680,10 @@ export const App: React.FC = () => {
         )}
 
         {/* Chat Feed */}
-                <div className="chat-feed" ref={chatFeedRef}>
-                  <SubagentPanel agents={subAgents} />
+        <div className="chat-feed" ref={chatFeedRef}>
+          <SubagentPanel agents={subAgents} />
 
-                  {messages.length === 0 && (
+          {messages.length === 0 && (
             <div
               style={{
                 display: "flex",
@@ -714,8 +752,8 @@ export const App: React.FC = () => {
                     textAlign: "center",
                   }}
                 >
-                  Você está no monorepo do CodingPro. Para analisar um app em Downloads (como
-                  `cd` + CLI), abra a pasta do projeto.
+                  Você está no monorepo do CodingPro. Para analisar um app em Downloads (como `cd` +
+                  CLI), abra a pasta do projeto.
                 </div>
               )}
               <button
@@ -744,21 +782,26 @@ export const App: React.FC = () => {
             <div key={m.id} className="message-group">
               {m.role === "user" ? (
                 <div className="user-message-card">
-              <div className="user-message-bubble">{m.content}</div>
-            </div>
+                  <div className="user-message-bubble">{m.content}</div>
+                </div>
               ) : (
                 <div className="assistant-message-card">
-                                  {m.toolGroup && (
-                                    <ToolSummaryBlock
-                                      summaryText={m.toolGroup.summaryText}
-                                      items={m.toolGroup.items}
-                                      totalAdd={m.toolGroup.diffAdd}
-                                      totalDel={m.toolGroup.diffDel}
-                                    />
-                                  )}
-                                  <CollapsibleReasoning text={m.reasoning} />
-                                                    {/* biome-ignore lint/security/noDangerouslySetInnerHtml: markdown do LLM */}
-                                                    {m.content && <div className="text-response-block" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content) }} />}
+                  {m.toolGroup && (
+                    <ToolSummaryBlock
+                      summaryText={m.toolGroup.summaryText}
+                      items={m.toolGroup.items}
+                      totalAdd={m.toolGroup.diffAdd}
+                      totalDel={m.toolGroup.diffDel}
+                    />
+                  )}
+                  <CollapsibleReasoning text={m.reasoning} />
+                  {/* biome-ignore lint/security/noDangerouslySetInnerHtml: markdown do LLM */}
+                  {m.content && (
+                    <div
+                      className="text-response-block"
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content) }}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -778,34 +821,31 @@ export const App: React.FC = () => {
           )}
 
           <div ref={chatEndRef} />
-                  </div>
+        </div>
 
-                  <PlanTracker tasks={planTasks} isRunning={isRunning} />
+        <PlanTracker tasks={planTasks} isRunning={isRunning} />
 
-                  <TaskTracker
-                    items={taskItems}
-                    isRunning={isRunning}
-                  />
+        <TaskTracker items={taskItems} isRunning={isRunning} />
 
-                  <IntegratedTerminal
+        <IntegratedTerminal
           isOpen={isTerminalOpen}
           onClose={() => setIsTerminalOpen(false)}
           cwd={workspaceInfo.cwd}
         />
 
         <FloatingInputDock
-                  inputPrompt={inputPrompt}
-                  onChangeInput={setInputPrompt}
-                  onSend={() => void handleSend()}
-                  onCancel={() => void handleCancel()}
-                  isRunning={isRunning}
-                  autoApprove={autoApprove}
-                  onToggleAutoApprove={() => {
-                    const next = !autoApprove;
-                    setAutoApprove(next);
-                    void window.codingproAPI?.setAutoApprove(next);
-                  }}
-                  branchName="master"
+          inputPrompt={inputPrompt}
+          onChangeInput={setInputPrompt}
+          onSend={() => void handleSend()}
+          onCancel={() => void handleCancel()}
+          isRunning={isRunning}
+          autoApprove={autoApprove}
+          onToggleAutoApprove={() => {
+            const next = !autoApprove;
+            setAutoApprove(next);
+            void window.codingproAPI?.setAutoApprove(next);
+          }}
+          branchName="master"
           modelName={modelInfo?.modelName ?? "DeepSeek V4"}
           effortLevel={modelInfo?.effort ?? "—"}
           cost={sessionCost}

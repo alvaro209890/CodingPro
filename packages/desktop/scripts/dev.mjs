@@ -20,7 +20,7 @@ function loadEnvFile(path) {
     const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
     if (!m) continue;
     const key = m[1];
-    let val = (m[2] ?? "").trim().replace(/^["']|["']$/g, "");
+    const val = (m[2] ?? "").trim().replace(/^["']|["']$/g, "");
     if (key && process.env[key] === undefined) {
       process.env[key] = val;
     }

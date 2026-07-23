@@ -16,17 +16,57 @@ interface SugestaoComando {
 }
 
 const COMANDOS_CHAT: readonly ComandoChat[] = Object.freeze([
-  { nome: "/ajuda", aliases: ["/help"], descricao: "lista os comandos disponíveis", aceitaArgs: false },
-  { nome: "/abrir", aliases: ["/open", "/workspace"], descricao: "abre pasta do projeto", aceitaArgs: true },
+  {
+    nome: "/ajuda",
+    aliases: ["/help"],
+    descricao: "lista os comandos disponíveis",
+    aceitaArgs: false,
+  },
+  {
+    nome: "/abrir",
+    aliases: ["/open", "/workspace"],
+    descricao: "abre pasta do projeto",
+    aceitaArgs: true,
+  },
   { nome: "/pwd", aliases: [], descricao: "mostra a pasta aberta agora", aceitaArgs: false },
-  { nome: "/custo", aliases: ["/cost", "/gasto"], descricao: "custo e tokens da sessão", aceitaArgs: false },
-  { nome: "/compact", aliases: ["/compactar"], descricao: "compacta o histórico", aceitaArgs: false },
-  { nome: "/limpar", aliases: ["/clear", "/nova", "/new"], descricao: "nova sessão", aceitaArgs: false },
-  { nome: "/desfazer", aliases: ["/undo"], descricao: "desfaz edições ([N] passos)", aceitaArgs: true },
+  {
+    nome: "/custo",
+    aliases: ["/cost", "/gasto"],
+    descricao: "custo e tokens da sessão",
+    aceitaArgs: false,
+  },
+  {
+    nome: "/compact",
+    aliases: ["/compactar"],
+    descricao: "compacta o histórico",
+    aceitaArgs: false,
+  },
+  {
+    nome: "/limpar",
+    aliases: ["/clear", "/nova", "/new"],
+    descricao: "nova sessão",
+    aceitaArgs: false,
+  },
+  {
+    nome: "/desfazer",
+    aliases: ["/undo"],
+    descricao: "desfaz edições ([N] passos)",
+    aceitaArgs: true,
+  },
   { nome: "/refazer", aliases: ["/redo"], descricao: "refaz edições ([N])", aceitaArgs: true },
-  { nome: "/checkpoint", aliases: ["/checkpoints"], descricao: "linha do tempo", aceitaArgs: false },
+  {
+    nome: "/checkpoint",
+    aliases: ["/checkpoints"],
+    descricao: "linha do tempo",
+    aceitaArgs: false,
+  },
   { nome: "/mapa", aliases: ["/map"], descricao: "repo map", aceitaArgs: false },
-  { nome: "/lembrar", aliases: ["/remember"], descricao: "salva fato na memória", aceitaArgs: true },
+  {
+    nome: "/lembrar",
+    aliases: ["/remember"],
+    descricao: "salva fato na memória",
+    aceitaArgs: true,
+  },
   { nome: "/init", aliases: [], descricao: "gera CODINGPRO.md", aceitaArgs: true },
   { nome: "/plan", aliases: ["/plano"], descricao: "plano interativo", aceitaArgs: true },
   { nome: "/review", aliases: [], descricao: "revisão de código", aceitaArgs: true },
@@ -51,7 +91,12 @@ function filtrarSugestoes(
     const candidatos = [cmd.nome, ...cmd.aliases];
     for (const c of candidatos) {
       if (c.toLowerCase().startsWith(lower)) {
-        out.push({ aceitaArgs: cmd.aceitaArgs, descricao: cmd.descricao, match: c, nome: cmd.nome });
+        out.push({
+          aceitaArgs: cmd.aceitaArgs,
+          descricao: cmd.descricao,
+          match: c,
+          nome: cmd.nome,
+        });
         break;
       }
     }
@@ -80,7 +125,6 @@ interface FloatingInputDockProps {
     contextBudget: number;
   } | null;
 }
-
 
 /** Handler de colagem de imagem: converte para base64 e chama callback. */
 function handleImagePaste(cb: (b64: string) => void) {
@@ -307,7 +351,9 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
               style={{
                 marginLeft: 4,
                 background: autoApprove ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
-                border: autoApprove ? "1px solid rgba(34,197,94,0.35)" : "1px solid rgba(255,255,255,0.08)",
+                border: autoApprove
+                  ? "1px solid rgba(34,197,94,0.35)"
+                  : "1px solid rgba(255,255,255,0.08)",
                 color: autoApprove ? "var(--accent-green)" : "var(--text-muted)",
                 cursor: "pointer",
                 borderRadius: 6,

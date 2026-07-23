@@ -215,7 +215,11 @@ describe("executarChat", () => {
   });
 
   it("/confiar liga aprovação automática — efeito roda sem perguntar (espelha o autoApprove do Desktop)", async () => {
-    const call: ToolCall = { id: "1", input: { content: "oi", path: "novo.txt" }, name: "write_file" };
+    const call: ToolCall = {
+      id: "1",
+      input: { content: "oi", path: "novo.txt" },
+      name: "write_file",
+    };
     const { provider } = scripted([
       [finish({ content: "", role: "assistant", toolCalls: [call] })],
       [finish({ content: "pronto", role: "assistant" })],

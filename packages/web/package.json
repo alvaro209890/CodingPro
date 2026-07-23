@@ -3,17 +3,30 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Site público do CodingPro (Fase 3). No P0 serve só a página 'em breve'; vira Next.js no P3a.",
+  "description": "Site público do CodingPro (Fase 3): landing, cadastro, login e painel do usuário.",
   "main": "./dist/servidor.mjs",
   "files": [
     "dist",
-    "public"
+    "dist-site"
   ],
   "engines": {
     "node": ">=24.11 <25"
   },
   "scripts": {
-    "build": "tsdown",
-    "start": "node dist/servidor.mjs"
+    "build": "vite build && tsdown",
+    "dev": "vite",
+    "start": "node dist/servidor.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.7.0",
+    "typescript": "^7.0.2",
+    "vite": "^6.4.3"
+  },
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   }
 }

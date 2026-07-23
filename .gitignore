@@ -4,6 +4,7 @@ referencias/
 # Futuro código
 node_modules/
 dist/
+dist-site/
 coverage/
 *.tsbuildinfo
 

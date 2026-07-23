@@ -6,11 +6,27 @@ export interface SessionMetaUI {
   preview: string;
 }
 
+export interface EstadoAcesso {
+  /** `conta` = token do site; `chave-propria` = DEEPSEEK_API_KEY; `sem-acesso` = nada configurado. */
+  modo: "conta" | "chave-propria" | "sem-acesso";
+  apiUrl?: string;
+  prefixoToken?: string;
+}
+
+export interface InicioDeviceUI {
+  codigoDispositivo: string;
+  codigoUsuario: string;
+  urlVerificacao: string;
+  intervaloSegundos: number;
+  apiUrl?: string;
+}
+
 export interface WorkspaceInfo {
   cwd: string;
   platform: string;
   running?: boolean;
   hasApiKey?: boolean;
+  acesso?: EstadoAcesso;
   isCodingProMonorepo?: boolean;
   projectSummary?: string;
 }
@@ -41,6 +57,13 @@ export interface SlashCommandMeta {
 
 export interface CodingProDesktopAPI {
   sendMessage: (prompt: string, workspacePath?: string) => Promise<SendMessageResult>;
+  estadoAcesso: () => Promise<EstadoAcesso>;
+  contaLogin: (apiUrl?: string) => Promise<InicioDeviceUI>;
+  contaConsultar: (
+    apiUrl: string,
+    codigoDispositivo: string,
+  ) => Promise<{ estado: "pendente" | "pronto" | "expirado" }>;
+  contaLogout: () => Promise<boolean>;
   respondPermission: (response: UiPermissionResponse) => void;
   onCoreEvent: (callback: (event: CoreUiEvent) => void) => () => void;
   getWorkspaceInfo: () => Promise<WorkspaceInfo>;

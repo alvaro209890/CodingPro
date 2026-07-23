@@ -50,33 +50,42 @@ export const TaskTracker: React.FC<TaskTrackerProps> = ({ items, isRunning }) =>
   return (
     <div className="task-tracker-card">
       <div className="task-tracker-header">
-        <button type="button" className="task-tracker-collapse" onClick={() => setCollapsed(!collapsed)} title={collapsed ? "Expandir" : "Recolher"}>{collapsed ? "▶" : "▼"}</button>
-<span className="task-tracker-title">
+        <button
+          type="button"
+          className="task-tracker-collapse"
+          onClick={() => setCollapsed(!collapsed)}
+          title={collapsed ? "Expandir" : "Recolher"}
+        >
+          {collapsed ? "▶" : "▼"}
+        </button>
+        <span className="task-tracker-title">
           {isRunning && items.some((t) => t.status === "running")
             ? "Executando tarefas"
             : `${done}/${total} tarefas`}
         </span>
         {isRunning && <span className="task-tracker-spinner" />}
       </div>
-      {!collapsed && <div className="task-tracker-list">
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className={`task-tracker-row ${item.status === "failed" ? "failed" : ""}`}
-          >
-            <span className="task-tracker-icon">
-              {item.status === "running" ? "…" : item.status === "failed" ? "✗" : "✓"}
-            </span>
-            <span className="task-tracker-label">{item.label}</span>
-            {item.diffAdd !== undefined && item.diffAdd > 0 && (
-              <span className="diff-badge-add">+{item.diffAdd}</span>
-            )}
-            {item.diffDel !== undefined && item.diffDel > 0 && (
-              <span className="diff-badge-del">-{item.diffDel}</span>
-            )}
-          </div>
-        ))}
-      </div>}
+      {!collapsed && (
+        <div className="task-tracker-list">
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className={`task-tracker-row ${item.status === "failed" ? "failed" : ""}`}
+            >
+              <span className="task-tracker-icon">
+                {item.status === "running" ? "…" : item.status === "failed" ? "✗" : "✓"}
+              </span>
+              <span className="task-tracker-label">{item.label}</span>
+              {item.diffAdd !== undefined && item.diffAdd > 0 && (
+                <span className="diff-badge-add">+{item.diffAdd}</span>
+              )}
+              {item.diffDel !== undefined && item.diffDel > 0 && (
+                <span className="diff-badge-del">-{item.diffDel}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

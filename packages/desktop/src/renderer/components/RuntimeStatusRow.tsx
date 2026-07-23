@@ -38,7 +38,14 @@ export const RuntimeStatusRow: React.FC<RuntimeStatusRowProps> = ({
     <span className="runtime-status-text">
       {formatTime(elapsedMs)} · {formatTokens(totalTokens)} tokens · {steps} steps
       {thinkingMs > 0 && <> · pensou por {formatTime(thinkingMs)}</>}
-      {isRunning ? <> · <span className="runtime-status-running-text">executando</span></> : ""}
+      {isRunning ? (
+        <>
+          {" "}
+          · <span className="runtime-status-running-text">executando</span>
+        </>
+      ) : (
+        ""
+      )}
     </span>
   </div>
 );

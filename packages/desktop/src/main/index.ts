@@ -1,5 +1,5 @@
 import { type ExecOptions, exec } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -83,7 +83,7 @@ import {
   DeepSeekProvider,
   type Provider,
 } from "@codingpro/llm";
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { COMANDOS_CHAT, textoAjudaComandos } from "../shared/slash-commands.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -140,7 +140,9 @@ function pastaDownloads(): string {
 }
 
 function ehMonorepoCodingPro(cwd: string): boolean {
-  return existsSync(join(cwd, "pnpm-workspace.yaml")) && existsSync(join(cwd, "packages", "desktop"));
+  return (
+    existsSync(join(cwd, "pnpm-workspace.yaml")) && existsSync(join(cwd, "packages", "desktop"))
+  );
 }
 
 async function montarSystemPromptDesktop(session: ChatSession): Promise<string> {
@@ -159,7 +161,9 @@ async function montarSystemPromptDesktop(session: ChatSession): Promise<string> 
     .filter((s): s is Skill => s !== undefined)
     .map((s) => blocoSkill(s));
   const skillsStr =
-    blocosSkill.length > 0 ? `\n\n--- Skills ativas (/skill <nome> para ativar):\n${blocosSkill.join("\n\n")}` : "";
+    blocosSkill.length > 0
+      ? `\n\n--- Skills ativas (/skill <nome> para ativar):\n${blocosSkill.join("\n\n")}`
+      : "";
 
   const extra = [
     "",
@@ -173,7 +177,9 @@ async function montarSystemPromptDesktop(session: ChatSession): Promise<string> 
     skillsStr,
   ].join("\n");
   const base = `${SYSTEM_PROMPT_V1}\n${extra}`;
-  return session.planoAtivo === undefined ? base : `${base}\n\n${blocoPlanoAtivo(session.planoAtivo)}`;
+  return session.planoAtivo === undefined
+    ? base
+    : `${base}\n\n${blocoPlanoAtivo(session.planoAtivo)}`;
 }
 
 async function escolherPastaProjeto(defaultPath?: string): Promise<string | undefined> {
@@ -307,14 +313,71 @@ function obterApiKey(): string | undefined {
   return undefined;
 }
 
-function criarProvider(): Provider {
-  const apiKey = obterApiKey();
-  if (apiKey === undefined || apiKey.trim().length === 0) {
-    throw new Error(
-      "DEEPSEEK_API_KEY não encontrada. Coloque em .codingpro/.env, variável de ambiente, ou ~/.config/codingpro/deepseek.env",
-    );
+/**
+ * Credenciais da conta do CodingPro Cloud, gravadas pelo `codingpro login`.
+ * O app desktop distribuído usa exatamente o mesmo arquivo que a CLI: quem já entrou
+ * pelo terminal não precisa entrar de novo, e quem só tem o app entra pela mesma tela
+ * do site. Sem conta e sem chave própria, o app não fala com IA nenhuma.
+ */
+function obterCredenciaisConta(): { token: string; apiUrl: string } | undefined {
+  const caminho = join(homedir(), ".codingpro", "credenciais.json");
+  if (!existsSync(caminho)) return undefined;
+  try {
+    const dados = JSON.parse(readFileSync(caminho, "utf8")) as {
+      token?: unknown;
+      apiUrl?: unknown;
+    };
+    if (typeof dados.token !== "string" || !dados.token.startsWith("cp_")) return undefined;
+    return {
+      apiUrl:
+        typeof dados.apiUrl === "string" ? dados.apiUrl : "https://codingpro-api.cursar.space",
+      token: dados.token,
+    };
+  } catch {
+    return undefined;
   }
-  return new DeepSeekProvider({ apiKey });
+}
+
+/** Estado de acesso do app, consultado pelo renderer para decidir se mostra a tela de login. */
+export type EstadoAcesso = {
+  readonly modo: "conta" | "chave-propria" | "sem-acesso";
+  readonly apiUrl?: string;
+  readonly prefixoToken?: string;
+};
+
+function obterEstadoAcesso(): EstadoAcesso {
+  const conta = obterCredenciaisConta();
+  if (conta) {
+    return { apiUrl: conta.apiUrl, modo: "conta", prefixoToken: conta.token.slice(0, 11) };
+  }
+  const apiKey = obterApiKey();
+  if (apiKey !== undefined && apiKey.trim().length > 0) return { modo: "chave-propria" };
+  return { modo: "sem-acesso" };
+}
+
+function criarProvider(role?: "main" | "fast"): Provider {
+  const papel = role === undefined ? {} : { role };
+
+  // Chave própria tem prioridade: quem já paga a própria chave não é empurrado
+  // para a cota da plataforma sem pedir.
+  const apiKey = obterApiKey();
+  if (apiKey !== undefined && apiKey.trim().length > 0) {
+    return new DeepSeekProvider({ apiKey, ...papel });
+  }
+
+  const conta = obterCredenciaisConta();
+  if (conta) {
+    return new DeepSeekProvider({
+      apiKey: conta.token,
+      baseUrl: `${conta.apiUrl}/v1`,
+      ...papel,
+    });
+  }
+
+  throw new Error(
+    "Nenhuma conta conectada. Crie sua conta em https://codingpro.cursar.space e rode " +
+      "`codingpro login`, ou defina DEEPSEEK_API_KEY para usar sua própria chave.",
+  );
 }
 
 function mensagemAssistente(content: string): ChatMessage {
@@ -390,7 +453,12 @@ function acumularCusto(session: ChatSession, cost: CostBreakdown | undefined): v
 function expandirPromptAgente(prompt: string): string | undefined {
   const msg = prompt.trim();
   const lower = msg.toLowerCase();
-  if (lower === "/goal" || lower.startsWith("/goal ") || lower === "/meta" || lower.startsWith("/meta ")) {
+  if (
+    lower === "/goal" ||
+    lower.startsWith("/goal ") ||
+    lower === "/meta" ||
+    lower.startsWith("/meta ")
+  ) {
     const obj = msg.replace(/^\/(goal|meta)\s*/iu, "").trim();
     return obj.length > 0
       ? `Objetivo principal: ${obj}. Crie um plano com a tool 'task', quebrando em subtarefas do tipo explorer/worker. Use as tools para executar cada subtarefa e reporte progresso.`
@@ -450,7 +518,11 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
     { alwaysAllow: MEMORY_TOOL_NAMES, mode: "ask" },
     approver,
   );
-  const gate = new ToolGate(registry, permissionController, hooks.length > 0 ? criarHookRunner(hooks) : undefined);
+  const gate = new ToolGate(
+    registry,
+    permissionController,
+    hooks.length > 0 ? criarHookRunner(hooks) : undefined,
+  );
   const provider = criarProvider();
   const sessionStore = await SessionStore.create(join(normalized, ".codingpro", "sessions"));
   const checkpoints = await CheckpointStore.create(
@@ -601,7 +673,9 @@ function execCommand(
 }
 
 /** Extrai um checklist best-effort da seção "## Passos" do plano, para o PlanTracker da UI. */
-function extrairPassosPlano(texto: string): Array<{ id: string; label: string; status: "pending" }> {
+function extrairPassosPlano(
+  texto: string,
+): Array<{ id: string; label: string; status: "pending" }> {
   const linhas = texto.replaceAll("\r\n", "\n").split("\n");
   const inicio = linhas.findIndex((l) => /^##\s*Passos/iu.test(l.trim()));
   if (inicio === -1) return [];
@@ -611,7 +685,11 @@ function extrairPassosPlano(texto: string): Array<{ id: string; label: string; s
     if (/^##\s/u.test(linha)) break;
     const m = /^(?:\d+[.)]\s*|[-*]\s*(?:\[[ xX]\]\s*)?)(.+)$/u.exec(linha);
     if (m?.[1] && m[1].trim().length > 0) {
-      passos.push({ id: `plano-${passos.length}`, label: m[1].trim().slice(0, 120), status: "pending" });
+      passos.push({
+        id: `plano-${passos.length}`,
+        label: m[1].trim().slice(0, 120),
+        status: "pending",
+      });
     }
     if (passos.length >= 20) break;
   }
@@ -684,14 +762,21 @@ async function iniciarComandoPlano(
       );
       return { handled: true, reply: linhasProgresso.join("\n") };
     }
-    linhasProgresso.push("· arquiteto pediu perguntas, mas o formato veio inválido — planejando direto…");
+    linhasProgresso.push(
+      "· arquiteto pediu perguntas, mas o formato veio inválido — planejando direto…",
+    );
   } else {
     linhasProgresso.push("· sem perguntas extras — montando o plano…");
   }
 
   linhasProgresso.push("· arquiteto redigindo o plano…");
-  const fase2 = await session.subagentes.executar("architect", promptFasePlano(arg, respostas), signal);
-  const planoTexto = fase2.texto.trim().length > 0 ? fase2.texto.trim() : "(o arquiteto não produziu plano)";
+  const fase2 = await session.subagentes.executar(
+    "architect",
+    promptFasePlano(arg, respostas),
+    signal,
+  );
+  const planoTexto =
+    fase2.texto.trim().length > 0 ? fase2.texto.trim() : "(o arquiteto não produziu plano)";
   return salvarEIniciarPlano(session, arg, planoTexto, respostas, linhasProgresso);
 }
 
@@ -733,8 +818,13 @@ async function responderPerguntaPlano(
     return { handled: true, reply: "· subagentes indisponíveis nesta sessão" };
   }
   linhasProgresso.push("· arquiteto redigindo o plano…");
-  const fase2 = await session.subagentes.executar("architect", promptFasePlano(objetivo, respostas), signal);
-  const planoTexto = fase2.texto.trim().length > 0 ? fase2.texto.trim() : "(o arquiteto não produziu plano)";
+  const fase2 = await session.subagentes.executar(
+    "architect",
+    promptFasePlano(objetivo, respostas),
+    signal,
+  );
+  const planoTexto =
+    fase2.texto.trim().length > 0 ? fase2.texto.trim() : "(o arquiteto não produziu plano)";
   return salvarEIniciarPlano(session, objetivo, planoTexto, respostas, linhasProgresso);
 }
 
@@ -745,7 +835,10 @@ async function executarReviewDesktop(
   signal?: AbortSignal,
 ): Promise<{ handled: true; reply: string }> {
   const alvo = msg.replace(/^\/review\s*/iu, "").trim();
-  const { diff, erro } = await obterDiff(session.workspace.root, alvo.length > 0 ? alvo : undefined);
+  const { diff, erro } = await obterDiff(
+    session.workspace.root,
+    alvo.length > 0 ? alvo : undefined,
+  );
   if (erro !== undefined) {
     return { handled: true, reply: `· ${erro}` };
   }
@@ -768,7 +861,12 @@ async function handleLocalCommand(
 
   // /plan em Q&A: qualquer mensagem enquanto pendente é tratada como resposta à pergunta atual.
   if (session.planoPendente !== undefined) {
-    if (lower === "/plan clear" || lower === "/plano limpar" || lower === "/plan" || lower === "/plano") {
+    if (
+      lower === "/plan clear" ||
+      lower === "/plano limpar" ||
+      lower === "/plan" ||
+      lower === "/plano"
+    ) {
       session.planoPendente = undefined;
       return { handled: true, reply: "· plano cancelado" };
     }
@@ -889,12 +987,7 @@ async function handleLocalCommand(
     }
     try {
       const info = await detectarProjeto(session.workspace);
-      await writeFileWithin(
-        session.workspace,
-        alvo,
-        gerarCodingproMd(info),
-        WRITE_FILE_MAX_BYTES,
-      );
+      await writeFileWithin(session.workspace, alvo, gerarCodingproMd(info), WRITE_FILE_MAX_BYTES);
       return { handled: true, reply: `· CODINGPRO.md gerado (${resumoProjeto(info)})` };
     } catch (e) {
       return {
@@ -1084,10 +1177,79 @@ app.whenReady().then(() => {
       cwd: selectedWorkspacePath,
       platform: process.platform,
       running: runInFlight,
-      hasApiKey: obterApiKey() !== undefined,
+      acesso: obterEstadoAcesso(),
+      hasApiKey: obterEstadoAcesso().modo !== "sem-acesso",
       isCodingProMonorepo: ehMonorepoCodingPro(selectedWorkspacePath),
       ...(projectSummary !== undefined ? { projectSummary } : {}),
     };
+  });
+
+  ipcMain.handle("codingpro:estado-acesso", async () => obterEstadoAcesso());
+
+  /**
+   * Login pela própria janela do app: pede o código ao servidor, abre o navegador na
+   * página de autorização e fica consultando até o usuário confirmar. Mesmo device flow
+   * da CLI, e o token cai no mesmo `~/.codingpro/credenciais.json`.
+   */
+  ipcMain.handle("codingpro:conta-login", async (_, apiUrlBruta?: string) => {
+    const apiUrl = (apiUrlBruta?.trim() || "https://codingpro-api.cursar.space").replace(
+      /\/+$/,
+      "",
+    );
+    const inicio = await fetch(`${apiUrl}/api/device/iniciar`, {
+      body: "{}",
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+    if (!inicio.ok) throw new Error("Não consegui iniciar o login. Tente de novo.");
+    const dados = (await inicio.json()) as {
+      codigoDispositivo: string;
+      codigoUsuario: string;
+      urlVerificacao: string;
+      intervaloSegundos: number;
+    };
+
+    await shell.openExternal(dados.urlVerificacao).catch(() => {});
+    return {
+      codigoDispositivo: dados.codigoDispositivo,
+      codigoUsuario: dados.codigoUsuario,
+      intervaloSegundos: dados.intervaloSegundos,
+      urlVerificacao: dados.urlVerificacao,
+    };
+  });
+
+  ipcMain.handle(
+    "codingpro:conta-consultar",
+    async (_, apiUrlBruta: string, codigoDispositivo: string) => {
+      const apiUrl = apiUrlBruta.replace(/\/+$/, "");
+      const resposta = await fetch(`${apiUrl}/api/device/token`, {
+        body: JSON.stringify({ codigoDispositivo }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      if (resposta.status === 410) return { estado: "expirado" as const };
+      if (resposta.status === 202) return { estado: "pendente" as const };
+      if (!resposta.ok) return { estado: "pendente" as const };
+
+      const corpo = (await resposta.json()) as { token?: unknown };
+      if (typeof corpo.token !== "string") return { estado: "pendente" as const };
+
+      const dir = join(homedir(), ".codingpro");
+      mkdirSync(dir, { mode: 0o700, recursive: true });
+      writeFileSync(
+        join(dir, "credenciais.json"),
+        `${JSON.stringify({ apiUrl, criadoEm: new Date().toISOString(), token: corpo.token }, null, 2)}\n`,
+        { mode: 0o600 },
+      );
+      return { estado: "pronto" as const };
+    },
+  );
+
+  ipcMain.handle("codingpro:conta-logout", async () => {
+    const caminho = join(homedir(), ".codingpro", "credenciais.json");
+    if (!existsSync(caminho)) return false;
+    rmSync(caminho, { force: true });
+    return true;
   });
 
   ipcMain.handle("codingpro:choose-workspace-folder", async () => {
@@ -1111,27 +1273,27 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle("codingpro:new-session", async () => {
-      try {
-        const session = await novaSessaoVazia();
-        return { success: true, sessionId: session.sessionId };
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return { success: false, error: msg };
-      }
-    });
+    try {
+      const session = await novaSessaoVazia();
+      return { success: true, sessionId: session.sessionId };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, error: msg };
+    }
+  });
 
-    ipcMain.handle("codingpro:get-session-cost", async () => {
-      return snapshotCusto(activeSession);
-    });
+  ipcMain.handle("codingpro:get-session-cost", async () => {
+    return snapshotCusto(activeSession);
+  });
 
-    ipcMain.handle("codingpro:list-slash-commands", async () => {
-      return COMANDOS_CHAT.map((c) => ({
-        nome: c.nome,
-        aliases: [...c.aliases],
-        descricao: c.descricao,
-        aceitaArgs: c.aceitaArgs,
-      }));
-    });
+  ipcMain.handle("codingpro:list-slash-commands", async () => {
+    return COMANDOS_CHAT.map((c) => ({
+      nome: c.nome,
+      aliases: [...c.aliases],
+      descricao: c.descricao,
+      aceitaArgs: c.aceitaArgs,
+    }));
+  });
 
   ipcMain.handle("codingpro:cancel-run", async () => {
     if (activeAbort) {
@@ -1140,58 +1302,60 @@ app.whenReady().then(() => {
     rejectPendingPermissions("deny");
     runInFlight = false;
     return { success: true };
-      });
+  });
 
-      ipcMain.on("codingpro:permission-response", (_, response: UiPermissionResponse) => {
-      const resolver = pendingPermissions.get(response.requestId);
-      if (!resolver) return;
-      pendingPermissions.delete(response.requestId);
-      const action = response.decision.action;
-      const approval: Approval =
-        action === "always" ? "approve-always" : action === "allow" ? "approve-once" : "deny";
-      resolver(approval);
-    });
+  ipcMain.on("codingpro:permission-response", (_, response: UiPermissionResponse) => {
+    const resolver = pendingPermissions.get(response.requestId);
+    if (!resolver) return;
+    pendingPermissions.delete(response.requestId);
+    const action = response.decision.action;
+    const approval: Approval =
+      action === "always" ? "approve-always" : action === "allow" ? "approve-once" : "deny";
+    resolver(approval);
+  });
 
-    ipcMain.handle("codingpro:set-auto-approve", async (_, enabled: boolean) => {
-        autoApprove = enabled;
-        return { success: true, autoApprove };
-      });
+  ipcMain.handle("codingpro:set-auto-approve", async (_, enabled: boolean) => {
+    autoApprove = enabled;
+    return { success: true, autoApprove };
+  });
 
-      ipcMain.handle("codingpro:get-auto-approve", async () => {
-        return autoApprove;
-      });
+  ipcMain.handle("codingpro:get-auto-approve", async () => {
+    return autoApprove;
+  });
 
   ipcMain.handle("codingpro:list-sessions", async () => {
-      try {
-        const cwd = (activeSession?.cwd) ?? selectedWorkspacePath;
-        const store = await SessionStore.create(join(cwd, ".codingpro", "sessions"));
-        const ids = await store.list();
-        const ordered = [...ids].reverse();
-        return await Promise.all(
-          ordered.map(async (id: string) => {
-            let preview = `Sessão ${id.slice(0, 19)}`;
-            try {
-              const msgs = await store.load(id);
-              const firstUser = msgs.find((m) => m.role === "user") as { role: "user"; content: string } | undefined;
-                            if (firstUser && firstUser.content.length > 0) {
-                              preview = firstUser.content.slice(0, 60).replace(/\n/g, " ");
-                              if (firstUser.content.length > 60) preview += "\u2026";
-                            }
-            } catch {
-              // usa timestamp
+    try {
+      const cwd = activeSession?.cwd ?? selectedWorkspacePath;
+      const store = await SessionStore.create(join(cwd, ".codingpro", "sessions"));
+      const ids = await store.list();
+      const ordered = [...ids].reverse();
+      return await Promise.all(
+        ordered.map(async (id: string) => {
+          let preview = `Sessão ${id.slice(0, 19)}`;
+          try {
+            const msgs = await store.load(id);
+            const firstUser = msgs.find((m) => m.role === "user") as
+              | { role: "user"; content: string }
+              | undefined;
+            if (firstUser && firstUser.content.length > 0) {
+              preview = firstUser.content.slice(0, 60).replace(/\n/g, " ");
+              if (firstUser.content.length > 60) preview += "\u2026";
             }
-            return {
-              id,
-              preview,
-              updatedAt: id.slice(0, 19).replace("T", " "),
-              isRunning: activeSession !== null && id === activeSession.sessionId && runInFlight,
-            };
-          }),
-        );
-      } catch {
-        return [];
-      }
-    });
+          } catch {
+            // usa timestamp
+          }
+          return {
+            id,
+            preview,
+            updatedAt: id.slice(0, 19).replace("T", " "),
+            isRunning: activeSession !== null && id === activeSession.sessionId && runInFlight,
+          };
+        }),
+      );
+    } catch {
+      return [];
+    }
+  });
 
   ipcMain.handle("codingpro:load-session", async (_, sessionId: string) => {
     try {
@@ -1212,7 +1376,7 @@ app.whenReady().then(() => {
     "codingpro:get-diff-preview",
     async (_, args: { targetFile: string; newContent: string }) => {
       try {
-        const cwd = (activeSession?.cwd) ?? selectedWorkspacePath;
+        const cwd = activeSession?.cwd ?? selectedWorkspacePath;
         const workspace = await Workspace.create(cwd);
         return await resolverPreviaDeEscrita(workspace, "write_file", {
           path: args.targetFile,
@@ -1234,7 +1398,7 @@ app.whenReady().then(() => {
     }
     const isWin = process.platform === "win32";
     const shellOption = isWin ? process.env.COMSPEC || "cmd.exe" : "/bin/sh";
-    const cwd = (activeSession?.cwd) ?? selectedWorkspacePath;
+    const cwd = activeSession?.cwd ?? selectedWorkspacePath;
     return execCommand(command, {
       cwd,
       shell: shellOption,
@@ -1259,284 +1423,305 @@ app.whenReady().then(() => {
       }
 
       runInFlight = true;
-            // Garante que nenhum abort anterior contamine esta execução
-            if (activeAbort) { try { activeAbort.abort(); } catch { /* ok */ } }
-                  const abort = new AbortController();
-                  activeAbort = abort;
-                  _runStartMs = Date.now();
-                              _tokenCount = 0;
-                              _stepCount = 0;
-                              _thinkingMs = 0;
+      // Garante que nenhum abort anterior contamine esta execução
+      if (activeAbort) {
+        try {
+          activeAbort.abort();
+        } catch {
+          /* ok */
+        }
+      }
+      const abort = new AbortController();
+      activeAbort = abort;
+      _runStartMs = Date.now();
+      _tokenCount = 0;
+      _stepCount = 0;
+      _thinkingMs = 0;
 
-            try {
-                          // /abrir antes de criar sessão — troca a raiz como `cd` na CLI Linux
-                    const aberto = await tentarAbrirWorkspace(prompt);
-                    if (aberto !== undefined) {
-                      selectedWorkspacePath = aberto.cwd;
-                      const sessionOpen = await obterOuCriarSessao(aberto.cwd);
-                      sessionOpen.transcript.push(mensagemUsuario(prompt), mensagemAssistente(aberto.reply));
-                      try {
-                        await sessionOpen.sessionStore.save(sessionOpen.sessionId, sessionOpen.transcript);
-                      } catch {
-                        // best-effort
-                      }
-                      sendCoreEvent({ type: "session-updated", messages: sessionOpen.transcript });
-                      return {
-                        success: true,
-                        local: true,
-                        reply: aberto.reply,
-                        cwd: aberto.cwd,
-                      };
-                    }
+      try {
+        // /abrir antes de criar sessão — troca a raiz como `cd` na CLI Linux
+        const aberto = await tentarAbrirWorkspace(prompt);
+        if (aberto !== undefined) {
+          selectedWorkspacePath = aberto.cwd;
+          const sessionOpen = await obterOuCriarSessao(aberto.cwd);
+          sessionOpen.transcript.push(mensagemUsuario(prompt), mensagemAssistente(aberto.reply));
+          try {
+            await sessionOpen.sessionStore.save(sessionOpen.sessionId, sessionOpen.transcript);
+          } catch {
+            // best-effort
+          }
+          sendCoreEvent({ type: "session-updated", messages: sessionOpen.transcript });
+          return {
+            success: true,
+            local: true,
+            reply: aberto.reply,
+            cwd: aberto.cwd,
+          };
+        }
 
-                    const targetCwd2 =
-                      args.workspacePath && args.workspacePath.trim() !== ""
-                        ? args.workspacePath.trim()
-                        : selectedWorkspacePath;
+        const targetCwd2 =
+          args.workspacePath && args.workspacePath.trim() !== ""
+            ? args.workspacePath.trim()
+            : selectedWorkspacePath;
 
-                    const session = await obterOuCriarSessao(targetCwd2);
+        const session = await obterOuCriarSessao(targetCwd2);
 
-                    // SANITIZA o transcript ANTES de cada execução, evitando invalid-request
-                    // causado por mensagens sujas de turnos anteriores no Windows
-                    try {
-                      session.transcript = sanitizeMessagesForProvider(session.transcript);
-                    } catch {
-                      // sanitização falhou — segue com o transcript original
-                    }
+        // SANITIZA o transcript ANTES de cada execução, evitando invalid-request
+        // causado por mensagens sujas de turnos anteriores no Windows
+        try {
+          session.transcript = sanitizeMessagesForProvider(session.transcript);
+        } catch {
+          // sanitização falhou — segue com o transcript original
+        }
 
-              // Comandos locais (não consomem LLM)
-                            const local = await handleLocalCommand(session, prompt, abort.signal);
-                            if (local.handled) {
-                              session.transcript.push(mensagemUsuario(prompt), mensagemAssistente(local.reply));
-                              try {
-                                await session.sessionStore.save(session.sessionId, session.transcript);
-                              } catch {
-                                // persistência best-effort
-                              }
-                              sendCoreEvent({ type: "session-updated", messages: session.transcript });
-                              return {
-                                success: true,
-                                local: true,
-                                reply: local.reply,
-                                cwd: session.cwd,
-                                cost: snapshotCusto(session),
-                              };
-                            }
+        // Comandos locais (não consomem LLM)
+        const local = await handleLocalCommand(session, prompt, abort.signal);
+        if (local.handled) {
+          session.transcript.push(mensagemUsuario(prompt), mensagemAssistente(local.reply));
+          try {
+            await session.sessionStore.save(session.sessionId, session.transcript);
+          } catch {
+            // persistência best-effort
+          }
+          sendCoreEvent({ type: "session-updated", messages: session.transcript });
+          return {
+            success: true,
+            local: true,
+            reply: local.reply,
+            cwd: session.cwd,
+            cost: snapshotCusto(session),
+          };
+        }
 
-                            const promptAgente = expandirPromptAgente(prompt) ?? prompt;
-                            session.transcript.push(mensagemUsuario(promptAgente));
-                            session.checkpoints.begin(promptAgente.slice(0, 80));
+        const promptAgente = expandirPromptAgente(prompt) ?? prompt;
+        session.transcript.push(mensagemUsuario(promptAgente));
+        session.checkpoints.begin(promptAgente.slice(0, 80));
 
-                            // Auto-compact: se contexto > 75% do orçamento, compacta
-                            const estContexto = snapshotCusto(session);
-                            if (estContexto && estContexto.contextTokens > CONTEXT_BUDGET * 0.75) {
-                              try {
-                                const compacted = compactMessages(session.transcript, { maxTokens: CONTEXT_BUDGET });
-                                session.transcript = compacted.messages;
-                              } catch {
-                                // compactação falhou — segue sem
-                              }
-                            }
+        // Auto-compact: se contexto > 75% do orçamento, compacta
+        const estContexto = snapshotCusto(session);
+        if (estContexto && estContexto.contextTokens > CONTEXT_BUDGET * 0.75) {
+          try {
+            const compacted = compactMessages(session.transcript, { maxTokens: CONTEXT_BUDGET });
+            session.transcript = compacted.messages;
+          } catch {
+            // compactação falhou — segue sem
+          }
+        }
 
-                            const systemPrompt = await montarSystemPromptDesktop(session);
+        const systemPrompt = await montarSystemPromptDesktop(session);
 
-                            // Auto-effort: estima contexto, decide Flash/Pro (paridade com o chat da CLI).
-                            const entradaEstimativa = [
-                              { content: systemPrompt, role: "system" as const },
-                              ...session.transcript,
-                            ];
-                            const tokensContexto = Math.round(JSON.stringify(entradaEstimativa).length / 2);
-                            prepararAutoEffort(
-                              session.autoEffort,
-                              tokensContexto,
-                              Array.from(session.registry.definitions(), (t) => t.name),
-                            );
-                            const papel = resolverAutoEffort(session.autoEffort);
-                            const modeloNome = papel === "fast" ? "DeepSeek V4 Flash" : "DeepSeek V4 Pro";
-                            let providerTurno: Provider = session.provider;
-                            if (session.provider.id === "deepseek" && papel === "fast") {
-                              const apiKey = obterApiKey();
-                              if (apiKey !== undefined) {
-                                providerTurno = new DeepSeekProvider({ apiKey, role: "fast" });
-                              }
-                            }
-                            sendCoreEvent({ type: "model-info", modelName: modeloNome, effort: papel });
+        // Auto-effort: estima contexto, decide Flash/Pro (paridade com o chat da CLI).
+        const entradaEstimativa = [
+          { content: systemPrompt, role: "system" as const },
+          ...session.transcript,
+        ];
+        const tokensContexto = Math.round(JSON.stringify(entradaEstimativa).length / 2);
+        prepararAutoEffort(
+          session.autoEffort,
+          tokensContexto,
+          Array.from(session.registry.definitions(), (t) => t.name),
+        );
+        const papel = resolverAutoEffort(session.autoEffort);
+        const modeloNome = papel === "fast" ? "DeepSeek V4 Flash" : "DeepSeek V4 Pro";
+        let providerTurno: Provider = session.provider;
+        if (session.provider.id === "deepseek" && papel === "fast") {
+          // `criarProvider` já escolhe entre chave própria e conta cloud;
+          // se nenhuma existir, mantém o provider do turno em vez de estourar.
+          try {
+            providerTurno = criarProvider("fast");
+          } catch {
+            providerTurno = session.provider;
+          }
+        }
+        sendCoreEvent({ type: "model-info", modelName: modeloNome, effort: papel });
 
-                            const arquivosEfeito: string[] = [];
-                            const onAgentEvent = (agentEvent: AgentEvent): void => {
-                              if (agentEvent.type === "step" && agentEvent.usage) {
-                                _tokenCount = (agentEvent.usage.inputTokens || 0) + (agentEvent.usage.outputTokens || 0);
-                                _stepCount = agentEvent.step;
-                              }
-                              if (agentEvent.type === "reasoning-delta") {
-                                _thinkingMs += Math.round(agentEvent.text.length * 3);
-                              }
-                              if (agentEvent.type === "tool-call") {
-                                const path = (agentEvent.call.input as { path?: string }).path;
-                                if (
-                                  path !== undefined &&
-                                  (agentEvent.call.name === "write_file" || agentEvent.call.name === "edit_file")
-                                ) {
-                                  arquivosEfeito.push(path);
-                                }
-                              }
-                              sendCoreEvent({ type: "agent-event", event: agentEvent });
-                            };
+        const arquivosEfeito: string[] = [];
+        const onAgentEvent = (agentEvent: AgentEvent): void => {
+          if (agentEvent.type === "step" && agentEvent.usage) {
+            _tokenCount =
+              (agentEvent.usage.inputTokens || 0) + (agentEvent.usage.outputTokens || 0);
+            _stepCount = agentEvent.step;
+          }
+          if (agentEvent.type === "reasoning-delta") {
+            _thinkingMs += Math.round(agentEvent.text.length * 3);
+          }
+          if (agentEvent.type === "tool-call") {
+            const path = (agentEvent.call.input as { path?: string }).path;
+            if (
+              path !== undefined &&
+              (agentEvent.call.name === "write_file" || agentEvent.call.name === "edit_file")
+            ) {
+              arquivosEfeito.push(path);
+            }
+          }
+          sendCoreEvent({ type: "agent-event", event: agentEvent });
+        };
 
-                            const agentResult = await runAgent({
-                              context: {
-                                workspace: session.workspace,
-                                readTracker: session.readTracker,
-                                checkpoints: session.checkpoints,
-                                memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
-                                subagentes: session.subagentes!,
-                              },
-                              gate: session.gate,
-                              messages: session.transcript,
-                              provider: providerTurno,
-                              tools: session.registry.definitions(),
-                              systemPrompt,
-                              contextBudget: CONTEXT_BUDGET,
-                              onEvent: onAgentEvent,
-                            });
+        const agentResult = await runAgent({
+          context: {
+            workspace: session.workspace,
+            readTracker: session.readTracker,
+            checkpoints: session.checkpoints,
+            memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
+            subagentes: session.subagentes!,
+          },
+          gate: session.gate,
+          messages: session.transcript,
+          provider: providerTurno,
+          tools: session.registry.definitions(),
+          systemPrompt,
+          contextBudget: CONTEXT_BUDGET,
+          onEvent: onAgentEvent,
+        });
 
-                            let msgs = agentResult.messages;
-                            session.transcript = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
-                            acumularCusto(session, agentResult.cost);
-                            _stepCount = agentResult.steps;
+        let msgs = agentResult.messages;
+        session.transcript = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
+        acumularCusto(session, agentResult.cost);
+        _stepCount = agentResult.steps;
 
-                            // Auto-effort: erro de tool no turno escala o próximo pra Pro.
-                            const houveErroDeTool = msgs.some(
-                              (m) => m.role === "tool" && m.result.type === "error-text",
-                            );
-                            atualizarAutoEffort(session.autoEffort, houveErroDeTool);
+        // Auto-effort: erro de tool no turno escala o próximo pra Pro.
+        const houveErroDeTool = msgs.some(
+          (m) => m.role === "tool" && m.result.type === "error-text",
+        );
+        atualizarAutoEffort(session.autoEffort, houveErroDeTool);
 
-                            // Qualidade: biome --write (auto-fix) + check; residual gera re-turno da IA.
-                            const qaEnv = lerOpcoesQualidadeEnv();
-                            let arquivosQa = [...arquivosEfeito];
-                            let resultadoQa = await corrigirQualidade(session.workspace.root, arquivosQa, {
-                              progresso: (t: string) =>
-                                sendCoreEvent({ type: "agent-event", event: { type: "notice", text: t.trim() } }),
-                            }, { autoFix: qaEnv.autoFix });
+        // Qualidade: biome --write (auto-fix) + check; residual gera re-turno da IA.
+        const qaEnv = lerOpcoesQualidadeEnv();
+        let arquivosQa = [...arquivosEfeito];
+        let resultadoQa = await corrigirQualidade(
+          session.workspace.root,
+          arquivosQa,
+          {
+            progresso: (t: string) =>
+              sendCoreEvent({ type: "agent-event", event: { type: "notice", text: t.trim() } }),
+          },
+          { autoFix: qaEnv.autoFix },
+        );
 
-                            let reparos = 0;
-                            while (
-                              !resultadoQa.limpo &&
-                              !resultadoQa.ignorado &&
-                              resultadoQa.diagnostico.length > 0 &&
-                              reparos < qaEnv.maxRepairTurns
-                            ) {
-                              reparos += 1;
-                              const promptReparo = promptReparoQualidade(resultadoQa.diagnostico, resultadoQa.arquivos);
-                              const systemReparo = await montarSystemPromptDesktop(session);
-                              const entradaReparo: ChatMessage[] = [
-                                { content: systemReparo, role: "system" },
-                                ...(msgs[0]?.role === "system" ? msgs.slice(1) : msgs),
-                                { content: promptReparo, role: "user" },
-                              ];
-                              const arquivosReparo: string[] = [];
-                              const repairResult = await runAgent({
-                                context: {
-                                  workspace: session.workspace,
-                                  readTracker: session.readTracker,
-                                  checkpoints: session.checkpoints,
-                                  memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
-                                  subagentes: session.subagentes!,
-                                },
-                                gate: session.gate,
-                                messages: entradaReparo,
-                                provider: providerTurno,
-                                tools: session.registry.definitions(),
-                                contextBudget: CONTEXT_BUDGET,
-                                onEvent: (agentEvent: AgentEvent) => {
-                                  if (agentEvent.type === "tool-call") {
-                                    const path = (agentEvent.call.input as { path?: string }).path;
-                                    if (
-                                      path !== undefined &&
-                                      (agentEvent.call.name === "write_file" || agentEvent.call.name === "edit_file")
-                                    ) {
-                                      arquivosReparo.push(path);
-                                    }
-                                  }
-                                  sendCoreEvent({ type: "agent-event", event: agentEvent });
-                                },
-                              });
-                              msgs = repairResult.messages;
-                              session.transcript = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
-                              acumularCusto(session, repairResult.cost);
-                              arquivosQa = [...arquivosQa, ...arquivosReparo];
-                              resultadoQa = await corrigirQualidade(session.workspace.root, arquivosQa, {
-                                progresso: (t: string) =>
-                                  sendCoreEvent({ type: "agent-event", event: { type: "notice", text: t.trim() } }),
-                              }, { autoFix: qaEnv.autoFix });
-                            }
+        let reparos = 0;
+        while (
+          !resultadoQa.limpo &&
+          !resultadoQa.ignorado &&
+          resultadoQa.diagnostico.length > 0 &&
+          reparos < qaEnv.maxRepairTurns
+        ) {
+          reparos += 1;
+          const promptReparo = promptReparoQualidade(resultadoQa.diagnostico, resultadoQa.arquivos);
+          const systemReparo = await montarSystemPromptDesktop(session);
+          const entradaReparo: ChatMessage[] = [
+            { content: systemReparo, role: "system" },
+            ...(msgs[0]?.role === "system" ? msgs.slice(1) : msgs),
+            { content: promptReparo, role: "user" },
+          ];
+          const arquivosReparo: string[] = [];
+          const repairResult = await runAgent({
+            context: {
+              workspace: session.workspace,
+              readTracker: session.readTracker,
+              checkpoints: session.checkpoints,
+              memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
+              subagentes: session.subagentes!,
+            },
+            gate: session.gate,
+            messages: entradaReparo,
+            provider: providerTurno,
+            tools: session.registry.definitions(),
+            contextBudget: CONTEXT_BUDGET,
+            onEvent: (agentEvent: AgentEvent) => {
+              if (agentEvent.type === "tool-call") {
+                const path = (agentEvent.call.input as { path?: string }).path;
+                if (
+                  path !== undefined &&
+                  (agentEvent.call.name === "write_file" || agentEvent.call.name === "edit_file")
+                ) {
+                  arquivosReparo.push(path);
+                }
+              }
+              sendCoreEvent({ type: "agent-event", event: agentEvent });
+            },
+          });
+          msgs = repairResult.messages;
+          session.transcript = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
+          acumularCusto(session, repairResult.cost);
+          arquivosQa = [...arquivosQa, ...arquivosReparo];
+          resultadoQa = await corrigirQualidade(
+            session.workspace.root,
+            arquivosQa,
+            {
+              progresso: (t: string) =>
+                sendCoreEvent({ type: "agent-event", event: { type: "notice", text: t.trim() } }),
+            },
+            { autoFix: qaEnv.autoFix },
+          );
+        }
 
-                      const checkpoint = await session.checkpoints.commit();
-                      if (checkpoint !== undefined) {
-                        sendCoreEvent({
-                          type: "agent-event",
-                          event: {
-                            type: "text-delta",
-                            text: `\n\n_checkpoint #${checkpoint.seq} salvo — /desfazer reverte_`,
-                          },
-                        });
-                      }
+        const checkpoint = await session.checkpoints.commit();
+        if (checkpoint !== undefined) {
+          sendCoreEvent({
+            type: "agent-event",
+            event: {
+              type: "text-delta",
+              text: `\n\n_checkpoint #${checkpoint.seq} salvo — /desfazer reverte_`,
+            },
+          });
+        }
 
-                      try {
-                        await session.sessionStore.save(session.sessionId, session.transcript);
-                      } catch {
-                        // best-effort
-                      }
+        try {
+          await session.sessionStore.save(session.sessionId, session.transcript);
+        } catch {
+          // best-effort
+        }
 
-                      sendCoreEvent({
-                        type: "session-updated",
-                        messages: session.transcript,
-                      });
+        sendCoreEvent({
+          type: "session-updated",
+          messages: session.transcript,
+        });
 
-                      return {
-                        success: true,
-                        sessionId: session.sessionId,
-                        cost: snapshotCusto(session),
-                      };
+        return {
+          success: true,
+          sessionId: session.sessionId,
+          cost: snapshotCusto(session),
+        };
       } catch (err: unknown) {
-        console.error("[codingpro] agent error:", err instanceof Error ? `${err.name}: ${err.message}` : String(err));
+        console.error(
+          "[codingpro] agent error:",
+          err instanceof Error ? `${err.name}: ${err.message}` : String(err),
+        );
         const isAbort =
           (err instanceof Error && err.name === "AbortError") ||
           (typeof DOMException !== "undefined" &&
             err instanceof DOMException &&
             err.name === "AbortError");
         const msg = isAbort
-                  ? "Execução cancelada."
-                  : err !== null &&
-                      typeof err === "object" &&
-                      "safeMessage" in err &&
-                      typeof (err as { safeMessage: unknown }).safeMessage === "string"
-                    ? (err as { safeMessage: string }).safeMessage
-                    : err instanceof Error
-                      ? err.message
-                      : String(err);
+          ? "Execução cancelada."
+          : err !== null &&
+              typeof err === "object" &&
+              "safeMessage" in err &&
+              typeof (err as { safeMessage: unknown }).safeMessage === "string"
+            ? (err as { safeMessage: string }).safeMessage
+            : err instanceof Error
+              ? err.message
+              : String(err);
 
-                // reverte checkpoint (rollback no erro)
-                try {
-                  await activeSession?.checkpoints.commit();
-                } catch {
-                  // ignore
-                }
+        // reverte checkpoint (rollback no erro)
+        try {
+          await activeSession?.checkpoints.commit();
+        } catch {
+          // ignore
+        }
 
-                // limpa transcript sujo para o próximo turno não herdar invalid-request
-                                if (activeSession !== null) {
-                                                                  activeSession.transcript = sanitizeMessagesForProvider(
-                                                                    activeSession.transcript,
-                                  );
-                                }
+        // limpa transcript sujo para o próximo turno não herdar invalid-request
+        if (activeSession !== null) {
+          activeSession.transcript = sanitizeMessagesForProvider(activeSession.transcript);
+        }
 
-                rejectPendingPermissions("deny");
-                sendCoreEvent({
-                  type: "error",
-                  code: isAbort ? "CANCELLED" : "AGENT_ERROR",
-                  message: msg,
-                });
-                return { success: false, error: msg };
+        rejectPendingPermissions("deny");
+        sendCoreEvent({
+          type: "error",
+          code: isAbort ? "CANCELLED" : "AGENT_ERROR",
+          message: msg,
+        });
+        return { success: false, error: msg };
       } finally {
         runInFlight = false;
         if (activeAbort === abort) {

@@ -1,3 +1,4 @@
+import { homedir } from "node:os";
 import { CoreError } from "@codingpro/core";
 import { type Provider, ProviderError } from "@codingpro/llm";
 import { Command, CommanderError, type Help, Option } from "commander";
@@ -5,6 +6,13 @@ import packageJson from "../package.json" with { type: "json" };
 import { executarAgenteHeadless } from "./agent-runtime.js";
 import { type ChatIo, executarChat } from "./chat-runtime.js";
 import { ConfigError, type ProviderOverrides } from "./config.js";
+import {
+  API_PADRAO,
+  apagarCredenciais,
+  fazerLogin,
+  lerCredenciais,
+  verificarToken,
+} from "./conta.js";
 import { rodarDoctor } from "./doctor.js";
 import { executarPromptHeadless } from "./headless.js";
 import { carregarHooks } from "./hooks-runtime.js";
@@ -35,6 +43,10 @@ export interface CliServices {
   readonly petHabilitado?: boolean;
   /** Caminho do estado do pet; ausente usa o padrão. */
   readonly petArquivo?: string;
+  /** Diretório pessoal; ausente usa `os.homedir()`. Injetável para teste de `login`. */
+  readonly homeDirectory?: string;
+  /** `fetch` usado pelos comandos de conta; injetável para teste. */
+  readonly buscar?: typeof globalThis.fetch;
 }
 
 class CliUsageError extends Error {
@@ -256,7 +268,60 @@ export function criarPrograma(
 
     await executarPromptHeadless(prompt, provider, io.stdout, services.signal);
   });
+
+  registrarComandosDeConta(programa, io, services);
   return programa;
+}
+
+/**
+ * `login` / `logout` / `conta`: acesso à plataforma web. Ficam como subcomandos —
+ * são ações completas, não modificadores do fluxo principal.
+ */
+function registrarComandosDeConta(programa: Command, io: CliIo, services: CliServices): void {
+  const home = services.homeDirectory ?? homedir();
+  const buscar = services.buscar ?? globalThis.fetch;
+
+  programa
+    .command("login")
+    .description("conecta esta máquina à sua conta do CodingPro (sem chave DeepSeek própria)")
+    .option("--api <url>", "URL da API da plataforma", API_PADRAO)
+    .action(async (opcoes: { api: string }) => {
+      await fazerLogin({
+        apiUrl: opcoes.api.replace(/\/+$/u, ""),
+        buscar,
+        escrever: io.stdout,
+        homeDirectory: home,
+      });
+    });
+
+  programa
+    .command("logout")
+    .description("desconecta a conta e apaga as credenciais desta máquina")
+    .action(async () => {
+      const apagou = await apagarCredenciais(home);
+      io.stdout(apagou ? "  ✓ Conta desconectada.\n" : "  Nenhuma conta estava conectada.\n");
+    });
+
+  programa
+    .command("conta")
+    .description("mostra a conta conectada e confere se o token ainda é válido")
+    .action(async () => {
+      const credenciais = await lerCredenciais(home);
+      if (!credenciais) {
+        io.stdout("  Nenhuma conta conectada. Rode `codingpro login`.\n");
+        return;
+      }
+      const verificacao = await verificarToken(credenciais.apiUrl, credenciais.token, buscar);
+      io.stdout(
+        [
+          `  API:     ${credenciais.apiUrl}`,
+          `  Token:   ${credenciais.token.slice(0, 11)}…`,
+          `  Desde:   ${credenciais.criadoEm}`,
+          `  Estado:  ${verificacao.ok ? "✓" : "✗"} ${verificacao.mensagem}`,
+          "",
+        ].join("\n"),
+      );
+    });
 }
 
 export async function executarPrograma(
