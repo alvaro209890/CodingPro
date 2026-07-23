@@ -49,7 +49,9 @@ export const TaskTracker: React.FC<TaskTrackerProps> = ({ items, isRunning }) =>
     <div className="task-tracker-card">
       <div className="task-tracker-header">
         <span className="task-tracker-title">
-          {isRunning ? "Ferramentas em execução" : `${done}/${total} ferramentas`}
+          {isRunning && items.some((t) => t.status === "running")
+            ? "Executando tarefas"
+            : `${done}/${total} tarefas`}
         </span>
         {isRunning && <span className="task-tracker-spinner" />}
       </div>

@@ -236,9 +236,11 @@ export const App: React.FC = () => {
                       status: "running",
                     };
 
-                    // Atualiza task tracker em tempo real
-                    const tRow = toTaskRow({ ...newItem, status: "running" });
-                    setTaskItems((prev) => [...prev, tRow]);
+                    // Atualiza task tracker em tempo real (só task tool = tarefas planejadas)
+                                        if (ae.call.name === "task") {
+                                          const tRow = toTaskRow({ ...newItem, status: "running" });
+                                          setTaskItems((prev) => [...prev, tRow]);
+                                        }
 
                     if (last && last.role === "assistant") {
                       const group = last.toolGroup ?? {
@@ -278,13 +280,13 @@ export const App: React.FC = () => {
                     ae.result.type !== "execution-denied";
 
                   // Atualiza task tracker
-                  setTaskItems((prev) =>
-                    prev.map((t) =>
-                      t.id.startsWith(ae.call.name) && (t.status === "running" || t.status === "done")
-                        ? { ...t, status: ok ? "done" : ("failed" as const) }
-                        : t,
-                    ),
-                  );
+                  if (ae.call.name === "task") {
+                              setTaskItems((prev) =>
+                                prev.map((t) =>
+                                  t.id.startsWith("task-") ? { ...t, status: ok ? "done" : ("failed" as const) } : t,
+                                ),
+                              );
+                            }
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (!last?.toolGroup) return prev;
