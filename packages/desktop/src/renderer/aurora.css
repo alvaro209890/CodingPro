@@ -438,13 +438,9 @@ body {
 }
 
 .user-message-card {
-  align-self: flex-start;
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 15px;
-  font-weight: 600;
-  padding: 6px 0;
-  line-height: 1.5;
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 0;
 }
 
 .assistant-message-card {
@@ -1269,15 +1265,16 @@ body {
 }
 
 .user-message-bubble {
-  max-width: 75%;
-  background: rgba(56, 189, 248, 0.1);
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  max-width: 80%;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
   border-radius: 14px 4px 14px 14px;
   padding: 10px 16px;
   font-size: 14px;
-  line-height: 1.55;
+  line-height: 1.5;
   color: var(--text-primary);
-  word-break: break-word;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 
 /* ─── Settings Panel ─── */

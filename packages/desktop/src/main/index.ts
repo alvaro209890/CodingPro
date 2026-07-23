@@ -16,6 +16,7 @@ import {
   createReadTracker,
   detectarProjeto,
   estimateMessageTokens,
+  executarSubagente,
   gerarCodingproMd,
   indexarRepositorio,
   isNodeSqliteDisponivel,
@@ -32,7 +33,6 @@ import {
   runAgent,
   resolverTipoAgente,
   sanitizeMessagesForProvider,
-  sanitizeToolText,
   SessionStore,
   type SubagenteSpawner,
   SYSTEM_PROMPT_V1,
@@ -415,25 +415,24 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
   const memoryProjeto = MemoryStore.create(join(normalized, ".codingpro", "memory"));
 
   // SubagenteSpawner: fábrica de subagentes para a tool `task`
-  const poolTools = registry.definitions();
-  const spawner: SubagenteSpawner = {
-    tiposDisponiveis: Object.keys(TIPOS_AGENTE_PADRAO),
-    maxParalelo: 3,
-    async executar(tipo, prompt, sgn) {
-      const tipoAgente = resolverTipoAgente(tipo);
-      if (!tipoAgente) throw new Error(`Tipo de subagente desconhecido: ${tipo}`);
-      const opts: Record<string, unknown> = {
-        tipo: tipoAgente,
-        prompt,
-        provider,
-        toolPool: poolTools,
-        context: { workspace, readTracker, memory: { global: memoryGlobal, projeto: memoryProjeto } },
-      };
-      if (sgn !== undefined) (opts as any).signal = sgn;
-      const { executarSubagente } = await import("@codingpro/core");
-      return executarSubagente(opts as any);
-    },
-  };
+  const poolTools = ALL_TOOLS.filter((t) => t.definition.name !== "code_search" || isNodeSqliteDisponivel());
+    const spawner: SubagenteSpawner = {
+      tiposDisponiveis: Object.keys(TIPOS_AGENTE_PADRAO),
+      maxParalelo: 3,
+      async executar(tipo, prompt, sgn) {
+        const tipoAgente = resolverTipoAgente(tipo);
+        if (!tipoAgente) throw new Error(`Tipo de subagente desconhecido: ${tipo}`);
+        const relatorio = await executarSubagente({
+          tipo: tipoAgente,
+          prompt,
+          provider,
+          toolPool: poolTools,
+          context: { workspace, readTracker, memory: { global: memoryGlobal, projeto: memoryProjeto } },
+          ...(sgn ? { signal: sgn } : {}),
+        });
+        return relatorio;
+      },
+    };
 
   activeSession = {
     cwd: normalized,
