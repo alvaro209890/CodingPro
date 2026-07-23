@@ -111,8 +111,9 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 
 ## F3 — Entendimento de projeto
 
-- [ ] Indexador tree-sitter + cache SQLite incremental
-- [ ] Repo map com ranking e orçamento de tokens
+- [x] F3.2: Indexador de símbolos (`extrairSimbolos` heurístico p/ TS/JS·Python·Java/Kotlin·Go·SQL, assinaturas não corpos, tetos) + cache incremental por `mtime`+`size` (`RepoMapCache`, JSON em `.codingpro/`) — 2026-07-22
+- [x] F3.2: Repo map com ranking (referências via índice invertido + boost de foco/vizinhos) e orçamento de tokens (`construirRepoMap`); tool de leitura `repo_map` + comando `/mapa`; validado ao vivo pela CLI + 26 testes offline (473 verdes, `pnpm check` completo) — 2026-07-22
+- [ ] Upgrade F3: trocar backend heurístico por web-tree-sitter e cache JSON por SQLite/FTS5 (mesmo desenho)
 - [x] Detecção de projeto + `/init` gera CODINGPRO.md — `detectarProjeto` (linguagens por varredura rasa com ignore/tetos; framework/gerenciador/testes por marcadores Node/Python/Rust/Go; monorepo; scripts de package.json+Makefile); resumo no cabeçalho do chat; `/init` gera CODINGPRO.md (confirma sobrescrita) — 2026-07-22
 - [ ] 🏁 Pergunta de arquitetura respondida certo em repo médio
 

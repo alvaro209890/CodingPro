@@ -278,3 +278,39 @@ e pnpm 10.34.4, sem credenciais no ambiente comum:
 
 Auto-effort v1 (heurísticas + roteador Flash + escalada por falha) e/ou spikes restantes da F0
 (Ink+streaming, sqlite FTS5, tree-sitter WASM, checkpoint git) antes do loop executável da F1.
+
+## 2026-07-22 — F3.2: repo map com ranking, orçamento e cache incremental
+
+### Entregue
+
+- `extrairSimbolos` (`packages/core/src/symbols.ts`): extrator de **assinaturas** (não corpos) por
+  linha, heurístico e sem dependências, para TS/JS, Python, Java/Kotlin, Go e SQL. Tetos
+  anti-patológico (20k linhas / 500 símbolos por arquivo). `linguagemDeArquivo` mapeia extensão→linguagem.
+- `construirRepoMap` (`packages/core/src/repo-map.ts`): varre o projeto (ignore + tetos), extrai
+  assinaturas, ranqueia arquivos por **referências** (índice invertido de identificadores: quantas vezes
+  os símbolos de um arquivo aparecem em outros) + **boost de foco e de vizinhos no grafo**, e monta um
+  texto compacto e estável dentro de um **orçamento de tokens** (default ~2000), marcando `truncado`.
+- `RepoMapCache` (`packages/core/src/repo-map-cache.ts`): cache incremental invalidado por
+  `mtime`+`size`, persistido como JSON best-effort em `.codingpro/repo-map-cache.json` (corrompido → frio).
+- Tool de leitura **`repo_map`** (`foco`/`maxTokens`) — entra automática no headless e no chat via
+  `READ_ONLY_TOOLS` — e comando **`/mapa`** no chat.
+
+### Decisões
+
+- Backend v1 é heurístico por linha, não tree-sitter: entrega o valor da F3 (mapa ranqueado + tool)
+  sem depender do spike de web-tree-sitter/WASM. A troca fica planejada como upgrade do mesmo desenho.
+- Cache em JSON em vez de SQLite/FTS5 pela mesma razão: robusto e testável já; SQLite vira upgrade.
+- Ranking por grau (referências) em vez de PageRank iterativo: determinístico, O(arquivos), suficiente.
+
+### Validação
+
+- 26 testes offline novos (extração das 5 linguagens, ranking por referências, foco, orçamento e
+  truncamento, ignore de `node_modules`/`.git`, cache mtime+size, corrompido→frio, abort); 473 no total.
+- `pnpm check` completo aprovado (format, lint, typecheck, cobertura ≥90%/80%, build, smoke do pacote).
+- Smoke ao vivo no próprio repo pela CLI buildada: `--chat --provider replay` + `/mapa` lista os
+  arquivos e assinaturas ranqueados; `construirRepoMap` com `foco` prioriza o arquivo pedido.
+
+### Próximo incremento
+
+Bater o marco da F3 (pergunta de arquitetura respondida certo em repo médio) e então iniciar a **F4 —
+memória persistente** (store markdown+frontmatter, `MEMORY.md`, tool `remember`, retrieval no turno).

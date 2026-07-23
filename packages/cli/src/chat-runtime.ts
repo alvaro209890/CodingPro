@@ -3,6 +3,7 @@ import {
   ALL_TOOLS,
   type CheckpointMeta,
   CheckpointStore,
+  construirRepoMap,
   createReadTracker,
   describeAgentEvent,
   detectarProjeto,
@@ -43,7 +44,7 @@ export interface ChatOptions {
 const AJUDA =
   "Comandos: /sair encerra · /custo mostra o custo do último turno · /limpar esquece o histórico · " +
   "/undo [N] desfaz as últimas edições · /redo [N] refaz · /checkpoint lista a linha do tempo · " +
-  "/init gera CODINGPRO.md com o projeto detectado\n";
+  "/mapa mostra o repo map do projeto · /init gera CODINGPRO.md com o projeto detectado\n";
 
 /** Gera (ou regenera, com confirmação) o CODINGPRO.md a partir do projeto detectado. */
 async function comandoInit(workspace: Workspace, io: ChatIo): Promise<void> {
@@ -146,6 +147,17 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
     }
     if (mensagem === "/init") {
       await comandoInit(workspace, io);
+      continue;
+    }
+    if (mensagem === "/mapa" || mensagem === "/map") {
+      const mapa = await construirRepoMap(workspace, {
+        cacheDir: join(workspace.root, ".codingpro"),
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
+      });
+      io.progresso(`${mapa.texto}\n`);
+      if (mapa.truncado) {
+        io.progresso(`· mapa truncado (${mapa.totalArquivos} arquivos indexados)\n`);
+      }
       continue;
     }
     if (mensagem === "/undo" || mensagem.startsWith("/undo ")) {

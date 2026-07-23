@@ -147,5 +147,21 @@ sobrescrever um arquivo existente. Tudo testado offline com fixtures (Node/Pytho
 package.json inválido, ignore de node_modules, `/init` novo/sobrescrita) — 445 testes verdes,
 cobertura 96,14%/91,94%.
 
-Faltam na F3: **indexador tree-sitter + cache SQLite**, **repo map com ranking/orçamento de tokens** e o
-**marco** ("onde X é tratado?" respondido certo em repo médio).
+O **F3.2** entregou o **repo map** (estilo Aider, em TS puro). `extrairSimbolos` é um extrator de
+**assinaturas** (não corpos) por linha, heurístico e sem dependências, cobrindo TS/JS, Python,
+Java/Kotlin, Go e SQL (`function`/`class`/`interface`/`type`/`const` de topo, `def`/`class`,
+`fun`/`class`, `func`/`type`, `create table`/`function`), com tetos anti-patológico. `construirRepoMap`
+varre o projeto (mesma lista de ignore + tetos), extrai as assinaturas com **cache incremental por
+`mtime`+`size`** (`RepoMapCache`, JSON best-effort em `.codingpro/repo-map-cache.json`), ranqueia os
+arquivos por importância — **quantas vezes seus símbolos são citados em outros arquivos** (índice
+invertido de identificadores) + **boost de foco e de vizinhos no grafo** — e monta um texto **compacto e
+estável dentro de um orçamento de tokens** (default ~2000, corte marcado como `truncado`). O mapa é
+exposto de duas formas: a tool de leitura **`repo_map`** (com `foco`/`maxTokens`, entra automaticamente
+no headless e no chat) e o comando **`/mapa`** no chat. Validado ao vivo no próprio repo pela CLI
+buildada (`/mapa` lista arquivos + assinaturas ranqueados) e por 26 testes offline (extração das 5
+linguagens, ranking por referências, foco, orçamento/truncamento, ignore de `node_modules`, cache
+mtime+size, corrompido→frio, abort). 473 testes verdes, `pnpm check` completo aprovado.
+
+Falta na F3: trocar o backend heurístico por **web-tree-sitter** e o cache JSON por **SQLite/FTS5**
+(upgrades do mesmo desenho já entregue) e bater o **marco** ("onde X é tratado?" respondido certo em
+repo médio, ex. Atlas).
