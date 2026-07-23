@@ -64,7 +64,7 @@ export const ToolSummaryBlock: React.FC<ToolSummaryBlockProps> = ({
               key={item.id}
               type="button"
               className={`tool-action-item ${item.status === "failed" ? "failed" : ""} ${item.output ? "has-output" : ""}`}
-              onClick={() => item.output ? setSelectedOutput({ label: labelFor(item), output: item.output! }) : undefined}
+              onClick={() => item.output ? setSelectedOutput({ label: labelFor(item), output: item.output ?? "" }) : undefined}
               title={item.output ? "Clique para ver a saída" : undefined}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
@@ -87,7 +87,7 @@ export const ToolSummaryBlock: React.FC<ToolSummaryBlockProps> = ({
 
       {/* Modal de saída de tool */}
       {selectedOutput && (
-        <div className="tool-output-overlay" onClick={() => setSelectedOutput(null)}>
+        <div className="tool-output-overlay" onClick={() => setSelectedOutput(null)} onKeyDown={(e) => { if (e.key === "Escape") setSelectedOutput(null); }} role="dialog">
           <div className="tool-output-modal" onClick={(e) => e.stopPropagation()}>
             <div className="tool-output-header">
               <span className="tool-output-title">{selectedOutput.label}</span>
