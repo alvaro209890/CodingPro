@@ -37,7 +37,10 @@ export const ToolSummaryBlock: React.FC<ToolSummaryBlockProps> = ({
   totalDel,
 }) => {
   const [expanded, setExpanded] = useState(true);
-  const [selectedOutput, setSelectedOutput] = useState<{ label: string; output: string } | null>(null);
+  const [expandedOutputs, setExpandedOutputs] = useState<Record<string, boolean>>({});
+
+  const toggleOutput = (id: string) =>
+    setExpandedOutputs((prev) => ({ ...prev, [id]: !prev[id] }));
 
   return (
     <div className="tool-summary-card">
@@ -60,41 +63,36 @@ export const ToolSummaryBlock: React.FC<ToolSummaryBlockProps> = ({
       {expanded && (
         <div className="tool-action-list">
           {items.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`tool-action-item ${item.status === "failed" ? "failed" : ""} ${item.output ? "has-output" : ""}`}
-              onClick={() => item.output ? setSelectedOutput({ label: labelFor(item), output: item.output ?? "" }) : undefined}
-              title={item.output ? "Clique para ver a saída" : undefined}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
-                <span>
-                  {item.status === "running" ? "… " : item.status === "failed" ? "✗ " : "✓ "}
-                  {labelFor(item)}
-                </span>
-                {item.diffAdd !== undefined && (
-                  <span className="diff-badge-add">+{item.diffAdd}</span>
+            <div key={item.id}>
+              <button
+                type="button"
+                className={`tool-action-item ${item.status === "failed" ? "failed" : ""} ${item.output ? "has-output" : ""}`}
+                onClick={() => item.output ? toggleOutput(item.id) : undefined}
+                title={item.output ? "Clique para expandir a saída" : undefined}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
+                  <span>
+                    {item.status === "running" ? "… " : item.status === "failed" ? "✗ " : "✓ "}
+                    {labelFor(item)}
+                  </span>
+                  {item.diffAdd !== undefined && (
+                    <span className="diff-badge-add">+{item.diffAdd}</span>
+                  )}
+                  {item.diffDel !== undefined && (
+                    <span className="diff-badge-del">-{item.diffDel}</span>
+                  )}
+                </div>
+                {item.output && (
+                  <span className="tool-output-hint">{expandedOutputs[item.id] ? "▾" : "▸"}</span>
                 )}
-                {item.diffDel !== undefined && (
-                  <span className="diff-badge-del">-{item.diffDel}</span>
-                )}
-              </div>
-              {item.output && <span className="tool-output-hint">▸</span>}
-            </button>
-          ))}
-        </div>
-      )}
+              </button>
 
-      {/* Modal de saída de tool */}
-      {selectedOutput && (
-        <div className="tool-output-overlay" onClick={() => setSelectedOutput(null)} onKeyDown={(e) => { if (e.key === "Escape") setSelectedOutput(null); }} role="dialog">
-          <div className="tool-output-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="tool-output-header">
-              <span className="tool-output-title">{selectedOutput.label}</span>
-              <button type="button" className="tool-output-close" onClick={() => setSelectedOutput(null)}>✕</button>
+              {/* Saída inline expandível */}
+              {item.output && expandedOutputs[item.id] && (
+                <pre className="tool-output-inline">{item.output}</pre>
+              )}
             </div>
-            <pre className="tool-output-body">{selectedOutput.output}</pre>
-          </div>
+          ))}
         </div>
       )}
     </div>

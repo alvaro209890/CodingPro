@@ -1685,3 +1685,18 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
+
+/* ─── Tool Output Inline ─── */
+.tool-action-item.has-output { cursor: pointer; }
+.tool-action-item.has-output:hover { background: rgba(56,189,248,0.05); }
+.tool-output-hint { font-size: 10px; color: var(--text-muted); flex-shrink: 0; }
+.tool-output-inline {
+  margin: 0; padding: 10px 14px;
+  background: rgba(0,0,0,0.25);
+  border-top: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--accent-blue);
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5;
+  color: var(--text-secondary); white-space: pre-wrap;
+  overflow-x: auto; max-height: 300px; overflow-y: auto;
+}
+
