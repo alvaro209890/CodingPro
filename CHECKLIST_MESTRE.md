@@ -135,9 +135,9 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 
 ## F6 — Extensibilidade
 
-- [ ] Cliente MCP (stdio) + config de servidores
-- [ ] Skills .md + hooks pre/post/stop
-- [ ] 🏁 Servidor MCP de terceiros usado numa tarefa
+- [x] Cliente MCP (stdio) + config de servidores — `McpClient` JSON-RPC 2.0 por linha (initialize/tools/list/tools/call), tools expostas como `mcp__<srv>__<tool>` (efeito exec), config em `mcpServers` do settings, ligado ao chat; 3 fixes de robustez de revisão DeepSeek — 2026-07-23
+- [x] Skills .md + hooks pre/post/stop — skills com sugestão + `/skills`/`/skill`; hooks de shell (veto no pre-tool) via `settings.hooks`, integrados ao `ToolGate` — 2026-07-23
+- [ ] 🏁 Servidor MCP de terceiros real usado numa tarefa (validado com servidor fake + testes; falta ao vivo)
 
 ## F7 — Voz *(PÓS-1.0 — vira release 1.1)*
 
@@ -147,14 +147,18 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 
 ## F8 — Personalidade e acabamento
 
-- [ ] Pet/XP/conquistas (desligável)
-- [ ] Undercover (attribution full/trailer/none + estilo de commit)
-- [ ] `/review` com achados por severidade
+- [x] Undercover (attribution full/trailer/none) — campo `attribution` no settings vira diretriz de assinatura de commits no system prompt (chat e headless) — 2026-07-23
+- [x] `/review` com achados por severidade — `/review [alvo]` revisa o diff (não commitado ou `git diff <alvo>`) via subagente reviewer — 2026-07-23
+- [ ] Pet/XP/conquistas (desligável) — polimento cosmético, não bloqueia a Fase 2
+- [ ] Camada visual Ink/Aurora (4 temas, detecção truecolor/256/16, timeline, spinner, statusline, banner) + QA nos 6 terminais — polimento cosmético; a interface v1 é readline funcional
+- [ ] i18n pt-BR: auditoria final de toda string da UI (a UI já é pt-BR; falta a passada de consolidação)
 - [ ] 🏁 1h de uso real sem atrito anotado
 
 ## F9 — Release 1.0
 
-- [ ] Pacote npm global (bins codingpro+cpro) + script install.sh + instalação limpa testada
-- [ ] Docs de usuário + `doctor` + hardening
-- [ ] Evals no CI
-- [ ] 🏁 Setup < 10 min em máquina nova
+- [x] Pacote npm global (bins codingpro+cpro) + `install.sh` (curl|sh) + smoke de instalação limpa do tarball no CI (`test:package`) — 2026-07-23
+- [x] Docs de usuário (`docs/GUIA-DO-USUARIO.md`, fiel à implementação) + comando `doctor` — 2026-07-23
+- [x] package.json publicável (metadata, bins, files, `private:false`); `npm publish` fica como passo manual do Álvaro — 2026-07-23
+- [ ] Hardening final (caminhos com espaço, repos gigantes, sem rede, chave inválida) — coberto em parte pelos testes; falta a passada dedicada
+- [ ] Evals mínimos no CI (doc 10)
+- [ ] 🏁 Setup < 10 min em máquina nova (validar ao vivo após `npm publish`)

@@ -208,3 +208,29 @@ total) e `pnpm check` completo.
 Falta na F5: **subprocesso stdio/JSON-RPC** (hoje in-process), **roteamento por papel** Pro/Flash,
 **interrupção por teto de custo**, **tarefas em background** (`/tasks` + `notify-send`), **aprovação/edição
 do plano** antes de executar e **isolamento por git worktree**.
+
+## F6 — Extensibilidade (concluída)
+
+**Skills**: arquivos `.md` (frontmatter `name`/`description` + corpo) em `~/.codingpro/skills` e
+`.codingpro/skills`. `sugerirSkills` ranqueia por relevância; `/skills` lista, `/skill <nome>` ativa
+(o corpo entra no system prompt) e o chat sugere a skill que casa com o pedido. **Hooks**: comandos de
+shell no `settings.hooks` (lista), eventos `pre-tool` (com **veto** por exit≠0), `post-tool` e `stop`,
+integrados ao `ToolGate` (payload no stdin, `$HOOK_TOOL`/`$HOOK_EVENT`, grupo de processo morto no
+timeout). **MCP**: `McpClient` (JSON-RPC 2.0 por linha; initialize→tools/list→tools/call), tools
+expostas como `mcp__<srv>__<tool>` (efeito `exec`, pelo gate), config em `mcpServers` do settings,
+ligado ao chat e fechado ao sair; 3 fixes de robustez apontados por revisão DeepSeek. Falta: SSE,
+worktree, e validação ao vivo com um servidor MCP de terceiros.
+
+## F8 — Personalidade e acabamento (parcial)
+
+`/review [alvo]` revisa o diff (não commitado ou `git diff <alvo>`) com o subagente reviewer, por
+severidade. **Undercover**: campo `attribution` (`full`|`trailer`|`none`) no settings vira diretriz de
+assinatura de commits no system prompt. Falta (cosmético, não bloqueia a Fase 2): camada visual
+Ink/Aurora + 4 temas + QA nos 6 terminais, gamificação (pet/XP), e a auditoria final de i18n.
+
+## F9 — Release (parcial)
+
+`install.sh` (curl|sh, pt-BR, checa Node 24 e orienta PATH), comando `codingpro --doctor` (diagnóstico
+com exit 1 em falha crítica, sem imprimir segredos), `docs/GUIA-DO-USUARIO.md` fiel à implementação, e
+`packages/cli/package.json` publicável (bins `codingpro`/`cpro`, metadata, `private:false`). O smoke de
+tarball já roda no CI. Falta: `npm publish` (passo manual do Álvaro), hardening dedicado e evals no CI.

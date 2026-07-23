@@ -387,3 +387,36 @@ em background com notificação, modo planejamento arquiteto→plano→aprovaç�
 ### Próximo incremento
 
 F6 — extensibilidade (cliente MCP stdio, skills .md com auto-sugestão, hooks pre/post/stop).
+
+## 2026-07-23 — F6 (skills/hooks/MCP), F8 (/review, undercover) e F9 (release parcial)
+
+### Entregue
+
+- **F6 Skills**: `skills.ts` (parse + `sugerirSkills` + `blocoSkill`), CLI `skills-runtime.ts`,
+  comandos `/skills`/`/skill`, injeção no prompt e auto-sugestão.
+- **F6 Hooks**: `hooks.ts` (`executarHook` com veto, `criarHookRunner`, `rodarHooksStop`; grupo de
+  processo morto no timeout), integrados ao `ToolGate` (novo 3º parâmetro), config em `settings.hooks`.
+- **F6 MCP**: `mcp.ts` (`McpClient` stdio JSON-RPC + `toolsDoServidorMcp`), CLI `mcp-runtime.ts`
+  (config `mcpServers`), ligado ao chat. Revisão de protocolo por subagente DeepSeek → 3 fixes.
+- **F8**: `/review` (subagente reviewer sobre o diff, `review-runtime.ts`), undercover
+  (`attribution.ts` + `attribution-runtime.ts`) no system prompt.
+- **F9**: `install.sh`, comando `--doctor` (`doctor.ts`, puro + IO), `docs/GUIA-DO-USUARIO.md`,
+  package.json publicável.
+
+### Decisões
+
+- MCP in-process minimal (sem SDK externo, sem SSE); skills/hooks/atribuição carregados no CLI e
+  passados às runtimes (IO desacoplado, testável). Backends v1 heurísticos, upgrades documentados.
+- Delegação a subagentes DeepSeek V4 Pro (autorizada pelo Álvaro): rascunhos de install.sh/doctor/README
+  e revisão do cliente MCP; tudo validado e integrado com as ferramentas locais, nunca aplicado às cegas.
+
+### Validação
+
+- 591 testes offline; `pnpm check` completo (format, lint, typecheck, cobertura ≥90%/80%, build,
+  smoke de pacote). Teste E2E ao vivo como usuário (HOME isolado + projeto git): `--ajuda`, `--doctor`,
+  `-p`, e chat com `/mapa` `/init` `/lembrar` `/memory` `/skills` `/skill` — todos ok, artefatos criados.
+
+### Próximo incremento
+
+Fechar a Fase 1: hardening dedicado + evals no CI; polimento cosmético F8 (Ink/temas/pet) é pós-1.0 e
+não bloqueia a Fase 2. Depois, iniciar a Fase 2 (app Windows) reusando o núcleo.
