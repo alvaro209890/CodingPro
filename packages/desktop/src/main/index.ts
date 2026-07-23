@@ -258,6 +258,11 @@ async function novaSessaoVazia(): Promise<ChatSession> {
 }
 
 function createWindow(): void {
+  const preloadPath = join(__dirname, "../preload/index.cjs");
+  if (!existsSync(preloadPath)) {
+    console.error("[codingpro] preload ausente:", preloadPath);
+  }
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 850,
@@ -270,7 +275,7 @@ function createWindow(): void {
       // Preload DEVE ser CommonJS (.cjs). Com "type":"module", o .js ESM falha no
       // renderer com ERR_UNSUPPORTED_ESM_URL_SCHEME (protocol 'electron:') e a UI
       // sobe sem window.codingproAPI — app “abre mas não responde”.
-      preload: join(__dirname, "../preload/index.cjs"),
+      preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,

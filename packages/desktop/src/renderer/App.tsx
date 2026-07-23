@@ -44,6 +44,7 @@ export const App: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [apiReady, setApiReady] = useState(() => typeof window.codingproAPI !== "undefined");
   const [statusNote, setStatusNote] = useState<string | null>(null);
 
   const [workspaceInfo, setWorkspaceInfo] = useState<{
@@ -88,6 +89,32 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  // Espera o preload (às vezes o React monta um tick antes do contextBridge)
+  useEffect(() => {
+    if (window.codingproAPI) {
+      setApiReady(true);
+      return;
+    }
+    let tries = 0;
+    const id = window.setInterval(() => {
+      tries += 1;
+      if (window.codingproAPI) {
+        setApiReady(true);
+        setStatusNote(null);
+        window.clearInterval(id);
+        return;
+      }
+      if (tries >= 40) {
+        window.clearInterval(id);
+        setApiReady(false);
+        setStatusNote(
+          "API desktop indisponível (preload). Feche e rode: pnpm desktop — não abra o HTML no browser.",
+        );
+      }
+    }, 50);
+    return () => window.clearInterval(id);
+  }, []);
+
   // ─── Global Ctrl+K / Escape ───
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -107,10 +134,7 @@ export const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!window.codingproAPI) {
-      setStatusNote("API desktop indisponível — abra via Electron, não no browser puro.");
-      return;
-    }
+    if (!apiReady || !window.codingproAPI) return;
 
     let cancelled = false;
     const api = window.codingproAPI;
@@ -121,7 +145,11 @@ export const App: React.FC = () => {
         if (cancelled) return;
         setWorkspaceInfo(info);
         if (info.hasApiKey === false) {
-          setStatusNote("DEEPSEEK_API_KEY não encontrada. Configure .codingpro/.env");
+          setStatusNote(
+            "DEEPSEEK_API_KEY não encontrada. Coloque em .codingpro/.env ou ~/.config/codingpro/deepseek.env e reinicie.",
+          );
+        } else {
+          setStatusNote(null);
         }
       })
       .catch((err: unknown) => {
@@ -273,7 +301,7 @@ export const App: React.FC = () => {
       cancelled = true;
       unsubscribe();
     };
-  }, [refreshSessions]);
+  }, [apiReady, refreshSessions]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: rola o chat no scroll.
   useEffect(() => {
@@ -294,7 +322,7 @@ export const App: React.FC = () => {
             id: newId("err"),
             role: "assistant",
             content:
-              "❌ API desktop não conectada. Inicie com `pnpm --filter @codingpro/desktop start`.",
+              "❌ API desktop não conectada (preload). Feche esta janela e rode `pnpm desktop` na pasta CodingPro — não abra o index.html no Chrome.",
           },
         ]);
         return;
