@@ -18,12 +18,13 @@ DeepSeek, limitado aos modelos V4 Pro e V4 Flash; replay existe somente para tes
 
 ## Estado atual
 
-F1 (loop agêntico) em andamento no pacote `packages/core`. O **F1.1** deu a base: `Workspace` é a
-raiz canonicalizada (realpath) por onde toda tool de arquivo passa — rejeita caminho
-absoluto/`~`/`..`, caracteres de controle e symlink que escapa (I/O com `O_NOFOLLOW`).
-`ToolRegistry.run` valida o input contra o schema e converte qualquer falha em `ToolResult` de erro,
-sem vazar caminho absoluto nem propagar throw pro loop. Tools de leitura offline com tetos:
-`read_file`, `list_dir` e `grep` (**busca literal**, nunca cria `RegExp` do usuário → sem ReDoS).
+**Fase 1 da CLI essencialmente completa** (2026-07-23). 3 pacotes (`llm`, `core`, `cli`), 591 testes, 95.5% de cobertura de statements. Todas as fases F0–F6 e partes de F8/F9 implementadas, testadas e validadas ao vivo com DeepSeek V4 Pro/Flash.
+
+O que foi entregue: workspace sandboxado, loop agêntico com permissões, chat interativo e headless, edição segura com checkpoints/undo/redo, repo map com ranking e cache, memória persistente entre sessões, subagentes com orquestração paralela, skills/hooks/MCP, modo undercover, `/review`, install.sh, comando `doctor`, guia do usuário, e tudo com CI verde.
+
+O que falta (polimento): auto-effort com roteamento Flash automático, `/cost` com taxa de cache-hit, i18n pt-BR canônico, TUI Aurora (Ink/temas), pet/XP, evals no CI, hardening final.
+
+**Pronto para iniciar a Fase 2 (app Windows).**
 
 O **F1.2** adicionou efeitos e permissões. `write_file` ancora a escrita no realpath do diretório-pai
 (que já deve existir) e abre com `O_NOFOLLOW` (symlink final → bloqueado); `bash` roda na raiz com

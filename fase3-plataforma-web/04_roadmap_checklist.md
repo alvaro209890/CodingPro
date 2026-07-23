@@ -1,6 +1,6 @@
 # F3-04 — Roadmap da Fase 3 (Plataforma Web)
 
-Pré-requisito: Fase 1 estável (Fase 2 pode andar em paralelo a partir do P2). **Total: ~6–8 semanas.**
+Pré-requisito: Fase 1 estável (Fase 2 pode andar em paralelo a partir do P2). **Total revisado: ~5–7 semanas** (com base na velocidade de desenvolvimento da Fase 1).
 
 ## P0 — Inventário e fundação de infra (1 semana)
 

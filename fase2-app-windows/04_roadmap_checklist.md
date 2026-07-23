@@ -1,6 +1,6 @@
 # F2-04 — Roadmap da Fase 2 (App Windows)
 
-Estimativas assumem Fase 1 concluída e estável. **Total: ~6–9 semanas.**
+Estimativas revistas em 2026-07-23 com base na velocidade real de desenvolvimento (F0→F9 em ~2 dias de trabalho concentrado). **Total: ~4–6 semanas** (não 6–9 como planejado originalmente).
 
 ## W0 — Fundações Windows no core (2 semanas)
 

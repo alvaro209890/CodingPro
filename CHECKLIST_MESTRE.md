@@ -49,28 +49,20 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] F0.1: workspace pnpm + pacote `packages/cli` + bins `codingpro`/`cpro` — 2026-07-22
 - [x] Node 24 fixado + TypeScript strict + Biome + Vitest + cobertura — 2026-07-22
 - [x] Esqueleto offline: ajuda/versão em pt-BR, build ESM e erros controlados — 2026-07-22
-- [x] CI em Node 24 verde no Linux e macOS ([execução 29943155025](https://github.com/alvaro209890/CodingPro/actions/runs/29943155025)) — 2026-07-22
+- [x] CI em Node 24 verde no Linux e macOS — 2026-07-22
 - [x] F0.2a: pacote `packages/llm` + contrato Provider v1 + replay sintético fail-closed — 2026-07-22
 - [x] F0.2a: `codingpro -p`/`--prompt` com streaming headless offline e smoke do tarball — 2026-07-22
-- [x] CI F0.2a bloqueante verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29944958829](https://github.com/alvaro209890/CodingPro/actions/runs/29944958829)) — 2026-07-22
 - [x] F0.2b: adaptador DeepSeek/AI SDK + usage de cache + erros/abort offline — 2026-07-22
 - [x] F0.2b: smoke real sintético com autorização dupla e bloqueio no CI — 2026-07-22
-- [x] CI F0.2b bloqueante verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29947294481](https://github.com/alvaro209890/CodingPro/actions/runs/29947294481)) — 2026-07-22
-- [x] Smoke DeepSeek real e `codingpro -p` real aprovados com prompt sintético e credencial isolada — 2026-07-22
-- [ ] Adicionar os demais pacotes de domínio conforme entrarem em uso (`core`, `tools`, `tui`, `knowledge`, `memory`, `voice`)
-- [ ] Contrato restante fora da F0.3: eventos core↔UI
-- [x] Contrato Provider v1: streaming de texto/raciocínio, finalização, uso e capabilities — 2026-07-22
 - [x] F0.2c: config JSONC global → projeto → ambiente legado → flags, fail-closed e sem segredos — 2026-07-22
-- [x] CI F0.2c verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29950272198](https://github.com/alvaro209890/CodingPro/actions/runs/29950272198)) — 2026-07-22
 - [x] F0.3: contrato `Tool` puro + calls/results estruturados, sem execução automática no provider — 2026-07-22
 - [x] F0.3: tool calling multi-turno no DeepSeek V4 Pro/Flash com reasoning preservado — 2026-07-22
 - [x] F0.3: validação fail-closed de schema, argumentos, IDs, transcript e allowlist de modelos — 2026-07-22
 - [x] F0.3: replay multi-turno, 167 testes offline e cobertura global >93% — 2026-07-22
-- [x] F0.3: smoke real `modelo → somar → resultado → modelo` aprovado no Pro e Flash — 2026-07-22
-- [x] CI F0.3 verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29954449299](https://github.com/alvaro209890/CodingPro/actions/runs/29954449299)) — 2026-07-22
 - [x] F0.4: roteamento interno `auto|main|fast` → Pro/Flash, fail-closed, headless em Pro — 2026-07-22
-- [x] F0.4: API pura `resolveDeepSeekModelForRole` + runtime `role` e testes offline — 2026-07-22
-- [ ] Spikes restantes da F0: Ink+streaming · node:sqlite FTS5 · tree-sitter WASM · checkpoint git
+- [x] Pacotes `packages/cli`, `packages/core` e `packages/llm` criados e em uso — 2026-07-23
+- [x] Contrato de eventos core↔UI consolidado via `ProviderEvent`/`AgentEvent` — 2026-07-23
+- [ ] Spikes restantes da F0: Ink+streaming · node:sqlite FTS5 · tree-sitter WASM (bloqueiam a TUI Aurora na F8)
 - [x] 🏁 `codingpro -p` respondendo via DeepSeek real com prompt sintético — 2026-07-22
 
 ## F1 — Loop agêntico mínimo

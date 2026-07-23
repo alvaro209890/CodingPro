@@ -3,13 +3,15 @@
 > Planejamento da **Fase 2** (separado da Fase 1, que vive em `../planos/`).
 > **Pré-requisito duro: a Fase 1 (CLI) estar 100% funcional.** Nada daqui começa antes.
 
-**Status:** 📋 Planejado em 2026-07-22 · aguardando conclusão da Fase 1
+**Status:** 📋 Planejado em 2026-07-22 · revisado em 2026-07-23 (pós-conclusão da Fase 1)
+
+**Pré-requisito atendido:** a Fase 1 (CLI local) está funcional com 3 pacotes (`llm`, `core`, `cli`), 591 testes, 95.5% de cobertura, e validada ao vivo com DeepSeek.
 
 ## O que é
 
-Um **aplicativo desktop para Windows** com a mesma proposta do app desktop do Claude Code: o motor do CodingPro (o mesmo `packages/core` da CLI) dentro de uma interface gráfica — janela própria, chat, diffs clicáveis, aprovações com botões, gerenciamento de projetos/sessões — para quem não vive no terminal.
+Um **aplicativo desktop para Windows** com a mesma proposta do app desktop do Claude Code: o motor do CodingPro (o mesmo `packages/core` + `packages/llm` da CLI) dentro de uma interface gráfica — janela própria, chat, diffs clicáveis, aprovações com botões, gerenciamento de projetos/sessões — para quem não vive no terminal.
 
-**Por que é viável barato:** a Fase 1 foi arquitetada exatamente para isso — o core é desacoplado da TUI e conversa por **eventos JSON tipados** (doc `../planos/02`). O app Windows é "só" um novo consumidor desses eventos; zero reescrita do cérebro.
+**Por que é viável barato:** o core é desacoplado da TUI (readline) e conversa por **eventos JSON tipados** via `ProviderEvent`/`AgentEvent`/`ToolResult` (já implementados e estáveis). O app Windows é "só" um novo consumidor desses eventos via IPC; **zero reescrita do cérebro** — inclusive o `packages/llm` inteiro é reaproveitado.
 
 ## Escopo da Fase 2
 
