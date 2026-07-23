@@ -1,41 +1,92 @@
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import type { CoreUiEvent, PermissionRequest } from "@codingpro/core";
+import { Sidebar } from "./components/Sidebar.js";
+import { Header } from "./components/Header.js";
+import { ToolSummaryBlock, type ToolItem } from "./components/ToolSummaryBlock.js";
+import { FloatingInputDock } from "./components/FloatingInputDock.js";
+import { PermissionModal } from "./components/PermissionModal.js";
+import { CommandPalette } from "./components/CommandPalette.js";
+import { IntegratedTerminal } from "./components/IntegratedTerminal.js";
 import "./aurora.css";
-
-interface ToolCallUI {
-  id: string;
-  name: string;
-  args: string;
-}
 
 interface ChatMessageUI {
   id: string;
   role: "user" | "assistant";
   content: string;
   reasoning?: string;
-  toolCalls?: ToolCallUI[];
+  toolGroup?: {
+    summaryText: string;
+    items: ToolItem[];
+    diffAdd?: number;
+    diffDel?: number;
+  };
 }
 
 export const App: React.FC = () => {
-  const [messages, setMessages] = useState<ChatMessageUI[]>([]);
+  const [activeTab, setActiveTab] = useState<"home" | "code">("code");
+  const [messages, setMessages] = useState<ChatMessageUI[]>([
+    {
+      id: "demo-1",
+      role: "assistant",
+      content:
+        "Full pipeline pnpm build (llm->core->cli->desktop) succeeds end-to-end. Terminal integrado e ferramentas visuais ativas.",
+      toolGroup: {
+        summaryText: "Leu 2 arquivos, editado um arquivo, encontrado arquivos, executado 2 comandos",
+        diffAdd: 14,
+        diffDel: 2,
+        items: [
+          { id: "t1", name: "read_file", target: "CODINGPRO.md", status: "success" },
+          { id: "t2", name: "edit_file", target: "CODINGPRO.md", status: "success", diffAdd: 14, diffDel: 2 },
+          { id: "t3", name: "read_file", target: "README.md", status: "success" },
+          { id: "t4", name: "grep", target: "check if other packages have their own README", status: "failed" },
+          { id: "t5", name: "bash", target: "formatting including markdown doc edits", status: "success" },
+        ],
+      },
+    },
+  ]);
+
   const [inputPrompt, setInputPrompt] = useState("");
   const [isRunning, setIsRunning] = useState(false);
+  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+
   const [workspaceInfo, setWorkspaceInfo] = useState<{ cwd: string; platform: string }>({
-    cwd: "Carregando...",
+    cwd: "c:\\GIS\\CodingPro",
     platform: "win32",
   });
-  const [workspacePath, setWorkspacePath] = useState<string | undefined>(undefined);
+
   const [currentPermissionRequest, setCurrentPermissionRequest] = useState<{
     request: PermissionRequest;
     id: string;
   } | null>(null);
+
+  const [recentSessions, setRecentSessions] = useState([
+    { id: "1", title: "Análise e desenvolvimento do app Windows", active: true },
+    { id: "2", title: "CLI design e animações", active: false },
+    { id: "3", title: "Segurança do site de rifas", active: false },
+    { id: "4", title: "Divisão de lotes 16 e 17", active: false },
+    { id: "5", title: "Simbologia não carrega no ArcMap 10.8", active: false },
+    { id: "6", title: "Análise de vencimento de carros no SIMCAR", active: false },
+  ]);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (window.codingproAPI) {
       window.codingproAPI.getWorkspaceInfo().then(setWorkspaceInfo).catch(console.error);
+
+      window.codingproAPI.listSessions().then((sessions) => {
+        if (sessions.length > 0) {
+          setRecentSessions(
+            sessions.map((s, idx) => ({
+              id: s.id,
+              title: s.preview || `Sessão ${s.id.slice(0, 8)}`,
+              active: idx === 0,
+            })),
+          );
+        }
+      }).catch(() => undefined);
 
       const unsubscribe = window.codingproAPI.onCoreEvent((event: CoreUiEvent) => {
         if (event.type === "permission-request") {
@@ -70,20 +121,42 @@ export const App: React.FC = () => {
           } else if (ae.type === "tool-call") {
             setMessages((prev) => {
               const last = prev[prev.length - 1];
-              const tc: ToolCallUI = {
-                id: `${ae.call.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              const newItem: ToolItem = {
+                id: `${ae.call.name}-${Date.now()}`,
                 name: ae.call.name,
-                args: JSON.stringify(ae.call.input),
+                target: (ae.call.input as any)?.path ?? (ae.call.input as any)?.command ?? ae.call.name,
+                status: "success",
               };
+
               if (last && last.role === "assistant") {
+                const group = last.toolGroup ?? {
+                  summaryText: `Executado ${ae.call.name}`,
+                  items: [],
+                };
                 return [
                   ...prev.slice(0, -1),
-                  { ...last, toolCalls: [...(last.toolCalls ?? []), tc] },
+                  {
+                    ...last,
+                    toolGroup: {
+                      ...group,
+                      items: [...group.items, newItem],
+                      summaryText: `Executado ${group.items.length + 1} ferramentas`,
+                    },
+                  },
                 ];
               }
+
               return [
                 ...prev,
-                { id: String(Date.now()), role: "assistant", content: "", toolCalls: [tc] },
+                {
+                  id: String(Date.now()),
+                  role: "assistant",
+                  content: "",
+                  toolGroup: {
+                    summaryText: `Executado ${ae.call.name}`,
+                    items: [newItem],
+                  },
+                },
               ];
             });
           }
@@ -102,30 +175,21 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: re-executa a cada mensagem só p/ rolar a tela.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: rola o chat no scroll.
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!inputPrompt.trim() || isRunning) return;
-    const userText = inputPrompt;
-    setInputPrompt("");
+  const handleSend = async (customPrompt?: string) => {
+    const textToSend = customPrompt ?? inputPrompt;
+    if (!textToSend.trim() || isRunning) return;
+    if (!customPrompt) setInputPrompt("");
     setIsRunning(true);
 
-    setMessages((prev) => [...prev, { id: String(Date.now()), role: "user", content: userText }]);
+    setMessages((prev) => [...prev, { id: String(Date.now()), role: "user", content: textToSend }]);
 
     if (window.codingproAPI) {
-      await window.codingproAPI.sendMessage(userText, workspacePath);
-    }
-  };
-
-  const handleChooseWorkspace = async () => {
-    if (!window.codingproAPI || isRunning) return;
-    const chosen = await window.codingproAPI.chooseWorkspaceFolder();
-    if (chosen && chosen !== workspacePath) {
-      setWorkspacePath(chosen);
-      setMessages([]);
+      await window.codingproAPI.sendMessage(textToSend);
     }
   };
 
@@ -138,129 +202,112 @@ export const App: React.FC = () => {
     setCurrentPermissionRequest(null);
   };
 
+  const handleSelectSession = async (id: string) => {
+    setRecentSessions((prev) =>
+      prev.map((s) => ({
+        ...s,
+        active: s.id === id,
+      })),
+    );
+    if (window.codingproAPI) {
+      const res = await window.codingproAPI.loadSession(id);
+      if (res.success && res.messages) {
+        setMessages(
+          res.messages.map((msg, i) => ({
+            id: `loaded-${i}`,
+            role: msg.role === "user" ? "user" : "assistant",
+            content: msg.content ?? "",
+          })),
+        );
+      }
+    }
+  };
+
   return (
     <div className="app-container">
-      {/* Sidebar */}
-      <div className="sidebar">
-        <div className="logo-container">
-          <div className="logo-badge">CP</div>
-          <div className="logo-title">CodingPro</div>
-        </div>
-
-        <div className="workspace-info">
-          <div>PROJETO ATIVO</div>
-          <div className="workspace-path">{workspacePath ?? workspaceInfo.cwd}</div>
-        </div>
-
-        <button
-          type="button"
-          className="choose-folder-btn"
-          onClick={handleChooseWorkspace}
-          disabled={isRunning}
-        >
-          📁 Abrir Pasta
-        </button>
-      </div>
+      {/* Sidebar no estilo Claude Code */}
+      <Sidebar
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        recentSessions={recentSessions}
+        onSelectSession={handleSelectSession}
+        onNewSession={() => setMessages([])}
+        workspacePath={workspaceInfo.cwd}
+      />
 
       {/* Area Principal */}
       <div className="main-content">
-        <div className="header">
-          <div style={{ fontWeight: 600 }}>Chat de Desenvolvimento</div>
-          <div className="header-status">
-            <div className="status-dot" />
-            <span>{isRunning ? "Agente Executando..." : "Pronto (DeepSeek V4)"}</span>
-          </div>
-        </div>
+        {/* Header superior */}
+        <Header
+          title={recentSessions.find((s) => s.active)?.title ?? "Análise e desenvolvimento do app Windows"}
+          projectName="CodingPro"
+          onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
+        />
 
-        {/* Chat */}
-        <div className="chat-area">
+        {/* Chat Feed */}
+        <div className="chat-feed">
           {messages.map((m) => (
-            <div
-              key={m.id}
-              className={`message-bubble ${
-                m.role === "user" ? "message-user" : "message-assistant"
-              }`}
-            >
-              {m.reasoning && (
-                <div className="reasoning-block">
-                  <strong>🧠 Raciocínio Interno:</strong>
-                  <div>{m.reasoning}</div>
+            <div key={m.id} className="message-group">
+              {m.role === "user" ? (
+                <div className="user-message-card">{m.content}</div>
+              ) : (
+                <div className="assistant-message-card">
+                  {m.toolGroup && (
+                    <ToolSummaryBlock
+                      summaryText={m.toolGroup.summaryText}
+                      items={m.toolGroup.items}
+                      totalAdd={m.toolGroup.diffAdd}
+                      totalDel={m.toolGroup.diffDel}
+                    />
+                  )}
+
+                  {m.reasoning && <div className="reasoning-box">🧠 {m.reasoning}</div>}
+
+                  {m.content && <div className="text-response-block">{m.content}</div>}
                 </div>
               )}
-
-              {m.toolCalls?.map((tc) => (
-                <div key={tc.id} className="tool-indicator">
-                  ⚡ Tool: {tc.name} ({tc.args})
-                </div>
-              ))}
-
-              <div>{m.content}</div>
             </div>
           ))}
+
+          {/* Stat Footer Line */}
+          <div className="session-stats-bar" style={{ maxWidth: 860, margin: "0 auto", width: "100%" }}>
+            <span>• 11m 32s</span>
+            <span>• 9.2k tokens</span>
+            <span>• {isRunning ? "1 tarefa em execução" : "0 tarefas ativas"}</span>
+          </div>
+
           <div ref={chatEndRef} />
         </div>
 
-        {/* Input Bar */}
-        <div className="input-bar">
-          <input
-            type="text"
-            className="chat-input"
-            placeholder="Digite seu pedido (ex: crie um componente de botão ou execute os testes)..."
-            value={inputPrompt}
-            onChange={(e) => setInputPrompt(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            disabled={isRunning}
-          />
-          <button
-            type="button"
-            className="send-btn"
-            onClick={handleSend}
-            disabled={isRunning || !inputPrompt.trim()}
-          >
-            Enviar
-          </button>
-        </div>
+        {/* Terminal Integrado embutido */}
+        <IntegratedTerminal isOpen={isTerminalOpen} onClose={() => setIsTerminalOpen(false)} />
 
-        {/* Modal de Permissao */}
+        {/* Dock Flutuante Inferior */}
+        <FloatingInputDock
+          inputPrompt={inputPrompt}
+          onChangeInput={setInputPrompt}
+          onSend={() => handleSend()}
+          isRunning={isRunning}
+          branchName="master"
+          additions={259}
+          deletions={90}
+          modelName="DeepSeek V4"
+          effortLevel="Alto"
+        />
+
+        {/* Paleta de Comandos (Ctrl+K) */}
+        <CommandPalette
+          isOpen={isPaletteOpen}
+          onClose={() => setIsPaletteOpen(false)}
+          onSelectCommand={(cmd) => handleSend(cmd)}
+        />
+
+        {/* Modal de Permissao de Efeito Colateral */}
         {currentPermissionRequest && (
-          <div className="permission-modal-overlay">
-            <div className="permission-card">
-              <div className="permission-title">⚠️ Solicitada Aprovação de Efeito Colateral</div>
-
-              <div>
-                O agente deseja executar a tool{" "}
-                <strong>{currentPermissionRequest.request.toolName}</strong>:
-              </div>
-
-              <div className="permission-input-box">
-                {JSON.stringify(currentPermissionRequest.request.input, null, 2)}
-              </div>
-
-              <div className="permission-actions">
-                <button
-                  type="button"
-                  className="btn btn-deny"
-                  onClick={() => handlePermissionResponse("deny")}
-                >
-                  Recusar
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-always"
-                  onClick={() => handlePermissionResponse("always")}
-                >
-                  Sempre Permitir
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-allow"
-                  onClick={() => handlePermissionResponse("allow")}
-                >
-                  Aprovar
-                </button>
-              </div>
-            </div>
-          </div>
+          <PermissionModal
+            request={currentPermissionRequest.request}
+            onRespond={handlePermissionResponse}
+          />
         )}
       </div>
     </div>

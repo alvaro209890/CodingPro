@@ -22,6 +22,18 @@ const api: CodingProDesktopAPI = {
   chooseWorkspaceFolder: () => {
     return ipcRenderer.invoke("codingpro:choose-workspace-folder");
   },
+  listSessions: () => {
+    return ipcRenderer.invoke("codingpro:list-sessions");
+  },
+  loadSession: (sessionId: string) => {
+    return ipcRenderer.invoke("codingpro:load-session", sessionId);
+  },
+  getDiffPreview: (targetFile: string, newContent: string) => {
+    return ipcRenderer.invoke("codingpro:get-diff-preview", { targetFile, newContent });
+  },
+  runTerminalCommand: (command: string) => {
+    return ipcRenderer.invoke("codingpro:run-terminal-command", command);
+  },
 };
 
 contextBridge.exposeInMainWorld("codingproAPI", api);

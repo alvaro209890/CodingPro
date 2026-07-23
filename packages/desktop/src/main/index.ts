@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { exec } from "node:child_process";
 import { join } from "node:path";
 import {
   ALL_TOOLS,
@@ -8,7 +9,9 @@ import {
   type CoreUiEvent,
   PermissionController,
   type PermissionRequest,
+  resolverPreviaDeEscrita,
   runAgent,
+  SessionStore,
   ToolGate,
   type ToolContext,
   ToolRegistry,
@@ -27,7 +30,6 @@ function sendCoreEvent(event: CoreUiEvent): void {
   }
 }
 
-/** Único aprovador do processo main: correlaciona a solicitação por `requestId` até a UI responder. */
 const approver: Approver = {
   async request(request: PermissionRequest, _context: ToolContext): Promise<Approval> {
     const requestId = `perm-${++requestCounter}`;
@@ -38,11 +40,6 @@ const approver: Approver = {
   },
 };
 
-/**
- * Sessão de chat ativa: um workspace/gate/histórico por diretório de projeto. Reaproveitada
- * entre turnos (como o chat da CLI) para que o histórico da conversa e o "sempre permitir"
- * de uma tool durem a sessão inteira, não só uma mensagem.
- */
 interface ChatSession {
   readonly cwd: string;
   readonly gate: ToolGate;
@@ -50,6 +47,7 @@ interface ChatSession {
   readonly registry: ToolRegistry;
   transcript: ChatMessage[];
   readonly workspace: Workspace;
+  readonly sessionStore: SessionStore;
 }
 
 let activeSession: ChatSession | null = null;
@@ -58,36 +56,48 @@ function criarProvider(): Provider {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (apiKey === undefined || apiKey.trim().length === 0) {
     throw new Error(
-      "Defina a variável de ambiente DEEPSEEK_API_KEY antes de abrir o CodingPro Desktop.",
+      "Variável de ambiente DEEPSEEK_API_KEY não definida. Configure-a no arquivo 0600 das credenciais do projeto.",
     );
   }
   return new DeepSeekProvider({ apiKey });
 }
 
-async function getOrCreateSession(cwd: string): Promise<ChatSession> {
-  if (activeSession && activeSession.cwd === cwd) {
+async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
+  if (activeSession !== null && activeSession.cwd === cwd) {
     return activeSession;
   }
-  const provider = criarProvider();
+
   const workspace = await Workspace.create(cwd);
   const registry = new ToolRegistry();
   for (const tool of ALL_TOOLS) {
     registry.register(tool);
   }
+
   const permissionController = new PermissionController({ mode: "ask" }, approver);
   const gate = new ToolGate(registry, permissionController);
-  activeSession = { cwd, gate, provider, registry, transcript: [], workspace };
+  const provider = criarProvider();
+  const sessionStore = await SessionStore.create(join(cwd, ".codingpro", "sessions"));
+
+  activeSession = {
+    cwd,
+    gate,
+    provider,
+    registry,
+    sessionStore,
+    transcript: [],
+    workspace,
+  };
   return activeSession;
 }
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 800,
-    minHeight: 600,
+    width: 1280,
+    height: 850,
+    minWidth: 900,
+    minHeight: 650,
     title: "CodingPro Desktop",
-    backgroundColor: "#0d1117",
+    backgroundColor: "#0b0e14",
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
       contextIsolation: true,
@@ -98,7 +108,7 @@ function createWindow(): void {
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
-    mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
+    mainWindow.loadFile(join(__dirname, "../index.html"));
   }
 }
 
@@ -113,17 +123,17 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle("codingpro:choose-workspace-folder", async () => {
-    if (!mainWindow) {
-      return undefined;
-    }
+    if (mainWindow === null) return undefined;
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ["openDirectory"],
-      title: "Selecionar pasta do projeto",
+      title: "Selecionar Pasta do Projeto",
     });
     if (result.canceled || result.filePaths.length === 0) {
       return undefined;
     }
-    return result.filePaths[0];
+    const chosen = result.filePaths[0];
+    activeSession = null;
+    return chosen;
   });
 
   ipcMain.on("codingpro:permission-response", (_, response: UiPermissionResponse) => {
@@ -132,9 +142,69 @@ app.whenReady().then(() => {
       pendingPermissions.delete(response.requestId);
       const action = response.decision.action;
       const approval: Approval =
-        action === "always" ? "approve-always" : action === "allow" ? "approve-once" : "deny";
+        action === "always"
+          ? "approve-always"
+          : action === "allow"
+            ? "approve-once"
+            : "deny";
       resolver(approval);
     }
+  });
+
+  ipcMain.handle("codingpro:list-sessions", async () => {
+    try {
+      const cwd = activeSession?.cwd ?? process.cwd();
+      const store = await SessionStore.create(join(cwd, ".codingpro", "sessions"));
+      const ids = await store.list();
+      return ids.map((id: string) => ({
+        id,
+        preview: `Sessão ${id.slice(0, 8)}`,
+        updatedAt: new Date().toISOString(),
+      }));
+    } catch {
+      return [];
+    }
+  });
+
+  ipcMain.handle("codingpro:load-session", async (_, sessionId: string) => {
+    try {
+      const cwd = activeSession?.cwd ?? process.cwd();
+      const store = await SessionStore.create(join(cwd, ".codingpro", "sessions"));
+      const messages = await store.load(sessionId);
+      return { success: true, messages };
+    } catch (err: unknown) {
+      return { success: false, error: String(err) };
+    }
+  });
+
+  ipcMain.handle("codingpro:get-diff-preview", async (_, args: { targetFile: string; newContent: string }) => {
+    try {
+      const cwd = activeSession?.cwd ?? process.cwd();
+      const workspace = await Workspace.create(cwd);
+      return await resolverPreviaDeEscrita(
+        workspace,
+        "write_file",
+        { path: args.targetFile, content: args.newContent },
+      );
+    } catch {
+      return undefined;
+    }
+  });
+
+  ipcMain.handle("codingpro:run-terminal-command", async (_, command: string) => {
+    return new Promise((resolve) => {
+      const isWin = process.platform === "win32";
+      const shellOption = isWin ? process.env.COMSPEC || "cmd.exe" : "/bin/sh";
+      const cwd = activeSession?.cwd ?? process.cwd();
+
+      exec(command, { cwd, shell: shellOption }, (error, stdout, stderr) => {
+        resolve({
+          exitCode: error ? error.code ?? 1 : 0,
+          stderr: stderr || (error ? error.message : ""),
+          stdout: stdout || "",
+        });
+      });
+    });
   });
 
   ipcMain.handle(
@@ -145,15 +215,19 @@ app.whenReady().then(() => {
           args.workspacePath && args.workspacePath.trim() !== ""
             ? args.workspacePath
             : process.cwd();
-        const session = await getOrCreateSession(targetCwd);
 
-        const userMessage: ChatMessage = { role: "user", content: args.prompt };
-        const inputMessages: ChatMessage[] = [...session.transcript, userMessage];
+        const session = await obterOuCriarSessao(targetCwd);
+        const userMessage: ChatMessage = {
+          role: "user",
+          content: args.prompt,
+        };
+
+        session.transcript.push(userMessage);
 
         const agentResult = await runAgent({
           context: { workspace: session.workspace },
           gate: session.gate,
-          messages: inputMessages,
+          messages: session.transcript,
           provider: session.provider,
           tools: session.registry.definitions(),
           onEvent: (agentEvent: AgentEvent) => {
@@ -164,13 +238,11 @@ app.whenReady().then(() => {
           },
         });
 
-        // Histórico persistido sem o system prompt (o `runAgent` refaz um a cada turno).
-        const msgs = agentResult.messages;
-        session.transcript = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
+        session.transcript = [...agentResult.messages];
 
         sendCoreEvent({
           type: "session-updated",
-          messages: agentResult.messages,
+          messages: session.transcript,
         });
 
         return { success: true };
