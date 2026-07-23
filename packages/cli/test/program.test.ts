@@ -455,8 +455,10 @@ describe("--doctor", () => {
   it("roda o diagnóstico e imprime o relatório sem precisar de provider", async () => {
     const captura = capturarSaida();
     const raiz = await mkdtemp(join(tmpdir(), "codingpro-doc-"));
-    const orig = process.env.DEEPSEEK_API_KEY;
+    const origKey = process.env.DEEPSEEK_API_KEY;
+    const origHome = process.env.HOME;
     process.env.DEEPSEEK_API_KEY = "";
+    process.env.HOME = raiz; // isola o settings global (sem provider) do home real
     try {
       const codigo = await executarCli(["--doctor"], captura.io, {
         criarProvider: () => {
@@ -468,10 +470,15 @@ describe("--doctor", () => {
       expect(codigo).toBe(1);
       expect(captura.stdout.join("")).toContain("Diagnóstico do CodingPro");
     } finally {
-      if (orig === undefined) {
-        process.env.DEEPSEEK_API_KEY = undefined;
+      if (origKey === undefined) {
+        delete process.env.DEEPSEEK_API_KEY;
       } else {
-        process.env.DEEPSEEK_API_KEY = orig;
+        process.env.DEEPSEEK_API_KEY = origKey;
+      }
+      if (origHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = origHome;
       }
       await rm(raiz, { force: true, recursive: true });
     }

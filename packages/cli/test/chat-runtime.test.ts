@@ -271,7 +271,7 @@ describe("executarChat", () => {
     ]);
     const captura = fakeIo(["oi", undefined], []);
     await executarChat({ cwd, provider, sessaoDir }, captura.io);
-    expect(captura.progresso()).toContain("chat do agente");
+    expect(captura.progresso()).toContain("CodingPro");
   });
 });
 

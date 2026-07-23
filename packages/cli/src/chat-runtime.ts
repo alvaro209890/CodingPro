@@ -51,6 +51,7 @@ import { carregarAtribuicao } from "./attribution-runtime.js";
 import { criarMemoriaSessao, type MemoriaSessao } from "./memory-runtime.js";
 import { verificarQualidade } from "./quality-runtime.js";
 import { obterDiff, promptRevisao } from "./review-runtime.js";
+import { criarTema, type Tema } from "./tema.js";
 import { carregarTiposCustom, criarSpawnerSubagentes } from "./subagent-runtime.js";
 
 export interface ChatIo {
@@ -76,6 +77,8 @@ export interface ChatOptions {
   /** Skills disponíveis (`.md`), já carregadas dos diretórios de skills. */
   readonly skills?: readonly Skill[];
   readonly signal?: AbortSignal;
+  /** Tema visual; ausente = sem cor (usado nos testes). */
+  readonly tema?: Tema;
 }
 
 const AJUDA =
@@ -274,7 +277,8 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
   for (const tool of [...ALL_TOOLS, ...(options.mcpTools ?? [])]) {
     registry.register(tool);
   }
-  const aprovador = criarAprovadorInterativo({ pergunta: io.pergunta }, io.progresso);
+  const tema = options.tema ?? criarTema("nenhuma");
+  const aprovador = criarAprovadorInterativo({ pergunta: io.pergunta }, io.progresso, tema);
   const hooks = options.hooks ?? [];
   const gate = new ToolGate(
     registry,
@@ -312,9 +316,10 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
   // Estado do auto-effort: decide automaticamente Flash/Pro a cada turno.
   const autoEffort: AutoEffortState = criarAutoEffortState();
 
-  io.progresso("CodingPro — chat do agente.\n");
-  io.progresso(`Projeto: ${resumoProjeto(await detectarProjeto(workspace))}\n`);
-  io.progresso(AJUDA);
+  io.progresso(`${tema.banner()}\n`);
+  io.progresso(`${tema.cabecalhoProjeto(resumoProjeto(await detectarProjeto(workspace)))}\n`);
+  io.progresso(`${tema.regua()}\n`);
+  io.progresso(`${tema.nota(AJUDA.trimEnd())}\n`);
 
   for (;;) {
     options.signal?.throwIfAborted();
@@ -499,7 +504,9 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
         }
         const progresso = describeAgentEvent(event);
         if (progresso !== undefined) {
-          io.progresso(`· ${sanitizarTextoTerminal(progresso)}\n`);
+          const texto = sanitizarTextoTerminal(progresso);
+          const linha = event.type === "tool-call" ? tema.ferramenta(texto) : tema.progresso(texto);
+          io.progresso(`${linha}\n`);
         }
       },
       provider: providerTurno,

@@ -7,6 +7,7 @@ import { type ChatIo, executarChat } from "./chat-runtime.js";
 import { ConfigError, type ProviderOverrides } from "./config.js";
 import { rodarDoctor } from "./doctor.js";
 import { executarPromptHeadless } from "./headless.js";
+import type { Tema } from "./tema.js";
 import { carregarHooks } from "./hooks-runtime.js";
 import { mensagens } from "./i18n/pt-BR.js";
 import { iniciarServidoresMcp } from "./mcp-runtime.js";
@@ -28,6 +29,8 @@ export interface CliServices {
   /** Diretório onde as sessões do agente são salvas/lidas. */
   readonly raizSessoes?: string;
   readonly signal?: AbortSignal;
+  /** Tema visual do chat; ausente = sem cor. */
+  readonly tema?: Tema;
 }
 
 class CliUsageError extends Error {
@@ -178,6 +181,7 @@ export function criarPrograma(
               : { memoriaGlobalDir: services.raizMemoriaGlobal }),
             ...(services.raizSessoes === undefined ? {} : { sessaoDir: services.raizSessoes }),
             ...(services.signal === undefined ? {} : { signal: services.signal }),
+            ...(services.tema === undefined ? {} : { tema: services.tema }),
           },
           criarChatIo(),
         );

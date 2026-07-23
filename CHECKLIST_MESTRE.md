@@ -38,8 +38,9 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [~] verbos de progresso por evento (`describeAgentEvent`: "Lendo…", "Rodando…", "Pensando…") — F1.10, 2026-07-22; falta i18n canônico completo da UI
 - [ ] Raciocínio interno livre, colapsado na TUI (Ctrl+O expande o bruto)
 - [x] Comandos em português com alias inglês (/plano, /desfazer, /custo…) — 2026-07-23
-- [ ] Design tokens + tema Aurora escuro + trilho de timeline + spinner gradiente — ⚠️ um 1º protótipo Ink 5/React 19 (`packages/tui`) foi escrito e **removido do build** (incompleto: `--tui` não integrado, input não resolvia, sem testes); preservado no git (`fd6f3b1`) para retomar quando for integrado+testado de verdade. Interface v1 = readline `--chat` (funcional, testada)
-- [ ] 4 temas + detecção truecolor/256/16/NO_COLOR + fallback de glyphs
+- [x] Identidade visual Aurora entregue via **camada ANSI** (`packages/cli/src/tema.ts`), não Ink: banner com **gradiente esmeralda→ciano→violeta**, cabeçalho de projeto, régua, prompt ❯ violeta, eventos de ferramenta em ciano, aprovação/erros/sucesso coloridos — sobre o chat readline. 2026-07-23
+- [x] Detecção de capacidade truecolor/256/16/NO_COLOR + `FORCE_COLOR` + degradação p/ texto limpo em pipe (`detectarNivelCor`), testada — 2026-07-23
+- [ ] Timeline/spinner animados + 4 temas selecionáveis + fallback de glyphs — polimento adicional (opcional). O 1º protótipo Ink 5/React 19 (`packages/tui`) foi **removido do build** (incompleto/não-integrado); preservado no git (`fd6f3b1`). A camada ANSI atual entrega a identidade Aurora sem a fragilidade do full-screen Ink
 - [ ] 3 propostas de banner/logo p/ o Álvaro escolher
 - [ ] Eval A/B idioma do system prompt (en+diretiva-pt vs 100% pt)
 - [ ] QA visual nos 6 terminais + sessão de aprovação visual com o Álvaro
@@ -142,7 +143,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] Undercover (attribution full/trailer/none) — campo `attribution` no settings vira diretriz de assinatura de commits no system prompt (chat e headless) — 2026-07-23
 - [x] `/review` com achados por severidade — `/review [alvo]` revisa o diff (não commitado ou `git diff <alvo>`) via subagente reviewer — 2026-07-23
 - [ ] Pet/XP/conquistas (desligável) — polimento cosmético, não bloqueia a Fase 2
-- [ ] Camada visual Ink/Aurora (4 temas, detecção truecolor/256/16, timeline, spinner, statusline, banner) + QA nos 6 terminais — polimento cosmético; a interface v1 é readline funcional
+- [x] Camada visual Aurora (banner com gradiente, cores por evento, prompt, detecção de cor) entregue via ANSI puro (`tema.ts`) sobre o chat readline — bonito e robusto, sem o full-screen Ink; falta só polimento opcional (timeline/spinner animados, 4 temas, QA nos 6 terminais) — 2026-07-23
 - [ ] i18n pt-BR: auditoria final de toda string da UI (a UI já é pt-BR; falta a passada de consolidação)
 - [ ] 🏁 1h de uso real sem atrito anotado
 

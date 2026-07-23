@@ -4,6 +4,7 @@ import {
   formatarPreviaDeEscrita,
   resolverPreviaDeEscrita,
 } from "@codingpro/core";
+import type { Tema } from "./tema.js";
 
 /** Lê uma linha do usuário em resposta a um prompt (readline no runtime real). */
 export interface Perguntador {
@@ -20,7 +21,11 @@ const SEMPRE = new Set(["a", "sempre", "always"]);
 export function criarAprovadorInterativo(
   perguntador: Perguntador,
   escreverProgresso: (texto: string) => void,
+  tema?: Tema,
 ): Approver {
+  const alvoEstilizado = (texto: string): string =>
+    tema === undefined ? texto : tema.aviso(texto);
+  const recusa = tema === undefined ? "· ação recusada\n" : `${tema.progresso("ação recusada")}\n`;
   return {
     async request(request, context) {
       const alvo = describeToolCall({
@@ -40,7 +45,9 @@ export function criarAprovadorInterativo(
           escreverProgresso(`${bloco}\n`);
         }
       }
-      const resposta = (await perguntador.pergunta(`Permitir "${alvo}"? [s/N/sempre] `))
+      const resposta = (
+        await perguntador.pergunta(`Permitir ${alvoEstilizado(alvo)}? [s/N/sempre] `)
+      )
         .trim()
         .toLowerCase();
       if (SEMPRE.has(resposta)) {
@@ -49,7 +56,7 @@ export function criarAprovadorInterativo(
       if (SIM.has(resposta)) {
         return "approve-once";
       }
-      escreverProgresso("· ação recusada\n");
+      escreverProgresso(recusa);
       return "deny";
     },
   };

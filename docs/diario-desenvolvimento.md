@@ -445,3 +445,28 @@ não bloqueia a Fase 2. Depois, iniciar a Fase 2 (app Windows) reusando o núcle
 ### Próximo
 
 Polimento restante (visual Aurora, i18n completo, evals) é pós-1.0. Iniciar Fase 2 (app Windows).
+
+## 2026-07-23 — Solidificação da Fase 1 + identidade visual Aurora
+
+### Correções (revisão/solidificação)
+- **Segurança (crítico):** loop de qualidade tinha injeção de comando (`execSync` com caminhos do
+  modelo interpolados em shell) → reescrito com `execFile` (sem shell), gate por `biome.json`, async,
+  extraído para `quality-runtime.ts` testável.
+- **Código morto:** removido o protótipo `packages/tui` (Ink 5/React 19) + `tui-runtime.ts` — não
+  integrado (`--tui` inexistente), input não resolvia, sem testes, quebrava o build. Preservado no git.
+- **Bugs menores:** `auto-effort` usava lista inline em vez da const `HEAVY_TOOL_NAMES` (drift);
+  variável `houveErro` morta; imports/vars não usados; optional chain.
+- **Cobertura:** testes white-box das guardas defensivas do MCP (colisão de ID, write síncrono, flag
+  fechado); cobertura completa do quality-runtime e do tema.
+
+### Identidade visual "Aurora" (front bonito)
+- `packages/cli/src/tema.ts`: camada visual **ANSI pura** (não Ink) — banner com **gradiente
+  esmeralda→ciano→violeta**, cabeçalho de projeto, régua, prompt ❯ violeta, eventos de ferramenta em
+  ciano, aprovação/erro/sucesso coloridos. `detectarNivelCor` (truecolor/256/16/NO_COLOR/FORCE_COLOR)
+  com degradação para texto limpo em pipe. Ligado ao `--chat` e ao prompt; testado.
+- Decisão: entregar a identidade Aurora por ANSI sobre o readline em vez do full-screen Ink —
+  bonito, robusto e testável, sem a fragilidade do protótipo removido.
+
+### Validação
+- 623 testes offline; `pnpm check` completo verde. Smoke visual ao vivo (banner + cores). CLI real
+  validada de ponta a ponta com `codingpro --chat/-p/--doctor` (chamada DeepSeek real → ok).
