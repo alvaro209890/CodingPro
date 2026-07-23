@@ -124,9 +124,6 @@ export function Landing() {
           <a className="botao primario" {...propsLink("/comecar")}>
             Baixar e instalar
           </a>
-          <a className="botao" href="https://github.com/alvaro209890/CodingPro">
-            Ver no GitHub
-          </a>
         </div>
       </Cartao>
     </>

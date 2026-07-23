@@ -76,8 +76,7 @@ export function App() {
       </main>
 
       <footer className="rodape">
-        CodingPro — desenvolvimento assistido por IA em português ·{" "}
-        <a href="https://github.com/alvaro209890/CodingPro">GitHub</a>
+        CodingPro — desenvolvimento assistido por IA em português
       </footer>
     </div>
   );

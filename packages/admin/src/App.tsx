@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { api, ErroApi } from "./api.js";
 import { Auditoria } from "./telas/Auditoria.js";
 import { ConsumoGeral } from "./telas/ConsumoGeral.js";
@@ -16,14 +17,68 @@ const ABAS: readonly { id: Aba; rotulo: string }[] = [
 
 const SITE_URL = "https://codingpro.cursar.space";
 
+function TelaLogin({ erro }: { erro?: string }) {
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [msg, setMsg] = useState(erro ?? "");
+
+  async function entrar(ev: FormEvent) {
+    ev.preventDefault();
+    if (!email || !senha) return;
+    setEnviando(true);
+    setMsg("");
+    try {
+      await api.post("/api/login", { email: email.trim(), senha });
+      window.location.reload();
+    } catch (causa: unknown) {
+      setMsg(causa instanceof ErroApi ? causa.message : "Erro ao fazer login.");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="conteudo estreito" style={{ paddingTop: "2rem" }}>
+      <div className="cartao">
+        <h2>Painel administrativo</h2>
+        <p className="fraco">Entre com uma conta de administrador para continuar.</p>
+        {msg && <p className="erro">{msg}</p>}
+        <form onSubmit={entrar}>
+          <label>
+            E-mail
+            <input
+              autoFocus
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@exemplo.com"
+              type="email"
+              value={email}
+            />
+          </label>
+          <label>
+            Senha
+            <input
+              onChange={(e) => setSenha(e.target.value)}
+              placeholder="••••••"
+              type="password"
+              value={senha}
+            />
+          </label>
+          <button className="botao primario" disabled={enviando} type="submit" style={{ width: "100%" }}>
+            {enviando ? "Entrando…" : "Entrar"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export function App() {
   const [admin, setAdmin] = useState<{ email: string; nome: string } | null>(null);
   const [estado, setEstado] = useState<"carregando" | "ok" | "negado">("carregando");
   const [aba, setAba] = useState<Aba>("usuarios");
 
   useEffect(() => {
-    // Portão de entrada: sem isso o painel renderizaria vazio para quem não é admin,
-    // o que confunde mais do que um "acesso negado" explícito.
     api
       .get<{ email: string; nome: string }>("/api/admin/check")
       .then((dados) => {
@@ -44,19 +99,7 @@ export function App() {
   }
 
   if (estado === "negado") {
-    return (
-      <div className="conteudo estreito" style={{ paddingTop: "4rem" }}>
-        <div className="cartao centro">
-          <h2>Acesso restrito</h2>
-          <p>
-            Esta área é só do administrador. Entre com uma conta de administrador para continuar.
-          </p>
-          <a className="botao primario" href={`${SITE_URL}/entrar`}>
-            Ir para o login
-          </a>
-        </div>
-      </div>
-    );
+    return <TelaLogin />;
   }
 
   return (
