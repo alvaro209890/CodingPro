@@ -9,8 +9,8 @@ interface IntegratedTerminalProps {
 export const IntegratedTerminal: React.FC<IntegratedTerminalProps> = ({ isOpen, onClose }) => {
   const [terminalInput, setTerminalInput] = useState("");
   const [logs, setLogs] = useState<string[]>([
-    "CodingPro Terminal [PowerShell 7 Native]",
-    "Digite comandos para executar no diretório do projeto ativo.",
+    "CodingPro Terminal",
+    `Diretório: ${window.codingproAPI ? "(carregando...)" : "(API não conectada)"}`,
   ]);
   const [isExecuting, setIsExecuting] = useState(false);
 

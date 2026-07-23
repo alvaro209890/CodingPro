@@ -2,7 +2,11 @@ import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { exec } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 import {
   ALL_TOOLS,
   type AgentEvent,
@@ -60,9 +64,11 @@ function obterApiKey(): string | undefined {
   }
 
   const envPaths = [
-    join(homedir(), ".hermes", ".env"),
-    join(homedir(), ".codingpro", ".env"),
+    join(process.cwd(), ".codingpro", ".env"),
     join(process.cwd(), ".env"),
+    join(homedir(), ".codingpro", ".env"),
+    join(homedir(), ".config", "codingpro", "deepseek.env"),
+    join(homedir(), ".hermes", ".env"),
   ];
 
   for (const envPath of envPaths) {
@@ -71,7 +77,10 @@ function obterApiKey(): string | undefined {
         const content = readFileSync(envPath, "utf8");
         const match = content.match(/^DEEPSEEK_API_KEY=(.+)$/m);
         if (match && match[1]) {
-          return match[1].trim().replace(/^["']|["']$/g, "");
+          const key = match[1].trim().replace(/^["']|["']$/g, "");
+          if (key.length > 0) {
+            return key;
+          }
         }
       } catch {
         // Ignora erro
@@ -86,7 +95,7 @@ function criarProvider(): Provider {
   const apiKey = obterApiKey();
   if (apiKey === undefined || apiKey.trim().length === 0) {
     throw new Error(
-      "Variável de ambiente DEEPSEEK_API_KEY não encontrada em ~/.hermes/.env ou ambiente.",
+      "DEEPSEEK_API_KEY não encontrada. Coloque em .codingpro/.env, variável de ambiente, ou ~/.config/codingpro/deepseek.env",
     );
   }
   return new DeepSeekProvider({ apiKey });

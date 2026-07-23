@@ -4,9 +4,18 @@
   "private": true,
   "type": "module",
   "description": "Núcleo do CodingPro: sandbox, execução de tools e permissões",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
   },
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": ">=24.11 <25"
   },

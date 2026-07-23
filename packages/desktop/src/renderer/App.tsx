@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CoreUiEvent, PermissionRequest } from "@codingpro/core";
 import { Sidebar } from "./components/Sidebar.js";
 import { Header } from "./components/Header.js";
@@ -25,34 +25,14 @@ interface ChatMessageUI {
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"home" | "code">("code");
-  const [messages, setMessages] = useState<ChatMessageUI[]>([
-    {
-      id: "demo-1",
-      role: "assistant",
-      content:
-        "Full pipeline pnpm build (llm->core->cli->desktop) succeeds end-to-end. Terminal integrado e ferramentas visuais ativas.",
-      toolGroup: {
-        summaryText: "Leu 2 arquivos, editado um arquivo, encontrado arquivos, executado 2 comandos",
-        diffAdd: 14,
-        diffDel: 2,
-        items: [
-          { id: "t1", name: "read_file", target: "CODINGPRO.md", status: "success" },
-          { id: "t2", name: "edit_file", target: "CODINGPRO.md", status: "success", diffAdd: 14, diffDel: 2 },
-          { id: "t3", name: "read_file", target: "README.md", status: "success" },
-          { id: "t4", name: "grep", target: "check if other packages have their own README", status: "failed" },
-          { id: "t5", name: "bash", target: "formatting including markdown doc edits", status: "success" },
-        ],
-      },
-    },
-  ]);
-
+  const [messages, setMessages] = useState<ChatMessageUI[]>([]);
   const [inputPrompt, setInputPrompt] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
 
   const [workspaceInfo, setWorkspaceInfo] = useState<{ cwd: string; platform: string }>({
-    cwd: "c:\\GIS\\CodingPro",
+    cwd: "Carregando...",
     platform: "win32",
   });
 
@@ -62,15 +42,22 @@ export const App: React.FC = () => {
   } | null>(null);
 
   const [recentSessions, setRecentSessions] = useState([
-    { id: "1", title: "Análise e desenvolvimento do app Windows", active: true },
-    { id: "2", title: "CLI design e animações", active: false },
-    { id: "3", title: "Segurança do site de rifas", active: false },
-    { id: "4", title: "Divisão de lotes 16 e 17", active: false },
-    { id: "5", title: "Simbologia não carrega no ArcMap 10.8", active: false },
-    { id: "6", title: "Análise de vencimento de carros no SIMCAR", active: false },
+    { id: "current", title: "Nova sessão", active: true },
   ]);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  // ─── Global Ctrl+K listener (no App level, não dentro do CommandPalette) ───
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
 
   useEffect(() => {
     if (window.codingproAPI) {
@@ -180,7 +167,7 @@ export const App: React.FC = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = async (customPrompt?: string) => {
+  const handleSend = useCallback(async (customPrompt?: string) => {
     const textToSend = customPrompt ?? inputPrompt;
     if (!textToSend.trim() || isRunning) return;
     if (!customPrompt) setInputPrompt("");
@@ -191,7 +178,7 @@ export const App: React.FC = () => {
     if (window.codingproAPI) {
       await window.codingproAPI.sendMessage(textToSend);
     }
-  };
+  }, [inputPrompt, isRunning]);
 
   const handlePermissionResponse = (action: "allow" | "always" | "deny") => {
     if (!currentPermissionRequest || !window.codingproAPI) return;
@@ -204,18 +191,15 @@ export const App: React.FC = () => {
 
   const handleSelectSession = async (id: string) => {
     setRecentSessions((prev) =>
-      prev.map((s) => ({
-        ...s,
-        active: s.id === id,
-      })),
+      prev.map((s) => ({ ...s, active: s.id === id })),
     );
     if (window.codingproAPI) {
       const res = await window.codingproAPI.loadSession(id);
       if (res.success && res.messages) {
         setMessages(
-          res.messages.map((msg, i) => ({
+          res.messages.map((msg: any, i: number) => ({
             id: `loaded-${i}`,
-            role: msg.role === "user" ? "user" : "assistant",
+            role: msg.role === "user" ? ("user" as const) : ("assistant" as const),
             content: msg.content ?? "",
           })),
         );
@@ -223,29 +207,67 @@ export const App: React.FC = () => {
     }
   };
 
+  const cwdShort = workspaceInfo.cwd.split(/[/\\]/).slice(-1)[0] || workspaceInfo.cwd;
+
   return (
     <div className="app-container">
-      {/* Sidebar no estilo Claude Code */}
       <Sidebar
         activeTab={activeTab}
         onSelectTab={setActiveTab}
         recentSessions={recentSessions}
         onSelectSession={handleSelectSession}
-        onNewSession={() => setMessages([])}
+        onNewSession={() => {
+          setMessages([]);
+          setRecentSessions((prev) => [
+            { id: `new-${Date.now()}`, title: "Nova sessão", active: true },
+            ...prev.map((s) => ({ ...s, active: false })),
+          ]);
+        }}
         workspacePath={workspaceInfo.cwd}
       />
 
-      {/* Area Principal */}
       <div className="main-content">
-        {/* Header superior */}
         <Header
-          title={recentSessions.find((s) => s.active)?.title ?? "Análise e desenvolvimento do app Windows"}
-          projectName="CodingPro"
+          title={recentSessions.find((s) => s.active)?.title ?? "Nova sessão"}
+          projectName={cwdShort}
           onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
         />
 
         {/* Chat Feed */}
         <div className="chat-feed">
+          {messages.length === 0 && (
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              flex: 1,
+              gap: 12,
+              opacity: 0.6,
+              paddingTop: 80,
+            }}>
+              <div style={{
+                width: 56,
+                height: 56,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, var(--accent-purple), var(--accent-blue))",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 24,
+                fontWeight: 700,
+                color: "#fff",
+                boxShadow: "0 0 24px rgba(56, 189, 248, 0.2)",
+              }}>CP</div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}>
+                CodingPro Desktop
+              </div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)", maxWidth: 400, textAlign: "center" }}>
+                Seu assistente de desenvolvimento com IA. Digite um pedido abaixo ou pressione <strong style={{ color: "var(--accent-blue)" }}>Ctrl+K</strong> para abrir a paleta de comandos.
+              </div>
+            </div>
+          )}
+
           {messages.map((m) => (
             <div key={m.id} className="message-group">
               {m.role === "user" ? (
@@ -260,37 +282,36 @@ export const App: React.FC = () => {
                       totalDel={m.toolGroup.diffDel}
                     />
                   )}
-
                   {m.reasoning && <div className="reasoning-box">🧠 {m.reasoning}</div>}
-
                   {m.content && <div className="text-response-block">{m.content}</div>}
                 </div>
               )}
             </div>
           ))}
 
-          {/* Stat Footer Line */}
-          <div className="session-stats-bar" style={{ maxWidth: 860, margin: "0 auto", width: "100%" }}>
-            <span>• 11m 32s</span>
-            <span>• 9.2k tokens</span>
-            <span>• {isRunning ? "1 tarefa em execução" : "0 tarefas ativas"}</span>
-          </div>
+          {isRunning && (
+            <div className="message-group" style={{ maxWidth: 820, margin: "0 auto", width: "100%" }}>
+              <div className="typing-indicator">
+                <span />
+                <span />
+                <span />
+              </div>
+            </div>
+          )}
 
           <div ref={chatEndRef} />
         </div>
 
-        {/* Terminal Integrado embutido */}
+        {/* Terminal Integrado */}
         <IntegratedTerminal isOpen={isTerminalOpen} onClose={() => setIsTerminalOpen(false)} />
 
-        {/* Dock Flutuante Inferior */}
+        {/* Dock Flutuante */}
         <FloatingInputDock
           inputPrompt={inputPrompt}
           onChangeInput={setInputPrompt}
           onSend={() => handleSend()}
           isRunning={isRunning}
           branchName="master"
-          additions={259}
-          deletions={90}
           modelName="DeepSeek V4"
           effortLevel="Alto"
         />
@@ -302,7 +323,7 @@ export const App: React.FC = () => {
           onSelectCommand={(cmd) => handleSend(cmd)}
         />
 
-        {/* Modal de Permissao de Efeito Colateral */}
+        {/* Modal de Permissão */}
         {currentPermissionRequest && (
           <PermissionModal
             request={currentPermissionRequest.request}

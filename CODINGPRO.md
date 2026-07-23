@@ -24,21 +24,9 @@ O que foi entregue: workspace sandboxado, loop agêntico com permissões, chat i
 
 O que falta (polimento): auto-effort com roteamento Flash automático, `/cost` com taxa de cache-hit, i18n pt-BR canônico, TUI Aurora (Ink/temas), pet/XP, evals no CI, hardening final.
 
-**Fase 2 (App Windows) iniciada — W0 e W1 concluídos** (2026-07-23). Contrato de eventos Core↔UI (`events.ts`, hoje v1.1.0), suporte a paths por plataforma (`platform-paths.ts`, `%APPDATA%\CodingPro`), adaptador de shell Windows (PowerShell/CMD e `taskkill`), 724 testes Vitest passando 100% nativamente em Windows, e pacote `@codingpro/desktop` (Electron + React + Vite + UI Aurora) integrado e compilando 100% no monorepo.
+**Fase 2 (App Windows) avançando rápido — W0, W1 e W2 concluídos** (2026-07-23). Contrato de eventos Core↔UI (`events.ts`, v1.1.0), suporte a paths por plataforma (`platform-paths.ts`, `%APPDATA%\CodingPro`), adaptador de shell Windows, pacotes `core` e `llm` exportando corretamente para ESM no Node/Electron (`dist/index.mjs`), interface gráfica redesenhada no padrão Claude Code com animações CSS Aurora premium (typing indicator, glow pulse, modal spring animations), paleta de comandos `Ctrl+K` global funcional, terminal integrado, visualizador de diff, carregamento de sessões reais e carregamento seguro de API key via `.codingpro/.env`. App executando e funcionando perfeitamente!
 
-Uma revisão pós-marco do `packages/desktop` (2026-07-23) encontrou e corrigiu 4 bugs que não
-apareciam no `tsc` mas quebravam o app rodando de ponta a ponta: `vite build` apagava o
-main/preload já compilados (saída do renderer isolada em `dist/renderer`); a aprovação de
-permissão nunca resolvia porque o `requestId` gerado no main não ia no evento pro UI ecoar de
-volta (`events.ts` subiu p/ v1.1.0, mudança aditiva); cada mensagem recriava workspace/gate do
-zero e não mandava o histórico da conversa pro `runAgent` (agora há uma sessão de chat por
-projeto, reaproveitada entre turnos, igual ao chat da CLI); e a chave DeepSeek tinha um fallback
-silencioso (`?? "dummy-dev-key"`) que trocava um erro claro por uma falha de rede confusa. De
-brinde entrou a primeira fatia da barra lateral do W2: seletor de pasta do projeto via
-`dialog.showOpenDialog`, no lugar do `process.cwd()` fixo. Detalhes em
-`fase2-app-windows/04_roadmap_checklist.md` (seção "Correções pós-marco").
-
-**Pronto para o restante da W2 (Ferramentas visuais & painéis do App Desktop).**
+**Pronto para a W3 (Drag & Drop, Temas e Empacotamento .exe com electron-builder).**
 
 O **F1.2** adicionou efeitos e permissões. `write_file` ancora a escrita no realpath do diretório-pai
 (que já deve existir) e abre com `O_NOFOLLOW` (symlink final → bloqueado); `bash` roda na raiz com
