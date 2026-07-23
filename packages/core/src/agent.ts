@@ -250,16 +250,26 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
     if (steps >= maxSteps) {
       break;
     }
-    for (const call of calls) {
-      options.signal?.throwIfAborted();
-      const result = await options.gate.run(call.name, call.input, options.context);
-      working.push({
-        result,
-        role: "tool",
-        toolCallId: call.id,
-        toolName: call.name,
-      });
-      options.onEvent?.({ call, result, type: "tool-result" });
+    // Captura o ponto do transcrito antes de executar as ferramentas deste turno.
+    // Se um abort ocorrer no meio, restauramos para não deixar resultados parciais
+    // que o modelo não consegue parear (toolCalls sem tool-result correspondente).
+    const resultsStart = working.length;
+    try {
+      for (const call of calls) {
+        options.signal?.throwIfAborted();
+        const result = await options.gate.run(call.name, call.input, options.context);
+        working.push({
+          result,
+          role: "tool",
+          toolCallId: call.id,
+          toolName: call.name,
+        });
+        options.onEvent?.({ call, result, type: "tool-result" });
+      }
+    } catch (error) {
+      // Abort ou erro de tool: descarta resultados parciais do turno e para o loop.
+      working = working.slice(0, resultsStart);
+      throw error;
     }
   }
 

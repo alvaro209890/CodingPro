@@ -44,6 +44,7 @@ export function nomeMcpTool(servidor: string, tool: string): string {
 export class McpClient {
   private proximoId = 1;
   private buffer = "";
+  private fechado = false;
   private readonly pendentes = new Map<
     number,
     { resolve: (r: JsonRpcResponse) => void; reject: (e: Error) => void; timer: NodeJS.Timeout }
@@ -56,15 +57,22 @@ export class McpClient {
   ) {
     this.filho.stdout.setEncoding("utf8");
     this.filho.stdout.on("data", (chunk: string) => this.consumir(chunk));
-    this.filho.on("close", () => this.falharPendentes(new Error("servidor MCP encerrou")));
-    this.filho.on("error", (erro) =>
-      this.falharPendentes(erro instanceof Error ? erro : new Error("falha no servidor MCP")),
-    );
-    // Erro assíncrono no stdin: rejeita as pendências em vez de suprimir silenciosamente.
-    this.filho.stdin.on("error", () =>
-      this.falharPendentes(new Error("erro no stdin do servidor MCP")),
-    );
+    this.filho.on("close", this.onChildClose);
+    this.filho.on("error", this.onChildError);
+    this.filho.stdin.on("error", this.onStdinError);
   }
+
+  private onChildClose = (): void => {
+    this.falharPendentes(new Error("servidor MCP encerrou"));
+  };
+
+  private onChildError = (erro: Error): void => {
+    this.falharPendentes(erro instanceof Error ? erro : new Error("falha no servidor MCP"));
+  };
+
+  private onStdinError = (): void => {
+    this.falharPendentes(new Error("erro no stdin do servidor MCP"));
+  };
 
   /** Sobe o servidor e faz o handshake `initialize` + notificação `initialized`. */
   static async conectar(nome: string, config: McpServerConfig): Promise<McpClient> {
@@ -139,12 +147,25 @@ export class McpClient {
   }
 
   private requisitar(method: string, params: unknown): Promise<JsonRpcResponse> {
+    if (this.fechado) {
+      return Promise.reject(new Error("cliente MCP fechado"));
+    }
     const id = this.proximoId++;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pendentes.delete(id);
         reject(new Error(`tempo esgotado em ${method}`));
       }, this.timeoutMs);
+
+      // Increment captured before the Promise body — safe in JS single-threaded event loop,
+      // but if this.pendentes.set and this.filho.stdin.write are ever called concurrently
+      // (via subagentes paralelos), two requests could share an ID. We detect collisions
+      // and reject the duplicate to avoid cross-wiring responses.
+      if (this.pendentes.has(id)) {
+        clearTimeout(timer);
+        if (this.proximoId === id + 1) this.proximoId = id; // rewind if this was the only consumer
+        return reject(new Error(`ID de requisição MCP duplicado: ${id}`));
+      }
       this.pendentes.set(id, { reject, resolve, timer });
       try {
         this.filho.stdin.write(`${JSON.stringify({ id, jsonrpc: "2.0", method, params })}\n`);
@@ -186,14 +207,18 @@ export class McpClient {
       .join("\n");
   }
 
-  /** Encerra o subprocesso do servidor. */
+  /** Encerra o subprocesso do servidor. Marca como fechado e remove listeners. */
   fechar(): void {
+    this.fechado = true;
     this.falharPendentes(new Error("cliente MCP fechado"));
     try {
       this.filho.kill("SIGTERM");
     } catch {
       // já morto
     }
+    this.filho.off("close", this.onChildClose);
+    this.filho.off("error", this.onChildError);
+    this.filho.stdin.off("error", this.onStdinError);
   }
 }
 
@@ -201,7 +226,9 @@ function schemaSeguro(schema: unknown): Tool["inputSchema"] {
   if (
     typeof schema === "object" &&
     schema !== null &&
-    (schema as { type?: unknown }).type === "object"
+    (schema as { type?: unknown }).type === "object" &&
+    typeof (schema as { properties?: unknown }).properties === "object" &&
+    (schema as { properties?: unknown }).properties !== null
   ) {
     return schema as Tool["inputSchema"];
   }

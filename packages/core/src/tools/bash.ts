@@ -89,9 +89,17 @@ function runCommand(
       if (remaining <= 0) {
         return current;
       }
-      // Fatia no limite exato para o fluxo nunca ultrapassar o teto (chunk pode ser grande).
       const slice = chunk.byteLength > remaining ? chunk.subarray(0, remaining) : chunk;
       return current + slice.toString("utf8");
+    };
+
+    const onStdout = (chunk: Buffer) => {
+      if (settled) return;
+      stdout = collect(chunk, stdout);
+    };
+    const onStderr = (chunk: Buffer) => {
+      if (settled) return;
+      stderr = collect(chunk, stderr);
     };
 
     const killTree = (): void => {
@@ -116,16 +124,14 @@ function runCommand(
     };
     signal?.addEventListener("abort", onAbort, { once: true });
 
-    child.stdout.on("data", (chunk: Buffer) => {
-      stdout = collect(chunk, stdout);
-    });
-    child.stderr.on("data", (chunk: Buffer) => {
-      stderr = collect(chunk, stderr);
-    });
+    child.stdout.on("data", onStdout);
+    child.stderr.on("data", onStderr);
 
     const cleanup = (): void => {
       clearTimeout(timer);
       signal?.removeEventListener("abort", onAbort);
+      child.stdout.removeListener("data", onStdout);
+      child.stderr.removeListener("data", onStderr);
     };
 
     child.on("error", (error) => {

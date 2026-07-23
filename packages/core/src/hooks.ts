@@ -85,7 +85,11 @@ export async function executarHook(hook: Hook, payload: PayloadHook): Promise<Ho
       );
     });
     filho.stdin.on("error", () => undefined); // processo pode fechar antes de lermos o stdin (EPIPE)
-    filho.stdin.end(JSON.stringify(payload));
+    try {
+      filho.stdin.end(JSON.stringify(payload));
+    } catch {
+      // stdin já destruído após close do processo — promessa será resolvida ao timeout ou close
+    }
   });
 }
 
