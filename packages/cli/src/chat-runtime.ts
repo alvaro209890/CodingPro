@@ -4,20 +4,26 @@ import {
   ALL_TOOLS,
   type CheckpointMeta,
   CheckpointStore,
+  blocoSkill,
   construirRepoMap,
   createReadTracker,
+  criarHookRunner,
   describeAgentEvent,
   detectarProjeto,
   gerarCodingproMd,
+  type Hook,
   MEMORY_TOOL_NAMES,
   newSessionId,
   PermissionController,
   readFileWithin,
   resumoProjeto,
+  rodarHooksStop,
   runAgent,
   SessionStore,
+  type Skill,
   slugify,
   type SubagenteSpawner,
+  sugerirSkills,
   SYSTEM_PROMPT_V1,
   ToolGate,
   ToolRegistry,
@@ -42,11 +48,15 @@ export interface ChatIo {
 
 export interface ChatOptions {
   readonly cwd: string;
+  /** Hooks de shell (pre/post-tool, stop), já carregados do settings. */
+  readonly hooks?: readonly Hook[];
   readonly maxContexto?: number;
   /** Diretório da memória global; ausente usa `~/.codingpro/memory`. */
   readonly memoriaGlobalDir?: string;
   readonly provider: Provider;
   readonly sessaoDir?: string;
+  /** Skills disponíveis (`.md`), já carregadas dos diretórios de skills. */
+  readonly skills?: readonly Skill[];
   readonly signal?: AbortSignal;
 }
 
@@ -56,7 +66,41 @@ const AJUDA =
   "/mapa mostra o repo map do projeto · /lembrar <fato> salva na memória · " +
   "/memory [list|forget <slug>|edit <slug>] gerencia a memória · " +
   "/plan <objetivo> gera um plano (subagente arquiteto) · " +
+  "/skills lista skills · /skill <nome> ativa uma skill · " +
   "/init gera CODINGPRO.md com o projeto detectado\n";
+
+/** Trata `/skills` (lista + sugere) e `/skill <nome>` (ativa para a sessão). */
+function comandoSkill(
+  skills: readonly Skill[],
+  ativas: Set<string>,
+  mensagem: string,
+  io: ChatIo,
+): void {
+  const partes = mensagem.trim().split(/\s+/u);
+  if (partes[0] === "/skill") {
+    const nome = partes[1];
+    if (nome === undefined) {
+      io.progresso("· uso: /skill <nome>\n");
+      return;
+    }
+    if (!skills.some((s) => s.nome === nome)) {
+      io.progresso(`· skill não encontrada: ${nome}\n`);
+      return;
+    }
+    ativas.add(nome);
+    io.progresso(`· skill ativada: ${nome}\n`);
+    return;
+  }
+  // /skills
+  if (skills.length === 0) {
+    io.progresso("· nenhuma skill disponível (crie .md em .codingpro/skills)\n");
+    return;
+  }
+  for (const s of skills) {
+    const marca = ativas.has(s.nome) ? "●" : "○";
+    io.progresso(`· ${marca} ${s.nome} — ${s.descricao}\n`);
+  }
+}
 
 /** Roda o subagente arquiteto para produzir um plano, salva em `.codingpro/plans/` e o exibe. */
 async function comandoPlan(
@@ -192,10 +236,14 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
     registry.register(tool);
   }
   const aprovador = criarAprovadorInterativo({ pergunta: io.pergunta }, io.progresso);
+  const hooks = options.hooks ?? [];
   const gate = new ToolGate(
     registry,
     new PermissionController({ alwaysAllow: MEMORY_TOOL_NAMES, mode: "ask" }, aprovador),
+    hooks.length > 0 ? criarHookRunner(hooks) : undefined,
   );
+  const skills = options.skills ?? [];
+  const skillsAtivas = new Set<string>();
   // Memória persistente: índices sempre no contexto + retrieval por turno; `remember` grava aqui.
   const memoria = criarMemoriaSessao(workspace.root, options.memoriaGlobalDir);
   // Subagentes: tipos padrão + custom de `.codingpro/agents`; a tool `task` e o `/plan` usam isto.
@@ -273,6 +321,10 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       await comandoPlan(spawner, workspace.root, objetivo, io, options.signal);
       continue;
     }
+    if (mensagem === "/skills" || mensagem === "/skill" || mensagem.startsWith("/skill ")) {
+      comandoSkill(skills, skillsAtivas, mensagem, io);
+      continue;
+    }
     if (mensagem === "/mapa" || mensagem === "/map") {
       const mapa = await construirRepoMap(workspace, {
         cacheDir: join(workspace.root, ".codingpro"),
@@ -318,9 +370,24 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       continue;
     }
 
+    // Auto-sugestão de skill: dica não-intrusiva quando uma skill casa e ainda não está ativa.
+    const sugeridas = sugerirSkills(skills, mensagem, 1).filter((s) => !skillsAtivas.has(s.nome));
+    if (sugeridas[0] !== undefined) {
+      io.progresso(
+        `· skill sugerida: ${sugeridas[0].nome} (ative com /skill ${sugeridas[0].nome})\n`,
+      );
+    }
+
     checkpoints.begin(mensagem);
-    // System prompt fresco por turno: base + memória (índices sempre + retrieval do pedido).
-    const systemPrompt = await memoria.promptDoTurno(SYSTEM_PROMPT_V1, mensagem);
+    // System prompt fresco por turno: base + skills ativas + memória (índices + retrieval do pedido).
+    const blocosSkill = [...skillsAtivas]
+      .map((nome) => skills.find((s) => s.nome === nome))
+      .filter((s): s is Skill => s !== undefined)
+      .map((s) => blocoSkill(s))
+      .join("\n\n");
+    const base =
+      blocosSkill.length > 0 ? `${SYSTEM_PROMPT_V1}\n\n${blocosSkill}` : SYSTEM_PROMPT_V1;
+    const systemPrompt = await memoria.promptDoTurno(base, mensagem);
     const semSystem = transcrito[0]?.role === "system" ? transcrito.slice(1) : transcrito;
     const entrada: ChatMessage[] = [
       { content: systemPrompt, role: "system" },
@@ -369,5 +436,8 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
     if (store !== undefined) {
       await store.save(sessaoId, transcrito);
     }
+  }
+  if (hooks.length > 0) {
+    await rodarHooksStop(hooks);
   }
 }

@@ -45,6 +45,16 @@ export { CoreError, type CoreErrorCode } from "./errors.js";
 export { readFileWithin, removeFileWithin, writeFileWithin } from "./fs-safe.js";
 export { ToolGate } from "./gate.js";
 export {
+  criarHookRunner,
+  executarHook,
+  type Hook,
+  HOOK_DEFAULT_TIMEOUT_MS,
+  type HookEvent,
+  type HookOutcome,
+  type HookRunner,
+  rodarHooksStop,
+} from "./hooks.js";
+export {
   type BlocoMemoriaEntrada,
   buscarMemorias,
   descricaoDe,
@@ -118,6 +128,13 @@ export {
   type TipoSimbolo,
 } from "./symbols.js";
 export { newSessionId, SessionStore } from "./session.js";
+export {
+  blocoSkill,
+  parseSkill,
+  SKILL_MAX_BYTES,
+  type Skill,
+  sugerirSkills,
+} from "./skills.js";
 export {
   executarSubagente,
   type ExecutarSubagenteOptions,

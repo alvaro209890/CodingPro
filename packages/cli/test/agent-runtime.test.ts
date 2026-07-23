@@ -215,3 +215,62 @@ describe("executarAgenteHeadless", () => {
     ).rejects.toMatchObject({ code: "not-found" });
   });
 });
+
+describe("executarAgenteHeadless — skills e hooks (F6)", () => {
+  let cwd2: string;
+  let saida2: string;
+  let progresso2: string;
+  let io2: AgenteHeadlessIo;
+
+  beforeEach(async () => {
+    cwd2 = await mkdtemp(join(tmpdir(), "codingpro-cli-f6-"));
+    saida2 = "";
+    progresso2 = "";
+    io2 = {
+      progresso: (t) => {
+        progresso2 += t;
+      },
+      saida: (t) => {
+        saida2 += t;
+      },
+    };
+  });
+
+  afterEach(async () => {
+    await rm(cwd2, { force: true, recursive: true });
+  });
+
+  it("injeta skill relevante no system prompt e roda stop hook", async () => {
+    const requests: string[] = [];
+    const provider: Provider = {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "fake",
+      model: "fake",
+      async *stream(request) {
+        requests.push(JSON.stringify(request));
+        yield { text: "feito", type: "text-delta" };
+        yield { message: { content: "feito", role: "assistant" }, reason: "stop", type: "finish" };
+      },
+    };
+    const skills = [
+      { body: "rode pnpm build", descricao: "como buildar o projeto", nome: "build" },
+    ];
+    await executarAgenteHeadless(
+      {
+        cwd: cwd2,
+        hooks: [{ command: "true", event: "stop" }],
+        memoriaGlobalDir: join(cwd2, "gm"),
+        prompt: "como buildar?",
+        provider,
+        skills,
+      },
+      io2,
+    );
+    const req = JSON.parse(requests[0] ?? "{}") as {
+      messages: { role: string; content?: string }[];
+    };
+    const system = req.messages.find((m) => m.role === "system")?.content ?? "";
+    expect(system).toContain("Skill: build");
+    expect(saida2).toContain("feito");
+  });
+});

@@ -59,4 +59,31 @@ describe("ToolGate", () => {
     const gate = new ToolGate(registry, controller);
     expect(await gate.run("write_thing", {}, context)).toEqual(textResult("ok:write_thing"));
   });
+
+  it("hook pre-tool que veta bloqueia a execução antes da permissão", async () => {
+    let executouDepois = false;
+    const hooks = {
+      antes: async () => ({ allow: false, reason: "vetado pelo hook" }),
+      depois: async () => {
+        executouDepois = true;
+      },
+    };
+    const gate = new ToolGate(registry, new PermissionController({ mode: "auto" }), hooks);
+    const r = await gate.run("read_thing", {}, context);
+    expect(r).toMatchObject({ type: "execution-denied", reason: "vetado pelo hook" });
+    expect(executouDepois).toBe(false);
+  });
+
+  it("hook depois roda após execução liberada", async () => {
+    const chamadas: string[] = [];
+    const hooks = {
+      antes: async () => ({ allow: true }),
+      depois: async (nome: string) => {
+        chamadas.push(nome);
+      },
+    };
+    const gate = new ToolGate(registry, new PermissionController({ mode: "auto" }), hooks);
+    expect(await gate.run("read_thing", {}, context)).toEqual(textResult("ok:read_thing"));
+    expect(chamadas).toEqual(["read_thing"]);
+  });
 });

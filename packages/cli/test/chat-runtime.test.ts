@@ -416,3 +416,74 @@ describe("executarChat — subagentes e /plan (F5)", () => {
     expect(captura.progresso()).toContain("uso: /plan");
   });
 });
+
+describe("executarChat — skills e hooks (F6)", () => {
+  let cwd: string;
+  const skills = [
+    { body: "Passos: 1 build 2 deploy", descricao: "deploy no firebase", nome: "deploy-firebase" },
+    { body: "corpo", descricao: "gerar nfce", nome: "nfce" },
+  ];
+
+  beforeEach(async () => {
+    cwd = await mkdtemp(join(tmpdir(), "codingpro-chat-f6-"));
+  });
+
+  afterEach(async () => {
+    await rm(cwd, { force: true, recursive: true });
+  });
+
+  it("/skills lista e /skill ativa; skill entra no system prompt do turno", async () => {
+    const { provider, requests } = scripted([
+      [{ text: "ok", type: "text-delta" }, finish({ content: "ok", role: "assistant" })],
+    ]);
+    const captura = fakeIo(
+      ["/skills", "/skill deploy-firebase", "como faço o deploy?", undefined],
+      [],
+    );
+    await executarChat({ cwd, memoriaGlobalDir: join(cwd, "gm"), provider, skills }, captura.io);
+    expect(captura.progresso()).toContain("deploy-firebase — deploy no firebase");
+    expect(captura.progresso()).toContain("skill ativada: deploy-firebase");
+    const req = JSON.parse(requests[0] ?? "{}") as {
+      messages: { role: string; content?: string }[];
+    };
+    const system = req.messages.find((m) => m.role === "system")?.content ?? "";
+    expect(system).toContain("Skill: deploy-firebase");
+    expect(system).toContain("1 build 2 deploy");
+  });
+
+  it("/skill desconhecida e /skills vazio", async () => {
+    const { provider } = scripted([]);
+    const captura = fakeIo(["/skill nao-existe", "/skills", undefined], []);
+    await executarChat(
+      { cwd, memoriaGlobalDir: join(cwd, "gm"), provider, skills: [] },
+      captura.io,
+    );
+    expect(captura.progresso()).toContain("skill não encontrada: nao-existe");
+    expect(captura.progresso()).toContain("nenhuma skill disponível");
+  });
+
+  it("sugere skill relevante sem estar ativa", async () => {
+    const { provider } = scripted([
+      [{ text: "ok", type: "text-delta" }, finish({ content: "ok", role: "assistant" })],
+    ]);
+    const captura = fakeIo(["preciso do deploy no firebase", undefined], []);
+    await executarChat({ cwd, memoriaGlobalDir: join(cwd, "gm"), provider, skills }, captura.io);
+    expect(captura.progresso()).toContain("skill sugerida: deploy-firebase");
+  });
+
+  it("hook pre-tool que veta bloqueia a tool; stop hook roda no fim", async () => {
+    const call: ToolCall = { id: "r1", input: { path: "x.txt" }, name: "read_file" };
+    const { provider } = scripted([
+      [{ call, type: "tool-call" }, finish({ content: "", role: "assistant", toolCalls: [call] })],
+      [{ text: "não li", type: "text-delta" }, finish({ content: "não li", role: "assistant" })],
+    ]);
+    const hooks = [
+      { command: "exit 1", event: "pre-tool" as const, matcher: "read_file" },
+      { command: "true", event: "stop" as const },
+    ];
+    const captura = fakeIo(["leia x.txt", undefined], []);
+    await executarChat({ cwd, hooks, memoriaGlobalDir: join(cwd, "gm"), provider }, captura.io);
+    // o read foi vetado pelo hook (execution-denied), não executou de fato
+    expect(captura.saida()).toContain("não li");
+  });
+});

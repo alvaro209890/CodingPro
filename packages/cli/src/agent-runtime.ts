@@ -1,16 +1,22 @@
 import { join } from "node:path";
 import {
   type AgentResult,
+  blocoSkill,
   createReadTracker,
+  criarHookRunner,
   describeAgentEvent,
+  type Hook,
   MEMORY_TOOL_NAMES,
   MEMORY_TOOLS,
   newSessionId,
   ORCHESTRATION_TOOLS,
   PermissionController,
   READ_ONLY_TOOLS,
+  rodarHooksStop,
   runAgent,
   SessionStore,
+  type Skill,
+  sugerirSkills,
   SYSTEM_PROMPT_V1,
   ToolGate,
   ToolRegistry,
@@ -25,11 +31,13 @@ export interface AgenteHeadlessOptions {
   /** Retoma a sessão mais recente do `sessaoDir` quando nenhum `resumirId` é dado. */
   readonly continuarUltima?: boolean;
   readonly cwd: string;
+  readonly hooks?: readonly Hook[];
   readonly maxContexto?: number;
   /** Diretório da memória global; ausente usa `~/.codingpro/memory`. */
   readonly memoriaGlobalDir?: string;
   readonly prompt: string;
   readonly provider: Provider;
+  readonly skills?: readonly Skill[];
   /** Id de sessão a retomar; o transcrito é carregado e o prompt vira o próximo turno. */
   readonly resumirId?: string;
   /** Diretório de sessões; se definido, o transcrito é salvo ao final. */
@@ -64,9 +72,11 @@ export async function executarAgenteHeadless(
     registry.register(tool);
   }
   // Efeitos no projeto exigem aprovação (ausente aqui → negados); memória é pré-autorizada.
+  const hooks = options.hooks ?? [];
   const gate = new ToolGate(
     registry,
     new PermissionController({ alwaysAllow: MEMORY_TOOL_NAMES, mode: "ask" }),
+    hooks.length > 0 ? criarHookRunner(hooks) : undefined,
   );
   const memoria = criarMemoriaSessao(workspace.root, options.memoriaGlobalDir);
   const spawner = criarSpawnerSubagentes({
@@ -89,8 +99,13 @@ export async function executarAgenteHeadless(
       mensagens = [...(await store.load(idSessao)), promptMsg];
     }
   }
+  // Skills relevantes ao prompt entram automaticamente no headless (sem interação para ativar).
+  const blocosSkill = sugerirSkills(options.skills ?? [], options.prompt, 2)
+    .map((s) => blocoSkill(s))
+    .join("\n\n");
+  const base = blocosSkill.length > 0 ? `${SYSTEM_PROMPT_V1}\n\n${blocosSkill}` : SYSTEM_PROMPT_V1;
   // System prompt fresco com memória (índices + retrieval do prompt), substituindo o antigo ao retomar.
-  const systemPrompt = await memoria.promptDoTurno(SYSTEM_PROMPT_V1, options.prompt);
+  const systemPrompt = await memoria.promptDoTurno(base, options.prompt);
   const semSystem = mensagens[0]?.role === "system" ? mensagens.slice(1) : mensagens;
   mensagens = [{ content: systemPrompt, role: "system" }, ...semSystem];
 
@@ -136,6 +151,9 @@ export async function executarAgenteHeadless(
     sessaoId = idSessao ?? newSessionId();
     await store.save(sessaoId, result.messages);
     io.progresso(`Sessão: ${sessaoId}\n`);
+  }
+  if (hooks.length > 0) {
+    await rodarHooksStop(hooks);
   }
   return { resultado: result, ...(sessaoId === undefined ? {} : { sessaoId }) };
 }

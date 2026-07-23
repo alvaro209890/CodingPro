@@ -6,7 +6,9 @@ import { executarAgenteHeadless } from "./agent-runtime.js";
 import { type ChatIo, executarChat } from "./chat-runtime.js";
 import { ConfigError, type ProviderOverrides } from "./config.js";
 import { executarPromptHeadless } from "./headless.js";
+import { carregarHooks } from "./hooks-runtime.js";
 import { mensagens } from "./i18n/pt-BR.js";
+import { carregarSkills, dirsSkills } from "./skills-runtime.js";
 
 export interface CliIo {
   readonly stdout: (texto: string) => void;
@@ -132,10 +134,17 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
         ...(options.provider === undefined ? {} : { provider: options.provider }),
         ...(options.replayFile === undefined ? {} : { replayFile: options.replayFile }),
       });
+      const cwdChat = services.raizProjeto ?? process.cwd();
+      const [hooksChat, skillsChat] = await Promise.all([
+        carregarHooks(cwdChat),
+        carregarSkills(dirsSkills(cwdChat)),
+      ]);
       await executarChat(
         {
-          cwd: services.raizProjeto ?? process.cwd(),
+          cwd: cwdChat,
+          hooks: hooksChat,
           provider,
+          skills: skillsChat,
           ...(options.maxContexto === undefined ? {} : { maxContexto: options.maxContexto }),
           ...(services.raizMemoriaGlobal === undefined
             ? {}
@@ -164,12 +173,19 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
     });
 
     if (options.agente === true) {
+      const cwdAgente = services.raizProjeto ?? process.cwd();
+      const [hooksAgente, skillsAgente] = await Promise.all([
+        carregarHooks(cwdAgente),
+        carregarSkills(dirsSkills(cwdAgente)),
+      ]);
       await executarAgenteHeadless(
         {
           continuarUltima: options.continuar === true,
-          cwd: services.raizProjeto ?? process.cwd(),
+          cwd: cwdAgente,
+          hooks: hooksAgente,
           prompt,
           provider,
+          skills: skillsAgente,
           ...(options.maxContexto === undefined ? {} : { maxContexto: options.maxContexto }),
           ...(services.raizMemoriaGlobal === undefined
             ? {}
