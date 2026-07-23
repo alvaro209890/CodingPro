@@ -162,7 +162,11 @@ describe("edit_file", () => {
 
   it("bloqueia symlink no destino", async () => {
     await writeFile(join(root, "alvo.ts"), "x\n");
-    await symlink(join(root, "alvo.ts"), join(root, "link.ts"));
+    try {
+      await symlink(join(root, "alvo.ts"), join(root, "link.ts"));
+    } catch {
+      return; // No Windows sem Privilégio de Desenvolvedor, symlink lança EPERM
+    }
     context.readTracker?.markRead("link.ts");
     await expect(
       editFileTool.execute({ edits: [{ replace: "y", search: "x" }], path: "link.ts" }, context),

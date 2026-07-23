@@ -23,35 +23,32 @@ describe("bash", () => {
   });
 
   it("executa um comando e captura stdout com código 0", async () => {
-    const out = text(await bashTool.execute({ command: "echo alo" }, context));
+    const cmd = "node -e \"console.log('alo')\"";
+    const out = text(await bashTool.execute({ command: cmd }, context));
     expect(out).toContain("[código 0]");
     expect(out).toContain("alo");
   });
 
   it("reporta código de saída diferente de zero e stderr", async () => {
-    const out = text(await bashTool.execute({ command: "echo falha >&2; exit 3" }, context));
+    const cmd = "node -e \"console.error('falha'); process.exit(3)\"";
+    const out = text(await bashTool.execute({ command: cmd }, context));
     expect(out).toContain("[código 3]");
     expect(out).toContain("[stderr]");
     expect(out).toContain("falha");
   });
 
   it("roda na raiz do projeto", async () => {
-    const out = text(await bashTool.execute({ command: "pwd" }, context));
-    expect(out).toContain(context.workspace.root);
+    const cmd = 'node -e "console.log(process.cwd())"';
+    const out = text(await bashTool.execute({ command: cmd }, context));
+    expect(out.toLowerCase()).toContain(context.workspace.root.toLowerCase());
   });
 
   it("expõe só um ambiente mínimo, sem segredos", async () => {
     process.env.CODINGPRO_TEST_SECRET = "nao-vaze";
     try {
-      const out = text(
-        await bashTool.execute(
-          {
-            command:
-              'test -n "$PATH" && printf PATHSET; printf "SECRET=[%s]" "$CODINGPRO_TEST_SECRET"',
-          },
-          context,
-        ),
-      );
+      const cmd =
+        "node -e \"if(process.env.PATH) console.log('PATHSET'); console.log('SECRET=[' + (process.env.CODINGPRO_TEST_SECRET || '') + ']')\"";
+      const out = text(await bashTool.execute({ command: cmd }, context));
       expect(out).toContain("PATHSET");
       expect(out).toContain("SECRET=[]");
     } finally {
@@ -61,7 +58,8 @@ describe("bash", () => {
 
   it("mata o comando ao estourar o tempo", async () => {
     const started = Date.now();
-    const out = text(await bashTool.execute({ command: "sleep 5", timeoutMs: 300 }, context));
+    const cmd = 'node -e "setTimeout(() => {}, 5000)"';
+    const out = text(await bashTool.execute({ command: cmd, timeoutMs: 300 }, context));
     expect(Date.now() - started).toBeLessThan(3_000);
     expect(out).toContain("[tempo esgotado]");
   });
@@ -69,8 +67,9 @@ describe("bash", () => {
   it("cancela quando o sinal é abortado durante a execução", async () => {
     const controller = new AbortController();
     setTimeout(() => controller.abort(), 100);
+    const cmd = 'node -e "setTimeout(() => {}, 5000)"';
     const out = text(
-      await bashTool.execute({ command: "sleep 5" }, { ...context, signal: controller.signal }),
+      await bashTool.execute({ command: cmd }, { ...context, signal: controller.signal }),
     );
     expect(out).toContain("[cancelado]");
   });
@@ -79,25 +78,32 @@ describe("bash", () => {
     const controller = new AbortController();
     controller.abort();
     await expect(
-      bashTool.execute({ command: "echo x" }, { ...context, signal: controller.signal }),
+      bashTool.execute(
+        { command: 'node -e "console.log(1)"' },
+        { ...context, signal: controller.signal },
+      ),
     ).rejects.toMatchObject({ code: "timeout" });
   });
 
   it("reporta término por sinal", async () => {
+    if (process.platform === "win32") {
+      // Windows não suporta kill por sinal do mesmo modo que POSIX
+      return;
+    }
     const out = text(await bashTool.execute({ command: "kill -TERM $$" }, context));
     expect(out).toContain("[sinal SIGTERM]");
   });
 
   it("trunca saídas enormes", async () => {
-    const out = text(
-      await bashTool.execute({ command: "yes abcdefghij | head -c 300000" }, context),
-    );
+    const cmd = "node -e \"process.stdout.write('a'.repeat(300000))\"";
+    const out = text(await bashTool.execute({ command: cmd }, context));
     // stdout limitado a 100 KiB por fluxo + um cabeçalho curto ($ cmd / [código]).
     expect(out.length).toBeLessThan(101_000);
   });
 
   it("normaliza CR e remove caracteres de controle", async () => {
-    const out = text(await bashTool.execute({ command: "printf 'a\\rb\\tc'" }, context));
+    const cmd = "node -e \"process.stdout.write('a\\rb\\tc')\"";
+    const out = text(await bashTool.execute({ command: cmd }, context));
     expect(out).not.toContain("\r");
     expect(out).toContain("a\nb\tc");
   });

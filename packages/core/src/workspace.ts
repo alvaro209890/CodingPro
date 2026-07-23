@@ -1,6 +1,7 @@
 import { realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { CoreError } from "./errors.js";
+import { normalizePlatformPath } from "./platform-paths.js";
 
 const MAX_PATH_BYTES = 4_096;
 
@@ -49,7 +50,7 @@ export class Workspace {
     }
     let canonical: string;
     try {
-      canonical = await realpath(resolve(root));
+      canonical = normalizePlatformPath(await realpath(resolve(root)));
     } catch {
       throw new CoreError("not-found", "A raiz do projeto não existe.");
     }
@@ -58,7 +59,8 @@ export class Workspace {
 
   /** Garante que um caminho absoluto está contido na raiz; senão falha fechado. */
   assertInside(absolute: string): void {
-    if (absolute !== this.root && !absolute.startsWith(this.root + sep)) {
+    const normalizedTarget = normalizePlatformPath(absolute);
+    if (normalizedTarget !== this.root && !normalizedTarget.startsWith(this.root + sep)) {
       throw new CoreError("path-escape", "O caminho aponta para fora do projeto.");
     }
   }

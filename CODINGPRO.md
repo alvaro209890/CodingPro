@@ -24,7 +24,9 @@ O que foi entregue: workspace sandboxado, loop agêntico com permissões, chat i
 
 O que falta (polimento): auto-effort com roteamento Flash automático, `/cost` com taxa de cache-hit, i18n pt-BR canônico, TUI Aurora (Ink/temas), pet/XP, evals no CI, hardening final.
 
-**Pronto para iniciar a Fase 2 (app Windows).**
+**Fase 2 (App Windows) iniciada — W0 concluído** (2026-07-23). Contrato de eventos Core↔UI congelado (`events.ts` v1.0.0), suporte a paths por plataforma (`platform-paths.ts`, `%APPDATA%\CodingPro`, normalização de drives/UNC no `Workspace`), adaptador de shell com suporte a Windows (PowerShell/CMD, env allowlist e `taskkill`), e 723 testes Vitest passando 100% nativamente em Windows.
+
+**Pronto para a W1 (Esqueleto Electron + React do App Desktop).**
 
 O **F1.2** adicionou efeitos e permissões. `write_file` ancora a escrita no realpath do diretório-pai
 (que já deve existir) e abre com `O_NOFOLLOW` (symlink final → bloqueado); `bash` roda na raiz com

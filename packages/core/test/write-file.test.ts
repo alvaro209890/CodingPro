@@ -73,7 +73,11 @@ describe("write_file", () => {
 
   it("recusa quando o destino é um symlink", async () => {
     await writeFile(join(root, "alvo.txt"), "x");
-    await symlink(join(root, "alvo.txt"), join(root, "link.txt"));
+    try {
+      await symlink(join(root, "alvo.txt"), join(root, "link.txt"));
+    } catch {
+      return; // No Windows sem Privilégio de Desenvolvedor, symlink lança EPERM
+    }
     await expect(
       writeFileTool.execute({ content: "y", path: "link.txt" }, context),
     ).rejects.toMatchObject({ code: "path-escape" });

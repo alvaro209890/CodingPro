@@ -42,15 +42,29 @@ interface PayloadHook {
 /** Executa UM hook, entregando o payload como JSON no stdin. `false` se saiu != 0. */
 export async function executarHook(hook: Hook, payload: PayloadHook): Promise<HookOutcome> {
   return new Promise((resolve) => {
-    const filho = spawn("/bin/sh", ["-c", hook.command], {
-      detached: true, // grupo de processo próprio, para matar filhos (ex.: sleep) no timeout
+    const isWin = process.platform === "win32";
+
+    const filho = spawn(hook.command, {
+      detached: !isWin, // grupo de processo próprio no POSIX
       env: {
         HOME: process.env.HOME ?? "",
         HOOK_EVENT: hook.event,
         HOOK_TOOL: payload.tool ?? "",
         LANG: process.env.LANG ?? "C",
         PATH: process.env.PATH ?? "",
+        ...(isWin
+          ? {
+              COMSPEC: process.env.COMSPEC ?? "",
+              PATHEXT: process.env.PATHEXT ?? "",
+              SystemDrive: process.env.SystemDrive ?? "",
+              SystemRoot: process.env.SystemRoot ?? "",
+              TEMP: process.env.TEMP ?? "",
+              TMP: process.env.TMP ?? "",
+              WINDIR: process.env.WINDIR ?? "",
+            }
+          : {}),
       },
+      shell: true,
       stdio: ["pipe", "pipe", "pipe"],
     });
     let saida = "";
@@ -62,12 +76,21 @@ export async function executarHook(hook: Hook, payload: PayloadHook): Promise<Ho
     filho.stdout.on("data", capturar);
     filho.stderr.on("data", capturar);
     const matar = (): void => {
-      try {
-        if (filho.pid !== undefined) {
-          process.kill(-filho.pid, "SIGKILL"); // mata o grupo inteiro
+      if (filho.pid === undefined) {
+        return;
+      }
+      if (isWin) {
+        try {
+          spawn("taskkill", ["/F", "/T", "/PID", String(filho.pid)]);
+        } catch {
+          filho.kill("SIGKILL");
         }
-      } catch {
-        filho.kill("SIGKILL");
+      } else {
+        try {
+          process.kill(-filho.pid, "SIGKILL"); // mata o grupo inteiro
+        } catch {
+          filho.kill("SIGKILL");
+        }
       }
     };
     const timer = setTimeout(matar, hook.timeoutMs ?? HOOK_DEFAULT_TIMEOUT_MS);

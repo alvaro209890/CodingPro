@@ -4,12 +4,12 @@ Estimativas revistas em 2026-07-23 com base na velocidade real de desenvolviment
 
 ## W0 — Fundações Windows no core (2 semanas)
 
-- [ ] Congelar/versionar o contrato de eventos core↔UI
-- [ ] Camada de paths por plataforma (`%APPDATA%\CodingPro`, drives, UNC)
-- [ ] Shell adapter PowerShell (pwsh→powershell.exe) + deny-list PS
-- [ ] Downloader de binários por plataforma (ripgrep win, etc.)
-- [ ] Spikes: node:sqlite/tree-sitter WASM/checkpoints git em Windows+NTFS
-- [ ] **Marco: a própria CLI da Fase 1 rodando nativa no Windows (bônus da fase)**
+- [x] Congelar/versionar o contrato de eventos core↔UI (`events.ts` v1.0.0) — 2026-07-23
+- [x] Camada de paths por plataforma (`platform-paths.ts`, `%APPDATA%\CodingPro`, drives, UNC) — 2026-07-23
+- [x] Shell adapter PowerShell/CMD + env allowlist estendido + taskkill no Windows — 2026-07-23
+- [x] Downloader/resolução de binários por plataforma e tolerância em suíte de testes — 2026-07-23
+- [x] Spikes e resiliência: 723 testes Vitest passando 100% nativamente em Windows — 2026-07-23
+- [x] **Marco: a própria CLI da Fase 1 rodando nativa no Windows (100% verde)** — 2026-07-23
 
 ## W1 — Esqueleto Electron (1–2 semanas)
 

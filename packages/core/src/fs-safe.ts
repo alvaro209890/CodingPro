@@ -1,5 +1,5 @@
 import { constants } from "node:fs";
-import { open, unlink } from "node:fs/promises";
+import { lstat, open, unlink } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { CoreError } from "./errors.js";
 import type { Workspace } from "./workspace.js";
@@ -40,6 +40,15 @@ export async function readFileWithin(
   absolute: string,
   maxBytes: number,
 ): Promise<Buffer> {
+  try {
+    const st = await lstat(absolute);
+    if (st.isSymbolicLink()) {
+      throw new CoreError("path-escape", "O caminho passa por um link simbólico.");
+    }
+  } catch (error) {
+    if (error instanceof CoreError) throw error;
+  }
+
   let handle: Awaited<ReturnType<typeof open>>;
   try {
     handle = await open(absolute, READ_FLAGS);
@@ -58,8 +67,11 @@ export async function readFileWithin(
       throw new CoreError("too-large", "O arquivo é grande demais para ser lido.");
     }
     await workspace.realpathInside(absolute);
-    // O fstat acima já garantiu o tamanho no mesmo descritor/inode.
-    return handle.readFile();
+    const buffer = Buffer.alloc(stats.size);
+    await handle.read(buffer, 0, stats.size, 0);
+    return buffer;
+  } catch (error) {
+    throw toReadError(error);
   } finally {
     await handle.close();
   }
@@ -101,6 +113,15 @@ export async function writeFileWithin(
   const realParent = await workspace.realpathInside(dirname(absolute));
   const target = join(realParent, basename(absolute));
   workspace.assertInside(target);
+
+  try {
+    const st = await lstat(target);
+    if (st.isSymbolicLink()) {
+      throw new CoreError("path-escape", "O destino é um link simbólico.");
+    }
+  } catch (error) {
+    if (error instanceof CoreError) throw error;
+  }
 
   let handle: Awaited<ReturnType<typeof open>>;
   try {

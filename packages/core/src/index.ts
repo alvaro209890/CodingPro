@@ -10,6 +10,13 @@ export {
   type RunAgentOptions,
 } from "./agent.js";
 export {
+  CORE_UI_EVENT_PROTOCOL_VERSION,
+  type CoreUiEvent,
+  type IpcEnvelope,
+  type UiPermissionEvent,
+  type UiPermissionResponse,
+} from "./events.js";
+export {
   AGENTE_ARCHITECT,
   AGENTE_EXPLORER,
   AGENTE_REVIEWER,
@@ -49,6 +56,7 @@ export {
 } from "./attribution.js";
 export { CoreError, type CoreErrorCode } from "./errors.js";
 export { readFileWithin, removeFileWithin, writeFileWithin } from "./fs-safe.js";
+export { getGlobalConfigDir, getGlobalMemoryDir, normalizePlatformPath } from "./platform-paths.js";
 export { ToolGate } from "./gate.js";
 export {
   criarHookRunner,

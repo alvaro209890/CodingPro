@@ -8,7 +8,20 @@ export const BASH_MAX_TIMEOUT_MS = 120_000;
 export const BASH_MAX_COMMAND_LENGTH = 8_192;
 export const BASH_MAX_OUTPUT_BYTES = 100_000; // por fluxo (stdout/stderr)
 /** Só estas variáveis chegam ao processo-filho: credenciais nunca vazam para tools. */
-export const BASH_ENV_ALLOWLIST = Object.freeze(["HOME", "LANG", "PATH"] as const);
+export const BASH_ENV_ALLOWLIST = Object.freeze([
+  "HOME",
+  "LANG",
+  "PATH",
+  // Variáveis essenciais de sistema no Windows
+  "SystemRoot",
+  "WINDIR",
+  "PATHEXT",
+  "COMSPEC",
+  "SystemDrive",
+  "TEMP",
+  "TMP",
+  "USERPROFILE",
+] as const);
 
 const definition: Tool = {
   description:
@@ -70,9 +83,10 @@ function runCommand(
   signal: AbortSignal | undefined,
 ): Promise<CommandOutcome> {
   return new Promise((resolve, reject) => {
+    const isWin = process.platform === "win32";
     const child = spawn(command, {
       cwd,
-      detached: true, // grupo de processos próprio → matamos toda a árvore.
+      detached: !isWin, // no POSIX cria grupo próprio; no Windows evita janelas soltas
       env: minimalEnv(),
       shell: true,
       stdio: ["ignore", "pipe", "pipe"],
@@ -106,10 +120,18 @@ function runCommand(
       if (child.pid === undefined) {
         return;
       }
-      try {
-        process.kill(-child.pid, "SIGKILL");
-      } catch {
-        child.kill("SIGKILL");
+      if (isWin) {
+        try {
+          spawn("taskkill", ["/F", "/T", "/PID", String(child.pid)]);
+        } catch {
+          child.kill("SIGKILL");
+        }
+      } else {
+        try {
+          process.kill(-child.pid, "SIGKILL");
+        } catch {
+          child.kill("SIGKILL");
+        }
       }
     };
 

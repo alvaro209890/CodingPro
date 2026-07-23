@@ -284,6 +284,10 @@ describe("loadConfig", () => {
     await mkdir(settings);
     await expect(loadConfig(options())).rejects.toBeInstanceOf(ConfigError);
 
+    if (process.platform === "win32") {
+      return; // Permissões POSIX mode 0o622 não se aplicam ao NTFS do Windows
+    }
+
     await rm(settings, { recursive: true });
     await writeFile(settings, '{ "provider": "deepseek" }', { mode: 0o622 });
     await chmod(settings, 0o622);
@@ -293,6 +297,9 @@ describe("loadConfig", () => {
   });
 
   it("rejeita symlink no diretório ou arquivo de configuração", async () => {
+    if (process.platform === "win32") {
+      return; // Symlinks no Windows requerem Privilégio de Desenvolvedor
+    }
     const realDirectory = join(homeDirectory, "real-config");
     await mkdir(realDirectory, { mode: 0o700 });
     await writeFile(join(realDirectory, "settings.json"), '{ "provider": "deepseek" }');

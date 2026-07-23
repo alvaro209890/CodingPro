@@ -27,7 +27,7 @@ describe("construirRepoMap", () => {
     expect(mapa.texto).toContain("a.ts");
     expect(mapa.texto).toContain("fn alfa");
     expect(mapa.texto).toContain("classe Beta");
-    expect(mapa.texto).toContain(join("src", "b.py"));
+    expect(mapa.texto).toMatch(/src[\\/]b\.py/);
   });
 
   it("ranqueia mais alto o arquivo cujos símbolos são mais referenciados", async () => {
