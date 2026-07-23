@@ -78,9 +78,10 @@ describe("criarTema", () => {
     const t = criarTema({ ascii: true, nivel: "16" });
     expect(t.ascii).toBe(true);
     const ban = semAnsi(t.banner());
-    expect(ban).toMatch(/CodingPro|DeepSeek|1M|pt-BR/u);
+    expect(ban).toMatch(/CodingPro|DeepSeek|1M|pt-BR|___/u);
     expect(ban).not.toContain("╭");
-    expect(ban.split("\n").filter((l) => l.trim().length > 0).length).toBeLessThanOrEqual(4);
+    // wordmark grande (várias linhas) + sub + dica
+    expect(ban.split("\n").filter((l) => l.trim().length > 0).length).toBeGreaterThanOrEqual(5);
     expect(t.prompt()).toContain(">");
     expect(semAnsi(t.progresso("ok"))).toMatch(/^\* /u);
     expect(semAnsi(t.sucesso("feito"))).toContain("+");

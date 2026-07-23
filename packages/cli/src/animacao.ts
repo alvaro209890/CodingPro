@@ -55,12 +55,21 @@ export function linhaSpinner(tick: number, rotulo: string): string {
  * Frames do banner de abertura (texto puro, sem ANSI). Cada frame é multi-linha.
  * `ascii=true` usa caixa +-* compatível com Windows CMD / SSH legado.
  */
-/** Banner estático compacto (sem multi-frame que duplicava linhas no terminal). */
+/** Banner de abertura (delega ao tema na prática; mantido p/ testes de animação). */
 export function framesBannerAbertura(_tick: number, ascii = false): string {
-  if (ascii) {
-    return ["  * CodingPro  ·  DeepSeek V4 · 1M · pt-BR", "  digite / para comandos"].join("\n");
-  }
-  return ["  ◈ CodingPro  ·  DeepSeek V4 · 1M · pt-BR", "  digite / para comandos"].join("\n");
+  // Wordmark grande (mesmas linhas do tema) — estático, sem multi-frame.
+  const mark = [
+    "   ____          _ _             ____             ",
+    "  / ___|___   __| (_)_ __   __ _|  _ \\ _ __ ___  ",
+    " | |   / _ \\ / _` | | '_ \\ / _` | |_) | '__/ _ \\ ",
+    " | |__| (_) | (_| | | | | | (_| |  __/| | | (_) |",
+    "  \\____\\___/ \\__,_|_|_| |_|\\__, |_|   |_|  \\___/ ",
+    "                           |___/                  ",
+  ];
+  const sub = ascii
+    ? "  DeepSeek V4 Pro/Flash  ·  1M context  ·  pt-BR"
+    : "  DeepSeek V4 Pro/Flash  ·  1M context  ·  pt-BR";
+  return [...mark, sub].join("\n");
 }
 
 /** Spinner ASCII quando braille não renderiza (CMD). */

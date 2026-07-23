@@ -26,9 +26,9 @@ describe("animacao", () => {
     expect(framePulso(0)).toBe(PULSO_FRAMES[0]);
     expect(frameFaisca(0).length).toBeGreaterThan(0);
     expect(linhaSpinner(0, "oi")).toContain("oi");
-    expect(framesBannerAbertura(0)).toMatch(/CodingPro|DeepSeek|1M/u);
-    expect(framesBannerAbertura(0, true)).toMatch(/CodingPro|DeepSeek|1M/u);
-    expect(framesBannerAbertura(0).split("\n").length).toBeLessThanOrEqual(3);
+    expect(framesBannerAbertura(0)).toMatch(/CodingPro|DeepSeek|1M|___/u);
+    expect(framesBannerAbertura(0, true)).toMatch(/CodingPro|DeepSeek|1M|___/u);
+    expect(framesBannerAbertura(0).split("\n").length).toBeGreaterThanOrEqual(5);
   });
 
   it("criarSpinner anima, atualiza e limpa ao parar", () => {

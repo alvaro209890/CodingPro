@@ -165,9 +165,25 @@ export function glifosPara(ascii: boolean): Glifos {
   };
 }
 
-/** Marca curta (1 linha) — evita arte ASCII larga que quebra o terminal. */
+/**
+ * Wordmark grande (estilo Claude Code): nome bem visível no topo.
+ * Largura ~50 colunas — cabe em terminais comuns sem wrap. Estático (1 impressão).
+ */
 export function logoLinhas(ascii: boolean): readonly string[] {
-  return ascii ? ["* CodingPro"] : ["◈ CodingPro"];
+  // Figlet "standard" de CodingPro — alto e legível
+  const wordmark = [
+    "   ____          _ _             ____             ",
+    "  / ___|___   __| (_)_ __   __ _|  _ \\ _ __ ___  ",
+    " | |   / _ \\ / _` | | '_ \\ / _` | |_) | '__/ _ \\ ",
+    " | |__| (_) | (_| | | | | | (_| |  __/| | | (_) |",
+    "  \\____\\___/ \\__,_|_|_| |_|\\__, |_|   |_|  \\___/ ",
+    "                           |___/                  ",
+  ];
+  if (ascii) {
+    return wordmark;
+  }
+  // Unicode: mesmo wordmark (compatível) + marca no canto superior
+  return wordmark;
 }
 
 function codigoFg(cor: CorRGB, nivel: NivelCor): string {
@@ -283,24 +299,21 @@ export function criarTema(
     ascii,
     cor: nivel,
     banner() {
-      const marca =
-        nivel === "nenhuma"
-          ? (logoLinhas(ascii)[0] ?? "CodingPro")
-          : `${ESC}[1m${gradiente(logoLinhas(ascii)[0] ?? "CodingPro", nivel)}${RESET}`;
-      const sub = esmaecer(
-        ascii ? "DeepSeek V4 · 1M tok · pt-BR" : "DeepSeek V4 · 1M tok · pt-BR",
-        nivel,
-        preferCinza,
-      );
-      const dica = esmaecer(
-        ascii
-          ? "digite / para comandos  ·  /ajuda lista tudo"
-          : "digite / para comandos  ·  /ajuda lista tudo",
-        nivel,
-        preferCinza,
-      );
-      // Cabeçalho compacto (3 linhas) — sem animação multi-frame nem arte larga.
-      return `\n  ${marca}  ${sub}\n  ${dica}\n${esmaecer(g.rule, nivel, preferCinza)}\n`;
+      // Wordmark GRANDE (estilo Claude Code) — 6 linhas, impressão única (sem CURSOR_UP).
+      const linhas = logoLinhas(ascii).map((l) => {
+        if (nivel === "nenhuma") {
+          return `  ${l}`;
+        }
+        if (nivel === "16") {
+          return `  ${pintar(l, AURORA.esmeralda, nivel)}`;
+        }
+        return `  ${ESC}[1m${gradiente(l, nivel)}${RESET}`;
+      });
+      const sub = esmaecer("  DeepSeek V4 Pro/Flash  ·  1M context  ·  pt-BR", nivel, preferCinza);
+      const dica = esmaecer("  digite / para comandos   ·   /ajuda lista tudo", nivel, preferCinza);
+      const h = ascii ? "-" : "─";
+      const regua = esmaecer(`  ${h.repeat(50)}`, nivel, preferCinza);
+      return `\n${linhas.join("\n")}\n${sub}\n${dica}\n${regua}\n`;
     },
     prompt() {
       const sim = g.prompt.trimEnd();
