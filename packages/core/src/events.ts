@@ -3,14 +3,19 @@ import type { PermissionRequest } from "./permissions.js";
 import type { PreviaEscrita } from "./preview.js";
 
 /** Versão atual do protocolo de eventos Core <-> UI. */
-export const CORE_UI_EVENT_PROTOCOL_VERSION = "1.2.0";
+export const CORE_UI_EVENT_PROTOCOL_VERSION = "1.3.0";
 
-/** Eventos brutos emitidos pelo loop agêntico durante a execução de um turno. */
+/**
+ * Eventos brutos emitidos pelo loop agêntico durante a execução de um turno.
+ * DEVE espelhar `AgentEvent` de `agent.ts` (mesma união) — este é o mirror versionado do protocolo.
+ */
 export type AgentEvent =
   | { readonly text: string; readonly type: "text-delta" }
   | { readonly text: string; readonly type: "reasoning-delta" }
   | { readonly call: ToolCall; readonly type: "tool-call" }
   | { readonly call: ToolCall; readonly result: ToolResult; readonly type: "tool-result" }
+  /** Aviso não-fatal do loop (ex.: recuperação de chamada de ferramenta inválida) — aditivo v1.3.0. */
+  | { readonly text: string; readonly type: "notice" }
   | {
       readonly reason: FinishReason;
       readonly step: number;

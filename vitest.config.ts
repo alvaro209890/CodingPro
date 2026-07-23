@@ -3,7 +3,9 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     coverage: {
-      exclude: ["packages/*/src/index.ts"],
+      // packages/desktop é um app Electron (Fase 2) com toolchain própria (vite/electron) e
+      // sem testes unitários; ele é typechecked/coberto pela sua própria config, não pelo gate do core.
+      exclude: ["packages/*/src/index.ts", "packages/desktop/**"],
       include: ["packages/*/src/**/*.ts"],
       provider: "v8",
       reporter: ["text", "json-summary"],

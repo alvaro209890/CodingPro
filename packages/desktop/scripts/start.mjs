@@ -32,7 +32,9 @@ function loadEnvFile(path) {
 // Carrega chave sem imprimir
 loadEnvFile(join(repoRoot, ".codingpro", ".env"));
 loadEnvFile(join(pkgRoot, ".codingpro", ".env"));
-loadEnvFile(join(process.env.USERPROFILE || process.env.HOME || "", ".config", "codingpro", "deepseek.env"));
+loadEnvFile(
+  join(process.env.USERPROFILE || process.env.HOME || "", ".config", "codingpro", "deepseek.env"),
+);
 
 if (!existsSync(mainEntry) || !existsSync(rendererHtml)) {
   console.error("[codingpro-desktop] Build ausente. Rode: pnpm --filter @codingpro/desktop build");

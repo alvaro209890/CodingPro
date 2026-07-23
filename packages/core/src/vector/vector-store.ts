@@ -30,7 +30,10 @@ export const VECTOR_SCHEMA_VERSION = "1";
 /** Superfície mínima do DatabaseSync usada aqui (evita import estático de node:sqlite). */
 interface SqliteStatement {
   get(...params: unknown[]): unknown;
-  run(...params: unknown[]): unknown;
+  run(...params: unknown[]): {
+    readonly changes: number | bigint;
+    readonly lastInsertRowid: number | bigint;
+  };
   all(...params: unknown[]): unknown[];
 }
 

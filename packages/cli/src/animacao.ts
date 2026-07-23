@@ -115,24 +115,40 @@ export function criarSpinner(
   intervaloMs = 80,
   ascii = false,
   formatadores: SpinnerFormatadores = {},
+  mostrarTempo = false,
 ): SpinnerHandle {
   let timer: ReturnType<typeof setInterval> | undefined;
   let tick = 0;
   let rotulo = "trabalhando";
   let ligado = false;
+  let inicioMs = 0;
+
+  /** ` · Ns` a partir de 1s (relógio vivo); antes disso mantém os pontinhos animados. */
+  const cauda = (): string => {
+    if (mostrarTempo) {
+      const s = Math.floor((Date.now() - inicioMs) / 1000);
+      if (s >= 1) {
+        return ` · ${s}s`;
+      }
+    }
+    return framePontos(tick);
+  };
 
   const pintar = (): void => {
-    // Sem formatadores: saída idêntica à anterior (compatibilidade total).
-    if (formatadores.pintarFrame === undefined && formatadores.pintarLabel === undefined) {
+    // Sem formatadores nem tempo: saída idêntica à anterior (compatibilidade total).
+    if (
+      formatadores.pintarFrame === undefined &&
+      formatadores.pintarLabel === undefined &&
+      !mostrarTempo
+    ) {
       escrever(`${CLEAR_LINE}${linhaSpinnerModo(tick, rotulo, ascii)}`);
       return;
     }
     const frame = frameSpinnerModo(tick, ascii);
-    const pontos = framePontos(tick);
     const frameFmt = formatadores.pintarFrame?.(frame, tick) ?? frame;
     const rotuloFmt = formatadores.pintarLabel?.(rotulo) ?? rotulo;
     // Só reescreve a linha atual; padding curto para não estourar o wrap
-    escrever(`${CLEAR_LINE}${frameFmt} ${rotuloFmt}${pontos}`);
+    escrever(`${CLEAR_LINE}${frameFmt} ${rotuloFmt}${cauda()}`);
   };
 
   return {
@@ -144,6 +160,7 @@ export function criarSpinner(
       }
       ligado = true;
       tick = 0;
+      inicioMs = Date.now();
       pintar();
       timer = setInterval(() => {
         tick += 1;

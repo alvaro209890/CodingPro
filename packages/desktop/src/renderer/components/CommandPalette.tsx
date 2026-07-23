@@ -40,9 +40,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handleKeyDown);
-        // foco sem autoFocus attribute (biome a11y)
-        inputRef.current?.focus();
-        return () => window.removeEventListener("keydown", handleKeyDown);
+    // foco sem autoFocus attribute (biome a11y)
+    inputRef.current?.focus();
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;

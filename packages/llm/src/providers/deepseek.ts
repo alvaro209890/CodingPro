@@ -490,6 +490,15 @@ export class DeepSeekProvider implements Provider {
         } else if (part.type === "tool-call") {
           const candidate = { id: part.toolCallId, input: part.input, name: part.toolName };
           const definition = toolDefinitions.get(part.toolName);
+          const motivo =
+            definition === undefined
+              ? `ferramenta desconhecida "${part.toolName}"`
+              : toolCallIds.has(candidate.id)
+                ? "id de chamada duplicado"
+                : !isToolCall(candidate) ||
+                    !toolAcceptsInput(definition.inputSchema, candidate.input)
+                  ? `argumentos fora do schema de "${part.toolName}"`
+                  : "chamada de ferramenta não permitida neste turno";
           if (
             snapshot.toolChoice === "none" ||
             (typeof snapshot.toolChoice === "object" &&
@@ -501,9 +510,10 @@ export class DeepSeekProvider implements Provider {
             !toolAcceptsInput(definition.inputSchema, candidate.input) ||
             toolCallIds.has(candidate.id)
           ) {
+            // Código dedicado: o agente se recupera (realimenta o modelo) em vez de abortar a tarefa.
             throw new ProviderError(
-              "invalid-response",
-              "A DeepSeek retornou uma chamada de ferramenta inválida.",
+              "invalid-tool-call",
+              `A DeepSeek retornou uma chamada de ferramenta inválida (${motivo}).`,
             );
           }
           const call = copyToolCall(candidate);

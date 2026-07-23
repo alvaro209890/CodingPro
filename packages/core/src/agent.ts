@@ -19,11 +19,14 @@ import { SYSTEM_PROMPT_V1 } from "./system-prompt.js";
 import type { ToolContext } from "./tool.js";
 
 /** Teto de passos do loop, para nunca girar sem fim quando o modelo insiste em ferramentas. */
-export const AGENT_DEFAULT_MAX_STEPS = 25;
+export const AGENT_DEFAULT_MAX_STEPS = 40;
 
 /** Tentativas extras por turno em erro transitório do provider (backoff exponencial). */
 export const AGENT_DEFAULT_MAX_RETRIES = 2;
 export const AGENT_DEFAULT_RETRY_BASE_MS = 500;
+
+/** Correções máximas de chamada de ferramenta inválida antes de desistir do turno. */
+export const AGENT_MAX_TOOL_CALL_FIXES = 3;
 
 export interface RetryOptions {
   readonly baseDelayMs?: number;
@@ -38,6 +41,8 @@ export type AgentEvent =
   | { readonly text: string; readonly type: "reasoning-delta" }
   | { readonly call: ToolCall; readonly type: "tool-call" }
   | { readonly call: ToolCall; readonly result: ToolResult; readonly type: "tool-result" }
+  /** Aviso não-fatal do loop (ex.: recuperação de uma chamada de ferramenta inválida). */
+  | { readonly text: string; readonly type: "notice" }
   | {
       readonly reason: FinishReason;
       readonly step: number;
@@ -217,6 +222,9 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
   let steps = 0;
   let finishReason: AgentFinishReason = "max-steps";
   let working = messages;
+  // Auto-recuperação: uma chamada de ferramenta inválida do modelo não deve matar a tarefa.
+  // Realimentamos o erro como mensagem e deixamos o modelo refazer, com um teto pequeno.
+  let correcoesToolCall = 0;
 
   while (steps < maxSteps) {
     options.signal?.throwIfAborted();
@@ -226,13 +234,45 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
       working = compactMessages(working, { maxTokens: options.contextBudget }).messages;
     }
     const request: ChatRequest = { messages: working, ...(tools.length > 0 ? { tools } : {}) };
-    const turn = await streamTurnWithRetry(
-      options.provider,
-      request,
-      options.onEvent,
-      options.signal,
-      options.retry,
-    );
+    let turn: TurnOutcome;
+    try {
+      turn = await streamTurnWithRetry(
+        options.provider,
+        request,
+        options.onEvent,
+        options.signal,
+        options.retry,
+      );
+    } catch (error) {
+      // Chamada de ferramenta inválida: nenhum efeito rodou ainda (o throw é antes da execução),
+      // então é seguro corrigir e repetir o turno em vez de abortar toda a demanda.
+      if (
+        error instanceof ProviderError &&
+        error.code === "invalid-tool-call" &&
+        correcoesToolCall < AGENT_MAX_TOOL_CALL_FIXES
+      ) {
+        // Conta correções CONSECUTIVAS: um turno bem-sucedido zera o contador (abaixo),
+        // então uma tarefa longa com hiccups ocasionais nunca esgota o orçamento — só
+        // aborta se o modelo travar em N chamadas inválidas seguidas.
+        correcoesToolCall += 1;
+        options.onEvent?.({
+          text: `recuperando de chamada de ferramenta inválida (${correcoesToolCall}/${AGENT_MAX_TOOL_CALL_FIXES})`,
+          type: "notice",
+        });
+        working = [
+          ...working,
+          {
+            content:
+              `${error.safeMessage} Revise a lista de ferramentas e seus parâmetros e responda de novo: ` +
+              "emita uma chamada válida (nome exato + argumentos no schema) ou, se já tiver a resposta, apenas texto.",
+            role: "user",
+          },
+        ];
+        continue;
+      }
+      throw error;
+    }
+    correcoesToolCall = 0; // turno bem-sucedido: zera o orçamento de correções consecutivas
     working = [...working, turn.message];
     usage = addUsage(usage, turn.usage);
     options.onEvent?.({
@@ -270,6 +310,56 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
       // Abort ou erro de tool: descarta resultados parciais do turno e para o loop.
       working = working.slice(0, resultsStart);
       throw error;
+    }
+  }
+
+  // Esgotou o orçamento de passos ainda pedindo ferramentas: força UMA síntese sem ferramentas,
+  // para o usuário sempre receber uma resposta (em vez de sair sem texto algum).
+  if (finishReason === "max-steps") {
+    options.signal?.throwIfAborted();
+    options.onEvent?.({
+      text: "limite de passos atingido — sintetizando a resposta com o que já foi coletado",
+      type: "notice",
+    });
+    const sintese: ChatMessage = {
+      content:
+        "Você atingiu o limite de exploração de ferramentas. Responda agora, de forma objetiva e " +
+        "completa, usando apenas o que já coletou. Não chame mais nenhuma ferramenta.",
+      role: "user",
+    };
+    // O loop quebrou LOGO APÓS anexar a mensagem do assistente com chamadas de ferramenta,
+    // mas ANTES de executá-las — então há tool calls pendentes sem resultado. Removê-la deixa
+    // o transcrito válido (termina em tool-result/user) para a síntese sem ferramentas.
+    const ultima = working.at(-1);
+    const base =
+      ultima?.role === "assistant" && ultima.toolCalls !== undefined
+        ? working.slice(0, -1)
+        : working;
+    // Mantém as tools declaradas (o histórico as referencia) mas com `toolChoice: "none"`:
+    // a API proíbe novas chamadas e o modelo é obrigado a produzir o texto final.
+    const requestFinal: ChatRequest = {
+      messages: [...base, sintese],
+      ...(tools.length > 0 ? { toolChoice: "none", tools } : {}),
+    };
+    try {
+      const turnoFinal = await streamTurnWithRetry(
+        options.provider,
+        requestFinal,
+        options.onEvent,
+        options.signal,
+        options.retry,
+      );
+      working = [...base, sintese, turnoFinal.message];
+      usage = addUsage(usage, turnoFinal.usage);
+      // Mantém finishReason "max-steps": a resposta veio de síntese forçada, não de uma parada
+      // natural do modelo — o caller ainda sabe que a exploração foi truncada.
+    } catch (error) {
+      // Best-effort: um abort ainda cancela; qualquer outra falha na síntese não deve
+      // apagar todo o trabalho de exploração — mantém o resultado com finishReason "max-steps".
+      options.signal?.throwIfAborted();
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw error;
+      }
     }
   }
 

@@ -29,7 +29,9 @@ function loadEnvFile(path) {
 
 loadEnvFile(join(repoRoot, ".codingpro", ".env"));
 loadEnvFile(join(pkgRoot, ".codingpro", ".env"));
-loadEnvFile(join(process.env.USERPROFILE || process.env.HOME || "", ".config", "codingpro", "deepseek.env"));
+loadEnvFile(
+  join(process.env.USERPROFILE || process.env.HOME || "", ".config", "codingpro", "deepseek.env"),
+);
 
 function run(cmd, args, opts = {}) {
   return spawn(cmd, args, {

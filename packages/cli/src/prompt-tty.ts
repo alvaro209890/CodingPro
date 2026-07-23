@@ -119,6 +119,7 @@ export function criarPromptTty(options: PromptTtyOptions): PromptTty {
       pintarFrame: (frame, tick) => tema.pulso(frame, tick),
       pintarLabel: (rotulo) => tema.nota(rotulo),
     },
+    true, // relógio vivo (· Ns) enquanto o agente trabalha
   );
 
   const apagarBloco = (): void => {

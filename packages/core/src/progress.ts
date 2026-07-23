@@ -66,6 +66,8 @@ export function describeAgentEvent(event: AgentEvent): string | undefined {
       return describeToolCall(event.call);
     case "tool-result":
       return describeToolResult(event.call, event.result);
+    case "notice":
+      return event.text;
     default:
       return undefined;
   }

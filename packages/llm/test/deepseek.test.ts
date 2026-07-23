@@ -520,7 +520,7 @@ describe("DeepSeekProvider", () => {
         ]),
     });
 
-    await expect(collect(provider)).rejects.toMatchObject({ code: "invalid-response" });
+    await expect(collect(provider)).rejects.toMatchObject({ code: "invalid-tool-call" });
   });
 
   it.each(DEEPSEEK_MODELS)(
@@ -716,7 +716,7 @@ describe("DeepSeekProvider", () => {
         tools: [somar],
       }),
     ).rejects.toMatchObject({
-      code: "invalid-response",
+      code: "invalid-tool-call",
       safeMessage: expect.not.stringContaining(TOOL_ARGUMENT_CANARY),
     });
   });
@@ -749,7 +749,7 @@ describe("DeepSeekProvider", () => {
         messages: [{ content: "duas somas", role: "user" }],
         tools: [somar],
       }),
-    ).rejects.toMatchObject({ code: "invalid-response" });
+    ).rejects.toMatchObject({ code: "invalid-tool-call" });
   });
 
   it("não publica tool call quando o finish terminal é inconsistente", async () => {
@@ -854,7 +854,7 @@ describe("DeepSeekProvider", () => {
       type: "string",
     };
 
-    await expect(iterator.next()).rejects.toMatchObject({ code: "invalid-response" });
+    await expect(iterator.next()).rejects.toMatchObject({ code: "invalid-tool-call" });
   });
 
   it("mantém IDs e argumentos separados em calls paralelas intercaladas", async () => {
@@ -991,7 +991,7 @@ describe("DeepSeekProvider", () => {
         toolChoice: "none",
         tools: [somar],
       }),
-    ).rejects.toMatchObject({ code: "invalid-response" });
+    ).rejects.toMatchObject({ code: "invalid-tool-call" });
   });
 
   it("rejeita stop sem call quando tool choice é required", async () => {
@@ -1035,7 +1035,7 @@ describe("DeepSeekProvider", () => {
         toolChoice: { toolName: "somar" },
         tools: [somar, subtrair],
       }),
-    ).rejects.toMatchObject({ code: "invalid-response" });
+    ).rejects.toMatchObject({ code: "invalid-tool-call" });
   });
 
   it("mantém a allowlist de modelos fechada em Pro e Flash", () => {

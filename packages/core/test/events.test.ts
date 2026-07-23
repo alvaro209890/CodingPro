@@ -3,7 +3,7 @@ import { CORE_UI_EVENT_PROTOCOL_VERSION, type CoreUiEvent } from "../src/events.
 
 describe("events contract", () => {
   it("deve exportar a versão correta do protocolo CORE_UI_EVENT_PROTOCOL_VERSION", () => {
-    expect(CORE_UI_EVENT_PROTOCOL_VERSION).toBe("1.2.0");
+    expect(CORE_UI_EVENT_PROTOCOL_VERSION).toBe("1.3.0");
   });
 
   it("deve permitir construir envelopes válidos do protocolo", () => {

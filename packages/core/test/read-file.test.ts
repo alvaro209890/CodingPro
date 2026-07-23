@@ -50,6 +50,27 @@ describe("read_file", () => {
     });
   });
 
+  it("lê uma janela por offset/limit (base 1) com cabeçalho", async () => {
+    await writeFile(join(root, "muitas.txt"), "l1\nl2\nl3\nl4\nl5");
+    const r = await readFileTool.execute({ limit: 2, offset: 2, path: "muitas.txt" }, context);
+    expect(r).toEqual({ type: "text", value: "# linhas 2–3 de 5\nl2\nl3" });
+  });
+
+  it("offset sem limit vai até o fim; valores inválidos são ignorados", async () => {
+    await writeFile(join(root, "j.txt"), "a\nb\nc\nd");
+    const soOffset = await readFileTool.execute({ offset: 3, path: "j.txt" }, context);
+    expect(soOffset).toEqual({ type: "text", value: "# linhas 3–4 de 4\nc\nd" });
+    // offset/limit não-positivos ou não-inteiros são ignorados → lê tudo
+    const ignora = await readFileTool.execute({ limit: -5, offset: 0, path: "j.txt" }, context);
+    expect(ignora).toEqual({ type: "text", value: "a\nb\nc\nd" });
+  });
+
+  it("offset além do fim retorna janela vazia com cabeçalho coerente", async () => {
+    await writeFile(join(root, "curto.txt"), "x\ny");
+    const r = await readFileTool.execute({ offset: 10, path: "curto.txt" }, context);
+    expect(r).toEqual({ type: "text", value: "# linhas 3–2 de 2\n" });
+  });
+
   it("recusa diretório e caminho inexistente", async () => {
     await mkdir(join(root, "dir"));
     await expect(readFileTool.execute({ path: "dir" }, context)).rejects.toMatchObject({

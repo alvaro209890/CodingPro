@@ -805,9 +805,8 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
     const msgs = result.messages;
     transcrito = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
     stats = atualizarStatsAposTurno(stats, result.cost, msgs, modeloNome);
-    if (result.cost !== undefined) {
-      io.progresso(`${tema.nota(formatarStatusLinha(stats, tema.ascii))}\n`);
-    }
+    // A linha de status/custo é impressa uma única vez, no topo do loop (antes do prompt).
+    // Não repetir aqui — evita a linha de gastos duplicada no rodapé de cada turno.
     if (store !== undefined) {
       await store.save(sessaoId, msgs);
     }
@@ -819,7 +818,10 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       pet = ganho.estado;
       await salvarEstadoPet(petArquivo, pet);
       if (ganho.subiuNiveis > 0) {
-        io.progresso(`${tema.sucesso(`subiu de nível!  ${formatarPet(pet, tema.ascii)}`)}\n`);
+        const brilho = tema.ascii ? "*" : "✦";
+        io.progresso(
+          `${tema.destaque(brilho)} ${tema.sucesso(`subiu de nível!  ${formatarPet(pet, tema.ascii)}`)} ${tema.destaque(brilho)}\n`,
+        );
       }
     }
   }

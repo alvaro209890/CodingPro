@@ -63,16 +63,16 @@ try {
   );
 
   const store = await SessionStore.create(join(tmp, ".codingpro", "sessions"));
-  const checkpoints = await CheckpointStore.create(join(tmp, ".codingpro", "checkpoints"), workspace);
+  const checkpoints = await CheckpointStore.create(
+    join(tmp, ".codingpro", "checkpoints"),
+    workspace,
+  );
   const readTracker = createReadTracker();
   const sessionId = newSessionId();
   let transcript = [];
 
   // comando local simulado
-  transcript.push(
-    { role: "user", content: "/ajuda" },
-    { role: "assistant", content: "ajuda ok" },
-  );
+  transcript.push({ role: "user", content: "/ajuda" }, { role: "assistant", content: "ajuda ok" });
   await store.save(sessionId, transcript);
   console.log("session_saved", sessionId);
 

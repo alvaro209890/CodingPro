@@ -174,6 +174,50 @@ describe("runAgent", () => {
     expect(result.steps).toBe(2);
   });
 
+  it("sintetiza uma resposta final (sem tools) ao esgotar o teto de passos", async () => {
+    await writeFile(join(root, "a.txt"), "x");
+    const call: ToolCall = { id: "c", input: { path: "a.txt" }, name: "read_file" };
+    const requests: ChatRequest[] = [];
+    let calls = 0;
+    const provider: Provider = {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "sint",
+      model: "fake",
+      async *stream(request) {
+        requests.push(structuredClone(request) as ChatRequest);
+        calls += 1;
+        // Enquanto pode usar ferramentas, insiste; na síntese (toolChoice "none") produz texto.
+        if (request.toolChoice === "none") {
+          yield { text: "Resumo final do projeto.", type: "text-delta" };
+          yield finish(assistant("Resumo final do projeto."));
+          return;
+        }
+        yield finish(assistant("", [call]));
+      },
+    };
+    const notices: string[] = [];
+    const result = await runAgent({
+      context,
+      gate,
+      maxSteps: 2,
+      messages: [{ content: "analise", role: "user" }],
+      onEvent: (e: AgentEvent) => {
+        if (e.type === "notice") {
+          notices.push(e.text);
+        }
+      },
+      provider,
+      tools: registry.definitions(),
+    });
+    expect(result.finishReason).toBe("max-steps");
+    // a última requisição (síntese) proíbe ferramentas via toolChoice "none"
+    expect(requests.at(-1)?.toolChoice).toBe("none");
+    expect(requests.at(-1)?.tools).toBeDefined();
+    expect(result.messages.at(-1)).toEqual(assistant("Resumo final do projeto."));
+    expect(notices.some((t) => t.includes("sintetizando"))).toBe(true);
+    expect(calls).toBe(3);
+  });
+
   it("agrega o uso de tokens entre os turnos", async () => {
     await writeFile(join(root, "a.txt"), "x");
     const call: ToolCall = { id: "c", input: { path: "a.txt" }, name: "read_file" };
@@ -294,6 +338,66 @@ describe("runAgent", () => {
     });
     expect(calls).toBe(3);
     expect(result.messages.at(-1)).toEqual(assistant("ok após retry"));
+  });
+
+  it("recupera de chamada de ferramenta inválida realimentando o modelo", async () => {
+    let calls = 0;
+    const notices: string[] = [];
+    const provider: Provider = {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "toolfix",
+      model: "fake",
+      async *stream() {
+        calls += 1;
+        if (calls === 1) {
+          throw new ProviderError(
+            "invalid-tool-call",
+            'A DeepSeek retornou uma chamada de ferramenta inválida (ferramenta desconhecida "xpto").',
+          );
+        }
+        yield finish(assistant("recuperei e respondi"));
+      },
+    };
+    const result = await runAgent({
+      context,
+      gate,
+      messages: [{ content: "analise o projeto", role: "user" }],
+      onEvent: (e: AgentEvent) => {
+        if (e.type === "notice") {
+          notices.push(e.text);
+        }
+      },
+      provider,
+    });
+    expect(calls).toBe(2);
+    expect(result.finishReason).toBe("stop");
+    expect(result.messages.at(-1)).toEqual(assistant("recuperei e respondi"));
+    // uma mensagem corretiva foi injetada como "user" antes do turno bem-sucedido
+    expect(
+      result.messages.some(
+        (m) => m.role === "user" && String(m.content).includes("chamada de ferramenta inválida"),
+      ),
+    ).toBe(true);
+    expect(notices.some((t) => t.includes("recuperando"))).toBe(true);
+  });
+
+  it("desiste após esgotar as correções de chamada de ferramenta inválida", async () => {
+    let calls = 0;
+    const provider: Provider = {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "toolfix-fail",
+      model: "fake",
+      // biome-ignore lint/correctness/useYield: sempre falha antes de qualquer yield.
+      async *stream() {
+        calls += 1;
+        throw new ProviderError("invalid-tool-call", "chamada inválida persistente");
+      },
+    };
+    await expect(
+      runAgent({ context, gate, messages: [{ content: "oi", role: "user" }], provider }),
+    ).rejects.toMatchObject({ code: "invalid-tool-call" });
+    // 1 tentativa original + 3 correções
+    expect(calls).toBe(4);
   });
 
   it("não re-tenta erro não-transitório nem após emitir", async () => {
