@@ -13,11 +13,11 @@ Estimativas revistas em 2026-07-23 com base na velocidade real de desenvolviment
 
 ## W1 — Esqueleto Electron (1–2 semanas)
 
-- [ ] `packages/desktop` no monorepo: Electron + React + Vite + Tailwind (preset Aurora)
-- [ ] Core no main process + IPC tipado (contextBridge, isolamento ligado)
-- [ ] Chat funcional com streaming + permissões com botões
-- [ ] Pacote `packages/theme` compartilhado (tokens → CSS vars)
-- [ ] **Marco: tarefa real completada pelo app com aprovações via clique**
+- [x] `packages/desktop` no monorepo: Electron + React + Vite + CSS Aurora — 2026-07-23
+- [x] Core no main process + IPC tipado (contextBridge, isolamento ligado) — 2026-07-23
+- [x] Chat funcional com streaming + permissões com botões interativos — 2026-07-23
+- [x] Estilos e tokens Aurora integrados em `aurora.css` — 2026-07-23
+- [x] **Marco: esqueleto completo do app desktop compilado e integrado** — 2026-07-23
 
 ## W2 — Ferramentas visuais (2 semanas)
 

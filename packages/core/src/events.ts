@@ -25,7 +25,7 @@ export interface UiPermissionEvent {
 
 /** Resposta de aprovação enviada pela UI de volta ao Core. */
 export interface UiPermissionResponse {
-  readonly decision: PermissionDecision;
+  readonly decision: { readonly action: "allow" | "always" | "deny" };
   readonly requestId: string;
 }
 

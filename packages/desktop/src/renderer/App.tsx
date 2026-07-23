@@ -18,7 +18,10 @@ export const App: React.FC = () => {
     cwd: "Carregando...",
     platform: "win32",
   });
-  const [currentPermissionRequest, setCurrentPermissionRequest] = useState<PermissionRequest | null>(null);
+  const [currentPermissionRequest, setCurrentPermissionRequest] = useState<{
+    request: PermissionRequest;
+    id: string;
+  } | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -28,7 +31,10 @@ export const App: React.FC = () => {
 
       const unsubscribe = window.codingproAPI.onCoreEvent((event: CoreUiEvent) => {
         if (event.type === "permission-request") {
-          setCurrentPermissionRequest(event.request);
+          setCurrentPermissionRequest({
+            request: event.request,
+            id: `perm-${Date.now()}`,
+          });
         } else if (event.type === "agent-event") {
           const ae = event.event;
           if (ae.type === "text-delta") {
@@ -62,7 +68,7 @@ export const App: React.FC = () => {
           } else if (ae.type === "tool-call") {
             setMessages((prev) => {
               const last = prev[prev.length - 1];
-              const tc = { name: ae.call.name, args: JSON.stringify(ae.call.arguments) };
+              const tc = { name: ae.call.name, args: JSON.stringify(ae.call.input) };
               if (last && last.role === "assistant") {
                 return [
                   ...prev.slice(0, -1),
@@ -201,11 +207,11 @@ export const App: React.FC = () => {
               </div>
 
               <div>
-                O agente deseja executar a tool <strong>{currentPermissionRequest.toolName}</strong>:
+                O agente deseja executar a tool <strong>{currentPermissionRequest.request.toolName}</strong>:
               </div>
 
               <div className="permission-input-box">
-                {JSON.stringify(currentPermissionRequest.input, null, 2)}
+                {JSON.stringify(currentPermissionRequest.request.input, null, 2)}
               </div>
 
               <div className="permission-actions">

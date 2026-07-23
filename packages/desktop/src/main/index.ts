@@ -3,22 +3,23 @@ import { join } from "node:path";
 import {
   ALL_TOOLS,
   type AgentEvent,
+  type Approval,
+  type Approver,
   type CoreUiEvent,
-  decidePermission,
   PermissionController,
-  type PermissionDecision,
   type PermissionRequest,
   runAgent,
   ToolGate,
+  type ToolContext,
   ToolRegistry,
-  UiPermissionEvent,
-  UiPermissionResponse,
+  type UiPermissionResponse,
   Workspace,
 } from "@codingpro/core";
-import { createProvider, type ChatMessage } from "@codingpro/llm";
+import { DeepSeekProvider, type ChatMessage } from "@codingpro/llm";
 
 let mainWindow: BrowserWindow | null = null;
-const pendingPermissions = new Map<string, (decision: PermissionDecision) => void>();
+let requestCounter = 0;
+const pendingPermissions = new Map<string, (approval: Approval) => void>();
 
 function sendCoreEvent(event: CoreUiEvent): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -62,80 +63,89 @@ app.whenReady().then(() => {
     const resolver = pendingPermissions.get(response.requestId);
     if (resolver) {
       pendingPermissions.delete(response.requestId);
-      resolver(response.decision);
+      const action = response.decision.action;
+      const approval: Approval =
+        action === "always"
+          ? "approve-always"
+          : action === "allow"
+            ? "approve-once"
+            : "deny";
+      resolver(approval);
     }
   });
 
-  ipcMain.handle("codingpro:send-message", async (_, args: { prompt: string; workspacePath?: string }) => {
-    try {
-      const targetCwd = args.workspacePath && args.workspacePath.trim() !== "" ? args.workspacePath : process.cwd();
-      const workspace = await Workspace.create(targetCwd);
-      const registry = new ToolRegistry();
-      for (const tool of ALL_TOOLS) {
-        registry.register(tool);
-      }
+  ipcMain.handle(
+    "codingpro:send-message",
+    async (_, args: { prompt: string; workspacePath?: string }) => {
+      try {
+        const targetCwd =
+          args.workspacePath && args.workspacePath.trim() !== ""
+            ? args.workspacePath
+            : process.cwd();
+        const workspace = await Workspace.create(targetCwd);
+        const registry = new ToolRegistry();
+        for (const tool of ALL_TOOLS) {
+          registry.register(tool);
+        }
 
-      const permissionController = new PermissionController({ mode: "ask" });
-      const approver = {
-        async askPermission(request: PermissionRequest): Promise<PermissionDecision> {
-          return new Promise<PermissionDecision>((resolve) => {
-            pendingPermissions.set(request.id, resolve);
-            sendCoreEvent({
-              type: "permission-request",
-              request,
+        const approver: Approver = {
+          async request(request: PermissionRequest, _context: ToolContext): Promise<Approval> {
+            const requestId = `perm-${++requestCounter}`;
+            return new Promise<Approval>((resolve) => {
+              pendingPermissions.set(requestId, resolve);
+              sendCoreEvent({
+                type: "permission-request",
+                request,
+              });
             });
-          });
-        },
-      };
+          },
+        };
 
-      const gate = new ToolGate({
-        approver,
-        permissionController,
-        registry,
-      });
+        const permissionController = new PermissionController({ mode: "ask" }, approver);
+        const gate = new ToolGate(registry, permissionController);
 
-      const provider = createProvider({
-        provider: "deepseek",
-        apiKey: process.env.DEEPSEEK_API_KEY ?? "dummy-dev-key",
-      });
+        const provider = new DeepSeekProvider({
+          apiKey: process.env.DEEPSEEK_API_KEY ?? "dummy-dev-key",
+        });
 
-      const userMessage: ChatMessage = {
-        role: "user",
-        content: args.prompt,
-      };
+        const userMessage: ChatMessage = {
+          role: "user",
+          content: args.prompt,
+        };
 
-      const messages: ChatMessage[] = [userMessage];
+        const messages: ChatMessage[] = [userMessage];
 
-      const agentResult = await runAgent({
-        context: { workspace },
-        gate,
-        messages,
-        provider,
-        tools: registry.listDefinitions(),
-        onEvent: (agentEvent: AgentEvent) => {
-          sendCoreEvent({
-            type: "agent-event",
-            event: agentEvent,
-          });
-        },
-      });
+        const agentResult = await runAgent({
+          context: { workspace },
+          gate,
+          messages,
+          provider,
+          tools: registry.definitions(),
+          onEvent: (agentEvent: AgentEvent) => {
+            sendCoreEvent({
+              type: "agent-event",
+              event: agentEvent,
+            });
+          },
+        });
 
-      sendCoreEvent({
-        type: "session-updated",
-        messages: agentResult.messages,
-      });
+        sendCoreEvent({
+          type: "session-updated",
+          messages: agentResult.messages,
+        });
 
-      return { success: true };
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      sendCoreEvent({
-        type: "error",
-        code: "AGENT_ERROR",
-        message: msg,
-      });
-      return { success: false, error: msg };
-    }
-  });
+        return { success: true };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        sendCoreEvent({
+          type: "error",
+          code: "AGENT_ERROR",
+          message: msg,
+        });
+        return { success: false, error: msg };
+      }
+    },
+  );
 });
 
 app.on("window-all-closed", () => {
