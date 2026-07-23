@@ -5,6 +5,7 @@ import packageJson from "../package.json" with { type: "json" };
 import { executarAgenteHeadless } from "./agent-runtime.js";
 import { type ChatIo, executarChat } from "./chat-runtime.js";
 import { ConfigError, type ProviderOverrides } from "./config.js";
+import { rodarDoctor } from "./doctor.js";
 import { executarPromptHeadless } from "./headless.js";
 import { carregarHooks } from "./hooks-runtime.js";
 import { mensagens } from "./i18n/pt-BR.js";
@@ -80,7 +81,16 @@ function traduzirErro(texto: string): string {
     .replace(/missing mandatory argument/gu, mensagens.erro.argumentoAusente);
 }
 
-export function criarPrograma(io: CliIo, services: CliServices = servicosSemProvider): Command {
+/** Holder mutável para códigos de saída definidos dentro da ação (ex.: `--doctor`). */
+export interface EstadoSaida {
+  codigo: number;
+}
+
+export function criarPrograma(
+  io: CliIo,
+  services: CliServices = servicosSemProvider,
+  estado: EstadoSaida = { codigo: 0 },
+): Command {
   const programa = new Command()
     .name("codingpro")
     .description(mensagens.ajuda.descricao)
@@ -88,6 +98,7 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
     .option("-p, --prompt <texto>", mensagens.opcao.prompt)
     .option("--chat", mensagens.opcao.chat)
     .option("--agente", mensagens.opcao.agente)
+    .option("--doctor", mensagens.opcao.doctor)
     .option("--continuar", mensagens.opcao.continuar)
     .addOption(
       new Option("--max-contexto <n>", mensagens.opcao.maxContexto).argParser((valor) => {
@@ -118,12 +129,21 @@ export function criarPrograma(io: CliIo, services: CliServices = servicosSemProv
       agente?: boolean;
       chat?: boolean;
       continuar?: boolean;
+      doctor?: boolean;
       maxContexto?: number;
       prompt?: string;
       provider?: string;
       replayFile?: string;
       resume?: string;
     }>();
+
+    if (options.doctor === true) {
+      estado.codigo = await rodarDoctor(
+        { stdout: io.stdout },
+        services.raizProjeto ?? process.cwd(),
+      );
+      return;
+    }
 
     if (options.chat === true) {
       const criarChatIo = services.criarChatIo;
@@ -239,8 +259,10 @@ export async function executarCli(
   io: CliIo,
   services: CliServices = servicosSemProvider,
 ): Promise<number> {
+  const estado: EstadoSaida = { codigo: 0 };
   try {
-    return await executarPrograma(criarPrograma(io, services), argumentos);
+    const resultado = await executarPrograma(criarPrograma(io, services, estado), argumentos);
+    return resultado !== 0 ? resultado : estado.codigo;
   } catch (error) {
     if (services.signal?.aborted === true || isAbortError(error)) {
       io.stderr(`erro: ${mensagens.erro.interrompido}\n`);

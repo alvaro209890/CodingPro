@@ -1,9 +1,25 @@
 {
   "name": "codingpro",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "type": "module",
-  "description": "CLI local de código assistida por IA",
+  "description": "CLI local-first de desenvolvimento assistido por IA, em português (Node.js 24, DeepSeek)",
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Álvaro (github.com/alvaro209890)",
+  "homepage": "https://github.com/alvaro209890/CodingPro",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alvaro209890/CodingPro.git",
+    "directory": "packages/cli"
+  },
+  "keywords": [
+    "cli",
+    "ia",
+    "agente",
+    "deepseek",
+    "codingpro",
+    "portugues"
+  ],
   "bin": {
     "codingpro": "./dist/index.mjs",
     "cpro": "./dist/index.mjs"

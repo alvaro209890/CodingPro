@@ -18,6 +18,7 @@ export const mensagens = {
     ajuda: "exibe a ajuda",
     chat: "abre o chat interativo do agente (com aprovação de efeitos)",
     continuar: "retoma a sessão mais recente do agente",
+    doctor: "roda o diagnóstico do ambiente e sai",
     maxContexto: "orçamento de tokens antes de compactar o contexto",
     prompt: "envia um prompt no modo não interativo",
     provider: "seleciona deepseek ou replay",

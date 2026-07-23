@@ -450,3 +450,30 @@ describe("CLI", () => {
     await expect(executarPrograma(programa, [])).rejects.toBe(falha);
   });
 });
+
+describe("--doctor", () => {
+  it("roda o diagnóstico e imprime o relatório sem precisar de provider", async () => {
+    const captura = capturarSaida();
+    const raiz = await mkdtemp(join(tmpdir(), "codingpro-doc-"));
+    const orig = process.env.DEEPSEEK_API_KEY;
+    process.env.DEEPSEEK_API_KEY = "";
+    try {
+      const codigo = await executarCli(["--doctor"], captura.io, {
+        criarProvider: () => {
+          throw new Error("não deve ser chamado");
+        },
+        raizProjeto: raiz,
+      });
+      // Sem DEEPSEEK_API_KEY nem provider no settings, o item crítico falha → exit 1.
+      expect(codigo).toBe(1);
+      expect(captura.stdout.join("")).toContain("Diagnóstico do CodingPro");
+    } finally {
+      if (orig === undefined) {
+        process.env.DEEPSEEK_API_KEY = undefined;
+      } else {
+        process.env.DEEPSEEK_API_KEY = orig;
+      }
+      await rm(raiz, { force: true, recursive: true });
+    }
+  });
+});
