@@ -65,10 +65,10 @@ const pendingPermissions = new Map<string, (approval: Approval) => void>();
 let selectedWorkspacePath: string = process.cwd();
 let runInFlight = false;
 let activeAbort: AbortController | null = null;
-let runStartMs = 0;
-let tokenCount = 0;
-let stepCount = 0;
-let thinkingMs = 0;
+let _runStartMs = 0;
+let _tokenCount = 0;
+let _stepCount = 0;
+let _thinkingMs = 0;
 
 function lastWorkspaceFile(): string {
   return join(app.getPath("userData"), "last-workspace.json");
@@ -1001,10 +1001,10 @@ app.whenReady().then(() => {
       runInFlight = true;
             const abort = new AbortController();
             activeAbort = abort;
-            runStartMs = Date.now();
-            tokenCount = 0;
-            stepCount = 0;
-            thinkingMs = 0;
+            _runStartMs = Date.now();
+                        _tokenCount = 0;
+                        _stepCount = 0;
+                        _thinkingMs = 0;
 
       try {
               // /abrir antes de criar sessão — troca a raiz como `cd` na CLI Linux
@@ -1076,18 +1076,15 @@ app.whenReady().then(() => {
                                                           signal: abort.signal,
                                                           onEvent: (agentEvent: AgentEvent) => {
                                                             if (agentEvent.type === "step" && agentEvent.usage) {
-                                                              tokenCount =
-                                                                (agentEvent.usage.inputTokens || 0) +
-                                                                (agentEvent.usage.outputTokens || 0);
-                                                              stepCount = agentEvent.step;
-                                                            }
-                                                            if (agentEvent.type === "reasoning-delta") {
-                                                              // aprox: reasoning em ms
-                                                              thinkingMs += Math.round(
-                                                                agentEvent.text.length * 3,
-                                                              );
-                                                            }
-                                                            sendCoreEvent({
+                                                                                                                          _tokenCount =
+                                                                                                                            (agentEvent.usage.inputTokens || 0) +
+                                                                                                                            (agentEvent.usage.outputTokens || 0);
+                                                                                                                          _stepCount = agentEvent.step;
+                                                                                                                        }
+                                                                                                                        if (agentEvent.type === "reasoning-delta") {
+                                                                                                                                                                                                                                                  _thinkingMs += Math.round(agentEvent.text.length * 3);
+                                                                                                                                                                                                                                                }
+                                                                                                                                                                                                                                                sendCoreEvent({
                                                               type: "agent-event",
                                                               event: agentEvent,
                                                             });
@@ -1097,7 +1094,7 @@ app.whenReady().then(() => {
                                                   const msgs = agentResult.messages;
                                                   session.transcript = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
                                                   acumularCusto(session, agentResult.cost);
-                                                  stepCount = agentResult.steps;
+                                                  _stepCount = agentResult.steps;
 
                       const checkpoint = await session.checkpoints.commit();
                       if (checkpoint !== undefined) {

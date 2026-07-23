@@ -79,7 +79,7 @@ export const App: React.FC = () => {
       contextBudget: number;
     } | null>(null);
 
-    const [runStartTime, setRunStartTime] = useState<number | null>(null);
+    const [_runStartTime, setRunStartTime] = useState<number | null>(null);
 
   const [taskItems, setTaskItems] = useState<ReturnType<typeof toTaskRow>[]>([]);
 
@@ -650,12 +650,16 @@ export const App: React.FC = () => {
               ) : (
                 <div className="assistant-message-card">
                                   {m.toolGroup && (
-                                    <TaskTracker
-                                      items={m.toolGroup.items.map(toTaskRow)}
-                                      isRunning={false}
+                                    <ToolSummaryBlock
+                                      summaryText={m.toolGroup.summaryText}
+                                      items={m.toolGroup.items}
+                                      totalAdd={m.toolGroup.diffAdd}
+                                      totalDel={m.toolGroup.diffDel}
                                     />
                                   )}
+                                  {/* biome-ignore lint/security/noDangerouslySetInnerHtml: markdown do LLM */}
                                   {m.reasoning && <div className="reasoning-box" dangerouslySetInnerHTML={{ __html: `🧠 ${renderMarkdown(m.reasoning)}` }} />}
+                                  {/* biome-ignore lint/security/noDangerouslySetInnerHtml: markdown do LLM */}
                                   {m.content && <div className="text-response-block" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content) }} />}
                 </div>
               )}

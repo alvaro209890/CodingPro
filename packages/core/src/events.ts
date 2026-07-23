@@ -44,7 +44,8 @@ export type CoreUiEvent =
   | { readonly type: "agent-event"; readonly event: AgentEvent }
   | UiPermissionEvent
   | { readonly type: "session-updated"; readonly messages: readonly ChatMessage[] }
-  | { readonly type: "error"; readonly code: string; readonly message: string };
+  | { readonly type: "error"; readonly code: string; readonly message: string }
+  | { readonly type: "plan-task"; readonly task: { id: string; label: string; status: "pending" | "running" | "done" | "failed" } };
 
 /** Envelope tipado para envio de mensagens IPC no Electron Renderer/Main. */
 export interface IpcEnvelope<T = unknown> {
