@@ -1,0 +1,19 @@
+{
+  "name": "@codingpro/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Site público do CodingPro (Fase 3). No P0 serve só a página 'em breve'; vira Next.js no P3a.",
+  "main": "./dist/servidor.mjs",
+  "files": [
+    "dist",
+    "public"
+  ],
+  "engines": {
+    "node": ">=24.11 <25"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "start": "node dist/servidor.mjs"
+  }
+}

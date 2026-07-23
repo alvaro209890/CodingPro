@@ -1,0 +1,19 @@
+[Unit]
+Description=CodingPro API (Fase 3) — 127.0.0.1:8700
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/acer/Documentos/CodingPro/packages/api
+EnvironmentFile=/home/acer/.config/codingpro/env
+ExecStart=/home/acer/.nvm/versions/node/v24.18.0/bin/node /home/acer/Documentos/CodingPro/packages/api/dist/servidor.mjs
+Restart=always
+RestartSec=3
+# Coexistência (F3-02, regra 3): se vazar memória, morre e reinicia sozinho —
+# Atlas/Hermes/NexoGeo nem sentem.
+MemoryMax=1G
+CPUWeight=50
+
+[Install]
+WantedBy=default.target

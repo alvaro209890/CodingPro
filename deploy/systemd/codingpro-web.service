@@ -1,0 +1,17 @@
+[Unit]
+Description=CodingPro site (Fase 3) — 127.0.0.1:8701
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/acer/Documentos/CodingPro/packages/web
+EnvironmentFile=/home/acer/.config/codingpro/env
+ExecStart=/home/acer/.nvm/versions/node/v24.18.0/bin/node /home/acer/Documentos/CodingPro/packages/web/dist/servidor.mjs
+Restart=always
+RestartSec=3
+MemoryMax=1G
+CPUWeight=50
+
+[Install]
+WantedBy=default.target

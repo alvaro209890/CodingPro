@@ -1,0 +1,29 @@
+{
+  "name": "@codingpro/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "API/proxy LLM da plataforma web do CodingPro (Fase 3)",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=24.11 <25"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "start": "node dist/servidor.mjs"
+  },
+  "dependencies": {
+    "fastify": "5.6.2"
+  }
+}

@@ -1,0 +1,16 @@
+[Unit]
+Description=CodingPro Cloudflare Tunnel (dedicado) — codingpro/codingpro-api.cursar.space
+After=network-online.target codingpro-api.service codingpro-web.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Config PRÓPRIA. Nunca apontar para saldopro-config.yml nem /etc/cloudflared/config.yml.
+ExecStart=/usr/local/bin/cloudflared tunnel --config /home/acer/.cloudflared/codingpro-config.yml run d15b2a56-067d-464f-a60e-77803fc5e661
+Restart=on-failure
+RestartSec=5
+MemoryMax=512M
+CPUWeight=50
+
+[Install]
+WantedBy=default.target

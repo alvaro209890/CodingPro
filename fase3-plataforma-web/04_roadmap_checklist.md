@@ -2,14 +2,16 @@
 
 Pré-requisito: Fase 1 estável (Fase 2 pode andar em paralelo a partir do P2). **Total revisado: ~7–9 semanas** (com base na velocidade de desenvolvimento da Fase 1 e na adição do admin SPA standalone).
 
-## P0 — Inventário e fundação de infra (1 semana)
+## P0 — Inventário e fundação de infra (1 semana) — 🟢 quase concluído em 2026-07-23
 
-- [ ] `INVENTARIO_PC.md`: portas (`ss -tlnp`), serviços systemd, tunnels existentes — congelado ANTES de subir qualquer coisa
-- [ ] Confirmar portas 8700/8701 livres (ou realocar)
-- [ ] Criar database `codingpro` + usuário restrito no Postgres existente (sem tocar no Atlas)
-- [ ] Tunnel dedicado + DNS `codingpro.cursar.space` / `codingpro-api.cursar.space` com página "em breve"
-- [ ] Unidades systemd com MemoryMax/CPUWeight + usuário sem sudo
-- [ ] **Marco: hello-world servido pelos 2 subdomínios sem NENHUM serviço existente reiniciado**
+Detalhes da execução: [INVENTARIO_PC.md](INVENTARIO_PC.md) · [SETUP_P0.md](SETUP_P0.md)
+
+- [x] `INVENTARIO_PC.md`: portas (`ss -tlnp`), serviços systemd, tunnels existentes — congelado ANTES de subir qualquer coisa
+- [x] Confirmar portas 8700/8701 livres (ou realocar) — ambas livres
+- [ ] Criar database `codingpro` + usuário restrito no Postgres existente (sem tocar no Atlas) — **pendente: exige superusuário, comandos prontos em [SETUP_P0.md](SETUP_P0.md) §2**
+- [x] Tunnel dedicado + DNS `codingpro.cursar.space` / `codingpro-api.cursar.space` com página "em breve"
+- [x] Unidades systemd com MemoryMax/CPUWeight + usuário sem sudo (**user units**, não system — ver SETUP_P0 §4)
+- [x] **Marco: hello-world servido pelos 2 subdomínios sem NENHUM serviço existente reiniciado** ✅
 
 ## P1 — API + proxy LLM (2 semanas)
 
