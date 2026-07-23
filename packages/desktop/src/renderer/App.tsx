@@ -337,11 +337,15 @@ export const App: React.FC = () => {
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (!last?.toolGroup) return prev;
-            const items = last.toolGroup.items.map((it) =>
-              it.name === ae.call.name && it.status === "running"
-                ? { ...it, status: ok ? ("success" as const) : ("failed" as const) }
-                : it,
-            );
+            const items = last.toolGroup.items.map((it) => {
+              if (it.name === ae.call.name && it.status === "running") {
+                const out = ae.result.type === "text" ? ae.result.value : ae.result.type === "error-text" ? ae.result.value : undefined;
+                const updated = { ...it, status: ok ? ("success" as const) : ("failed" as const) };
+                if (out !== undefined) (updated as any).output = out;
+                return updated;
+              }
+              return it;
+            });
             const still = items.some((it) => it.status === "running" && it.name === ae.call.name);
             const finalItems = still
               ? items
