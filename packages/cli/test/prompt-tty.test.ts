@@ -100,8 +100,14 @@ describe("prompt-tty", () => {
     const input = new FakeStdin();
     const prompt = criarPromptTty({
       input: input as never,
-      output: { write: (s: string) => { escritas += 1; chunks.push(s); } } as never,
-      tema: criarTema("truecolor"),
+      output: {
+        write: (s: string) => {
+          escritas += 1;
+          chunks.push(s);
+        },
+      } as never,
+      // Força unicode: detectarAscii(process.env) no ambiente de teste pode ser true (TERM=dumb etc.).
+      tema: criarTema({ nivel: "truecolor", ascii: false }),
     });
     const p = prompt.bannerAnimado();
     await vi.runAllTimersAsync();

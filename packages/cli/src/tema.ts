@@ -356,7 +356,8 @@ export function criarTema(
     );
     const vazio = " ".repeat(largura);
 
-    const bordar = (s: string): string => (nivel === "nenhuma" ? s : esmaecer(s, nivel, preferCinza));
+    const bordar = (s: string): string =>
+      nivel === "nenhuma" ? s : esmaecer(s, nivel, preferCinza);
     const topo = bordar(`${g.cantoTL}${g.linhaH.repeat(largura + 2)}${g.cantoTR}`);
     const fundo = bordar(`${g.cantoBL}${g.linhaH.repeat(largura + 2)}${g.cantoBR}`);
     const lado = bordar(g.linhaV);
