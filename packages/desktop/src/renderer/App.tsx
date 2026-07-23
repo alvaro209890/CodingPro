@@ -9,8 +9,28 @@ import { PermissionModal } from "./components/PermissionModal.js";
 import { Sidebar } from "./components/Sidebar.js";
 import { type ToolItem, ToolSummaryBlock } from "./components/ToolSummaryBlock.js";
 import { TaskTracker, toTaskRow } from "./components/TaskTracker.js";
+import { SubagentPanel } from "./components/SubagentPanel.js";
 import { renderMarkdown } from "./components/MarkdownRenderer.js";
 import "./aurora.css";
+
+const CollapsibleReasoning: React.FC<{ text?: string | undefined }> = ({ text }) => {
+  const [open, setOpen] = useState(false);
+  if (!text) return null;
+  return (
+    <div className="reasoning-box">
+      <button type="button" className="reasoning-toggle" onClick={() => setOpen(!open)}>
+        🧠 Raciocínio {open ? "▾" : "▸"}
+      </button>
+      {open && (
+        <div
+          className="reasoning-body"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: markdown do LLM
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }}
+        />
+      )}
+    </div>
+  );
+};
 
 interface ChatMessageUI {
   id: string;
@@ -83,9 +103,13 @@ export const App: React.FC = () => {
 
   const [taskItems, setTaskItems] = useState<ReturnType<typeof toTaskRow>[]>([]);
 
-  const [autoApprove, setAutoApprove] = useState(false);
+    const [autoApprove, setAutoApprove] = useState(false);
+
+    const [subAgents, setSubAgents] = useState<Array<{ id: string; label: string; status: "running" | "done" | "failed" }>>([]);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const chatFeedRef = useRef<HTMLDivElement | null>(null);
+  const autoScrollRef = useRef(true);
   const workspaceRef = useRef(workspaceInfo.cwd);
   workspaceRef.current = workspaceInfo.cwd;
 
@@ -240,9 +264,19 @@ export const App: React.FC = () => {
 
                     // Atualiza task tracker em tempo real (só task tool = tarefas planejadas)
                                         if (ae.call.name === "task") {
-                                          const tRow = toTaskRow({ ...newItem, status: "running" });
-                                          setTaskItems((prev) => [...prev, tRow]);
-                                        }
+                                                              const tRow = toTaskRow({ ...newItem, status: "running" });
+                                                              setTaskItems((prev) => [...prev, tRow]);
+                                                            }
+
+                                                            // Painel de subagentes visuais
+                                                            if (ae.call.name === "task") {
+                                                              const input = ae.call.input as Record<string, unknown> | undefined;
+                                                              const taskList = Array.isArray(input?.tarefas) ? input.tarefas as Array<{ prompt?: string }> : [];
+                                                              taskList.forEach((t, idx) => {
+                                                                const label = t?.prompt ? t.prompt.slice(0, 50) : `Subtarefa ${idx + 1}`;
+                                                                setSubAgents((prev) => [...prev, { id: `${ae.call.name}-${idx}-${Date.now()}`, label, status: "running" }]);
+                                                              });
+                                                            }
 
                     if (last && last.role === "assistant") {
                       const group = last.toolGroup ?? {
@@ -286,6 +320,12 @@ export const App: React.FC = () => {
                               setTaskItems((prev) =>
                                 prev.map((t) =>
                                   t.id.startsWith("task-") ? { ...t, status: ok ? "done" : ("failed" as const) } : t,
+                                ),
+                              );
+                              // Marca subagentes como done/failed
+                              setSubAgents((prev) =>
+                                prev.map((a) =>
+                                  a.id.startsWith("task-") ? { ...a, status: ok ? "done" : ("failed" as const) } : a,
                                 ),
                               );
                             }
@@ -355,10 +395,24 @@ export const App: React.FC = () => {
     };
   }, [apiReady, refreshSessions]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: rola o chat no scroll.
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isRunning]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll inteligente.
+    useEffect(() => {
+      if (autoScrollRef.current) {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }
+    }, [messages, isRunning]);
+
+    // Detecta scroll manual do usuário
+    useEffect(() => {
+      const el = chatFeedRef.current;
+      if (!el) return;
+      const handleScroll = () => {
+        const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+        autoScrollRef.current = atBottom;
+      };
+      el.addEventListener("scroll", handleScroll, { passive: true });
+      return () => el.removeEventListener("scroll", handleScroll);
+    }, []);
 
   const handleSend = useCallback(
     async (customPrompt?: string) => {
@@ -551,8 +605,10 @@ export const App: React.FC = () => {
         )}
 
         {/* Chat Feed */}
-        <div className="chat-feed">
-          {messages.length === 0 && (
+                <div className="chat-feed" ref={chatFeedRef}>
+                  <SubagentPanel agents={subAgents} />
+
+                  {messages.length === 0 && (
             <div
               style={{
                 display: "flex",
@@ -661,10 +717,9 @@ export const App: React.FC = () => {
                                       totalDel={m.toolGroup.diffDel}
                                     />
                                   )}
-                                  {/* biome-ignore lint/security/noDangerouslySetInnerHtml: markdown do LLM */}
-                                  {m.reasoning && <div className="reasoning-box" dangerouslySetInnerHTML={{ __html: `🧠 ${renderMarkdown(m.reasoning)}` }} />}
-                                  {/* biome-ignore lint/security/noDangerouslySetInnerHtml: markdown do LLM */}
-                                  {m.content && <div className="text-response-block" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content) }} />}
+                                  <CollapsibleReasoning text={m.reasoning} />
+                                                    {/* biome-ignore lint/security/noDangerouslySetInnerHtml: markdown do LLM */}
+                                                    {m.content && <div className="text-response-block" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content) }} />}
                 </div>
               )}
             </div>
