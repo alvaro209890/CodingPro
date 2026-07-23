@@ -218,6 +218,8 @@ async function repassar(
   const leitor = new LeitorDeUso();
   const decodificador = new TextDecoder();
   const fluxo = args.upstream.body as ReadableStream<Uint8Array>;
+  // Acumula o texto completo para fallback de JSON (non-streaming).
+  const pedacos: string[] = [];
 
   const geradora = async function* () {
     const reader = fluxo.getReader();
@@ -226,23 +228,32 @@ async function repassar(
         const { done, value } = await reader.read();
         if (done) break;
         if (value) {
-          leitor.alimentar(decodificador.decode(value, { stream: true }));
+          const texto = decodificador.decode(value, { stream: true });
+          pedacos.push(texto);
+          leitor.alimentar(texto);
           yield Buffer.from(value);
         }
       }
     } finally {
       reader.releaseLock();
-      // A contabilidade fecha AQUI, dentro do generator: este bloco roda quando o
-      // último byte já saiu — e também se o cliente desistir no meio, caso em que
-      // o que já foi gerado continua sendo cobrado. Se ficasse depois do `send`,
-      // o registro correria contra o fim do stream e o consumo se perderia.
+      // Força o flush do buffer residual do LeitorDeUso (última linha sem \n).
+      leitor.alimentar("\n");
+      let uso = normalizarUso(leitor.uso);
+      // Fallback: se o LeitorDeUso baseado em SSE não achou nada, tenta
+      // extrair o usage do corpo JSON direto (non-streaming).
+      if (uso.tokensEntrada === 0 && uso.tokensSaida === 0 && uso.tokensRaciocinio === 0) {
+        try {
+          const json = JSON.parse(pedacos.join("")) as { usage?: Record<string, unknown> };
+          if (json.usage) uso = normalizarUso(json.usage);
+        } catch { /* não é JSON — ignora */ }
+      }
       await registrar(ctx, {
         competencia: args.competencia,
         duracaoMs: Date.now() - args.inicio,
         erro: null,
         modelo: args.modelo,
         tokenId: args.tokenId,
-        uso: normalizarUso(leitor.uso),
+        uso,
         usuarioId: args.usuarioId,
       }).catch((causa: unknown) => {
         args.req.log.error({ causa }, "falha ao gravar consumo");
@@ -250,7 +261,6 @@ async function repassar(
     }
   };
 
-  // `Readable.from` porque o `send` do Fastify aceita stream, não async generator.
   await args.resposta.send(Readable.from(geradora()));
   return args.resposta;
 }
