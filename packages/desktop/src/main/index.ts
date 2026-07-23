@@ -66,6 +66,7 @@ const pendingPermissions = new Map<string, (approval: Approval) => void>();
 
 /** Pasta de trabalho escolhida na UI (independe do process.cwd do Electron). */
 let selectedWorkspacePath: string = process.cwd();
+const SEM_PASTA = false; // true = modo "acesso total ao PC" (usa C:\ ou ~)
 let runInFlight = false;
 let activeAbort: AbortController | null = null;
 let autoApprove = false;

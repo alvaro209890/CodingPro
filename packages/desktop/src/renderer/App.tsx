@@ -62,7 +62,7 @@ function contentToString(content: unknown): string {
 }
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"home" | "code" | "settings">("code");
+  const [activeTab, setActiveTab] = useState<"code" | "settings">("code");
   const [messages, setMessages] = useState<ChatMessageUI[]>([]);
   const [inputPrompt, setInputPrompt] = useState("");
   const [isRunning, setIsRunning] = useState(false);
@@ -230,7 +230,7 @@ export const App: React.FC = () => {
         } else if (ae.type === "reasoning-delta") {
           setMessages((prev) => {
             const last = prev[prev.length - 1];
-            if (last && last.role === "assistant") {
+            if (last && last.role === "assistant" && !last.toolGroup) {
               return [
                 ...prev.slice(0, -1),
                 { ...last, reasoning: (last.reasoning ?? "") + ae.text },
@@ -252,6 +252,7 @@ export const App: React.FC = () => {
             },
           ]);
         } else if (ae.type === "tool-call") {
+                  // Cada tool ganha seu próprio bloco de raciocínio
                   setMessages((prev) => {
                     const last = prev[prev.length - 1];
                     const input = ae.call.input as Record<string, unknown> | undefined;
