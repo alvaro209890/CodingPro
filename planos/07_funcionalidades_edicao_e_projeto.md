@@ -52,3 +52,41 @@ Na abertura, detectar e expor no contexto: linguagens, framework, package manage
 
 - [ ] Definir formato do achado e níveis de severidade
 - [ ] Heurística de quando sugerir rodar testes automaticamente
+
+## 7.6 Auto-correção de lint e formatação *(CLI — próximo incremento)*
+
+Depois de qualquer turno que altere arquivos, a CLI deve **deixar o código limpo** sem o usuário
+pedir “roda o linter” ou “formata isso”.
+
+### Estado
+
+| Camada | Status |
+|--------|--------|
+| Detectar projeto com Biome (`biome.json`) | ✅ `quality-runtime.projetoUsaBiome` |
+| Rodar `biome check` nos arquivos tocados (`execFile`, sem shell) | ✅ `verificarQualidade` |
+| Reportar ✓ / ✗ no progresso do chat | ✅ |
+| **`biome check --write`** (format + fixes seguros) nos tocados | ☐ a implementar |
+| Revalidar após o write | ☐ |
+| Se ainda houver diagnóstico → **re-turno automático da IA** com o texto do linter | ☐ |
+| Teto de iterações + config `quality.autoFix` | ☐ |
+| Checkpoint/undo inclui o auto-fix mecânico | ☐ |
+
+### Algoritmo (resumo)
+
+1. Coletar paths relativos tocados por `write_file` / `edit_file` no turno.
+2. Se não há linter do projeto → no-op.
+3. `biome check --write -- <paths…>` (argv only).
+4. `biome check -- <paths…>` de novo.
+5. Se limpo → fim. Se não e `maxRepairTurns > 0` → mensagem de sistema/usuário com a saída do
+   biome e mais um `runAgent` (mesmo gate/workspace; preferir Flash se o diagnóstico for trivial).
+6. Nunca varrer o monorepo inteiro; nunca `rm`/comandos do modelo no passo mecânico.
+
+### Relação com o Aider
+
+O Aider devolve lint ao modelo (`linter.py`). CodingPro faz **primeiro** o que for mecânico
+(`--write`) e **só então** imita o Aider no residual — menos tokens, mesma qualidade.
+
+Detalhe de produto, segurança e critérios de pronto: **doc 14.5.1**.
+
+- [ ] Implementar `corrigirQualidade` + re-turno (ver 14.5.1)
+- [ ] Settings + testes + guia do usuário

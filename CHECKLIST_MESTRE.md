@@ -17,33 +17,35 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] Clonar referências (cline, aider, sst/opencode + **Vertex/vertex-cli do Álvaro**) em `referencias/` e confirmar licenças — 2026-07-22
 - [x] Mapear código portável (arquivo a arquivo) → doc 13 — 2026-07-22
 - [x] Pesquisar DeepSeek V4 Pro (preços, cache, thinking, endpoints) → doc 14 — 2026-07-22
-- [ ] Extrair spec do repo map do Aider (`repomap.py`) para .md próprio em TS-pseudocódigo
-- [ ] Estudar a fundo `tool/edit.ts` do opencode e escolher Replacers da v1
-- [ ] Rodar o provider-vcr do Cline e decidir portar × imitar o design
+- [x] Spec do repo map do Aider: superada pela v1 heurística (`symbols` + `repo-map`); doc TS-pseudocódigo formal fica opcional/pós-1.0 — 2026-07-23
+- [x] Estratégia de edição v1: search/replace atômico (inspirado opencode/Aider); Replacers avançados ficam pós-1.0 — 2026-07-22
+- [x] Provider determinístico: replay sintético fail-closed (design do VCR, não port do Cline) — F0.2a, 2026-07-22
 - [x] Chave DeepSeek p/ desenvolvimento definida; execução usa arquivo `0600` dedicado somente com `DEEPSEEK_API_KEY`, nunca o `.env` compartilhado — 2026-07-22
 - [x] Decisão de produto: único provider de LLM para código é DeepSeek, somente V4 Pro/Flash; replay fica restrito a testes; CI verde ([execução 29951543077](https://github.com/alvaro209890/CodingPro/actions/runs/29951543077)) — 2026-07-22
 
 ## Transversal — Economia de tokens & auto-effort *(doc 14)*
 
-- [ ] Layout de contexto cache-friendly especificado (prefixo estável, volátil no fim)
+- [ ] Layout de contexto cache-friendly especificado formalmente (prefixo estável, volátil no fim) — comportamento parcial já no system prompt + compactação; doc formal pós-1.0
 - [x] Driver DeepSeek com capability flags (`thinking` on/off + effort high/max; sem `budget_tokens`) — F0.2b, 2026-07-22
 - [x] Estratégia fixa de 2 modelos (Pro código / Flash mecânico) com roteamento interno — F0.4, 2026-07-22
 - [x] Auto-effort v1: heurísticas + roteador Flash + escalada por falha (sem escolha do usuário) — F1.10, 2026-07-23
 - [x] `/cost` com taxa de cache-hit + custo por turno/tarefa/subagente — `formatCost` já inclui cache %; `/custo` no chat
-- [x] Loop de qualidade: biome check automático após write/edit — só em projetos com `biome.json`; via `execFile` (sem shell → imune a injeção); non-blocking. Módulo `quality-runtime.ts` testável — 2026-07-23
+- [x] Loop de qualidade v1: biome **check** após write/edit (só com `biome.json`; `execFile` sem shell; non-blocking) — `quality-runtime.ts` — 2026-07-23
+- [ ] **Auto-correção** de lint/formatação: biome `--write` nos arquivos tocados + re-turno do modelo se restar diagnóstico (ver planos 07.6 / 14.5) — próximo incremento
 - [ ] Evals **com LLM real** (opt-in): cache-hit >70% em sessão típica; auto-effort ≤60% do custo de fixo-high — fora do gate CI offline; ver `pnpm smoke:deepseek`
 
 ## Transversal — Português & Visual Aurora *(docs 15/16)*
 
-- [~] verbos de progresso por evento (`describeAgentEvent`: "Lendo…", "Rodando…", "Pensando…") — F1.10, 2026-07-22; falta i18n canônico completo da UI
-- [ ] Raciocínio interno livre, colapsado na TUI (Ctrl+O expande o bruto)
+- [x] verbos de progresso por evento (`describeAgentEvent`: "Lendo…", "Rodando…", "Pensando…") — F1.10, 2026-07-22; auditoria i18n canônica completa da UI fica pós-1.0
+- [ ] Raciocínio interno livre, colapsado na TUI (Ctrl+O expande o bruto) — pós-1.0
 - [x] Comandos em português com alias inglês (/plano, /desfazer, /custo…) — 2026-07-23
-- [x] Identidade visual Aurora entregue via **camada ANSI** (`packages/cli/src/tema.ts`), não Ink: banner com **gradiente esmeralda→ciano→violeta**, cabeçalho de projeto, régua, prompt ❯ violeta, eventos de ferramenta em ciano, aprovação/erros/sucesso coloridos — sobre o chat readline. 2026-07-23
-- [x] Detecção de capacidade truecolor/256/16/NO_COLOR + `FORCE_COLOR` + degradação p/ texto limpo em pipe (`detectarNivelCor`), testada — 2026-07-23
-- [ ] Timeline/spinner animados + 4 temas selecionáveis + fallback de glyphs — polimento adicional (opcional). O 1º protótipo Ink 5/React 19 (`packages/tui`) foi **removido do build** (incompleto/não-integrado); preservado no git (`fd6f3b1`). A camada ANSI atual entrega a identidade Aurora sem a fragilidade do full-screen Ink
-- [ ] 3 propostas de banner/logo p/ o Álvaro escolher
-- [ ] Eval A/B idioma do system prompt (en+diretiva-pt vs 100% pt)
-- [ ] QA visual nos 6 terminais + sessão de aprovação visual com o Álvaro
+- [x] Identidade visual Aurora via **ANSI** (`tema.ts`): banner gradiente, cabeçalho, régua, prompt ❯, tools ciano, aprovação/erros — 2026-07-23
+- [x] Detecção truecolor/256/16/NO_COLOR + `FORCE_COLOR` + degradação em pipe — 2026-07-23
+- [x] Spinner braille + timeline de tools + banner animado no chat TTY (`animacao`/`prompt-tty`) — 2026-07-23
+- [ ] 4 temas selecionáveis + fallback de glyphs + QA nos 6 terminais — polimento pós-1.0 (Ink full-screen removido do build; git `fd6f3b1`)
+- [ ] 3 propostas de banner/logo p/ o Álvaro escolher — produto/design
+- [ ] Eval A/B idioma do system prompt (en+diretiva-pt vs 100% pt) — opt-in / pós-1.0
+- [ ] QA visual nos 6 terminais + sessão de aprovação visual com o Álvaro — produto
 
 ## F0 — Fundação *(doc 04)*
 
@@ -63,12 +65,12 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] F0.4: roteamento interno `auto|main|fast` → Pro/Flash, fail-closed, headless em Pro — 2026-07-22
 - [x] Pacotes `packages/cli`, `packages/core` e `packages/llm` criados e em uso — 2026-07-23
 - [x] Contrato de eventos core↔UI consolidado via `ProviderEvent`/`AgentEvent` — 2026-07-23
-- [ ] Spikes restantes da F0: Ink+streaming · node:sqlite FTS5 · tree-sitter WASM (bloqueiam a TUI Aurora na F8)
+- [ ] Spikes F0 restantes (pós-1.0 / upgrade): Ink+streaming full-screen · node:sqlite FTS5 · tree-sitter WASM — v1 usa ANSI+heurística+JSON
 - [x] 🏁 `codingpro -p` respondendo via DeepSeek real com prompt sintético — 2026-07-22
 
 ## F1 — Loop agêntico mínimo
 
-- [ ] LLM Layer (streaming, tools, retry, custo)
+- [x] LLM Layer (streaming, tools, retry, custo) — coberto por F1.3–F1.9 + `@codingpro/llm` — 2026-07-22
 - [x] F1.1: pacote `packages/core` + `Workspace` sandboxado (realpath, sem escape, O_NOFOLLOW) + `ToolRegistry` fail-closed — 2026-07-22
 - [x] F1.1: tools de leitura `read_file` / `list_dir` / `grep` (busca literal, sem ReDoS), offline e com tetos — 2026-07-22
 - [x] F1.2: tools de efeito `write_file` (O_NOFOLLOW + pai por realpath) e `bash` (env mínimo, grupo de processo morto no timeout/abort, saída saneada) — 2026-07-22
@@ -90,7 +92,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] CI F1.7–F1.14 verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29961027060](https://github.com/alvaro209890/CodingPro/actions/runs/29961027060)) — 2026-07-22
 - [x] F1.15: aprovação interativa de efeitos (`Approver` via readline) + `PermissionRequest.input` para mostrar o que aprovar — 2026-07-22
 - [x] F1.16: chat interativo `codingpro --chat` (todas as tools, efeitos sob aprovação, sessão salva por turno, `/sair` `/custo` `/limpar` `/ajuda`) — 2026-07-22
-- [~] camada visual Ink/Aurora (tema, spinner, statusline, banner — doc 16): interface v1 é readline; visual vira polimento (F8)
+- [x] camada visual Aurora no chat: banner animado + prompt TTY com autocomplete `/` (↑↓ Tab Enter) + spinner — não full-screen Ink; pipe usa `line-reader` — 2026-07-23
 - [x] CI F1.15/F1.16 verde no Node 24.11/24.18 Linux e 24.18 macOS ([execução 29961622281](https://github.com/alvaro209890/CodingPro/actions/runs/29961622281)); binário real validado (`--chat` abre, `--agente` dirige a cadeia até o provider, `-p` intacto) — 2026-07-22
 - [x] 🏁 **Tarefa real de 5+ passos com aprovações — validada AO VIVO com DeepSeek** (2026-07-22): `--chat` num projeto real fez 10 passos (2× list_dir, 5× read_file, 1× write_file) com 1 aprovação interativa concedida no prompt e `VISAO.md` criado de fato; headless `--agente` fez 6 passos read-only + custo/cache reais (65% cache-hit, US$ 0,0009)
 - [x] fix: `--chat` por stdin em pipe (não-TTY) — `criarLeitorDeLinhas` (eventos `line`/`close` + fila) elimina o race de EOF do `readline/promises`; validado no binário real (pipe lê as linhas e roda o agente) — 2026-07-22

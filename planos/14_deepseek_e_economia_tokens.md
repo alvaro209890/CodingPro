@@ -91,12 +91,72 @@ Camadas de garantia, em ordem de execução num turno de código:
 
 1. **Antes de editar**: repo map + leitura dos arquivos-alvo (nunca edição às cegas — doc 07); em tarefa não-trivial, plano curto interno com critérios de pronto.
 2. **Ao editar**: cascata de Replacers robusta (opencode) + aplicação atômica + checkpoint.
-3. **Depois de cada edição**: checagem de sintaxe (tree-sitter) + lint/diagnóstico (conceito do `linter.py` do Aider; LSP do opencode como upgrade na F3) — erros voltam **automaticamente** pro modelo corrigir no mesmo turno.
+3. **Depois de cada edição**: lint/diagnóstico + **auto-correção** (ver 14.5.1) — erros mecânicos somem sem gastar turno; o resto volta pro modelo.
 4. **Depois da tarefa**: rodar o teste do projeto (detectado na F3); falha → loop de correção com esforço escalado (14.4).
 5. **Revisão embutida**: em mudanças grandes (>N arquivos ou pedido explícito), subagente `reviewer` (V4 Pro, contexto limpo) revisa o diff antes de declarar pronto — achados críticos são corrigidos, o resto é reportado.
 6. **Medição contínua**: mini-benchmark de edição (doc 10.4) roda semanal; regressão de qualidade bloqueia release.
 
 Princípio: qualidade vem de **verificação automática em loop**, não de pedir "capriche" no prompt. Cada camada devolve sinal objetivo (parse ok, lint ok, teste ok, review ok) e o modelo só encerra quando os sinais passam — é isso que transforma um modelo 91% SWE-bench em resultado confiável no dia-a-dia.
 
+### 14.5.1 Auto-correção de lint e formatação *(plano da CLI — próximo incremento)*
+
+**Estado atual (v1 entregue):** após um turno com `write_file`/`edit_file`, `quality-runtime.ts` roda
+`biome check` nos arquivos tocados (só se existir `biome.json`/`biome.jsonc`), via `execFile` **sem shell**
+(caminhos como argv → imune a injeção). Reporta `✓ limpo` ou `✗ N problema(s)` + saída. **Não corrige**
+ainda — só informa.
+
+**Objetivo:** a CLI **corrige sozinha** erros de lint/formatação sempre que for seguro, e só então pede
+à IA o que o linter não consegue auto-fixar.
+
+#### Fluxo alvo (por turno com escrita)
+
+```
+arquivos tocados
+    │
+    ▼
+[1] biome check --write  (format + fixes seguros, argv, sem shell)
+    │
+    ▼
+[2] biome check          (revalida)
+    │
+    ├─ 0 problemas → ✓ fim (checkpoint já inclui o --write se capturado)
+    │
+    └─ ainda há problemas → [3] re-turno do agente
+            prompt sintético com o diagnóstico
+            tools de edição liberadas
+            teto de 1–2 iterações (não loop infinito)
+            auto-effort pode escalar p/ Pro se falhar de novo
+```
+
+#### Regras de produto
+
+| Regra | Detalhe |
+|-------|---------|
+| Escopo | Só arquivos **tocados neste turno** (nunca `biome check --write .` no repo inteiro) |
+| Detector | Biome se `biome.json(c)` na raiz; futuro: ESLint/`ruff`/`cargo fmt` por detecção de projeto |
+| Segurança | Sempre `execFile` + argv; nunca interpolar paths em shell; teto de bytes/timeout |
+| Checkpoint | O `--write` mecânico **entra no mesmo checkpoint** do turno (undo reverte lint+IA juntos) |
+| Permissão | Auto-fix mecânico **não pede** aprovação (é formatação/lint do projeto); re-turno da IA sim se for editar de novo sob `ask` |
+| UX | `· formatando…` → `· ✓ auto-corrigido (N)` ou `· reenviando diagnóstico ao modelo…` |
+| Fail-closed | Biome ausente / timeout / ENOENT → mensagem curta e **não** bloqueia o turno |
+| Config | `settings.quality.autoFix: true\|false` (padrão `true`); `maxRepairTurns: 0..2` (padrão `1`) |
+
+#### Por que duas camadas (mecânica + IA)
+
+- **Mecânica (`--write`)**: barata, determinística, cobre 80%+ dos ruídos (aspas, imports, trailing commas).
+- **IA (re-turno)**: só o que exige julgamento (tipo errado, regra sem fix, lógica). Evita gastar tokens
+  com o que o Biome já resolve.
+
+#### Critérios de pronto da feature
+
+- [ ] `corrigirQualidade(root, arquivos)` no `quality-runtime` (check → write → recheck), testável com runner injetado
+- [ ] Integração no `chat-runtime` / headless agente após commit de checkpoint
+- [ ] Re-turno com diagnóstico no system/user quando `problemas > 0` e `maxRepairTurns > 0`
+- [ ] Config JSONC `quality.autoFix` / `quality.maxRepairTurns`
+- [ ] Testes: projeto com biome, arquivo “sujo” → fica limpo sem chamar o provider; diagnóstico residual → mock de 2º turno
+- [ ] Doc de usuário (`GUIA-DO-USUARIO`) atualizado
+
+- [x] v1: biome **check** pós-edição (report only) — 2026-07-23
 - [ ] Definir política de quando cada camada roda (custo × benefício por tamanho de mudança)
 - [ ] Contrato do "pronto": turno de código só encerra com sintaxe+lint ok e testes rodados (ou justificativa explícita)
+- [ ] Implementar auto-correção 14.5.1 (mecânica + re-turno)

@@ -512,3 +512,18 @@ Polimento restante (visual Aurora, i18n completo, evals) é pós-1.0. Iniciar Fa
 
 O launcher `~/.local/bin/codingpro` já aponta para `packages/cli/dist/index.mjs` com Node 24.
 Após `pnpm build` na raiz do repo: `codingpro --chat`.
+
+## 2026-07-23 — Checklist alinhado + plano de auto-correção lint/format
+
+### Docs
+
+- **CHECKLIST_MESTRE**: itens stale marcados conforme o código (LLM Layer, visual TTY/spinner,
+  pré-F0 superados pela v1, spikes F0 como pós-1.0). Item novo: auto-correção lint/format
+  (próximo incremento; v1 continua só `biome check`).
+- **Planos**: doc **14.5.1** (fluxo biome `--write` + re-turno da IA, regras de segurança/config);
+  **07.6** (edição/projeto); **04** F1.x; **01** visão atualizada.
+
+### Código
+
+Sem mudança de runtime nesta rodada — só alinhamento documental e especificação do próximo
+incremento de qualidade.

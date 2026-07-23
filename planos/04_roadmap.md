@@ -117,9 +117,16 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 
 ## F9 — Release 1.0 (1–2 semanas)
 
-- [ ] Empacotar como pacote npm com bins `codingpro` + alias `cpro` (`npm i -g codingpro`) + testar instalação limpa
-- [ ] Script `install.sh` estilo vertex-cli (curl | bash: instala Node se faltar, npm i -g, PATH) — os 2 canais de instalação
-- [ ] Docs de usuário (README, guia de config, guia de skills/MCP)
-- [ ] Hardening: caminhos com espaço, repos gigantes, sem rede, chave inválida
-- [ ] Suite de evals mínima rodando no CI (doc 10)
-- [ ] **Marco: instalação limpa em máquina nova → tarefa real completa em < 10 min de setup**
+- [x] Empacotar como pacote npm com bins `codingpro` + alias `cpro` + smoke de tarball no CI — 2026-07-23
+- [x] Script `install.sh` estilo vertex-cli (curl \| sh) — 2026-07-23
+- [x] Docs de usuário (`docs/GUIA-DO-USUARIO.md`) + `doctor` — 2026-07-23
+- [x] Hardening offline + evals mínimos no CI — 2026-07-23
+- [ ] **Marco: instalação limpa em máquina nova → tarefa real completa em < 10 min de setup** (após `npm publish`, passo do Álvaro)
+
+## F1.x — Pós-núcleo / próximo incremento (CLI já usável)
+
+Itens que **não** bloqueiam o uso diário da Fase 1, mas fecham o ciclo de qualidade e polish:
+
+- [ ] **Auto-correção lint/formatação** (doc 14.5.1 / 07.6): `biome check --write` nos arquivos
+  tocados + re-turno do modelo se restar diagnóstico; config `quality.autoFix`; testes + guia
+- [ ] Upgrades opcionais: tree-sitter/SQLite, subagente subprocesso, 4 temas, voz (F7 = 1.1)

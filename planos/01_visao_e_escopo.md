@@ -9,7 +9,7 @@ O usuário abre o terminal dentro de um projeto, conversa em linguagem natural, 
 ## Objetivos centrais (norte do projeto)
 
 1. **Economia extrema de tokens** — arquitetura de contexto desenhada pro cache automático do DeepSeek (~99% de desconto em cache-hit), dois modelos (Pro p/ código, Flash p/ o mecânico), diff edits, orçamentos por seção. Meta: custo por tarefa como métrica de 1ª classe. → doc 14.3
-2. **Qualidade extrema de codificação** — verificação automática em loop (sintaxe → lint → testes → revisão por subagente) antes de declarar pronto; benchmark semanal de regressão. → doc 14.5
+2. **Qualidade extrema de codificação** — verificação automática em loop (sintaxe → lint → **auto-correção mecânica** → re-turno da IA se residual → testes → revisão por subagente) antes de declarar pronto; benchmark semanal de regressão. → doc 14.5 / 14.5.1
 3. **Zero fricção de configuração de IA** — nível de raciocínio **auto-adaptável por turno** (heurísticas + roteador Flash + escalada por falha); o usuário nunca escolhe effort. → doc 14.4
 4. **Experiência 100% em português** — tudo que aparece na CLI ("Pensando…", labels, erros, respostas) é pt-BR; o raciocínio interno do modelo é livre (qualidade primeiro). → doc 15
 5. **Visual próprio e bonito** — gramática de interação estilo Claude Code, pele nova (identidade "Aurora": gradiente + trilho de timeline), TUI que dá orgulho de printar. → doc 16
