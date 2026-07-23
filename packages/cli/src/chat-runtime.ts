@@ -51,8 +51,10 @@ import { carregarAtribuicao } from "./attribution-runtime.js";
 import { criarMemoriaSessao, type MemoriaSessao } from "./memory-runtime.js";
 import { verificarQualidade } from "./quality-runtime.js";
 import { obterDiff, promptRevisao } from "./review-runtime.js";
+import { textoAjudaComandos } from "./commands.js";
 import { criarTema, type Tema } from "./tema.js";
 import { carregarTiposCustom, criarSpawnerSubagentes } from "./subagent-runtime.js";
+import type { SpinnerHandle } from "./animacao.js";
 
 export interface ChatIo {
   /** Faz uma pergunta (aprovações) e resolve com a resposta digitada. */
@@ -61,6 +63,16 @@ export interface ChatIo {
   /** Lê a próxima mensagem do usuário; `undefined` encerra (EOF / Ctrl-D). */
   readonly proximaMensagem: () => Promise<string | undefined>;
   readonly saida: (texto: string) => void;
+  /**
+   * Spinner animado (TTY). Se ausente, o chat só imprime linhas estáticas.
+   * start no início do turno do agente; stop ao terminar.
+   */
+  readonly spinner?: SpinnerHandle;
+  /**
+   * Abertura rica (banner animado). Se presente, o chat chama isto no lugar do
+   * `tema.banner()` estático.
+   */
+  readonly abrir?: () => Promise<void>;
 }
 
 export interface ChatOptions {
@@ -81,16 +93,7 @@ export interface ChatOptions {
   readonly tema?: Tema;
 }
 
-const AJUDA =
-  "Comandos: /sair | /exit encerra · /custo mostra o custo do último turno · /limpar esquece o histórico · " +
-  "/undo | /desfazer [N] desfaz as últimas edições · /redo | /refazer [N] refaz · /checkpoint lista a linha do tempo · " +
-  "/mapa | /map mostra o repo map do projeto · /lembrar | /remember <fato> salva na memória · " +
-  "/memory [list|forget <slug>|edit <slug>] gerencia a memória · " +
-  "/plan | /plano <objetivo> gera um plano (subagente arquiteto) · " +
-  "/review [alvo] revisa o diff (subagente revisor) · " +
-  "/skills lista skills · /skill <nome> ativa uma skill · " +
-  "/init gera CODINGPRO.md com o projeto detectado · " +
-  "/ajuda mostra esta mensagem\n";
+const AJUDA = textoAjudaComandos();
 
 /** Revisa o diff (não commitado, ou `git diff <alvo>`) com o subagente revisor. */
 async function comandoReview(
@@ -316,9 +319,16 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
   // Estado do auto-effort: decide automaticamente Flash/Pro a cada turno.
   const autoEffort: AutoEffortState = criarAutoEffortState();
 
-  io.progresso(`${tema.banner()}\n`);
+  if (io.abrir !== undefined) {
+    await io.abrir();
+  } else {
+    io.progresso(`${tema.banner()}\n`);
+  }
   io.progresso(`${tema.cabecalhoProjeto(resumoProjeto(await detectarProjeto(workspace)))}\n`);
   io.progresso(`${tema.regua()}\n`);
+  io.progresso(
+    `${tema.nota("digite / para ver comandos · ↑↓ seleciona · Tab completa · Enter envia")}\n`,
+  );
   io.progresso(`${tema.nota(AJUDA.trimEnd())}\n`);
 
   for (;;) {
@@ -473,47 +483,62 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       }
     }
     io.progresso(`· ${modeloNome}\n`);
+    io.spinner?.start(`pensando (${modeloNome})`);
 
     let respondeu = false;
     const arquivosEfeito: string[] = [];
-    const result = await runAgent({
-      context: {
-        checkpoints,
-        memory: memoria.scope,
-        readTracker,
-        subagentes: spawner,
-        workspace,
-        ...(options.signal === undefined ? {} : { signal: options.signal }),
-      },
-      gate,
-      messages: entrada,
-      onEvent: (event) => {
-        if (event.type === "text-delta") {
-          respondeu = true;
-          io.saida(sanitizarTextoTerminal(event.text));
-          return;
-        }
-        if (event.type === "tool-call") {
-          const path = (event.call.input as { path?: string }).path;
-          if (
-            path !== undefined &&
-            (event.call.name === "write_file" || event.call.name === "edit_file")
-          ) {
-            arquivosEfeito.push(path);
+    let result: Awaited<ReturnType<typeof runAgent>>;
+    try {
+      result = await runAgent({
+        context: {
+          checkpoints,
+          memory: memoria.scope,
+          readTracker,
+          subagentes: spawner,
+          workspace,
+          ...(options.signal === undefined ? {} : { signal: options.signal }),
+        },
+        gate,
+        messages: entrada,
+        onEvent: (event) => {
+          if (event.type === "text-delta") {
+            if (!respondeu) {
+              io.spinner?.stop();
+            }
+            respondeu = true;
+            io.saida(sanitizarTextoTerminal(event.text));
+            return;
           }
-        }
-        const progresso = describeAgentEvent(event);
-        if (progresso !== undefined) {
-          const texto = sanitizarTextoTerminal(progresso);
-          const linha = event.type === "tool-call" ? tema.ferramenta(texto) : tema.progresso(texto);
-          io.progresso(`${linha}\n`);
-        }
-      },
-      provider: providerTurno,
-      tools: registry.definitions(),
-      ...(options.maxContexto === undefined ? {} : { contextBudget: options.maxContexto }),
-      ...(options.signal === undefined ? {} : { signal: options.signal }),
-    });
+          if (event.type === "tool-call") {
+            const path = (event.call.input as { path?: string }).path;
+            if (
+              path !== undefined &&
+              (event.call.name === "write_file" || event.call.name === "edit_file")
+            ) {
+              arquivosEfeito.push(path);
+            }
+          }
+          const progresso = describeAgentEvent(event);
+          if (progresso !== undefined) {
+            const texto = sanitizarTextoTerminal(progresso);
+            const linha =
+              event.type === "tool-call" ? tema.ferramenta(texto) : tema.progresso(texto);
+            // Evento permanente na timeline; spinner recomeça em seguida se houver.
+            io.spinner?.stop();
+            io.progresso(`${linha}\n`);
+            if (event.type === "tool-call" || event.type === "tool-result") {
+              io.spinner?.start("continuando");
+            }
+          }
+        },
+        provider: providerTurno,
+        tools: registry.definitions(),
+        ...(options.maxContexto === undefined ? {} : { contextBudget: options.maxContexto }),
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
+      });
+    } finally {
+      io.spinner?.stop();
+    }
 
     if (respondeu) {
       io.saida("\n");

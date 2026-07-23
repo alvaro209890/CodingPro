@@ -143,7 +143,9 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] Undercover (attribution full/trailer/none) — campo `attribution` no settings vira diretriz de assinatura de commits no system prompt (chat e headless) — 2026-07-23
 - [x] `/review` com achados por severidade — `/review [alvo]` revisa o diff (não commitado ou `git diff <alvo>`) via subagente reviewer — 2026-07-23
 - [ ] Pet/XP/conquistas (desligável) — pós-1.0, polimento cosmético; não bloqueia a Fase 2
-- [x] Camada visual Aurora (banner com gradiente, cores por evento, prompt, detecção de cor) entregue via ANSI puro (`tema.ts`) sobre o chat readline — bonito e robusto, sem o full-screen Ink; polimento opcional pós-1.0 (timeline/spinner animados, 4 temas, QA nos 6 terminais) — 2026-07-23
+- [x] Camada visual Aurora (banner com gradiente, cores por evento, prompt, detecção de cor) entregue via ANSI puro (`tema.ts`) sobre o chat readline — bonito e robusto, sem o full-screen Ink — 2026-07-23
+- [x] Prompt interativo TTY: autocomplete `/` (↑↓ Tab Enter Esc), spinner braille, banner animado, catálogo de comandos — `prompt-tty`/`prompt-input`/`commands`/`animacao` — 2026-07-23
+- [ ] Polimento opcional pós-1.0: 4 temas selecionáveis, QA nos 6 terminais, pet/XP
 - [ ] i18n pt-BR: auditoria final de toda string da UI (UI já é pt-BR; consolidação pós-1.0)
 - [ ] 🏁 1h de uso real sem atrito anotado — sessão de produto humana; fora do gate de engenharia
 

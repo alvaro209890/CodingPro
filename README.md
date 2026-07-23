@@ -41,9 +41,10 @@ codificação, arquitetura e revisão; V4 Flash atende caminhos mecânicos inter
 `replay` é apenas infraestrutura determinística de testes, sem inferência.
 
 **Modos:** `-p` (headless, sem tools) · `--agente -p` (loop com ferramentas de leitura) ·
-`--chat` (chat interativo com aprovação de efeitos) · `--doctor` (diagnóstico do ambiente). O
-roteamento de esforço é automático (auto-effort): o turno usa Flash por padrão e escala para Pro em
-contexto grande, ferramentas pesadas ou após erro. Detalhes de uso no guia do usuário.
+`--chat` (chat interativo com aprovação de efeitos, **autocomplete `/` com ↑↓/Tab**, spinner e
+banner animado no TTY) · `--doctor` (diagnóstico do ambiente). O roteamento de esforço é automático
+(auto-effort): o turno usa Flash por padrão e escala para Pro em contexto grande, ferramentas
+pesadas ou após erro. Detalhes de uso no guia do usuário.
 
 > **Privacidade:** ao selecionar `deepseek`, o prompt e qualquer conteúdo incluído nele são
 > enviados à API da DeepSeek. Os testes comuns nunca selecionam esse caminho nem carregam chaves.

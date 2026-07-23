@@ -155,8 +155,12 @@ export function criarTema(
     cor: nivel,
     banner() {
       const marca = nivel === "nenhuma" ? LOGO : `${ESC}[1m${gradiente(LOGO, nivel)}`;
-      const sub = esmaecer("CLI de código assistida por IA · pt-BR", nivel);
-      return `\n${marca}\n${sub}\n`;
+      const sub = esmaecer("assistente de código · pt-BR", nivel);
+      const dica = esmaecer("digite / para comandos  ·  ↑↓ Tab Enter", nivel);
+      const top = esmaecer("╭────────────────────────────────────────╮", nivel);
+      const bot = esmaecer("╰────────────────────────────────────────╯", nivel);
+      const side = (inner: string): string => `${esmaecer("│", nivel)}  ${inner}`;
+      return `\n${top}\n${side(marca)}\n${side(sub)}\n${side(dica)}\n${bot}\n`;
     },
     prompt() {
       return `${pintar("❯", AURORA.violeta, nivel)} `;

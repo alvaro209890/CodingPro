@@ -495,3 +495,20 @@ Polimento restante (visual Aurora, i18n completo, evals) é pós-1.0. Iniciar Fa
 ### Validação
 
 - `pnpm test:evals` verde; gate completo `pnpm check` após a rodada; push em `origin/master`.
+
+## 2026-07-23 — Chat interativo rico (autocomplete `/` + animações)
+
+### Entregue
+
+- **Autocomplete de comandos** ao digitar `/` (catálogo canônico em `commands.ts`), navegação
+  **↑↓**, **Tab** completa, **Enter** envia, **Esc** fecha — state machine pura em
+  `prompt-input.ts` + TTY raw mode em `prompt-tty.ts`.
+- **Animações**: banner de abertura com faíscas, spinner braille durante o turno do agente,
+  timeline de ferramentas, tema Aurora com caixa e dica de atalhos.
+- Integração em `index.ts` (TTY rico; pipe mantém `line-reader`). Chat usa `io.abrir` + `io.spinner`.
+- Testes: `commands`, `prompt-input`, `animacao`, `prompt-tty` + gate completo.
+
+### Como rodar neste PC
+
+O launcher `~/.local/bin/codingpro` já aponta para `packages/cli/dist/index.mjs` com Node 24.
+Após `pnpm build` na raiz do repo: `codingpro --chat`.

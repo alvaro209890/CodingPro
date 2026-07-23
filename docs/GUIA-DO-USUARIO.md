@@ -66,20 +66,34 @@ codingpro --chat
 
 Sessões do agente são salvas; retome com `--resume <id>` ou `--continuar` (a mais recente).
 
+### Chat interativo (TTY) — autocomplete e animações
+
+No terminal interativo (`codingpro --chat`):
+
+1. **Banner animado** Aurora na abertura (faíscas + caixa).
+2. Digite **`/`** → abre a **lista de comandos** (estilo Claude Code).
+3. **↑ / ↓** navegam a seleção; **Tab** completa o comando; **Enter** envia; **Esc** fecha a lista.
+4. Enquanto o agente trabalha, um **spinner** braille roda na linha de status; cada ferramenta
+   aparece na timeline com ícone ⚙.
+
+Em pipe/não-TTY o chat degrada para o leitor de linhas clássico (sem raw mode).
+
 ## Comandos do chat
 
 | Comando | O que faz |
 |---|---|
 | `/ajuda` | lista os comandos |
-| `/sair` | encerra o chat |
+| `/sair` · `/exit` | encerra o chat |
 | `/custo` | custo e tokens do último turno |
 | `/limpar` | esquece o histórico da conversa |
-| `/undo [N]` · `/redo [N]` | desfaz/refaz as últimas edições |
+| `/undo [N]` · `/desfazer` | desfaz as últimas edições |
+| `/redo [N]` · `/refazer` | refaz as últimas edições |
 | `/checkpoint` | mostra a linha do tempo de checkpoints |
-| `/mapa` | repo map (arquivos e assinaturas ranqueados) |
-| `/lembrar <fato>` | salva um fato na memória do projeto |
+| `/mapa` · `/map` | repo map (arquivos e assinaturas ranqueados) |
+| `/lembrar` · `/remember <fato>` | salva um fato na memória do projeto |
 | `/memory [list\|forget <slug>\|edit <slug>]` | gerencia a memória |
-| `/plan <objetivo>` | gera um plano (subagente arquiteto) e salva em `.codingpro/plans/` |
+| `/plan` · `/plano <objetivo>` | gera um plano (subagente arquiteto) e salva em `.codingpro/plans/` |
+| `/review [alvo]` | revisa o diff com o subagente revisor |
 | `/skills` · `/skill <nome>` | lista skills / ativa uma skill na sessão |
 | `/init` | gera `CODINGPRO.md` com o projeto detectado |
 
