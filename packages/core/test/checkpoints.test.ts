@@ -196,6 +196,33 @@ describe("CheckpointStore", () => {
     expect(await readFile(join(root, "grande.txt"), "utf8")).toBe("modificado");
   });
 
+  it("🏁 marco: desfaz uma refatoração multi-arquivo num passo, em < 2 s", async () => {
+    const N = 12;
+    for (let k = 0; k < N; k += 1) {
+      await writeFile(join(root, `f${k}.txt`), `v0-${k}`);
+    }
+    const store = await novoStore();
+    store.begin("refatoração ampla");
+    for (let k = 0; k < N; k += 1) {
+      await store.capture(`f${k}.txt`);
+    }
+    for (let k = 0; k < N; k += 1) {
+      await writeFile(join(root, `f${k}.txt`), `v1-${k}`);
+    }
+    const meta = await store.commit();
+    expect(meta?.files).toHaveLength(N);
+
+    const inicio = Date.now();
+    const r = await store.undo();
+    const decorrido = Date.now() - inicio;
+
+    expect(r.passos).toBe(1);
+    for (let k = 0; k < N; k += 1) {
+      expect(await readFile(join(root, `f${k}.txt`), "utf8")).toBe(`v0-${k}`);
+    }
+    expect(decorrido).toBeLessThan(2000);
+  });
+
   it("ignora diretórios de checkpoint corrompidos ao carregar", async () => {
     await mkdir(join(dir, "000001"), { recursive: true });
     await writeFile(join(dir, "000001", "meta.json"), "{ não é json válido");

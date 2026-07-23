@@ -106,8 +106,8 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 
 - [x] edit_file (search/replace atômico) + recuperação de falha — blocos `{search,replace}`, cada `search` casa exatamente 1×, aplicação atômica (todos ou nenhum), guarda de leitura-antes-de-editar (`ReadTracker` por sessão, `read_file` marca), erro estruturado ao modelo (0 ocorrências → dica de linha mais próxima; >1 → contagem), substituição literal via split/join (não interpreta `$`) — 2026-07-22
 - [x] Checkpoints automáticos + `/undo`/`/redo`/`/checkpoint` — `CheckpointStore` puro em Node (backed em `.codingpro/checkpoints/`), pilhas desfazer/refazer sobre *snapshots* de arquivo; write/edit capturam o estado pré-escrita, cada turno com escrita vira um passo desfazível; `/undo [N]`, `/redo [N]`, `/checkpoint` (linha do tempo); nunca toca no git do usuário (uniforme p/ pastas com ou sem git) — 2026-07-22
-- [ ] Diff view na TUI
-- [ ] 🏁 Refatoração multi-arquivo + undo < 2 s
+- [x] Diff view na aprovação — `diffLinhas` (LCS puro) + `formatarDiff` (estilo unificado enxuto, contexto colapsado em `⋯`, truncado por `maxLinhas`); `resolverPreviaDeEscrita` calcula o antes/depois de `write_file`/`edit_file` (best-effort) e o aprovador mostra o diff antes do `[s/N/sempre]` — 2026-07-22
+- [x] 🏁 Refatoração multi-arquivo + undo < 2 s — marco validado offline: 12 arquivos num passo, `undo` restaura todos em < 2 s (teste com deadline); e2e pelo chat: 3 `write_file` num turno desfeitos num único `/undo` — 2026-07-22
 
 ## F3 — Entendimento de projeto
 

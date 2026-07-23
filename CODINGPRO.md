@@ -113,4 +113,21 @@ git e é 100% testável offline — satisfazendo a garantia do marco ("sem sujar
 (edição/criação/multi-arquivo, undo/redo, primeira-captura-vence, persistência entre instâncias,
 omissão de arquivo grande, dir corrompido ignorado) — 404 testes verdes, cobertura 96,12%/92,62%.
 
-Faltam na F2: **diff bonito na TUI** e o **marco** formal (refatoração multi-arquivo + undo total < 2 s).
+O **F2.3** fechou a F2 com a **prévia de diff na aprovação** e o **marco**. `diffLinhas` faz um diff
+linha a linha por LCS (puro, determinístico, sem dependências) e `formatarDiff` renderiza no estilo
+unificado enxuto (`+`/`-`/` `, trechos longos de contexto colapsados em `⋯`, truncado por `maxLinhas`).
+`resolverPreviaDeEscrita` calcula o antes/depois de uma escrita — para `write_file` lê o arquivo atual
+(ou vazio se novo) contra o `content`; para `edit_file` aplica os blocos via `aplicarEdicoes` — de forma
+**best-effort** (qualquer problema devolve `undefined`, nunca bloqueia a aprovação). O aprovador
+interativo, que já recebe o `ToolContext` com o `workspace`, mostra esse diff **antes** do
+`[s/N/sempre]`, então o usuário vê exatamente o que vai mudar. Arquivos acima de 2000 linhas viram só
+um resumo (o diff O(n·m) é pulado).
+
+O **marco da F2** foi validado offline: um `CheckpointStore` desfaz uma refatoração de **12 arquivos**
+num único passo em **< 2 s** (teste com deadline), e um teste e2e pelo chat reescreve 3 arquivos num
+turno e os reverte com um único `/undo`. Como nada disso toca o git do usuário, a garantia "sem sujar o
+staging" é atendida por construção.
+
+**F2 (edição segura) está completa**: `edit_file` atômico, checkpoints com `/undo`/`/redo`/`/checkpoint`
+e diff na aprovação — tudo testado offline (426 testes, cobertura 96,16%/92,49%). Próximo bloco: **F3**
+(entendimento de projeto: indexador tree-sitter, repo map com ranking, `/init` gera CODINGPRO.md).

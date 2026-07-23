@@ -177,6 +177,27 @@ describe("executarChat", () => {
     expect(await readFile(join(cwd, "a.txt"), "utf8")).toBe("v1");
   });
 
+  it("🏁 marco: refatoração multi-arquivo desfeita num único /undo", async () => {
+    const calls: ToolCall[] = [0, 1, 2].map((k) => ({
+      id: `w${k}`,
+      input: { content: `novo${k}`, path: `f${k}.txt` },
+      name: "write_file",
+    }));
+    const { provider } = scripted([
+      [
+        ...calls.map((call) => ({ call, type: "tool-call" as const })),
+        finish({ content: "", role: "assistant", toolCalls: calls }),
+      ],
+      [{ text: "pronto", type: "text-delta" }, finish({ content: "pronto", role: "assistant" })],
+    ]);
+    // "a" = aprovar sempre → uma aprovação cobre os três write_file do mesmo turno.
+    const captura = fakeIo(["reescreva os três", "/undo", undefined], ["a"]);
+    await executarChat({ cwd, provider }, captura.io);
+    for (const k of [0, 1, 2]) {
+      await expect(readFile(join(cwd, `f${k}.txt`), "utf8")).rejects.toThrow();
+    }
+  });
+
   it("responde vazio quando não há o que desfazer/refazer/listar", async () => {
     const { provider, requests } = scripted([]);
     const captura = fakeIo(["/undo", "/redo 2", "/checkpoint", undefined], []);

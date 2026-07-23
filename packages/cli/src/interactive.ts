@@ -1,4 +1,9 @@
-import { type Approver, describeToolCall } from "@codingpro/core";
+import {
+  type Approver,
+  describeToolCall,
+  formatarPreviaDeEscrita,
+  resolverPreviaDeEscrita,
+} from "@codingpro/core";
 
 /** Lê uma linha do usuário em resposta a um prompt (readline no runtime real). */
 export interface Perguntador {
@@ -17,12 +22,24 @@ export function criarAprovadorInterativo(
   escreverProgresso: (texto: string) => void,
 ): Approver {
   return {
-    async request(request) {
+    async request(request, context) {
       const alvo = describeToolCall({
         id: "",
         input: request.input ?? {},
         name: request.toolName,
       });
+      // Prévia de diff antes de aprovar uma escrita (best-effort; nunca bloqueia).
+      if (context?.workspace !== undefined) {
+        const previa = await resolverPreviaDeEscrita(
+          context.workspace,
+          request.toolName,
+          request.input ?? {},
+        );
+        const bloco = previa === undefined ? undefined : formatarPreviaDeEscrita(previa);
+        if (bloco !== undefined) {
+          escreverProgresso(`${bloco}\n`);
+        }
+      }
       const resposta = (await perguntador.pergunta(`Permitir "${alvo}"? [s/N/sempre] `))
         .trim()
         .toLowerCase();

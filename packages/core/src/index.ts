@@ -24,6 +24,13 @@ export {
   compactMessages,
   estimateMessageTokens,
 } from "./compaction.js";
+export {
+  diffLinhas,
+  type FormatarDiffOptions,
+  formatarDiff,
+  type LinhaDiff,
+  type TipoLinha,
+} from "./diff.js";
 export { CoreError, type CoreErrorCode } from "./errors.js";
 export { readFileWithin, removeFileWithin, writeFileWithin } from "./fs-safe.js";
 export { ToolGate } from "./gate.js";
@@ -44,6 +51,12 @@ export {
   describeToolResult,
   PROGRESS_THINKING,
 } from "./progress.js";
+export {
+  formatarPreviaDeEscrita,
+  PREVIA_MAX_LINHAS,
+  type PreviaEscrita,
+  resolverPreviaDeEscrita,
+} from "./preview.js";
 export { ToolRegistry } from "./registry.js";
 export { newSessionId, SessionStore } from "./session.js";
 export { SYSTEM_PROMPT_V1 } from "./system-prompt.js";
@@ -65,9 +78,12 @@ export {
   bashTool,
 } from "./tools/bash.js";
 export {
+  aplicarEdicoes,
   EDIT_FILE_MAX_BLOCKS,
   EDIT_FILE_MAX_BYTES,
+  type EditBlock,
   editFileTool,
+  parseEditBlocks,
 } from "./tools/edit-file.js";
 export {
   GREP_DEADLINE_MS,

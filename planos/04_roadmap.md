@@ -63,8 +63,8 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 - [x] Checkpoint automático antes de cada mudança (uniforme p/ pastas com ou sem git; `.codingpro/checkpoints/`, sem tocar no git do usuário) — 2026-07-22
 - [x] Comando `/undo` (reverte último passo) e `/undo N` (+ `/redo [N]`, `/checkpoint`) — 2026-07-22
 - [ ] Recuperação de falha de match do diff (re-leitura + retry pelo modelo)
-- [ ] Diff bonito na TUI antes de aprovar escrita
-- [ ] **Marco: refatoração multi-arquivo + undo total em < 2 s sem sujar o staging do usuário**
+- [x] Diff na aprovação de escrita (prévia antes do `[s/N/sempre]`) — 2026-07-22
+- [x] **Marco: refatoração multi-arquivo + undo total em < 2 s sem sujar o staging do usuário** — validado offline (12 arquivos, undo < 2 s; e2e pelo chat) — 2026-07-22
 
 ## F3 — Entendimento de projeto (2 semanas)
 
