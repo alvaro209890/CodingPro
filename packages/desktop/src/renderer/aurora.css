@@ -1014,3 +1014,105 @@ body {
   color: var(--accent-amber, #f59e0b);
   font-weight: 500;
 }
+
+/* ─── Task Tracker ─── */
+
+.task-tracker-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.task-tracker-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.015);
+  font-size: 12px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.task-tracker-title {
+  font-weight: 500;
+}
+
+.task-tracker-spinner {
+  width: 10px; height: 10px;
+  border: 1.5px solid var(--accent-blue);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.task-tracker-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.task-tracker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.02);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.task-tracker-row:last-child { border-bottom: none; }
+.task-tracker-row.failed { color: var(--accent-red); }
+
+.task-tracker-icon {
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+  color: var(--accent-green);
+}
+
+.task-tracker-row.failed .task-tracker-icon { color: var(--accent-red); }
+
+.task-tracker-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Markdown ─── */
+
+.md-code-block {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-x: auto;
+  margin: 6px 0;
+  white-space: pre-wrap;
+  color: var(--text-secondary);
+}
+
+.md-inline-code {
+  background: rgba(56,189,248,0.1);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.md-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 4px 0;
+}
+.md-list li { padding: 2px 0; padding-left: 16px; position: relative; }
+.md-list li::before { content: "·"; position: absolute; left: 4px; color: var(--accent-blue); }

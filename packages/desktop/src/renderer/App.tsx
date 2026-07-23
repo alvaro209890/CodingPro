@@ -8,7 +8,8 @@ import { IntegratedTerminal } from "./components/IntegratedTerminal.js";
 import { PermissionModal } from "./components/PermissionModal.js";
 import { Sidebar } from "./components/Sidebar.js";
 import { type ToolItem, ToolSummaryBlock } from "./components/ToolSummaryBlock.js";
-import { RuntimeStatusRow } from "./components/RuntimeStatusRow.js";
+import { TaskTracker, toTaskRow } from "./components/TaskTracker.js";
+import { renderMarkdown } from "./components/MarkdownRenderer.js";
 import "./aurora.css";
 
 interface ChatMessageUI {
@@ -79,6 +80,8 @@ export const App: React.FC = () => {
     } | null>(null);
 
     const [runStartTime, setRunStartTime] = useState<number | null>(null);
+
+  const [taskItems, setTaskItems] = useState<ReturnType<typeof toTaskRow>[]>([]);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const workspaceRef = useRef(workspaceInfo.cwd);
@@ -219,56 +222,69 @@ export const App: React.FC = () => {
             },
           ]);
         } else if (ae.type === "tool-call") {
-          setMessages((prev) => {
-            const last = prev[prev.length - 1];
-            const input = ae.call.input as Record<string, unknown> | undefined;
-            const target =
-              (typeof input?.path === "string" && input.path) ||
-              (typeof input?.command === "string" && input.command) ||
-              ae.call.name;
-            const newItem: ToolItem = {
-              id: `${ae.call.name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-              name: ae.call.name,
-              target: String(target),
-              status: "running",
-            };
+                  setMessages((prev) => {
+                    const last = prev[prev.length - 1];
+                    const input = ae.call.input as Record<string, unknown> | undefined;
+                    const target =
+                      (typeof input?.path === "string" && input.path) ||
+                      (typeof input?.command === "string" && input.command) ||
+                      ae.call.name;
+                    const newItem: ToolItem = {
+                      id: `${ae.call.name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                      name: ae.call.name,
+                      target: String(target),
+                      status: "running",
+                    };
 
-            if (last && last.role === "assistant") {
-              const group = last.toolGroup ?? {
-                summaryText: `Executando ${ae.call.name}`,
-                items: [],
-              };
-              return [
-                ...prev.slice(0, -1),
-                {
-                  ...last,
-                  toolGroup: {
-                    ...group,
-                    items: [...group.items, newItem],
-                    summaryText: `Executando ${group.items.length + 1} ferramenta(s)`,
-                  },
-                },
-              ];
-            }
+                    // Atualiza task tracker em tempo real
+                    const tRow = toTaskRow({ ...newItem, status: "running" });
+                    setTaskItems((prev) => [...prev, tRow]);
 
-            return [
-              ...prev,
-              {
-                id: newId("asst"),
-                role: "assistant",
-                content: "",
-                toolGroup: {
-                  summaryText: `Executando ${ae.call.name}`,
-                  items: [newItem],
-                },
-              },
-            ];
-          });
-        } else if (ae.type === "tool-result") {
-          const ok =
-            ae.result.type !== "error-text" &&
-            ae.result.type !== "error-json" &&
-            ae.result.type !== "execution-denied";
+                    if (last && last.role === "assistant") {
+                      const group = last.toolGroup ?? {
+                        summaryText: `Executando ${ae.call.name}`,
+                        items: [],
+                      };
+                      return [
+                        ...prev.slice(0, -1),
+                        {
+                          ...last,
+                          toolGroup: {
+                            ...group,
+                            items: [...group.items, newItem],
+                            summaryText: `Executando ${group.items.length + 1} ferramenta(s)`,
+                          },
+                        },
+                      ];
+                    }
+
+                    return [
+                      ...prev,
+                      {
+                        id: newId("asst"),
+                        role: "assistant",
+                        content: "",
+                        toolGroup: {
+                          summaryText: `Executando ${ae.call.name}`,
+                          items: [newItem],
+                        },
+                      },
+                    ];
+                  });
+                } else if (ae.type === "tool-result") {
+                  const ok =
+                    ae.result.type !== "error-text" &&
+                    ae.result.type !== "error-json" &&
+                    ae.result.type !== "execution-denied";
+
+                  // Atualiza task tracker
+                  setTaskItems((prev) =>
+                    prev.map((t) =>
+                      t.id.startsWith(ae.call.name) && (t.status === "running" || t.status === "done")
+                        ? { ...t, status: ok ? "done" : ("failed" as const) }
+                        : t,
+                    ),
+                  );
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (!last?.toolGroup) return prev;
@@ -361,7 +377,8 @@ export const App: React.FC = () => {
       }
 
       setIsRunning(true);
-      setRunStartTime(Date.now());
+            setRunStartTime(Date.now());
+            setTaskItems([]);
       setMessages((prev) => [...prev, { id: newId("user"), role: "user", content: textToSend }]);
 
       try {
@@ -632,16 +649,14 @@ export const App: React.FC = () => {
                 <div className="user-message-card">{m.content}</div>
               ) : (
                 <div className="assistant-message-card">
-                  {m.toolGroup && (
-                    <ToolSummaryBlock
-                      summaryText={m.toolGroup.summaryText}
-                      items={m.toolGroup.items}
-                      totalAdd={m.toolGroup.diffAdd}
-                      totalDel={m.toolGroup.diffDel}
-                    />
-                  )}
-                  {m.reasoning && <div className="reasoning-box">🧠 {m.reasoning}</div>}
-                  {m.content && <div className="text-response-block">{m.content}</div>}
+                                  {m.toolGroup && (
+                                    <TaskTracker
+                                      items={m.toolGroup.items.map(toTaskRow)}
+                                      isRunning={false}
+                                    />
+                                  )}
+                                  {m.reasoning && <div className="reasoning-box" dangerouslySetInnerHTML={{ __html: `🧠 ${renderMarkdown(m.reasoning)}` }} />}
+                                  {m.content && <div className="text-response-block" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content) }} />}
                 </div>
               )}
             </div>
@@ -663,11 +678,8 @@ export const App: React.FC = () => {
           <div ref={chatEndRef} />
                   </div>
 
-                  <RuntimeStatusRow
-                    elapsedMs={sessionCost ? Date.now() - (runStartTime ?? Date.now()) : 0}
-                    totalTokens={(sessionCost?.inputTokens ?? 0) + (sessionCost?.outputTokens ?? 0)}
-                    steps={sessionCost?.turns ?? 0}
-                    thinkingMs={0}
+                  <TaskTracker
+                    items={taskItems}
                     isRunning={isRunning}
                   />
 
