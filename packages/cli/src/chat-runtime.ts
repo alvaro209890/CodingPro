@@ -8,6 +8,7 @@ import {
   construirRepoMap,
   createReadTracker,
   criarHookRunner,
+  diretrizAtribuicao,
   describeAgentEvent,
   detectarProjeto,
   type ExecutableTool,
@@ -35,7 +36,9 @@ import {
 import { type ChatMessage, type CostBreakdown, formatCost, type Provider } from "@codingpro/llm";
 import { sanitizarTextoTerminal } from "./headless.js";
 import { criarAprovadorInterativo } from "./interactive.js";
+import { carregarAtribuicao } from "./attribution-runtime.js";
 import { criarMemoriaSessao, type MemoriaSessao } from "./memory-runtime.js";
+import { obterDiff, promptRevisao } from "./review-runtime.js";
 import { carregarTiposCustom, criarSpawnerSubagentes } from "./subagent-runtime.js";
 
 export interface ChatIo {
@@ -69,8 +72,28 @@ const AJUDA =
   "/mapa mostra o repo map do projeto · /lembrar <fato> salva na memória · " +
   "/memory [list|forget <slug>|edit <slug>] gerencia a memória · " +
   "/plan <objetivo> gera um plano (subagente arquiteto) · " +
+  "/review [alvo] revisa o diff (subagente revisor) · " +
   "/skills lista skills · /skill <nome> ativa uma skill · " +
   "/init gera CODINGPRO.md com o projeto detectado\n";
+
+/** Revisa o diff (não commitado, ou `git diff <alvo>`) com o subagente revisor. */
+async function comandoReview(
+  spawner: SubagenteSpawner,
+  cwd: string,
+  mensagem: string,
+  io: ChatIo,
+  signal?: AbortSignal,
+): Promise<void> {
+  const alvo = mensagem.replace(/^\/review\s*/u, "").trim();
+  const { diff, erro } = await obterDiff(cwd, alvo.length > 0 ? alvo : undefined);
+  if (erro !== undefined) {
+    io.progresso(`· ${erro}\n`);
+    return;
+  }
+  io.progresso("· revisor analisando o diff…\n");
+  const rel = await spawner.executar("reviewer", promptRevisao(diff), signal);
+  io.saida(`${rel.texto.length > 0 ? rel.texto : "(sem achados)"}\n`);
+}
 
 /** Trata `/skills` (lista + sugere) e `/skill <nome>` (ativa para a sessão). */
 function comandoSkill(
@@ -247,6 +270,8 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
   );
   const skills = options.skills ?? [];
   const skillsAtivas = new Set<string>();
+  // Modo undercover: diretriz de assinatura de commits anexada ao system prompt.
+  const promptBase = `${SYSTEM_PROMPT_V1}\n\n${diretrizAtribuicao(await carregarAtribuicao(workspace.root))}`;
   // Memória persistente: índices sempre no contexto + retrieval por turno; `remember` grava aqui.
   const memoria = criarMemoriaSessao(workspace.root, options.memoriaGlobalDir);
   // Subagentes: tipos padrão + custom de `.codingpro/agents`; a tool `task` e o `/plan` usam isto.
@@ -324,6 +349,10 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       await comandoPlan(spawner, workspace.root, objetivo, io, options.signal);
       continue;
     }
+    if (mensagem === "/review" || mensagem.startsWith("/review ")) {
+      await comandoReview(spawner, workspace.root, mensagem, io, options.signal);
+      continue;
+    }
     if (mensagem === "/skills" || mensagem === "/skill" || mensagem.startsWith("/skill ")) {
       comandoSkill(skills, skillsAtivas, mensagem, io);
       continue;
@@ -388,8 +417,7 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       .filter((s): s is Skill => s !== undefined)
       .map((s) => blocoSkill(s))
       .join("\n\n");
-    const base =
-      blocosSkill.length > 0 ? `${SYSTEM_PROMPT_V1}\n\n${blocosSkill}` : SYSTEM_PROMPT_V1;
+    const base = blocosSkill.length > 0 ? `${promptBase}\n\n${blocosSkill}` : promptBase;
     const systemPrompt = await memoria.promptDoTurno(base, mensagem);
     const semSystem = transcrito[0]?.role === "system" ? transcrito.slice(1) : transcrito;
     const entrada: ChatMessage[] = [

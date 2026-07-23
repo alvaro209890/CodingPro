@@ -41,6 +41,12 @@ export {
   type LinhaDiff,
   type TipoLinha,
 } from "./diff.js";
+export {
+  diretrizAtribuicao,
+  MODO_ATRIBUICAO_PADRAO,
+  type ModoAtribuicao,
+  modoAtribuicaoValido,
+} from "./attribution.js";
 export { CoreError, type CoreErrorCode } from "./errors.js";
 export { readFileWithin, removeFileWithin, writeFileWithin } from "./fs-safe.js";
 export { ToolGate } from "./gate.js";

@@ -5,6 +5,7 @@ import {
   createReadTracker,
   criarHookRunner,
   describeAgentEvent,
+  diretrizAtribuicao,
   type Hook,
   MEMORY_TOOL_NAMES,
   MEMORY_TOOLS,
@@ -23,6 +24,7 @@ import {
   Workspace,
 } from "@codingpro/core";
 import { type ChatMessage, formatCost, type Provider } from "@codingpro/llm";
+import { carregarAtribuicao } from "./attribution-runtime.js";
 import { sanitizarTextoTerminal } from "./headless.js";
 import { criarMemoriaSessao } from "./memory-runtime.js";
 import { carregarTiposCustom, criarSpawnerSubagentes } from "./subagent-runtime.js";
@@ -103,7 +105,8 @@ export async function executarAgenteHeadless(
   const blocosSkill = sugerirSkills(options.skills ?? [], options.prompt, 2)
     .map((s) => blocoSkill(s))
     .join("\n\n");
-  const base = blocosSkill.length > 0 ? `${SYSTEM_PROMPT_V1}\n\n${blocosSkill}` : SYSTEM_PROMPT_V1;
+  const promptBase = `${SYSTEM_PROMPT_V1}\n\n${diretrizAtribuicao(await carregarAtribuicao(workspace.root))}`;
+  const base = blocosSkill.length > 0 ? `${promptBase}\n\n${blocosSkill}` : promptBase;
   // System prompt fresco com memória (índices + retrieval do prompt), substituindo o antigo ao retomar.
   const systemPrompt = await memoria.promptDoTurno(base, options.prompt);
   const semSystem = mensagens[0]?.role === "system" ? mensagens.slice(1) : mensagens;

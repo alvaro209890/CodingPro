@@ -487,3 +487,35 @@ describe("executarChat — skills e hooks (F6)", () => {
     expect(captura.saida()).toContain("não li");
   });
 });
+
+describe("executarChat — /review e atribuição (F8)", () => {
+  let cwd: string;
+
+  beforeEach(async () => {
+    cwd = await mkdtemp(join(tmpdir(), "codingpro-chat-f8-"));
+  });
+
+  afterEach(async () => {
+    await rm(cwd, { force: true, recursive: true });
+  });
+
+  it("/review fora de repo git informa o erro", async () => {
+    const { provider } = scripted([]);
+    const captura = fakeIo(["/review", undefined], []);
+    await executarChat({ cwd, memoriaGlobalDir: join(cwd, "gm"), provider }, captura.io);
+    expect(captura.progresso()).toContain("não é um repositório git");
+  });
+
+  it("injeta a diretriz de atribuição (padrão full) no system prompt", async () => {
+    const { provider, requests } = scripted([
+      [{ text: "ok", type: "text-delta" }, finish({ content: "ok", role: "assistant" })],
+    ]);
+    const captura = fakeIo(["oi", undefined], []);
+    await executarChat({ cwd, memoriaGlobalDir: join(cwd, "gm"), provider }, captura.io);
+    const req = JSON.parse(requests[0] ?? "{}") as {
+      messages: { role: string; content?: string }[];
+    };
+    const system = req.messages.find((m) => m.role === "system")?.content ?? "";
+    expect(system).toContain("Co-Authored-By");
+  });
+});
