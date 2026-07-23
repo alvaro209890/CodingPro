@@ -1,8 +1,8 @@
 import type { ChatMessage, FinishReason, TokenUsage, ToolCall, ToolResult } from "@codingpro/llm";
-import type { PermissionDecision, PermissionRequest } from "./permissions.js";
+import type { PermissionRequest } from "./permissions.js";
 
 /** Versão atual do protocolo de eventos Core <-> UI. */
-export const CORE_UI_EVENT_PROTOCOL_VERSION = "1.0.0";
+export const CORE_UI_EVENT_PROTOCOL_VERSION = "1.1.0";
 
 /** Eventos brutos emitidos pelo loop agêntico durante a execução de um turno. */
 export type AgentEvent =
@@ -21,6 +21,8 @@ export type AgentEvent =
 export interface UiPermissionEvent {
   readonly type: "permission-request";
   readonly request: PermissionRequest;
+  /** Correlaciona com `UiPermissionResponse.requestId` — a UI deve ecoar de volta sem gerar a sua própria. */
+  readonly requestId: string;
 }
 
 /** Resposta de aprovação enviada pela UI de volta ao Core. */

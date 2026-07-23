@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 :root {
   --bg-dark: #0b0f19;
@@ -8,21 +8,21 @@
   --bg-card-hover: rgba(36, 48, 78, 0.8);
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-glow: rgba(0, 240, 255, 0.3);
-  
+
   --text-main: #f0f4fc;
   --text-muted: #94a3b8;
   --text-dim: #64748b;
-  
+
   --aurora-cyan: #00f0ff;
   --aurora-magenta: #d946ef;
   --aurora-emerald: #10b981;
   --aurora-amber: #f59e0b;
   --aurora-rose: #f43f5e;
-  
+
   --gradient-aurora: linear-gradient(135deg, #00f0ff 0%, #7000ff 50%, #d946ef 100%);
   --shadow-glow: 0 0 20px rgba(0, 240, 255, 0.15);
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
 * {
@@ -49,9 +49,9 @@ body {
   display: flex;
   width: 100%;
   height: 100vh;
-  background: radial-gradient(circle at 10% 20%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
-              radial-gradient(circle at 90% 80%, rgba(217, 70, 239, 0.05) 0%, transparent 40%),
-              var(--bg-dark);
+  background:
+    radial-gradient(circle at 10% 20%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(217, 70, 239, 0.05) 0%, transparent 40%), var(--bg-dark);
 }
 
 .sidebar {
@@ -109,6 +109,31 @@ body {
   word-break: break-all;
 }
 
+.choose-folder-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.choose-folder-btn:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+  border-color: var(--aurora-cyan);
+}
+
+.choose-folder-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .main-content {
   flex: 1;
   display: flex;
@@ -163,8 +188,14 @@ body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .message-user {
@@ -242,7 +273,9 @@ body {
   padding: 0 24px;
   border-radius: 10px;
   cursor: pointer;
-  transition: transform 0.1s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.2s ease;
 }
 
 .send-btn:hover {

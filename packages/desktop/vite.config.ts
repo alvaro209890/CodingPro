@@ -6,7 +6,9 @@ export default defineConfig({
   plugins: [react()],
   base: "./",
   build: {
-    outDir: "dist",
+    // Isolado de "dist/main" e "dist/preload" (saída do `tsc`) — do contrário
+    // `emptyOutDir` apaga o main/preload compilados a cada `vite build`.
+    outDir: "dist/renderer",
     emptyOutDir: true,
   },
   resolve: {

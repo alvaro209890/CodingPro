@@ -3,7 +3,7 @@ import { CORE_UI_EVENT_PROTOCOL_VERSION, type CoreUiEvent } from "../src/events.
 
 describe("events contract", () => {
   it("deve exportar a versão correta do protocolo CORE_UI_EVENT_PROTOCOL_VERSION", () => {
-    expect(CORE_UI_EVENT_PROTOCOL_VERSION).toBe("1.0.0");
+    expect(CORE_UI_EVENT_PROTOCOL_VERSION).toBe("1.1.0");
   });
 
   it("deve permitir construir envelopes válidos do protocolo", () => {
@@ -12,5 +12,14 @@ describe("events contract", () => {
       type: "agent-event",
     };
     expect(eventPayload.type).toBe("agent-event");
+  });
+
+  it("permission-request carrega requestId para a UI correlacionar a resposta", () => {
+    const eventPayload: CoreUiEvent = {
+      request: { sideEffect: "exec", toolName: "bash" },
+      requestId: "perm-1",
+      type: "permission-request",
+    };
+    expect(eventPayload.requestId).toBe("perm-1");
   });
 });

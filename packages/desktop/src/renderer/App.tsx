@@ -1,13 +1,20 @@
-import React, { useEffect, useRef, useState } from "react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CoreUiEvent, PermissionRequest } from "@codingpro/core";
 import "./aurora.css";
+
+interface ToolCallUI {
+  id: string;
+  name: string;
+  args: string;
+}
 
 interface ChatMessageUI {
   id: string;
   role: "user" | "assistant";
   content: string;
   reasoning?: string;
-  toolCalls?: { name: string; args: string }[];
+  toolCalls?: ToolCallUI[];
 }
 
 export const App: React.FC = () => {
@@ -18,6 +25,7 @@ export const App: React.FC = () => {
     cwd: "Carregando...",
     platform: "win32",
   });
+  const [workspacePath, setWorkspacePath] = useState<string | undefined>(undefined);
   const [currentPermissionRequest, setCurrentPermissionRequest] = useState<{
     request: PermissionRequest;
     id: string;
@@ -33,7 +41,7 @@ export const App: React.FC = () => {
         if (event.type === "permission-request") {
           setCurrentPermissionRequest({
             request: event.request,
-            id: `perm-${Date.now()}`,
+            id: event.requestId,
           });
         } else if (event.type === "agent-event") {
           const ae = event.event;
@@ -41,15 +49,9 @@ export const App: React.FC = () => {
             setMessages((prev) => {
               const last = prev[prev.length - 1];
               if (last && last.role === "assistant") {
-                return [
-                  ...prev.slice(0, -1),
-                  { ...last, content: last.content + ae.text },
-                ];
+                return [...prev.slice(0, -1), { ...last, content: last.content + ae.text }];
               }
-              return [
-                ...prev,
-                { id: String(Date.now()), role: "assistant", content: ae.text },
-              ];
+              return [...prev, { id: String(Date.now()), role: "assistant", content: ae.text }];
             });
           } else if (ae.type === "reasoning-delta") {
             setMessages((prev) => {
@@ -68,7 +70,11 @@ export const App: React.FC = () => {
           } else if (ae.type === "tool-call") {
             setMessages((prev) => {
               const last = prev[prev.length - 1];
-              const tc = { name: ae.call.name, args: JSON.stringify(ae.call.input) };
+              const tc: ToolCallUI = {
+                id: `${ae.call.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                name: ae.call.name,
+                args: JSON.stringify(ae.call.input),
+              };
               if (last && last.role === "assistant") {
                 return [
                   ...prev.slice(0, -1),
@@ -96,6 +102,7 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-executa a cada mensagem só p/ rolar a tela.
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -106,13 +113,19 @@ export const App: React.FC = () => {
     setInputPrompt("");
     setIsRunning(true);
 
-    setMessages((prev) => [
-      ...prev,
-      { id: String(Date.now()), role: "user", content: userText },
-    ]);
+    setMessages((prev) => [...prev, { id: String(Date.now()), role: "user", content: userText }]);
 
     if (window.codingproAPI) {
-      await window.codingproAPI.sendMessage(userText);
+      await window.codingproAPI.sendMessage(userText, workspacePath);
+    }
+  };
+
+  const handleChooseWorkspace = async () => {
+    if (!window.codingproAPI || isRunning) return;
+    const chosen = await window.codingproAPI.chooseWorkspaceFolder();
+    if (chosen && chosen !== workspacePath) {
+      setWorkspacePath(chosen);
+      setMessages([]);
     }
   };
 
@@ -136,8 +149,17 @@ export const App: React.FC = () => {
 
         <div className="workspace-info">
           <div>PROJETO ATIVO</div>
-          <div className="workspace-path">{workspaceInfo.cwd}</div>
+          <div className="workspace-path">{workspacePath ?? workspaceInfo.cwd}</div>
         </div>
+
+        <button
+          type="button"
+          className="choose-folder-btn"
+          onClick={handleChooseWorkspace}
+          disabled={isRunning}
+        >
+          📁 Abrir Pasta
+        </button>
       </div>
 
       {/* Area Principal */}
@@ -166,8 +188,8 @@ export const App: React.FC = () => {
                 </div>
               )}
 
-              {m.toolCalls && m.toolCalls.map((tc, idx) => (
-                <div key={idx} className="tool-indicator">
+              {m.toolCalls?.map((tc) => (
+                <div key={tc.id} className="tool-indicator">
                   ⚡ Tool: {tc.name} ({tc.args})
                 </div>
               ))}
@@ -190,6 +212,7 @@ export const App: React.FC = () => {
             disabled={isRunning}
           />
           <button
+            type="button"
             className="send-btn"
             onClick={handleSend}
             disabled={isRunning || !inputPrompt.trim()}
@@ -202,12 +225,11 @@ export const App: React.FC = () => {
         {currentPermissionRequest && (
           <div className="permission-modal-overlay">
             <div className="permission-card">
-              <div className="permission-title">
-                ⚠️ Solicitada Aprovação de Efeito Colateral
-              </div>
+              <div className="permission-title">⚠️ Solicitada Aprovação de Efeito Colateral</div>
 
               <div>
-                O agente deseja executar a tool <strong>{currentPermissionRequest.request.toolName}</strong>:
+                O agente deseja executar a tool{" "}
+                <strong>{currentPermissionRequest.request.toolName}</strong>:
               </div>
 
               <div className="permission-input-box">
@@ -216,18 +238,21 @@ export const App: React.FC = () => {
 
               <div className="permission-actions">
                 <button
+                  type="button"
                   className="btn btn-deny"
                   onClick={() => handlePermissionResponse("deny")}
                 >
                   Recusar
                 </button>
                 <button
+                  type="button"
                   className="btn btn-always"
                   onClick={() => handlePermissionResponse("always")}
                 >
                   Sempre Permitir
                 </button>
                 <button
+                  type="button"
                   className="btn btn-allow"
                   onClick={() => handlePermissionResponse("allow")}
                 >

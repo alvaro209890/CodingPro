@@ -19,10 +19,38 @@ Estimativas revistas em 2026-07-23 com base na velocidade real de desenvolviment
 - [x] Estilos e tokens Aurora integrados em `aurora.css` — 2026-07-23
 - [x] **Marco: esqueleto completo do app desktop compilado e integrado** — 2026-07-23
 
+### Correções pós-marco (revisão de 2026-07-23)
+
+O esqueleto compilava e abria, mas a revisão encontrou 4 bugs que quebravam o produto na prática
+(nenhum aparecia no `tsc`, só rodando o fluxo de ponta a ponta):
+
+- **`vite build` apagava o main/preload compilados.** `tsc` e `vite build` escreviam em `dist/`
+  com `emptyOutDir: true`; o segundo passo do script `build` apagava o primeiro. O app empacotado
+  não tinha `dist/main/index.js` (o `main` do `package.json`). Corrigido: renderer agora sai em
+  `dist/renderer`, main/preload seguem em `dist/main`/`dist/preload`.
+- **Aprovação de permissão nunca resolvia.** O main gerava um `requestId` para correlacionar a
+  resposta da UI, mas o evento `permission-request` não o carregava — a UI inventava outro id ao
+  exibir o modal, então a resposta nunca batia com a promessa pendente no main. Qualquer tool com
+  efeito (`write_file`, `bash`, `edit_file`) travava o app para sempre no aviso de aprovação.
+  Corrigido: `requestId` entrou no contrato `events.ts` (v1.1.0, mudança aditiva) e a UI ecoa o
+  id recebido em vez de gerar o seu.
+- **Conversa sem memória entre mensagens.** Cada `send-message` criava workspace/registry/gate do
+  zero e mandava só `[mensagemDoUsuario]` para o `runAgent` — sem o histórico dos turnos
+  anteriores. "Sempre permitir" também não durava além de uma mensagem pelo mesmo motivo. Corrigido:
+  o main mantém uma sessão de chat (workspace/gate/histórico) por diretório de projeto, reaproveitada
+  entre turnos, no mesmo padrão do chat da CLI.
+- **Chave de API com fallback silencioso.** `DEEPSEEK_API_KEY ?? "dummy-dev-key"` gerava erro
+  confuso de rede em vez de avisar que faltava configurar. Corrigido: mesma checagem clara da CLI
+  antes de instanciar o provider.
+- Lint/format zerados no pacote (`useButtonType`, `noArrayIndexKey`, import de tipo, dependência
+  desnecessária de `useEffect`) e um `import` morto em `events.ts`.
+
 ## W2 — Ferramentas visuais (2 semanas)
 
+- [x] Primeira fatia da barra lateral: seletor de pasta do projeto (`dialog.showOpenDialog`),
+      substitui o `process.cwd()` fixo do Electron — 2026-07-23
+- [ ] Restante da barra lateral: sessões, tarefas background, memória
 - [ ] Diff viewer lado a lado com aplicar/rejeitar por bloco
-- [ ] Barra lateral: sessões, projetos, tarefas background, memória
 - [ ] Painel de plano com checkboxes ao vivo
 - [ ] Paleta de comandos Ctrl+K em pt-BR
 - [ ] Terminal integrado (xterm.js + node-pty)

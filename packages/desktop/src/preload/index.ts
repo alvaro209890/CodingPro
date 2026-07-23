@@ -19,6 +19,9 @@ const api: CodingProDesktopAPI = {
   getWorkspaceInfo: () => {
     return ipcRenderer.invoke("codingpro:get-workspace-info");
   },
+  chooseWorkspaceFolder: () => {
+    return ipcRenderer.invoke("codingpro:choose-workspace-folder");
+  },
 };
 
 contextBridge.exposeInMainWorld("codingproAPI", api);
