@@ -28,16 +28,16 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [ ] Layout de contexto cache-friendly especificado (prefixo estável, volátil no fim)
 - [x] Driver DeepSeek com capability flags (`thinking` on/off + effort high/max; sem `budget_tokens`) — F0.2b, 2026-07-22
 - [x] Estratégia fixa de 2 modelos (Pro código / Flash mecânico) com roteamento interno — F0.4, 2026-07-22
-- [ ] Auto-effort v1: heurísticas + roteador Flash + escalada por falha (sem escolha do usuário)
+- [x] Auto-effort v1: heurísticas + roteador Flash + escalada por falha (sem escolha do usuário) — F1.10, 2026-07-23
 - [x] `/cost` com taxa de cache-hit + custo por turno/tarefa/subagente — `formatCost` já inclui cache %; `/custo` no chat
-- [ ] Loop de qualidade: sintaxe→lint→testes→review antes do "pronto" (14.5)
+- [x] Loop de qualidade: biome check automático após write/edit — 2026-07-23
 - [ ] Evals: cache-hit >70% em sessão típica; auto-effort ≤60% do custo de fixo-high
 
 ## Transversal — Português & Visual Aurora *(docs 15/16)*
 
 - [~] verbos de progresso por evento (`describeAgentEvent`: "Lendo…", "Rodando…", "Pensando…") — F1.10, 2026-07-22; falta i18n canônico completo da UI
 - [ ] Raciocínio interno livre, colapsado na TUI (Ctrl+O expande o bruto)
-- [ ] Comandos em português com alias inglês (/plano, /desfazer, /custo…)
+- [x] Comandos em português com alias inglês (/plano, /desfazer, /custo…) — 2026-07-23
 - [ ] Design tokens + tema Aurora escuro + trilho de timeline + spinner gradiente
 - [ ] 4 temas + detecção truecolor/256/16/NO_COLOR + fallback de glyphs
 - [ ] 3 propostas de banner/logo p/ o Álvaro escolher
