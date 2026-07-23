@@ -10,6 +10,7 @@ import { Sidebar } from "./components/Sidebar.js";
 import { type ToolItem, ToolSummaryBlock } from "./components/ToolSummaryBlock.js";
 import { TaskTracker, toTaskRow } from "./components/TaskTracker.js";
 import { SubagentPanel } from "./components/SubagentPanel.js";
+import { SettingsPanel } from "./components/SettingsPanel.js";
 import { renderMarkdown } from "./components/MarkdownRenderer.js";
 import "./aurora.css";
 
@@ -60,7 +61,7 @@ function contentToString(content: unknown): string {
 }
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"home" | "code">("code");
+  const [activeTab, setActiveTab] = useState<"home" | "code" | "settings">("code");
   const [messages, setMessages] = useState<ChatMessageUI[]>([]);
   const [inputPrompt, setInputPrompt] = useState("");
   const [isRunning, setIsRunning] = useState(false);
@@ -552,18 +553,30 @@ export const App: React.FC = () => {
   return (
     <div className="app-container">
       <Sidebar
-        activeTab={activeTab}
-        onSelectTab={setActiveTab}
-        recentSessions={recentSessions}
-        onSelectSession={handleSelectSession}
-        onNewSession={() => {
-          void handleNewSession();
-        }}
-        onChooseWorkspace={() => {
-          void handleChooseWorkspace();
-        }}
-        workspacePath={workspaceInfo.cwd}
-      />
+              activeTab={activeTab}
+              onSelectTab={setActiveTab}
+              recentSessions={recentSessions}
+              onSelectSession={handleSelectSession}
+              onNewSession={() => {
+                void handleNewSession();
+              }}
+              onChooseWorkspace={() => {
+                void handleChooseWorkspace();
+              }}
+              workspacePath={workspaceInfo.cwd}
+              settingsPanel={
+                <SettingsPanel
+                  autoApprove={autoApprove}
+                  onToggleAutoApprove={() => {
+                    const next = !autoApprove;
+                    setAutoApprove(next);
+                    void window.codingproAPI?.setAutoApprove(next);
+                  }}
+                  modelName="DeepSeek V4 Pro"
+                  effortLevel="Alto"
+                />
+              }
+            />
 
       <div className="main-content">
         <Header
@@ -706,7 +719,9 @@ export const App: React.FC = () => {
           {messages.map((m) => (
             <div key={m.id} className="message-group">
               {m.role === "user" ? (
-                <div className="user-message-card">{m.content}</div>
+                <div className="user-message-card">
+              <div className="user-message-bubble">{m.content}</div>
+            </div>
               ) : (
                 <div className="assistant-message-card">
                                   {m.toolGroup && (
