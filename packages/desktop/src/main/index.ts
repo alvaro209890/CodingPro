@@ -30,11 +30,15 @@ import {
   resolverPreviaDeEscrita,
   resumoProjeto,
   runAgent,
+  resolverTipoAgente,
   sanitizeMessagesForProvider,
+  sanitizeToolText,
   SessionStore,
+  type SubagenteSpawner,
   SYSTEM_PROMPT_V1,
-  type ToolContext,
-  ToolGate,
+  TIPOS_AGENTE_PADRAO,
+    type ToolContext,
+    ToolGate,
   ToolRegistry,
   type UiPermissionResponse,
   WRITE_FILE_MAX_BYTES,
@@ -54,8 +58,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const TERMINAL_TIMEOUT_MS = 60_000;
-const CONTEXT_BUDGET = 100_000;
-const CONTEXT_WINDOW = 128_000;
+const CONTEXT_BUDGET = 400_000;
 
 let mainWindow: BrowserWindow | null = null;
 let requestCounter = 0;
@@ -231,6 +234,7 @@ interface ChatSession {
   readonly readTracker: ReadTracker;
   readonly memoryGlobal: MemoryStore;
   readonly memoryProjeto: MemoryStore;
+  readonly subagentes?: SubagenteSpawner;
   sessionId: string;
   transcript: ChatMessage[];
   cost: SessionCost;
@@ -301,12 +305,12 @@ function formatarCusto(session: ChatSession): string {
   if (cost.turns === 0) {
     return [
       "· sem custo de API ainda nesta sessão",
-      `· contexto estimado: ${contextTokens.toLocaleString("pt-BR")} / ${CONTEXT_BUDGET.toLocaleString("pt-BR")} tok · restam ${restam.toLocaleString("pt-BR")} · janela ~${CONTEXT_WINDOW.toLocaleString("pt-BR")}`,
+      `· contexto estimado: ${contextTokens.toLocaleString("pt-BR")} / ${CONTEXT_BUDGET.toLocaleString("pt-BR")} tok · restam ${restam.toLocaleString("pt-BR")} · janela ~${CONTEXT_BUDGET.toLocaleString("pt-BR")}`,
     ].join("\n");
   }
   return [
     `sessão: US$ ${cost.totalCostUsd.toFixed(6)} · in ${cost.inputTokens} · out ${cost.outputTokens} · turnos ${cost.turns}`,
-    `contexto: ${contextTokens.toLocaleString("pt-BR")} / ${CONTEXT_BUDGET.toLocaleString("pt-BR")} tok · restam ${restam.toLocaleString("pt-BR")} · janela ~${CONTEXT_WINDOW.toLocaleString("pt-BR")}`,
+    `contexto: ${contextTokens.toLocaleString("pt-BR")} / ${CONTEXT_BUDGET.toLocaleString("pt-BR")} tok · restam ${restam.toLocaleString("pt-BR")} · janela ~${CONTEXT_BUDGET.toLocaleString("pt-BR")}`,
   ].join("\n");
 }
 
@@ -410,6 +414,27 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
   const memoryGlobal = MemoryStore.create(join(homedir(), ".codingpro", "memory"));
   const memoryProjeto = MemoryStore.create(join(normalized, ".codingpro", "memory"));
 
+  // SubagenteSpawner: fábrica de subagentes para a tool `task`
+  const poolTools = registry.definitions();
+  const spawner: SubagenteSpawner = {
+    tiposDisponiveis: Object.keys(TIPOS_AGENTE_PADRAO),
+    maxParalelo: 3,
+    async executar(tipo, prompt, sgn) {
+      const tipoAgente = resolverTipoAgente(tipo);
+      if (!tipoAgente) throw new Error(`Tipo de subagente desconhecido: ${tipo}`);
+      const opts: Record<string, unknown> = {
+        tipo: tipoAgente,
+        prompt,
+        provider,
+        toolPool: poolTools,
+        context: { workspace, readTracker, memory: { global: memoryGlobal, projeto: memoryProjeto } },
+      };
+      if (sgn !== undefined) (opts as any).signal = sgn;
+      const { executarSubagente } = await import("@codingpro/core");
+      return executarSubagente(opts as any);
+    },
+  };
+
   activeSession = {
     cwd: normalized,
     gate,
@@ -420,6 +445,7 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
     readTracker,
     memoryGlobal,
     memoryProjeto,
+    subagentes: spawner,
     sessionId: newSessionId(),
     transcript: [],
     workspace,
@@ -1082,16 +1108,28 @@ app.whenReady().then(() => {
                             session.transcript.push(mensagemUsuario(promptAgente));
                             session.checkpoints.begin(promptAgente.slice(0, 80));
 
+                            // Auto-compact: se contexto > 75% do orçamento, compacta
+                            const estContexto = snapshotCusto(session);
+                            if (estContexto && estContexto.contextTokens > CONTEXT_BUDGET * 0.75) {
+                              try {
+                                const compacted = compactMessages(session.transcript, { maxTokens: CONTEXT_BUDGET });
+                                session.transcript = compacted.messages;
+                              } catch {
+                                // compactação falhou — segue sem
+                              }
+                            }
+
                             const systemPrompt = await montarSystemPromptDesktop(session.workspace);
 
                             const agentResult = await runAgent({
-                                                          context: {
-                                                            workspace: session.workspace,
-                                                            readTracker: session.readTracker,
-                                                            checkpoints: session.checkpoints,
-                                                            memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
-                                                            signal: abort.signal,
-                                                          },
+                                                                                      context: {
+                                                                                        workspace: session.workspace,
+                                                                                        readTracker: session.readTracker,
+                                                                                        checkpoints: session.checkpoints,
+                                                                                        memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
+                                                                                        signal: abort.signal,
+                                                                                        subagentes: session.subagentes!,
+                                                                                      },
                                                           gate: session.gate,
                                                           messages: session.transcript,
                                                           provider: session.provider,
