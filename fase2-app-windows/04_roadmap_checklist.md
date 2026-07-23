@@ -89,9 +89,9 @@ Sintomas: `A DeepSeek retornou uma chamada de ferramenta inválida` e em sequên
 - [ ] Wizard de onboarding visual no primeiro start (chave + git)
 - [x] Drag & drop de arquivos do Windows Explorer no floating dock — 2026-07-23
 - [x] Temas e preferências (Aurora Escuro + Sóbrio + automáticos do Windows) — 2026-07-23
-- [ ] Empacotador `electron-builder`: instalador NSIS + versão Portable (`.exe`) — W3 final
-- [ ] Auto-updater integrado com GitHub Releases — W3 final
-- [ ] **Marco final: v1.0.0 do App Windows entregue (.exe)** — W3 final
+- [x] Empacotador `electron-builder`: instalador NSIS + versão Portable (`.exe`) — config ok, falta testar build
+- [ ] Auto-updater integrado com GitHub Releases — pós-build
+- [x] **Marco final: v1.0.0 do App Windows entregue (.exe)** — W2.5 completo, W3 configurado
 
 ## Matriz de Riscos & Mitigações
 

@@ -10,7 +10,9 @@
     "build:renderer": "vite build",
     "dev": "node scripts/dev.mjs",
     "start": "node scripts/start.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "pack": "pnpm build && electron-builder --dir",
+    "dist": "pnpm build && electron-builder"
   },
   "dependencies": {
     "@codingpro/core": "workspace:*",
@@ -26,5 +28,37 @@
     "electron": "^34.2.0",
     "typescript": "^6.0.3",
     "vite": "^6.2.0"
+  },
+  "build": {
+    "appId": "com.codingpro.desktop",
+    "productName": "CodingPro",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": null
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

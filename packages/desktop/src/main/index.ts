@@ -1055,42 +1055,55 @@ app.whenReady().then(() => {
       }
 
       runInFlight = true;
-      // Garante que nenhum abort anterior contamine esta execução
-      if (activeAbort) { try { activeAbort.abort(); } catch { /* ok */ } }
-            const abort = new AbortController();
-            activeAbort = abort;
-            _runStartMs = Date.now();
-                        _tokenCount = 0;
-                        _stepCount = 0;
-                        _thinkingMs = 0;
+            // Garante que nenhum abort anterior contamine esta execução
+            if (activeAbort) { try { activeAbort.abort(); } catch { /* ok */ } }
+                  const abort = new AbortController();
+                  activeAbort = abort;
+                  _runStartMs = Date.now();
+                              _tokenCount = 0;
+                              _stepCount = 0;
+                              _thinkingMs = 0;
 
-      try {
-              // /abrir antes de criar sessão — troca a raiz como `cd` na CLI Linux
-              const aberto = await tentarAbrirWorkspace(prompt);
-              if (aberto !== undefined) {
-                selectedWorkspacePath = aberto.cwd;
-                const sessionOpen = await obterOuCriarSessao(aberto.cwd);
-                sessionOpen.transcript.push(mensagemUsuario(prompt), mensagemAssistente(aberto.reply));
-                try {
-                  await sessionOpen.sessionStore.save(sessionOpen.sessionId, sessionOpen.transcript);
-                } catch {
-                  // best-effort
-                }
-                sendCoreEvent({ type: "session-updated", messages: sessionOpen.transcript });
-                return {
-                  success: true,
-                  local: true,
-                  reply: aberto.reply,
-                  cwd: aberto.cwd,
-                };
-              }
+            try {
+                    const targetCwd =
+                      args.workspacePath && args.workspacePath.trim() !== ""
+                        ? args.workspacePath.trim()
+                        : selectedWorkspacePath;
 
-              const targetCwd =
-                args.workspacePath && args.workspacePath.trim() !== ""
-                  ? args.workspacePath.trim()
-                  : selectedWorkspacePath;
+                    // /abrir antes de criar sessão — troca a raiz como `cd` na CLI Linux
+                    const aberto = await tentarAbrirWorkspace(prompt);
+                    if (aberto !== undefined) {
+                      selectedWorkspacePath = aberto.cwd;
+                      const sessionOpen = await obterOuCriarSessao(aberto.cwd);
+                      sessionOpen.transcript.push(mensagemUsuario(prompt), mensagemAssistente(aberto.reply));
+                      try {
+                        await sessionOpen.sessionStore.save(sessionOpen.sessionId, sessionOpen.transcript);
+                      } catch {
+                        // best-effort
+                      }
+                      sendCoreEvent({ type: "session-updated", messages: sessionOpen.transcript });
+                      return {
+                        success: true,
+                        local: true,
+                        reply: aberto.reply,
+                        cwd: aberto.cwd,
+                      };
+                    }
 
-              const session = await obterOuCriarSessao(targetCwd);
+                    const targetCwd2 =
+                      args.workspacePath && args.workspacePath.trim() !== ""
+                        ? args.workspacePath.trim()
+                        : selectedWorkspacePath;
+
+                    const session = await obterOuCriarSessao(targetCwd2);
+
+                    // SANITIZA o transcript ANTES de cada execução, evitando invalid-request
+                    // causado por mensagens sujas de turnos anteriores no Windows
+                    try {
+                      session.transcript = sanitizeMessagesForProvider(session.transcript);
+                    } catch {
+                      // sanitização falhou — segue com o transcript original
+                    }
 
               // Comandos locais (não consomem LLM)
                             const local = await handleLocalCommand(session, prompt);
