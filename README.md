@@ -5,9 +5,10 @@
 
 **Stack:** TypeScript / Node.js ≥ 24 · monorepo pnpm · comando `codingpro` (alias `cpro`)
 **Licença:** proprietária source-available (ver `LICENSE`; código de terceiros portado mantém a licença original)
-**Status geral:** 🟢 **Fase 1 / CLI 1.0 fechada offline** — F0–F6 + F8 essenciais (`/review`, undercover, Aurora ANSI) + F9 (install.sh, `doctor`, guia, **hardening + evals** no CI). Gate: `pnpm check` (inclui `pnpm test:evals`). Pós-1.0 / manual: voz F7, pet/XP, upgrades tree-sitter/SQLite/subprocesso, `npm publish` + setup em máquina limpa.
+**Status geral:** 🟢 **Fase 1 / CLI 1.0 usável** — loop agêntico, edit/undo, memória, multi-agente, MCP/skills/hooks, Aurora (header limpo + autocomplete `/` + status de tokens), auto-correção Biome, auto-compact (janela DeepSeek 1M), **busca vetorial local** (`code_search` + `/index`), hardening/evals no CI. Gate: `pnpm check`. Manual: `npm publish`. Pós-1.0: voz, pet, tree-sitter AST, embeddings ONNX.
 
-📖 **Guia do usuário:** [`docs/GUIA-DO-USUARIO.md`](docs/GUIA-DO-USUARIO.md) — instalação, configuração, comandos, skills, hooks, MCP, memória.
+📖 **Guia do usuário:** [`docs/GUIA-DO-USUARIO.md`](docs/GUIA-DO-USUARIO.md)  
+📋 **Estado consolidado da Fase 1:** [`docs/ESTADO_PROJETO.md`](docs/ESTADO_PROJETO.md) — o que foi feito, estrutura, como rodar, o que falta.
 
 ## Desenvolvimento local
 
@@ -40,11 +41,10 @@ O único provider de LLM para código em produção é a API oficial DeepSeek. V
 codificação, arquitetura e revisão; V4 Flash atende caminhos mecânicos internos via `role: "fast"`.
 `replay` é apenas infraestrutura determinística de testes, sem inferência.
 
-**Modos:** `-p` (headless, sem tools) · `--agente -p` (loop com ferramentas de leitura) ·
-`--chat` (chat interativo com aprovação de efeitos, **autocomplete `/` com ↑↓/Tab**, spinner e
-banner animado no TTY) · `--doctor` (diagnóstico do ambiente). O roteamento de esforço é automático
-(auto-effort): o turno usa Flash por padrão e escala para Pro em contexto grande, ferramentas
-pesadas ou após erro. Detalhes de uso no guia do usuário.
+**Modos:** `-p` (headless) · `--agente -p` (tools de leitura) · `--chat` (TTY: autocomplete `/`,
+status `$`/ctx, aprovação de efeitos) · `--doctor`. Auto-effort Flash→Pro. Auto-compact 800k/1M.
+Busca: `repo_map` + `code_search` (SQLite local). Detalhes: [guia](docs/GUIA-DO-USUARIO.md) e
+[estado do projeto](docs/ESTADO_PROJETO.md).
 
 > **Privacidade:** ao selecionar `deepseek`, o prompt e qualquer conteúdo incluído nele são
 > enviados à API da DeepSeek. Os testes comuns nunca selecionam esse caminho nem carregam chaves.

@@ -600,3 +600,16 @@ pedir “execute o plano” depois fazia o modelo agir sem o conteúdo planejado
 
 ### Validação
 Testes de chunking/embeddings/store/tool; `pnpm check` verde.
+
+## 2026-07-23 — Documentação consolidada do estado da Fase 1
+
+### Entregue
+- `docs/ESTADO_PROJETO.md`: visão única do que a CLI é, estrutura, features, como rodar neste PC,
+  arquitetura, testes, o que falta e linha do tempo de commits.
+- README e CHECKLIST_MESTRE apontam para o estado atual (vector search, auto-compact, front limpo).
+- Front fix já no master (`45d6a44`): header compacto, sem dump de comandos, spinner estável.
+
+### Como o Álvaro testa
+```bash
+codingpro --chat
+```
