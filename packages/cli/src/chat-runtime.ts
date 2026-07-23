@@ -5,13 +5,19 @@ import {
   CheckpointStore,
   createReadTracker,
   describeAgentEvent,
+  detectarProjeto,
+  gerarCodingproMd,
   newSessionId,
   PermissionController,
+  readFileWithin,
+  resumoProjeto,
   runAgent,
   SessionStore,
   ToolGate,
   ToolRegistry,
   Workspace,
+  WRITE_FILE_MAX_BYTES,
+  writeFileWithin,
 } from "@codingpro/core";
 import { type ChatMessage, type CostBreakdown, formatCost, type Provider } from "@codingpro/llm";
 import { sanitizarTextoTerminal } from "./headless.js";
@@ -36,7 +42,32 @@ export interface ChatOptions {
 
 const AJUDA =
   "Comandos: /sair encerra · /custo mostra o custo do último turno · /limpar esquece o histórico · " +
-  "/undo [N] desfaz as últimas edições · /redo [N] refaz · /checkpoint lista a linha do tempo\n";
+  "/undo [N] desfaz as últimas edições · /redo [N] refaz · /checkpoint lista a linha do tempo · " +
+  "/init gera CODINGPRO.md com o projeto detectado\n";
+
+/** Gera (ou regenera, com confirmação) o CODINGPRO.md a partir do projeto detectado. */
+async function comandoInit(workspace: Workspace, io: ChatIo): Promise<void> {
+  const alvo = workspace.resolve("CODINGPRO.md");
+  let existente = false;
+  try {
+    await readFileWithin(workspace, alvo, WRITE_FILE_MAX_BYTES);
+    existente = true;
+  } catch {
+    existente = false;
+  }
+  if (existente) {
+    const resposta = (await io.pergunta("CODINGPRO.md já existe. Sobrescrever? [s/N] "))
+      .trim()
+      .toLowerCase();
+    if (resposta !== "s" && resposta !== "sim" && resposta !== "y") {
+      io.progresso("· /init cancelado\n");
+      return;
+    }
+  }
+  const info = await detectarProjeto(workspace);
+  await writeFileWithin(workspace, alvo, gerarCodingproMd(info), WRITE_FILE_MAX_BYTES);
+  io.progresso(`· CODINGPRO.md gerado (${resumoProjeto(info)})\n`);
+}
 
 /** Lê o argumento numérico opcional de um comando como /undo ou /redo (default 1). */
 function parseQuantidade(mensagem: string): number {
@@ -82,6 +113,7 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
   let ultimoCusto: CostBreakdown | undefined;
 
   io.progresso("CodingPro — chat do agente.\n");
+  io.progresso(`Projeto: ${resumoProjeto(await detectarProjeto(workspace))}\n`);
   io.progresso(AJUDA);
 
   for (;;) {
@@ -110,6 +142,10 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
     }
     if (mensagem === "/ajuda") {
       io.progresso(AJUDA);
+      continue;
+    }
+    if (mensagem === "/init") {
+      await comandoInit(workspace, io);
       continue;
     }
     if (mensagem === "/undo" || mensagem.startsWith("/undo ")) {

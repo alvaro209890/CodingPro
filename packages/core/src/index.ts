@@ -57,6 +57,14 @@ export {
   type PreviaEscrita,
   resolverPreviaDeEscrita,
 } from "./preview.js";
+export {
+  alvosMakefile,
+  contarExtensoes,
+  detectarProjeto,
+  gerarCodingproMd,
+  type ProjetoInfo,
+  resumoProjeto,
+} from "./project-detect.js";
 export { ToolRegistry } from "./registry.js";
 export { newSessionId, SessionStore } from "./session.js";
 export { SYSTEM_PROMPT_V1 } from "./system-prompt.js";

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Provider, ProviderEvent, ToolCall } from "@codingpro/llm";
@@ -142,6 +142,48 @@ describe("executarChat", () => {
     expect(captura.progresso()).toContain("sem custo ainda");
     expect(captura.progresso()).toContain("histórico esquecido");
     expect(captura.progresso()).toContain("Comandos:");
+  });
+
+  it("mostra o resumo do projeto detectado no cabeçalho", async () => {
+    await writeFile(join(cwd, "package.json"), JSON.stringify({ dependencies: { react: "18" } }));
+    await writeFile(join(cwd, "app.tsx"), "export default () => null;\n");
+    const { provider } = scripted([]);
+    const captura = fakeIo(["/sair"], []);
+    await executarChat({ cwd, provider }, captura.io);
+    expect(captura.progresso()).toContain("Projeto: TypeScript");
+    expect(captura.progresso()).toContain("React");
+  });
+
+  it("/init gera CODINGPRO.md a partir do projeto detectado", async () => {
+    await writeFile(
+      join(cwd, "package.json"),
+      JSON.stringify({ name: "proj", scripts: { build: "tsc" } }),
+    );
+    const { provider, requests } = scripted([]);
+    const captura = fakeIo(["/init", undefined], []);
+    await executarChat({ cwd, provider }, captura.io);
+    expect(requests).toEqual([]);
+    const md = await readFile(join(cwd, "CODINGPRO.md"), "utf8");
+    expect(md).toContain("# CODINGPRO.md");
+    expect(md).toContain("**Nome:** proj");
+    expect(captura.progresso()).toContain("CODINGPRO.md gerado");
+  });
+
+  it("/init pede confirmação para sobrescrever e cancela em não", async () => {
+    await writeFile(join(cwd, "CODINGPRO.md"), "conteúdo do usuário");
+    const { provider } = scripted([]);
+    const captura = fakeIo(["/init", undefined], ["n"]);
+    await executarChat({ cwd, provider }, captura.io);
+    expect(await readFile(join(cwd, "CODINGPRO.md"), "utf8")).toBe("conteúdo do usuário");
+    expect(captura.progresso()).toContain("/init cancelado");
+  });
+
+  it("/init sobrescreve quando o usuário confirma", async () => {
+    await writeFile(join(cwd, "CODINGPRO.md"), "antigo");
+    const { provider } = scripted([]);
+    const captura = fakeIo(["/init", undefined], ["s"]);
+    await executarChat({ cwd, provider }, captura.io);
+    expect(await readFile(join(cwd, "CODINGPRO.md"), "utf8")).toContain("# CODINGPRO.md");
   });
 
   it("cria checkpoint ao escrever e /undo reverte o arquivo", async () => {

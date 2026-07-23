@@ -129,5 +129,23 @@ turno e os reverte com um único `/undo`. Como nada disso toca o git do usuário
 staging" é atendida por construção.
 
 **F2 (edição segura) está completa**: `edit_file` atômico, checkpoints com `/undo`/`/redo`/`/checkpoint`
-e diff na aprovação — tudo testado offline (426 testes, cobertura 96,16%/92,49%). Próximo bloco: **F3**
-(entendimento de projeto: indexador tree-sitter, repo map com ranking, `/init` gera CODINGPRO.md).
+e diff na aprovação — tudo testado offline.
+
+## F3 — Entendimento de projeto (em andamento)
+
+O **F3.1** entregou a **detecção de projeto e o `/init`**. `detectarProjeto` faz o melhor esforço, só
+lendo: descobre as **linguagens** por uma varredura rasa de extensões (com lista de ignore —
+`node_modules`, `dist`, `.git` etc. — e tetos de 5000 arquivos / profundidade 6), e o **framework**,
+**gerenciador de pacotes**, **ferramenta de testes** e **scripts** por arquivos-marcador: `package.json`
+(deps → Next/React/Vue/Nest/Express…, Vitest/Jest/Playwright…, `packageManager`/lockfile → pnpm/Yarn/
+npm/Bun, campo `workspaces` → monorepo), além de `pyproject.toml`/`requirements.txt` (Django/FastAPI/
+Flask, Poetry/pip, pytest), `Cargo.toml` (Rust/Cargo, nome), `go.mod`, e alvos de `Makefile`. Também
+marca monorepo por `pnpm-workspace.yaml`/`lerna.json`/`turbo.json`/`nx.json`. O chat mostra um resumo
+de uma linha no cabeçalho (`resumoProjeto`) e o comando **`/init`** grava um `CODINGPRO.md` (via
+`gerarCodingproMd`) com o projeto detectado + um espaço para convenções, pedindo confirmação antes de
+sobrescrever um arquivo existente. Tudo testado offline com fixtures (Node/Python/Rust/Go, monorepo,
+package.json inválido, ignore de node_modules, `/init` novo/sobrescrita) — 445 testes verdes,
+cobertura 96,14%/91,94%.
+
+Faltam na F3: **indexador tree-sitter + cache SQLite**, **repo map com ranking/orçamento de tokens** e o
+**marco** ("onde X é tratado?" respondido certo em repo médio).

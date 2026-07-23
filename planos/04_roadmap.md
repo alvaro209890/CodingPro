@@ -71,8 +71,8 @@ Estimativas assumem ~1 dev com assistência pesada de IA, dedicação parcial. F
 - [ ] Indexador tree-sitter: símbolos (funções/classes/exports) por arquivo, cache em SQLite
 - [ ] Repo map com ranking (estilo Aider): o que entra no contexto e quanto
 - [ ] Invalidação incremental por mtime/hash
-- [ ] Detecção de projeto: linguagens, framework, package manager, scripts de teste
-- [ ] Arquivo de contexto do projeto (`CODINGPRO.md`) + comando `/init` que o gera
+- [x] Detecção de projeto: linguagens, framework, package manager, scripts de teste — 2026-07-22
+- [x] Arquivo de contexto do projeto (`CODINGPRO.md`) + comando `/init` que o gera — 2026-07-22
 - [ ] **Marco: em repo médio (ex. Atlas), perguntar "onde X é tratado?" e receber resposta certa sem grep manual do usuário**
 
 ## F4 — Memória persistente (2 semanas)

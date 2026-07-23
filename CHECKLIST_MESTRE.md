@@ -113,7 +113,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 
 - [ ] Indexador tree-sitter + cache SQLite incremental
 - [ ] Repo map com ranking e orçamento de tokens
-- [ ] Detecção de projeto + `/init` gera CODINGPRO.md
+- [x] Detecção de projeto + `/init` gera CODINGPRO.md — `detectarProjeto` (linguagens por varredura rasa com ignore/tetos; framework/gerenciador/testes por marcadores Node/Python/Rust/Go; monorepo; scripts de package.json+Makefile); resumo no cabeçalho do chat; `/init` gera CODINGPRO.md (confirma sobrescrita) — 2026-07-22
 - [ ] 🏁 Pergunta de arquitetura respondida certo em repo médio
 
 ## F4 — Memória persistente
