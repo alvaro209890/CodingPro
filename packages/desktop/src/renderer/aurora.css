@@ -1014,12 +1014,13 @@ body {
 /* ─── Task Tracker ─── */
 
 .task-tracker-card {
-  position: fixed;
-  bottom: 130px;
-  left: 328px;
-  right: 28px;
-  max-width: 820px;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  max-width: none;
   z-index: 50;
+  margin-bottom: 6px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 10px;

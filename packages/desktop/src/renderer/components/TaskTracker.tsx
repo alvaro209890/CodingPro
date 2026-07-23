@@ -1,4 +1,5 @@
 import type React from "react";
+import { useState } from "react";
 import type { ToolItem } from "./ToolSummaryBlock.js";
 
 interface TaskRow {
@@ -40,6 +41,7 @@ export function toTaskRow(item: ToolItem): TaskRow {
 }
 
 export const TaskTracker: React.FC<TaskTrackerProps> = ({ items, isRunning }) => {
+  const [collapsed, setCollapsed] = useState(false);
   if (items.length === 0 && !isRunning) return null;
 
   const done = items.filter((t) => t.status === "done").length;
@@ -48,14 +50,15 @@ export const TaskTracker: React.FC<TaskTrackerProps> = ({ items, isRunning }) =>
   return (
     <div className="task-tracker-card">
       <div className="task-tracker-header">
-        <span className="task-tracker-title">
+        <button type="button" className="task-tracker-collapse" onClick={() => setCollapsed(!collapsed)} title={collapsed ? "Expandir" : "Recolher"}>{collapsed ? "▶" : "▼"}</button>
+<span className="task-tracker-title">
           {isRunning && items.some((t) => t.status === "running")
             ? "Executando tarefas"
             : `${done}/${total} tarefas`}
         </span>
         {isRunning && <span className="task-tracker-spinner" />}
       </div>
-      <div className="task-tracker-list">
+      {!collapsed && <div className="task-tracker-list">
         {items.map((item) => (
           <div
             key={item.id}
@@ -73,7 +76,7 @@ export const TaskTracker: React.FC<TaskTrackerProps> = ({ items, isRunning }) =>
             )}
           </div>
         ))}
-      </div>
+      </div>}
     </div>
   );
 };

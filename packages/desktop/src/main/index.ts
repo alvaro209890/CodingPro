@@ -372,6 +372,12 @@ function expandirPromptAgente(prompt: string): string | undefined {
       ? `Elabore um plano de implementação passo a passo para: ${obj}. Liste etapas, arquivos a tocar, riscos e ordem sugerida. Explore o código com tools se precisar.`
       : "Elabore um plano de trabalho para melhorar/entender este projeto. Explore com tools e liste etapas concretas.";
   }
+  if (lower === "/goal" || lower.startsWith("/goal ") || lower === "/meta" || lower.startsWith("/meta ")) {
+    const obj = msg.replace(/^\/(goal|meta)\s*/iu, "").trim();
+    return obj.length > 0
+      ? `Objetivo principal: ${obj}. Crie um plano com a tool 'task', quebrando em subtarefas do tipo explorer/worker. Use as tools para executar cada subtarefa e reporte progresso.`
+      : "Defina um objetivo com: /goal <descricao>";
+  }
   return undefined;
 }
 
