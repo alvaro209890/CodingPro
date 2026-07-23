@@ -470,3 +470,28 @@ Polimento restante (visual Aurora, i18n completo, evals) é pós-1.0. Iniciar Fa
 ### Validação
 - 623 testes offline; `pnpm check` completo verde. Smoke visual ao vivo (banner + cores). CLI real
   validada de ponta a ponta com `codingpro --chat/-p/--doctor` (chamada DeepSeek real → ok).
+
+## 2026-07-23 — Fechamento Fase 1 / CLI 1.0 (hardening + evals offline)
+
+### Entregue
+
+- **Suite de robustez offline** (`hardening-evals`) em `packages/core` e `packages/cli`:
+  - caminhos com **espaço e acento** (`Área de Trabalho`, `pasta com espaço/módulo.ts`) em
+    `Workspace`, `read_file`/`write_file`/`list_dir` e `construirRepoMap`;
+  - **tetos** em árvore densa (`maxArquivos`, `REPO_MAP_MAX_ARQUIVOS`, `AbortSignal`, `detectarProjeto`);
+  - **chave ausente/inválida** fail-closed (`criarProviderRuntime`, `DeepSeekProvider`, `executarCli`);
+  - **sem rede** via `fetch` injetado → `provider-failed` seguro (sem vazar canário) e exit 2 na CLI;
+  - `doctor` sem vazar valor de chave; duas execuções consistentes.
+- Script **`pnpm test:evals`** (também coberto por `pnpm test` / `test:coverage` / CI `pnpm check`).
+- **CHECKLIST_MESTRE**: hardening + evals CI marcados feitos; upgrades tree-sitter/SQLite/subprocesso,
+  voz F7, pet, QA visual e `npm publish` explicitamente **pós-1.0** ou passo do Álvaro.
+- Marco de engenharia: **núcleo da Fase 1 / CLI 1.0 fechado offline**.
+
+### Diferido (não bloqueia Fase 2)
+
+- F7 voz (1.1); pet/XP; Ink full-screen / 4 temas; backends F3/F4/F5 “upgrade”; marcos ao vivo com
+  DeepSeek (3 revisores, MCP externo, 1h de uso); `npm publish` + setup em máquina limpa.
+
+### Validação
+
+- `pnpm test:evals` verde; gate completo `pnpm check` após a rodada; push em `origin/master`.

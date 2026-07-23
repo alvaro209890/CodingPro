@@ -46,6 +46,11 @@ export DEEPSEEK_API_KEY="sua-chave"
 Nunca coloque o valor da chave em arquivos versionados. O `codingpro doctor` só verifica a
 **presença** da chave, nunca imprime o valor.
 
+Se a chave faltar ou for inválida, a CLI **falha fechado** (mensagem clara em stderr, exit ≠ 0) e
+**não** envia o prompt. Sem rede ou com a API inacessível, o erro é genérico (“Não foi possível
+obter resposta da DeepSeek” / similar) — nunca imprime o valor da chave nem detalhes brutos do
+transporte.
+
 ## Uso básico
 
 ```bash

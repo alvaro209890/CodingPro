@@ -73,13 +73,20 @@ Cada fase do doc 04 tem um marco que é, na prática, um roteiro manual. Manter 
 ## Testes de robustez específicos (lista de tortura)
 
 - [ ] Arquivos com CRLF, BOM, encoding latin-1, sem newline final
-- [ ] Caminhos com espaço/acento (padrão nas máquinas pt-BR: `Área de trabalho`, `Documentos`)
-- [ ] Repo gigante (>50k arquivos) — indexação não trava a TUI
-- [ ] Resposta da API truncada/timeout/429 no meio do streaming → retry sem duplicar efeito de tool
+- [x] Caminhos com espaço/acento (padrão nas máquinas pt-BR: `Área de trabalho`, `Documentos`) — suite `hardening-evals` core+cli, 2026-07-23
+- [x] Repo denso com tetos — `construirRepoMap`/`detectarProjeto` param em `maxArquivos`/`AbortSignal` sem hang; `list_dir` trunca (`LIST_DIR_MAX_ENTRIES`) — 2026-07-23 (não indexa 50k sem teto; o bound de produto é o teto finito)
+- [x] Sem rede / transporte falho e chave ausente/inválida → mensagens fail-closed, exit CLI 2, sem vazar segredo — 2026-07-23
+- [ ] Resposta da API truncada/timeout/429 no meio do streaming → retry sem duplicar efeito de tool (parcialmente coberto no adaptador DeepSeek; cenários multi-tool ainda abertos)
 - [ ] Duas instâncias da CLI no mesmo projeto ao mesmo tempo (lock de sessão/índice)
 - [ ] Kill -9 no meio de uma edição → estado recuperável na próxima abertura
 
+### Suite `pnpm test:evals` (offline, no gate padrão)
+
+Arquivos: `packages/core/test/hardening-evals.test.ts`, `packages/cli/test/hardening-evals.test.ts`.
+Inclusos em `vitest run` / `pnpm check` / CI. Live LLM permanece `pnpm smoke:deepseek` (opt-in).
+
 ## CI
 
-- [ ] GitHub Actions: lint + typecheck + unit + replay em push; E2E diário e evals manual/semanal ainda pendentes
+- [x] GitHub Actions: lint + typecheck + unit + replay + hardening-evals em push via `pnpm check` — 2026-07-23
 - [x] Matriz bloqueante: Node mínimo suportado no Linux + Node fixado em Linux/macOS — 2026-07-22
+- [ ] E2E diário e evals com LLM real (manual/semanal) — pós-1.0 / opt-in

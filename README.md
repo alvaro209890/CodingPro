@@ -5,7 +5,7 @@
 
 **Stack:** TypeScript / Node.js ≥ 24 · monorepo pnpm · comando `codingpro` (alias `cpro`)
 **Licença:** proprietária source-available (ver `LICENSE`; código de terceiros portado mantém a licença original)
-**Status geral:** 🟢 **Fase 1 (a CLI local) funcionalmente completa** — F0–F6 + F8 essenciais (`/review`, undercover) + F9 (install.sh, `doctor`, guia). 614 testes offline, `pnpm check` verde. Falta só polimento visual cosmético (TUI Aurora, adiada) e `npm publish`.
+**Status geral:** 🟢 **Fase 1 / CLI 1.0 fechada offline** — F0–F6 + F8 essenciais (`/review`, undercover, Aurora ANSI) + F9 (install.sh, `doctor`, guia, **hardening + evals** no CI). Gate: `pnpm check` (inclui `pnpm test:evals`). Pós-1.0 / manual: voz F7, pet/XP, upgrades tree-sitter/SQLite/subprocesso, `npm publish` + setup em máquina limpa.
 
 📖 **Guia do usuário:** [`docs/GUIA-DO-USUARIO.md`](docs/GUIA-DO-USUARIO.md) — instalação, configuração, comandos, skills, hooks, MCP, memória.
 
@@ -17,7 +17,8 @@ Requisitos: Node.js 24 (a versão validada está em `.nvmrc` e `.node-version`) 
 ```bash
 nvm use
 pnpm install --frozen-lockfile
-pnpm check
+pnpm check          # lint, types, testes+cobertura (inclui hardening-evals), build, smoke de tarball
+pnpm test:evals     # só a suite de robustez offline (espaços, chave, rede, tetos)
 node packages/cli/dist/index.mjs --ajuda
 node packages/cli/dist/index.mjs \
   --provider replay \
