@@ -199,9 +199,46 @@ export { LIST_DIR_MAX_ENTRIES, listDirTool } from "./tools/list-dir.js";
 export { READ_FILE_MAX_BYTES, readFileTool } from "./tools/read-file.js";
 export { rememberTool } from "./tools/remember.js";
 export { repoMapTool } from "./tools/repo-map.js";
+export { codeSearchTool } from "./tools/code-search.js";
 export { TASK_MAX_TAREFAS, taskTool } from "./tools/task.js";
 export { WRITE_FILE_MAX_BYTES, writeFileTool } from "./tools/write-file.js";
 export { Workspace } from "./workspace.js";
+
+// Busca vetorial local (SQLite FTS5 + embeddings offline)
+export {
+  CHUNK_MAX_CHARS,
+  CHUNK_MAX_PER_FILE,
+  type CodeChunk,
+  fragmentarCodigo,
+} from "./vector/chunking.js";
+export {
+  blobParaEmbedding,
+  cosseno,
+  EMBEDDING_DIM,
+  embedTexto,
+  embeddingParaBlob,
+  hashToken,
+  tokenizarCodigo,
+} from "./vector/embeddings.js";
+export {
+  abrirStoreComIndice,
+  type IndexarOptions,
+  type IndexProgresso,
+  type IndexResult,
+  indexarRepositorio,
+  VECTOR_MAX_ARQUIVOS,
+  VECTOR_MAX_FILE_BYTES,
+} from "./vector/vector-index.js";
+export {
+  type ChunkHit,
+  dirCodingpro,
+  type IndexFileRecord,
+  sanitizarQueryFts,
+  VECTOR_DB_FILENAME,
+  VECTOR_SCHEMA_VERSION,
+  type VectorStoreStats,
+  VectorStore,
+} from "./vector/vector-store.js";
 
 // Auto-effort (escolha automática Flash/Pro)
 export {
@@ -218,6 +255,7 @@ import { grepTool } from "./tools/grep.js";
 import { listDirTool } from "./tools/list-dir.js";
 import { readFileTool } from "./tools/read-file.js";
 import { rememberTool } from "./tools/remember.js";
+import { codeSearchTool } from "./tools/code-search.js";
 import { repoMapTool } from "./tools/repo-map.js";
 import { taskTool } from "./tools/task.js";
 import { writeFileTool } from "./tools/write-file.js";
@@ -228,6 +266,7 @@ export const READ_ONLY_TOOLS = Object.freeze([
   listDirTool,
   grepTool,
   repoMapTool,
+  codeSearchTool,
 ] as const);
 
 /** Tools com efeito colateral — sempre passam pelo gate de permissão. */

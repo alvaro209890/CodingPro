@@ -103,6 +103,14 @@ describe("executarChat", () => {
     expect(captura.progresso()).toMatch(/compactado|ctx|sem custo|sessão|contexto/iu);
   });
 
+  it("/index indexa o repositório com spinner opcional", async () => {
+    await writeFile(join(cwd, "z.ts"), "export const z = 1;\n", "utf8");
+    const { provider } = scripted([]);
+    const captura = fakeIo(["/index", undefined], []);
+    await executarChat({ cwd, provider }, captura.io);
+    expect(captura.progresso()).toMatch(/índice|chunks|index/iu);
+  });
+
   it("/custo e /cost sem turnos; /compactar alias", async () => {
     const { provider } = scripted([]);
     const captura = fakeIo(["/custo", "/cost", "/compactar", undefined], []);

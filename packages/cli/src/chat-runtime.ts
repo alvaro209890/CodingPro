@@ -17,6 +17,7 @@ import {
   type ExecutableTool,
   gerarCodingproMd,
   type Hook,
+  indexarRepositorio,
   MEMORY_TOOL_NAMES,
   newSessionId,
   PermissionController,
@@ -456,6 +457,31 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       io.progresso(`${mapa.texto}\n`);
       if (mapa.truncado) {
         io.progresso(`· mapa truncado (${mapa.totalArquivos} arquivos indexados)\n`);
+      }
+      continue;
+    }
+    if (mensagem === "/index" || mensagem === "/indexar") {
+      io.spinner?.start("indexando repositório…");
+      try {
+        let ultimo = "";
+        const result = await indexarRepositorio(workspace, {
+          onProgress: (p) => {
+            if (p.phase === "index" && p.path !== undefined && p.path !== ultimo) {
+              ultimo = p.path;
+              io.spinner?.update(`indexando ${p.current}/${p.total}…`);
+            }
+          },
+          ...(options.signal === undefined ? {} : { signal: options.signal }),
+        });
+        io.spinner?.stop();
+        io.progresso(
+          `${tema.sucesso(
+            `índice: +${result.updated} · iguais ${result.unchanged} · removidos ${result.removed} · ${result.chunks} chunks · ${result.dbPath}`,
+          )}\n`,
+        );
+      } catch (e) {
+        io.spinner?.stop();
+        io.progresso(`${tema.erro(e instanceof Error ? e.message : "falha ao indexar")}\n`);
       }
       continue;
     }

@@ -584,3 +584,19 @@ pedir “execute o plano” depois fazia o modelo agir sem o conteúdo planejado
 
 ### Validação
 - `pnpm check` verde; testes status/tema/chat/cost.
+
+## 2026-07-23 — Busca vetorial local (SQLite FTS5 + embeddings offline)
+
+### Arquitetura
+- `vector/chunking.ts` — fragmentação por headers de linguagem + janelas
+- `vector/embeddings.ts` — embedding local 256-d (hashing trick, L2)
+- `vector/vector-store.ts` — SQLite (`node:sqlite`): files/chunks/FTS5 + BLOB
+- `vector/vector-index.ts` — varredura incremental (mtime/size), ignore dirs
+- Tool `code_search` + comando chat `/index` (spinner)
+- System prompt orienta repo_map → code_search → read_file
+
+### DB
+`.codingpro/vector-index.sqlite` — 100% local, sem sqlite-vss nativo, sem rede.
+
+### Validação
+Testes de chunking/embeddings/store/tool; `pnpm check` verde.

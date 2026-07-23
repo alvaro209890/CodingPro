@@ -15,7 +15,7 @@ export interface TipoAgente {
   readonly systemPrompt: string;
 }
 
-const TOOLS_LEITURA = ["read_file", "list_dir", "grep", "repo_map"] as const;
+const TOOLS_LEITURA = ["read_file", "list_dir", "grep", "repo_map", "code_search"] as const;
 
 /** Tipo `explorer`: só leitura/busca, modelo rápido. */
 export const AGENTE_EXPLORER: TipoAgente = {

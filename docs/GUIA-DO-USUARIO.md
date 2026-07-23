@@ -127,6 +127,7 @@ Segurança: caminhos vão como argumentos do processo (sem shell). Biome ausente
 | `/redo [N]` · `/refazer` | refaz as últimas edições |
 | `/checkpoint` | mostra a linha do tempo de checkpoints |
 | `/mapa` · `/map` | repo map (arquivos e assinaturas ranqueados) |
+| `/index` · `/indexar` | indexa o repo para busca vetorial local (`.codingpro/vector-index.sqlite`) |
 | `/lembrar` · `/remember <fato>` | salva um fato na memória do projeto |
 | `/memory [list\|forget <slug>\|edit <slug>]` | gerencia a memória |
 | `/plan` · `/plano <objetivo>` | plano interativo: perguntas com opções `[1]/[2]`…, salva em `.codingpro/plans/` e **fica ativo na sessão** (o chat lembra ao executar) |
@@ -134,6 +135,26 @@ Segurança: caminhos vão como argumentos do processo (sem shell). Biome ausente
 | `/review [alvo]` | revisa o diff com o subagente revisor |
 | `/skills` · `/skill <nome>` | lista skills / ativa uma skill na sessão |
 | `/init` | gera `CODINGPRO.md` com o projeto detectado |
+
+
+
+### Busca vetorial local (`code_search` + `/index`)
+
+O CodingPro mantém um **índice 100% local** do código em `.codingpro/vector-index.sqlite`:
+
+1. **Chunking** por declarações (TS/JS, Python, Go, Java/Kotlin, SQL) + janela de linhas.
+2. **Embeddings offline** (projeção de tokens, sem rede / sem API externa).
+3. **FTS5** (SQLite embutido no Node 24) + cosseno nos vetores (busca híbrida).
+4. **Incremental** por `mtime` + `size` — só reprocessa arquivos mudados.
+
+No chat:
+
+```text
+/index          # (re)indexa com spinner Aurora
+```
+
+O agente usa a tool **`code_search`** quando o `repo_map` não basta (ex.: “onde o pagamento é validado?”).
+A 1ª chamada pode indexar sozinha se o índice estiver vazio.
 
 ## Memória
 

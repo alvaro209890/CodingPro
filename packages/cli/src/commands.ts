@@ -70,6 +70,12 @@ export const COMANDOS_CHAT: readonly ComandoChat[] = Object.freeze([
     nome: "/mapa",
   },
   {
+    aceitaArgs: false,
+    aliases: ["/indexar"],
+    descricao: "indexa o repo (busca vetorial local SQLite)",
+    nome: "/index",
+  },
+  {
     aceitaArgs: true,
     aliases: ["/remember"],
     descricao: "salva um fato na memória do projeto",
