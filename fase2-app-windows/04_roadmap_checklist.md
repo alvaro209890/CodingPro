@@ -54,6 +54,17 @@ O esqueleto compilava e abria, mas a revisão encontrou 4 bugs que quebravam o p
 - [x] Carregamento e alternância de sessões reais via `SessionStore` no Main process — 2026-07-23
 - [x] **Marco: UI desktop com Claude Code layout, diff viewer, terminal e paleta 100% funcionais** — 2026-07-23
 
+### Correções de estabilidade (pós-W2, 2026-07-23)
+
+O app abria em alguns builds, mas na prática **travava / não respondia**. Revisão de ponta a ponta:
+
+- **Crash no boot (Electron Node 20):** `node:sqlite` era import estático no core → `ERR_UNKNOWN_BUILTIN_MODULE`. Corrigido com lazy-load; `code_search` omitido no desktop.
+- **`isRunning` grudado:** send agora limpa no `finally`; cancelamento via `AbortController` + deny de permissões pendentes (`Ctrl+.` / botão stop).
+- **Sessão incompleta no main:** faltavam `readTracker`, `CheckpointStore`, `alwaysAllow` de memória e persistência JSONL — `edit_file` e multi-turno quebravam. Alinhado ao chat da CLI.
+- **Diff na aprovação:** `previa` no evento `permission-request` (protocolo **v1.2.0**) + `DiffViewer` no modal.
+- **Workspace / start:** path selecionável na UI; scripts `pnpm desktop` e `pnpm desktop:dev`; smokes `smoke-core` / `smoke-int`.
+- Doc: [`packages/desktop/README.md`](../packages/desktop/README.md).
+
 ## W3 — Acabamento & empacotamento (1–2 semanas)
 
 - [ ] Wizard de onboarding visual no primeiro start (chave + git)

@@ -5,12 +5,16 @@
  * - FTS5 em `chunks_fts` para recuperação léxica rápida
  *
  * 100% local — sem rede, sem sqlite-vss nativo.
+ *
+ * `node:sqlite` é carregado sob demanda (não no top-level) para o core poder
+ * importar em runtimes sem o built-in (ex.: Electron 34 / Node 20).
  */
 
 import { createHash } from "node:crypto";
 import { mkdir } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { CoreError } from "../errors.js";
 import type { CodeChunk } from "./chunking.js";
 import {
   blobParaEmbedding,
@@ -22,6 +26,50 @@ import {
 
 export const VECTOR_DB_FILENAME = "vector-index.sqlite";
 export const VECTOR_SCHEMA_VERSION = "1";
+
+/** Superfície mínima do DatabaseSync usada aqui (evita import estático de node:sqlite). */
+interface SqliteStatement {
+  get(...params: unknown[]): unknown;
+  run(...params: unknown[]): unknown;
+  all(...params: unknown[]): unknown[];
+}
+
+interface SqliteDatabase {
+  close(): void;
+  exec(sql: string): void;
+  prepare(sql: string): SqliteStatement;
+}
+
+type SqliteDatabaseCtor = new (path: string) => SqliteDatabase;
+
+let cachedDatabaseSync: SqliteDatabaseCtor | undefined;
+
+async function carregarDatabaseSync(): Promise<SqliteDatabaseCtor> {
+  if (cachedDatabaseSync !== undefined) {
+    return cachedDatabaseSync;
+  }
+  try {
+    const mod = (await import("node:sqlite")) as { DatabaseSync: SqliteDatabaseCtor };
+    cachedDatabaseSync = mod.DatabaseSync;
+    return cachedDatabaseSync;
+  } catch (err: unknown) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new CoreError(
+      "execution-failed",
+      `Busca vetorial indisponível neste runtime (node:sqlite): ${detail}. Use Node.js ≥ 22.5 ou a CLI CodingPro.`,
+    );
+  }
+}
+
+export function isNodeSqliteDisponivel(): boolean {
+  try {
+    const req = createRequire(import.meta.url);
+    req("node:sqlite");
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export interface ChunkHit {
   readonly path: string;
@@ -71,12 +119,13 @@ export function sanitizarQueryFts(query: string): string {
 export class VectorStore {
   private constructor(
     readonly dbPath: string,
-    private readonly db: DatabaseSync,
+    private readonly db: SqliteDatabase,
   ) {}
 
   static async open(codingproDir: string): Promise<VectorStore> {
     await mkdir(codingproDir, { recursive: true });
     const dbPath = join(codingproDir, VECTOR_DB_FILENAME);
+    const DatabaseSync = await carregarDatabaseSync();
     const db = new DatabaseSync(dbPath);
     db.exec("PRAGMA journal_mode = WAL;");
     db.exec("PRAGMA synchronous = NORMAL;");

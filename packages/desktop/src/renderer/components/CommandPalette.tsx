@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface CommandItem {
   command: string;
@@ -7,12 +7,14 @@ interface CommandItem {
 }
 
 const COMMANDS: CommandItem[] = [
-  { command: "/plano", description: "Cria um plano de arquitetura sem modificar arquivos." },
-  { command: "/desfazer", description: "Desfaz o último checkpoint de edição de arquivos." },
-  { command: "/custo", description: "Exibe o custo acumulado de tokens e taxa de cache-hit." },
-  { command: "/review", description: "Executa revisão de código com achados por severidade." },
-  { command: "/limpar", description: "Limpa a tela e redefina a sessão atual." },
-  { command: "/ajuda", description: "Exibe a lista de comandos e atalhos disponíveis." },
+  { command: "/ajuda", description: "Lista comandos e atalhos disponíveis." },
+  { command: "/limpar", description: "Limpa o histórico da conversa atual." },
+  { command: "/custo", description: "Exibe o custo acumulado de tokens da sessão." },
+  { command: "/desfazer", description: "Desfaz o último checkpoint de escrita." },
+  { command: "/refazer", description: "Refaz um checkpoint desfeito." },
+  { command: "/checkpoint", description: "Lista checkpoints recentes." },
+  { command: "/cancelar", description: "Cancela a execução em andamento." },
+  { command: "/review", description: "Pede revisão de código ao agente." },
 ];
 
 interface CommandPaletteProps {
@@ -21,18 +23,26 @@ interface CommandPaletteProps {
   onSelectCommand: (cmd: string) => void;
 }
 
-export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onSelectCommand }) => {
+export const CommandPalette: React.FC<CommandPaletteProps> = ({
+  isOpen,
+  onClose,
+  onSelectCommand,
+}) => {
   const [filter, setFilter] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setFilter("");
+      return;
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
+      if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+        // foco sem autoFocus attribute (biome a11y)
+        inputRef.current?.focus();
+        return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -44,11 +54,16 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
   );
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    // biome-ignore lint/a11y/noStaticElementInteractions: overlay fecha ao clicar fora
+    <div className="modal-overlay" role="presentation" onClick={onClose}>
       <div
         className="modal-card"
         style={{ width: 600, padding: 16 }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Paleta de comandos"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         <div
           style={{
@@ -59,11 +74,20 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
             borderBottom: "1px solid var(--border-subtle)",
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            aria-hidden="true"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <input
+            ref={inputRef}
             type="text"
             placeholder="Digite um comando (ex: /plano, /desfazer)..."
             value={filter}
@@ -77,9 +101,10 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
               fontSize: 14,
               fontFamily: "var(--font-sans)",
             }}
-            autoFocus
           />
-          <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+          <span
+            style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}
+          >
             ESC para fechar
           </span>
         </div>
@@ -95,12 +120,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
           }}
         >
           {filtered.map((cmd) => (
-            <div
+            <button
+              type="button"
               key={cmd.command}
               onClick={() => {
                 onSelectCommand(cmd.command);
                 onClose();
               }}
+              className="recent-item"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -108,8 +135,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
                 padding: "10px 12px",
                 borderRadius: 8,
                 cursor: "pointer",
+                border: "none",
+                background: "transparent",
+                color: "inherit",
+                textAlign: "left",
+                width: "100%",
               }}
-              className="recent-item"
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span
@@ -125,10 +156,18 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
                   {cmd.description}
                 </span>
               </div>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                aria-hidden="true"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <polyline points="9 18 15 12 9 6" />
               </svg>
-            </div>
+            </button>
           ))}
         </div>
       </div>

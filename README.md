@@ -97,7 +97,7 @@ permanecer dentro dele e a fixture é lida em snapshot seguro. Consulte o
 | Fase | O quê | Planos | Status |
 |---|---|---|---|
 | **1** | **CLI executada localmente e funcional** (sem backend próprio; inferência via DeepSeek) | [`planos/`](planos/) — docs 01–16 | 🟢 funcionalmente completa (falta polimento visual + `npm publish`) |
-| **2** | **App Windows** (Electron, estilo Claude Code desktop; core da CLI reaproveitado) | [`fase2-app-windows/`](fase2-app-windows/) | 🟢 W0, W1 e W2 concluídos (app Electron rodando) |
+| **2** | **App Windows** (Electron, estilo Claude Code desktop; core da CLI reaproveitado) | [`fase2-app-windows/`](fase2-app-windows/) · [`packages/desktop/README.md`](packages/desktop/README.md) | 🟢 W0–W2 estáveis (chat, permissões+diff, terminal, paleta, cancel, sessões); W3 empacotamento pendente |
 | **3** | **Plataforma web**: site, contas, proxy LLM com **limites por usuário** (backend neste PC + Cloudflare Tunnel em `cursar.space`) | [`fase3-plataforma-web/`](fase3-plataforma-web/) | 📋 planejada |
 
 **API de desenvolvimento/testes (todas as fases):** a origem da chave DeepSeek neste PC é o

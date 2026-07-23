@@ -10,6 +10,9 @@
   "scripts": {
     "build": "pnpm --filter @codingpro/llm build && pnpm --filter @codingpro/core build && pnpm --filter codingpro build && pnpm --filter @codingpro/desktop build",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build && pnpm test:package",
+    "desktop": "pnpm --filter @codingpro/desktop start",
+    "desktop:dev": "pnpm --filter @codingpro/desktop dev",
+    "desktop:build": "pnpm --filter @codingpro/llm build && pnpm --filter @codingpro/core build && pnpm --filter @codingpro/desktop build",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint .",

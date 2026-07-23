@@ -24,9 +24,9 @@ O que foi entregue: workspace sandboxado, loop agêntico com permissões, chat i
 
 O que falta (polimento): auto-effort com roteamento Flash automático, `/cost` com taxa de cache-hit, i18n pt-BR canônico, TUI Aurora (Ink/temas), pet/XP, evals no CI, hardening final.
 
-**Fase 2 (App Windows) avançando rápido — W0, W1 e W2 concluídos** (2026-07-23). Contrato de eventos Core↔UI (`events.ts`, v1.1.0), suporte a paths por plataforma (`platform-paths.ts`, `%APPDATA%\CodingPro`), adaptador de shell Windows, pacotes `core` e `llm` exportando corretamente para ESM no Node/Electron (`dist/index.mjs`), interface gráfica redesenhada no padrão Claude Code com animações CSS Aurora premium (typing indicator, glow pulse, modal spring animations), paleta de comandos `Ctrl+K` global funcional, terminal integrado, visualizador de diff, carregamento de sessões reais e carregamento seguro de API key via `.codingpro/.env`. App executando e funcionando perfeitamente!
+**Fase 2 (App Windows) — W0–W2 estáveis** (2026-07-23). Contrato Core↔UI `events.ts` **v1.2.0** (`requestId` + `previa` de diff), paths Windows, shell adapter, UI Claude Code/Aurora, terminal, paleta `Ctrl+K`, cancel `Ctrl+.`, sessões JSONL, checkpoints/`readTracker` iguais à CLI. **Hardening pós-W2:** lazy `node:sqlite` (Electron Node 20 não crasha mais no boot), `isRunning`/`AbortController` anti-travamento, workspace selecionável, `pnpm desktop` / `desktop:dev`, smokes e doc em `packages/desktop/README.md`. Validado ao vivo: janela sobe, smoke-int com DeepSeek (`list_dir`) OK.
 
-**Pronto para a W3 (Drag & Drop, Temas e Empacotamento .exe com electron-builder).**
+**Próximo: W3** (onboarding, temas, drag&drop, electron-builder .exe, auto-update).
 
 O **F1.2** adicionou efeitos e permissões. `write_file` ancora a escrita no realpath do diretório-pai
 (que já deve existir) e abre com `O_NOFOLLOW` (symlink final → bloqueado); `bash` roda na raiz com

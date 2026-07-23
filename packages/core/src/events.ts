@@ -1,8 +1,9 @@
 import type { ChatMessage, FinishReason, TokenUsage, ToolCall, ToolResult } from "@codingpro/llm";
 import type { PermissionRequest } from "./permissions.js";
+import type { PreviaEscrita } from "./preview.js";
 
 /** Versão atual do protocolo de eventos Core <-> UI. */
-export const CORE_UI_EVENT_PROTOCOL_VERSION = "1.1.0";
+export const CORE_UI_EVENT_PROTOCOL_VERSION = "1.2.0";
 
 /** Eventos brutos emitidos pelo loop agêntico durante a execução de um turno. */
 export type AgentEvent =
@@ -23,6 +24,8 @@ export interface UiPermissionEvent {
   readonly request: PermissionRequest;
   /** Correlaciona com `UiPermissionResponse.requestId` — a UI deve ecoar de volta sem gerar a sua própria. */
   readonly requestId: string;
+  /** Prévia best-effort de write/edit (aditivo v1.2.0). */
+  readonly previa?: PreviaEscrita;
 }
 
 /** Resposta de aprovação enviada pela UI de volta ao Core. */

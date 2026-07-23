@@ -1,5 +1,5 @@
-import { contextBridge, ipcRenderer } from "electron";
 import type { CoreUiEvent, UiPermissionResponse } from "@codingpro/core";
+import { contextBridge, ipcRenderer } from "electron";
 import type { CodingProDesktopAPI } from "../types/electron.js";
 
 const api: CodingProDesktopAPI = {
@@ -21,6 +21,15 @@ const api: CodingProDesktopAPI = {
   },
   chooseWorkspaceFolder: () => {
     return ipcRenderer.invoke("codingpro:choose-workspace-folder");
+  },
+  setWorkspace: (cwd: string) => {
+    return ipcRenderer.invoke("codingpro:set-workspace", cwd);
+  },
+  newSession: () => {
+    return ipcRenderer.invoke("codingpro:new-session");
+  },
+  cancelRun: () => {
+    return ipcRenderer.invoke("codingpro:cancel-run");
   },
   listSessions: () => {
     return ipcRenderer.invoke("codingpro:list-sessions");

@@ -1,5 +1,5 @@
-import type React from "react";
 import type { PreviaEscrita } from "@codingpro/core";
+import type React from "react";
 
 interface DiffViewerProps {
   previa?: PreviaEscrita;
@@ -10,7 +10,10 @@ interface DiffViewerProps {
 export const DiffViewer: React.FC<DiffViewerProps> = ({ previa, onApprove, onReject }) => {
   if (!previa) {
     return (
-      <div className="diff-viewer-empty" style={{ padding: 16, color: "var(--text-muted)", fontSize: 13 }}>
+      <div
+        className="diff-viewer-empty"
+        style={{ padding: 16, color: "var(--text-muted)", fontSize: 13 }}
+      >
         Nenhuma alteração de código para visualizar.
       </div>
     );
@@ -44,7 +47,15 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ previa, onApprove, onRej
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            aria-hidden="true"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
             <polyline points="14 2 14 8 20 8" />
           </svg>
@@ -86,9 +97,9 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ previa, onApprove, onRej
           lineHeight: 1.5,
         }}
       >
-        {linesDepois.map((line, idx) => (
+        {linesDepois.map((line) => (
           <div
-            key={idx}
+            key={`+${line}`}
             style={{
               background: "rgba(34, 197, 94, 0.12)",
               color: "var(--green-add)",

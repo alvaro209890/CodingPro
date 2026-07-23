@@ -6,16 +6,9 @@ export {
   type AgentFinishReason,
   type AgentResult,
   type RetryOptions,
-  runAgent,
   type RunAgentOptions,
+  runAgent,
 } from "./agent.js";
-export {
-  CORE_UI_EVENT_PROTOCOL_VERSION,
-  type CoreUiEvent,
-  type IpcEnvelope,
-  type UiPermissionEvent,
-  type UiPermissionResponse,
-} from "./events.js";
 export {
   AGENTE_ARCHITECT,
   AGENTE_EXPLORER,
@@ -23,9 +16,23 @@ export {
   AGENTE_WORKER,
   parseTipoAgente,
   resolverTipoAgente,
-  type TipoAgente,
   TIPOS_AGENTE_PADRAO,
+  type TipoAgente,
 } from "./agent-types.js";
+export {
+  diretrizAtribuicao,
+  MODO_ATRIBUICAO_PADRAO,
+  type ModoAtribuicao,
+  modoAtribuicaoValido,
+} from "./attribution.js";
+export type { AutoEffortState } from "./auto-effort.js";
+// Auto-effort (escolha automática Flash/Pro)
+export {
+  atualizarAutoEffort,
+  criarAutoEffortState,
+  prepararAutoEffort,
+  resolverAutoEffort,
+} from "./auto-effort.js";
 export {
   CHECKPOINT_MAX_FILE_BYTES,
   type CheckpointMeta,
@@ -48,48 +55,26 @@ export {
   type LinhaDiff,
   type TipoLinha,
 } from "./diff.js";
-export {
-  diretrizAtribuicao,
-  MODO_ATRIBUICAO_PADRAO,
-  type ModoAtribuicao,
-  modoAtribuicaoValido,
-} from "./attribution.js";
 export { CoreError, type CoreErrorCode } from "./errors.js";
+export {
+  CORE_UI_EVENT_PROTOCOL_VERSION,
+  type CoreUiEvent,
+  type IpcEnvelope,
+  type UiPermissionEvent,
+  type UiPermissionResponse,
+} from "./events.js";
 export { readFileWithin, removeFileWithin, writeFileWithin } from "./fs-safe.js";
-export { getGlobalConfigDir, getGlobalMemoryDir, normalizePlatformPath } from "./platform-paths.js";
 export { ToolGate } from "./gate.js";
 export {
   criarHookRunner,
   executarHook,
-  type Hook,
   HOOK_DEFAULT_TIMEOUT_MS,
+  type Hook,
   type HookEvent,
   type HookOutcome,
   type HookRunner,
   rodarHooksStop,
 } from "./hooks.js";
-export {
-  type BlocoMemoriaEntrada,
-  buscarMemorias,
-  descricaoDe,
-  gerarIndice,
-  hojeIso,
-  type Memoria,
-  montarBlocoMemoria,
-  MEMORY_MAX_BYTES,
-  MEMORY_MAX_NOME,
-  MEMORY_RETRIEVAL_ORCAMENTO,
-  MEMORY_RETRIEVAL_TOP_K,
-  parseMemoria,
-  pareceSegredo,
-  pontuarMemoria,
-  type RetrievalOptions,
-  serializarMemoria,
-  slugify,
-  termosDe,
-  type TipoMemoria,
-} from "./memory.js";
-export { MemoryStore } from "./memory-store.js";
 export {
   MCP_DEFAULT_TIMEOUT_MS,
   MCP_PROTOCOL_VERSION,
@@ -98,6 +83,28 @@ export {
   nomeMcpTool,
   toolsDoServidorMcp,
 } from "./mcp.js";
+export {
+  type BlocoMemoriaEntrada,
+  buscarMemorias,
+  descricaoDe,
+  gerarIndice,
+  hojeIso,
+  MEMORY_MAX_BYTES,
+  MEMORY_MAX_NOME,
+  MEMORY_RETRIEVAL_ORCAMENTO,
+  MEMORY_RETRIEVAL_TOP_K,
+  type Memoria,
+  montarBlocoMemoria,
+  pareceSegredo,
+  parseMemoria,
+  pontuarMemoria,
+  type RetrievalOptions,
+  serializarMemoria,
+  slugify,
+  type TipoMemoria,
+  termosDe,
+} from "./memory.js";
+export { MemoryStore } from "./memory-store.js";
 export {
   type Approval,
   type Approver,
@@ -109,18 +116,19 @@ export {
   type PermissionPolicy,
   type PermissionRequest,
 } from "./permissions.js";
-export {
-  describeAgentEvent,
-  describeToolCall,
-  describeToolResult,
-  PROGRESS_THINKING,
-} from "./progress.js";
+export { getGlobalConfigDir, getGlobalMemoryDir, normalizePlatformPath } from "./platform-paths.js";
 export {
   formatarPreviaDeEscrita,
   PREVIA_MAX_LINHAS,
   type PreviaEscrita,
   resolverPreviaDeEscrita,
 } from "./preview.js";
+export {
+  describeAgentEvent,
+  describeToolCall,
+  describeToolResult,
+  PROGRESS_THINKING,
+} from "./progress.js";
 export {
   alvosMakefile,
   contarExtensoes,
@@ -130,7 +138,6 @@ export {
   resumoProjeto,
 } from "./project-detect.js";
 export { ToolRegistry } from "./registry.js";
-export { RepoMapCache } from "./repo-map-cache.js";
 export {
   construirRepoMap,
   REPO_MAP_MAX_ARQUIVOS,
@@ -140,15 +147,7 @@ export {
   type RepoMapArquivo,
   type RepoMapOptions,
 } from "./repo-map.js";
-export {
-  extrairSimbolos,
-  type Linguagem,
-  linguagemDeArquivo,
-  type Simbolo,
-  SYMBOLS_MAX_LINHAS,
-  SYMBOLS_MAX_SIMBOLOS,
-  type TipoSimbolo,
-} from "./symbols.js";
+export { RepoMapCache } from "./repo-map-cache.js";
 export { newSessionId, SessionStore } from "./session.js";
 export {
   blocoSkill,
@@ -158,8 +157,8 @@ export {
   sugerirSkills,
 } from "./skills.js";
 export {
-  executarSubagente,
   type ExecutarSubagenteOptions,
+  executarSubagente,
   orquestrarSubagentes,
   SUBAGENTE_MAX_PARALELO,
   SUBAGENTE_MAX_STEPS,
@@ -167,16 +166,25 @@ export {
   type SubagenteSpawner,
   type TarefaSubagente,
 } from "./subagent.js";
+export {
+  extrairSimbolos,
+  type Linguagem,
+  linguagemDeArquivo,
+  type Simbolo,
+  SYMBOLS_MAX_LINHAS,
+  SYMBOLS_MAX_SIMBOLOS,
+  type TipoSimbolo,
+} from "./symbols.js";
 export { SYSTEM_PROMPT_V1 } from "./system-prompt.js";
 export {
   createReadTracker,
-  errorResult,
   type ExecutableTool,
+  errorResult,
   type MemoryScope,
   type ReadTracker,
-  textResult,
   type ToolContext,
   type ToolSideEffect,
+  textResult,
 } from "./tool.js";
 export {
   BASH_DEFAULT_TIMEOUT_MS,
@@ -186,6 +194,7 @@ export {
   BASH_MAX_TIMEOUT_MS,
   bashTool,
 } from "./tools/bash.js";
+export { codeSearchTool } from "./tools/code-search.js";
 export {
   aplicarEdicoes,
   EDIT_FILE_MAX_BLOCKS,
@@ -207,11 +216,8 @@ export { LIST_DIR_MAX_ENTRIES, listDirTool } from "./tools/list-dir.js";
 export { READ_FILE_MAX_BYTES, readFileTool } from "./tools/read-file.js";
 export { rememberTool } from "./tools/remember.js";
 export { repoMapTool } from "./tools/repo-map.js";
-export { codeSearchTool } from "./tools/code-search.js";
 export { TASK_MAX_TAREFAS, taskTool } from "./tools/task.js";
 export { WRITE_FILE_MAX_BYTES, writeFileTool } from "./tools/write-file.js";
-export { Workspace } from "./workspace.js";
-
 // Busca vetorial local (SQLite FTS5 + embeddings offline)
 export {
   CHUNK_MAX_CHARS,
@@ -223,8 +229,8 @@ export {
   blobParaEmbedding,
   cosseno,
   EMBEDDING_DIM,
-  embedTexto,
   embeddingParaBlob,
+  embedTexto,
   hashToken,
   tokenizarCodigo,
 } from "./vector/embeddings.js";
@@ -241,29 +247,22 @@ export {
   type ChunkHit,
   dirCodingpro,
   type IndexFileRecord,
+  isNodeSqliteDisponivel,
   sanitizarQueryFts,
   VECTOR_DB_FILENAME,
   VECTOR_SCHEMA_VERSION,
-  type VectorStoreStats,
   VectorStore,
+  type VectorStoreStats,
 } from "./vector/vector-store.js";
-
-// Auto-effort (escolha automática Flash/Pro)
-export {
-  atualizarAutoEffort,
-  criarAutoEffortState,
-  prepararAutoEffort,
-  resolverAutoEffort,
-} from "./auto-effort.js";
-export type { AutoEffortState } from "./auto-effort.js";
+export { Workspace } from "./workspace.js";
 
 import { bashTool } from "./tools/bash.js";
+import { codeSearchTool } from "./tools/code-search.js";
 import { editFileTool } from "./tools/edit-file.js";
 import { grepTool } from "./tools/grep.js";
 import { listDirTool } from "./tools/list-dir.js";
 import { readFileTool } from "./tools/read-file.js";
 import { rememberTool } from "./tools/remember.js";
-import { codeSearchTool } from "./tools/code-search.js";
 import { repoMapTool } from "./tools/repo-map.js";
 import { taskTool } from "./tools/task.js";
 import { writeFileTool } from "./tools/write-file.js";

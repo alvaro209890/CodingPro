@@ -1,18 +1,35 @@
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface IntegratedTerminalProps {
   isOpen: boolean;
   onClose: () => void;
+  cwd?: string;
 }
 
-export const IntegratedTerminal: React.FC<IntegratedTerminalProps> = ({ isOpen, onClose }) => {
+export const IntegratedTerminal: React.FC<IntegratedTerminalProps> = ({ isOpen, onClose, cwd }) => {
   const [terminalInput, setTerminalInput] = useState("");
-  const [logs, setLogs] = useState<string[]>([
-    "CodingPro Terminal",
-    `Diretório: ${window.codingproAPI ? "(carregando...)" : "(API não conectada)"}`,
-  ]);
+  const [logs, setLogs] = useState<string[]>(["CodingPro Terminal"]);
   const [isExecuting, setIsExecuting] = useState(false);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (cwd) {
+      setLogs((prev) => {
+        const next = [...prev];
+        // atualiza linha de diretório sem poluir
+        if (next.length === 1 || next[1]?.startsWith("Diretório:")) {
+          return [next[0] ?? "CodingPro Terminal", `Diretório: ${cwd}`];
+        }
+        return [...next, `Diretório: ${cwd}`];
+      });
+    }
+  }, [cwd]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: rolar ao mudar logs
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [logs, isExecuting]);
 
   if (!isOpen) return null;
 
@@ -23,9 +40,12 @@ export const IntegratedTerminal: React.FC<IntegratedTerminalProps> = ({ isOpen, 
     setIsExecuting(true);
     setLogs((prev) => [...prev, `$ ${cmd}`]);
 
-    if (window.codingproAPI) {
+    try {
+      if (!window.codingproAPI) {
+        setLogs((prev) => [...prev, "[erro] API desktop não conectada"]);
+        return;
+      }
       const res = await window.codingproAPI.runTerminalCommand(cmd);
-      setIsExecuting(false);
       if (res.stdout) {
         setLogs((prev) => [...prev, res.stdout.trim()]);
       }
@@ -33,9 +53,11 @@ export const IntegratedTerminal: React.FC<IntegratedTerminalProps> = ({ isOpen, 
         setLogs((prev) => [...prev, `[stderr]\n${res.stderr.trim()}`]);
       }
       setLogs((prev) => [...prev, `[código ${res.exitCode}]`]);
-    } else {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setLogs((prev) => [...prev, `[erro] ${msg}`]);
+    } finally {
       setIsExecuting(false);
-      setLogs((prev) => [...prev, "[erro] API desktop não conectada"]);
     }
   };
 
@@ -54,7 +76,6 @@ export const IntegratedTerminal: React.FC<IntegratedTerminalProps> = ({ isOpen, 
         zIndex: 90,
       }}
     >
-      {/* Header do Terminal */}
       <div
         style={{
           height: 36,
@@ -75,13 +96,17 @@ export const IntegratedTerminal: React.FC<IntegratedTerminalProps> = ({ isOpen, 
         <button
           type="button"
           onClick={onClose}
-          style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer" }}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "var(--text-muted)",
+            cursor: "pointer",
+          }}
         >
           ✕
         </button>
       </div>
 
-      {/* Logs do Terminal */}
       <div
         style={{
           flex: 1,
@@ -95,14 +120,18 @@ export const IntegratedTerminal: React.FC<IntegratedTerminalProps> = ({ isOpen, 
           gap: 4,
         }}
       >
-        {logs.map((log, i) => (
-          <div key={i} style={{ whiteSpace: "pre-wrap", lineHeight: 1.4 }}>
+        {logs.map((log) => (
+          <div
+            key={`${log.slice(0, 24)}-${log.length}`}
+            style={{ whiteSpace: "pre-wrap", lineHeight: 1.4 }}
+          >
             {log}
           </div>
         ))}
+        {isExecuting && <div style={{ opacity: 0.6 }}>…</div>}
+        <div ref={bottomRef} />
       </div>
 
-      {/* Input de Comando */}
       <div
         style={{
           display: "flex",
@@ -116,10 +145,12 @@ export const IntegratedTerminal: React.FC<IntegratedTerminalProps> = ({ isOpen, 
         <span style={{ color: "var(--accent-green)", fontFamily: "var(--font-mono)" }}>$</span>
         <input
           type="text"
-          placeholder="Digite um comando (ex: pnpm test, git status)..."
+          placeholder="Digite um comando (ex: pnpm test, git status)…"
           value={terminalInput}
           onChange={(e) => setTerminalInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleRunCommand()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void handleRunCommand();
+          }}
           disabled={isExecuting}
           style={{
             flex: 1,
