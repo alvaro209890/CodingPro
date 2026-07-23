@@ -1,4 +1,6 @@
 import type React from "react";
+import type { TemaNome } from "../../shared/temas-paleta.js";
+import { TEMAS, DESCRICAO_TEMA } from "../../shared/temas-paleta.js";
 
 interface SettingsPanelProps {
   autoApprove: boolean;
@@ -7,15 +9,58 @@ interface SettingsPanelProps {
   onModelChange?: (m: string) => void;
   effortLevel: string;
   onEffortChange?: (e: string) => void;
+  tema: TemaNome;
+  onTemaChange: (t: TemaNome) => void;
 }
+
+const ROTULOS_TEMA: Record<TemaNome, string> = {
+  aurora: "Aurora",
+  solar: "Solar",
+  neon: "Neon",
+  mono: "Mono",
+};
+
+const CORES_TEMA: Record<TemaNome, string> = {
+  aurora: "var(--theme-primaria)",
+  solar: "var(--theme-primaria)",
+  neon: "var(--theme-primaria)",
+  mono: "var(--theme-primaria)",
+};
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   autoApprove,
   onToggleAutoApprove,
   modelName,
   effortLevel,
+  tema,
+  onTemaChange,
 }) => (
   <div className="settings-panel">
+    <div className="settings-section">
+      <div className="settings-label">Tema</div>
+      <div className="settings-theme-grid">
+        {TEMAS.map((t) => (
+          <button
+            key={t}
+            type="button"
+            className={`settings-theme-chip${t === tema ? " active" : ""}`}
+            onClick={() => onTemaChange(t)}
+            title={DESCRICAO_TEMA[t]}
+          >
+            <span
+              className="settings-theme-swatch"
+              style={{
+                background: `linear-gradient(135deg, var(--theme-primaria), var(--theme-acento))`,
+              }}
+              data-theme-preview={t}
+            />
+            <span className="settings-theme-name">{ROTULOS_TEMA[t]}</span>
+          </button>
+        ))}
+      </div>
+      <div className="settings-hint">{DESCRICAO_TEMA[tema]}</div>
+    </div>
+
     <div className="settings-section">
       <div className="settings-label">Modelo</div>
       <div className="settings-value">{modelName}</div>
@@ -60,7 +105,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
     <div className="settings-section">
       <div className="settings-label">Versão</div>
-      <div className="settings-value">v0.1.0 — Fase 2 (W2.5)</div>
+      <div className="settings-value">v0.1.0 — Fase 2 (W3-dev)</div>
     </div>
   </div>
 );

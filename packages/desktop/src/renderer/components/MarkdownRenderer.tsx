@@ -17,7 +17,7 @@ export function renderMarkdown(text: string): string {
               l
                 .split("|")
                 .map((c) => c.trim())
-                .filter((c: string, i: number, arr: string[]) => i > 0 && i < arr.length - 1);
+                .filter((_c: string, i: number, arr: string[]) => i > 0 && i < arr.length - 1);
       const headerCells = cells(headerLine);
       const thead = `<tr>${headerCells.map((c) => `<th>${c}</th>`).join("")}</tr>`;
       const tbody = bodyLines
