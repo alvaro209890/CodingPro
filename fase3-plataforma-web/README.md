@@ -13,11 +13,11 @@ O **site do CodingPro**: a pessoa entra, **cria uma conta** e passa a usar a CLI
 
 Componentes:
 
-1. **Site** — landing + cadastro/login + dashboard do usuário (uso, limite, token de acesso da CLI).
-2. **API/Proxy LLM** — backend que autentica o usuário, repassa as chamadas ao DeepSeek com streaming passthrough, conta tokens e corta quando o limite acaba. O contrato wire é OpenAI-compatible, espelhando a `Provider` interface do `packages/llm` (campos de `usage` já definidos: `inputTokens`, `outputTokens`, `cacheReadInputTokens`, `reasoningTokens`).
-3. **Painel admin (só o Álvaro)** — criar/bloquear usuários, definir limite individual, ver consumo em tempo real.
-4. **Modo de acesso cloud** na CLI/app — `codingpro login` troca a autenticação e o transporte para
-   o proxy; o provider continua DeepSeek e a allowlist permanece V4 Pro/Flash. O modo `access.mode = cloud` (já previsto) altera somente `baseUrl` + headers de autenticação.
+1. **Site público** — landing institucional pt-BR + cadastro/login (Next.js, SSR-friendly).
+2. **Dashboard do usuário** — consumo, % do limite, tokens CLI, gráfico diário (Next.js, área logada).
+3. **Painel admin** — **SPA standalone (Vite + React + shadcn/ui)** servido estaticamente pela API. Só o Álvaro acessa. Telas: usuários, consumo, saúde, auditoria, kill switch.
+4. **API/Proxy LLM** — backend Fastify que autentica o usuário, repassa as chamadas ao DeepSeek com streaming passthrough, conta tokens e corta quando o limite acaba. O contrato wire é OpenAI-compatible, espelhando a `Provider` interface do `packages/llm` (campos de `usage` já definidos: `inputTokens`, `outputTokens`, `cacheReadInputTokens`, `reasoningTokens`).
+5. **Modo de acesso cloud** na CLI/app — `codingpro login` troca a autenticação e o transporte para o proxy; o provider continua DeepSeek e a allowlist permanece V4 Pro/Flash. O modo `access.mode = cloud` (já previsto) altera somente `baseUrl` + headers de autenticação.
 
 ## Infra decidida (diretriz do Álvaro)
 
@@ -30,7 +30,7 @@ Componentes:
 
 | Doc | Conteúdo |
 |---|---|
-| [01_arquitetura.md](01_arquitetura.md) | Site, API, proxy LLM com medição, fluxo de conta e login da CLI |
+| [01_arquitetura.md](01_arquitetura.md) | Arquitetura geral, separação site vs dashboard vs admin, decisão admin SPA standalone |
 | [02_infra_neste_pc.md](02_infra_neste_pc.md) | Tunnel, subdomínios, portas, systemd, Postgres compartilhado, coexistência |
-| [03_contas_limites_admin.md](03_contas_limites_admin.md) | Modelo de dados, limites por usuário, painel admin, segurança |
-| [04_roadmap_checklist.md](04_roadmap_checklist.md) | Fases P0–P4 com checklists |
+| [03_contas_limites_admin.md](03_contas_limites_admin.md) | Modelo de dados, limites por usuário, stack e telas do painel admin, segurança |
+| [04_roadmap_checklist.md](04_roadmap_checklist.md) | Fases P0–P4 com checklists (P3 desmembrado: landing, dashboard, admin) |

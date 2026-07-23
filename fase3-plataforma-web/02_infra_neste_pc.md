@@ -18,7 +18,7 @@
 | Item | Valor proposto | Nota |
 |---|---|---|
 | API | `127.0.0.1:8700` | Porta livre a confirmar no inventário |
-| Site (Next) | `127.0.0.1:8701` | idem |
+| Site (Next.js) | `127.0.0.1:8701` | Landing + dashboard. Admin SPA é servido estaticamente pela API (sem porta extra) |
 | Subdomínios | `codingpro.cursar.space` (site) + `codingpro-api.cursar.space` (API) | Mesmo padrão do NexoGeo |
 | Tunnel | **Tunnel próprio novo** (`cloudflared` instância dedicada) | Isolamento: mexer no CodingPro nunca toca o tunnel do NexoGeo. Alternativa (decidir no P0): adicionar hostnames ao tunnel existente — menos processos, mais acoplamento |
 | systemd | `codingpro-api.service`, `codingpro-web.service`, `codingpro-tunnel.service` | `Restart=always`, usuário próprio sem sudo, `WantedBy=multi-user.target` |

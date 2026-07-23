@@ -16,6 +16,7 @@ flowchart LR
 
     subgraph PC["Este PC (acer)"]
         SITE["Site (Next.js)<br/>codingpro.cursar.space"]
+        ADMIN["Admin SPA (Vite+React)<br/>servido via /admin"]
         API["API Fastify<br/>codingpro-api.cursar.space"]
         PG[("Postgres existente<br/>database codingpro")]
     end
@@ -24,9 +25,37 @@ flowchart LR
 
     CLI & APP -->|token cp_...| TUN --> API
     NAV --> TUN --> SITE --> API
+    NAV --> TUN --> ADMIN --> API
     API --> PG
     API -->|proxy streaming| DS
 ```
+
+## Separação de responsabilidades: 3 zonas, não 1 monolito
+
+O front-end da plataforma é dividido em **3 zonas com responsabilidades e entregas independentes**:
+
+| Zona | O que é | Quem acessa | Stack | Subdomínio |
+|---|---|---|---|---|
+| **Landing + cadastro** | Site público pt-BR, institucional, login/signup | Visitantes, usuários | Next.js (SSR) | `codingpro.cursar.space` |
+| **Dashboard do usuário** | Consumo, tokens CLI, gráfico, perfil | Usuários logados | Next.js (área logada) | `codingpro.cursar.space/dashboard` |
+| **Painel admin** | Usuários, limites, saúde, auditoria, kill switch | **Só o Álvaro** | **Vite + React + shadcn/ui (SPA standalone)** | Servido em `/admin` pela API |
+
+### Por que admin como SPA standalone e não integrado ao Next.js
+
+| Fator | Next.js (integrado) | Vite + React (standalone) |
+|---|---|---|
+| SSR necessário? | Não — admin é protegido por auth, não indexável | ✅ Sem SSR = menos CPU no PC compartilhado |
+| Build independente | ❌ Mexer no admin recompila a landing | ✅ Deploy de um não afeta o outro |
+| Serviço extra | ❌ Mesmo processo Next.js | ✅ Servido estaticamente pelo Fastify (`@fastify/static`), zero systemd extra |
+| Velocidade de dev | Lento (RSC, compilação) | ✅ Vite HMR instantâneo |
+| Peso no PC | Mais memória (Next.js + RSC) | ✅ `index.html` + JS/CSS estáticos, sem overhead |
+| Ecossistema | React (mesmo) | ✅ React + TypeScript + Tailwind — nada novo |
+
+**Decisão:** Admin é **Vite + React 19 + shadcn/ui**, build output `dist/` servido pelo Fastify em `/admin`. Sem serviço systemd adicional. A landing e o dashboard continuam em Next.js (SSR útil para landing pública e SEO).
+
+### Diretriz de UI do admin
+
+> **Funcional > bonito.** Componentes shadcn/ui default (sem customização pesada de tema), validação de formulários básica, sem animações, sem modo escuro dedicado (herda do sistema). O admin é ferramenta de trabalho do Álvaro — se cumprir a função com clareza, está pronto.
 
 ## O coração: proxy LLM com medição
 
@@ -46,12 +75,20 @@ Decisões:
   mesma API DeepSeek) — a plataforma muda somente autenticação e transporte.
 - Experiência prévia reaproveitada: o conceito é o mesmo do **Painel de Limites** que o Álvaro já operou com o Vertex (`LIMITS_PANEL_URL` + secret de agente) — agora feito produto.
 
-## Site (Next.js)
+## Site público + dashboard (Next.js)
 
 - **Landing** em pt-BR: o que é, GIF/asciinema da CLI, download (CLI npm + .exe da Fase 2), preços/planos (quando existirem).
 - **Cadastro/login:** e-mail + senha (argon2id) + verificação de e-mail; 2FA TOTP opcional (obrigatório p/ admin).
 - **Dashboard do usuário:** consumo do mês (tokens/US$ e % do limite), gráfico diário, gerar/revogar **token da CLI**, instruções de `codingpro login`.
-- **Painel admin** (doc 03): usuários, limites, consumo global, custo real na DeepSeek.
+
+## Painel admin (Vite + React standalone)
+
+Ver especificação completa no doc [03_contas_limites_admin.md](03_contas_limites_admin.md). Resumo:
+
+- **Stack:** Vite 6 + React 19 + shadcn/ui (Tailwind) + TanStack Table + Recharts + React Query
+- **Auth gate:** `GET /api/admin/check` no boot do SPA → valida sessão + role admin + 2FA; redireciona se falhar
+- **Servido via:** `@fastify/static` na rota `/admin` (mesmo processo da API, porta 8700)
+- **Telas:** usuários, consumo, saúde, auditoria, kill switch
 
 ## Login na CLI (`codingpro login`)
 
@@ -67,6 +104,7 @@ Decisões:
 |---|---|---|
 | API | **Fastify + TS** (Node 24) | Mesmo idioma do resto; streaming SSE maduro; leve p/ este PC |
 | Site | **Next.js** | Padrão que o Álvaro já usa nos painéis (AquiResolve); SSR p/ landing |
+| Admin | **Vite + React 19 + shadcn/ui** | SPA standalone sem SSR; servido estaticamente pelo Fastify; zero serviço extra |
 | Banco | **Postgres existente** + Drizzle ORM | Sem serviço novo; migrations versionadas |
 | Auth | Sessões (site) + tokens opacos `cp_...` (CLI) | Simples, revogável; sem JWT stateless p/ poder cortar na hora |
 | Deploy | systemd + Cloudflare Tunnel (doc 02) | Padrão da casa |
