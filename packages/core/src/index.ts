@@ -10,6 +10,16 @@ export {
   type RunAgentOptions,
 } from "./agent.js";
 export {
+  AGENTE_ARCHITECT,
+  AGENTE_EXPLORER,
+  AGENTE_REVIEWER,
+  AGENTE_WORKER,
+  parseTipoAgente,
+  resolverTipoAgente,
+  type TipoAgente,
+  TIPOS_AGENTE_PADRAO,
+} from "./agent-types.js";
+export {
   CHECKPOINT_MAX_FILE_BYTES,
   type CheckpointMeta,
   type CheckpointRecorder,
@@ -108,6 +118,16 @@ export {
   type TipoSimbolo,
 } from "./symbols.js";
 export { newSessionId, SessionStore } from "./session.js";
+export {
+  executarSubagente,
+  type ExecutarSubagenteOptions,
+  orquestrarSubagentes,
+  SUBAGENTE_MAX_PARALELO,
+  SUBAGENTE_MAX_STEPS,
+  type SubagenteRelatorio,
+  type SubagenteSpawner,
+  type TarefaSubagente,
+} from "./subagent.js";
 export { SYSTEM_PROMPT_V1 } from "./system-prompt.js";
 export {
   createReadTracker,
@@ -148,6 +168,7 @@ export { LIST_DIR_MAX_ENTRIES, listDirTool } from "./tools/list-dir.js";
 export { READ_FILE_MAX_BYTES, readFileTool } from "./tools/read-file.js";
 export { rememberTool } from "./tools/remember.js";
 export { repoMapTool } from "./tools/repo-map.js";
+export { TASK_MAX_TAREFAS, taskTool } from "./tools/task.js";
 export { WRITE_FILE_MAX_BYTES, writeFileTool } from "./tools/write-file.js";
 export { Workspace } from "./workspace.js";
 
@@ -158,6 +179,7 @@ import { listDirTool } from "./tools/list-dir.js";
 import { readFileTool } from "./tools/read-file.js";
 import { rememberTool } from "./tools/remember.js";
 import { repoMapTool } from "./tools/repo-map.js";
+import { taskTool } from "./tools/task.js";
 import { writeFileTool } from "./tools/write-file.js";
 
 /** Tools de leitura seguras — não têm efeito colateral e dispensam permissão. */
@@ -180,9 +202,13 @@ export const MEMORY_TOOLS = Object.freeze([rememberTool] as const);
 /** Nomes das tools de memória, para semear `alwaysAllow` na política de permissão. */
 export const MEMORY_TOOL_NAMES = Object.freeze(MEMORY_TOOLS.map((t) => t.definition.name));
 
+/** Tools de orquestração — delegam a subagentes; leitura pura, sem tocar o projeto direto. */
+export const ORCHESTRATION_TOOLS = Object.freeze([taskTool] as const);
+
 /** Todas as tools do núcleo, prontas para registrar. */
 export const ALL_TOOLS = Object.freeze([
   ...READ_ONLY_TOOLS,
   ...EFFECT_TOOLS,
   ...MEMORY_TOOLS,
+  ...ORCHESTRATION_TOOLS,
 ] as const);

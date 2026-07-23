@@ -1,0 +1,116 @@
+import type { JsonObject, JsonValue, Tool, ToolResult } from "@codingpro/llm";
+import { CoreError } from "../errors.js";
+import type { SubagenteRelatorio } from "../subagent.js";
+import type { ExecutableTool, ToolContext } from "../tool.js";
+import { errorResult, textResult } from "../tool.js";
+
+/**
+ * Delega uma ou mais tarefas a subagentes isolados (explorer/worker/architect/reviewer ou custom),
+ * roda-as em paralelo e consolida os relatórios. Cada subagente tem contexto próprio e não vê a
+ * conversa principal. Habilita casos como "revise este diff com 3 revisores em paralelo".
+ */
+
+export const TASK_MAX_TAREFAS = 8;
+
+const definition: Tool = {
+  description:
+    "Delega tarefas a subagentes isolados e devolve seus relatórios consolidados. Use para " +
+    "exploração, revisão multi-perspectiva, planejamento ou comparação de abordagens em paralelo. " +
+    "Cada tarefa tem um `tipo` (explorer/worker/architect/reviewer ou custom) e um `prompt`.",
+  inputSchema: {
+    additionalProperties: false,
+    properties: {
+      tarefas: {
+        description: "Lista de subtarefas a rodar em paralelo.",
+        items: {
+          additionalProperties: false,
+          properties: {
+            prompt: { description: "A tarefa para o subagente.", type: "string" },
+            tipo: { description: "O tipo de subagente.", type: "string" },
+          },
+          required: ["tipo", "prompt"],
+          type: "object",
+        },
+        type: "array",
+      },
+    },
+    required: ["tarefas"],
+    type: "object",
+  },
+  name: "task",
+};
+
+interface Entrada {
+  readonly tipo: string;
+  readonly prompt: string;
+}
+
+function parseTarefas(value: JsonValue | undefined): Entrada[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new CoreError("invalid-input", "Informe ao menos uma tarefa.");
+  }
+  if (value.length > TASK_MAX_TAREFAS) {
+    throw new CoreError("invalid-input", `No máximo ${TASK_MAX_TAREFAS} tarefas por chamada.`);
+  }
+  return value.map((item) => {
+    const obj = item as Record<string, unknown>;
+    const tipo = obj?.tipo;
+    const prompt = obj?.prompt;
+    if (typeof tipo !== "string" || typeof prompt !== "string" || prompt.trim().length === 0) {
+      throw new CoreError("invalid-input", "Cada tarefa precisa de `tipo` e `prompt`.");
+    }
+    return { prompt, tipo };
+  });
+}
+
+function formatarRelatorio(indice: number, r: SubagenteRelatorio): string {
+  const cabecalho = `## Subagente ${indice + 1} — ${r.tipo}${r.interrompido ? " (interrompido)" : ""}`;
+  const corpo = r.texto.length > 0 ? r.texto : "(sem saída)";
+  return `${cabecalho}\n${corpo}`;
+}
+
+export const taskTool: ExecutableTool = {
+  definition,
+  sideEffect: "read",
+  async execute(input: JsonObject, context: ToolContext): Promise<ToolResult> {
+    const spawner = context.subagentes;
+    if (spawner === undefined) {
+      return errorResult("Subagentes não estão disponíveis nesta sessão.");
+    }
+    let tarefas: Entrada[];
+    try {
+      tarefas = parseTarefas(input.tarefas);
+    } catch (error) {
+      return error instanceof CoreError
+        ? errorResult(error.message)
+        : errorResult("Entrada inválida.");
+    }
+    const desconhecido = tarefas.find((t) => !spawner.tiposDisponiveis.includes(t.tipo));
+    if (desconhecido !== undefined) {
+      return errorResult(
+        `Tipo de subagente desconhecido: ${desconhecido.tipo}. Disponíveis: ${spawner.tiposDisponiveis.join(", ")}.`,
+      );
+    }
+
+    const limite = Math.max(1, spawner.maxParalelo ?? 3);
+    const relatorios: SubagenteRelatorio[] = new Array(tarefas.length);
+    let proximo = 0;
+    const trabalhar = async (): Promise<void> => {
+      for (;;) {
+        const i = proximo;
+        proximo += 1;
+        const tarefa = tarefas[i];
+        if (tarefa === undefined) {
+          return;
+        }
+        relatorios[i] = await spawner.executar(tarefa.tipo, tarefa.prompt, context.signal);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(limite, tarefas.length) }, () => trabalhar()));
+
+    const texto = tarefas
+      .map((_t, i) => formatarRelatorio(i, relatorios[i] as SubagenteRelatorio))
+      .join("\n\n");
+    return textResult(texto);
+  },
+};

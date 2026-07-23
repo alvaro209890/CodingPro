@@ -127,11 +127,11 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 
 ## F5 — Multi-agente
 
-- [ ] Modo subagente + JSON-RPC + tipos de agente
-- [ ] Orquestrador paralelo + tetos de custo
-- [ ] Background tasks + notificação desktop
-- [ ] Modo planejamento (architect → plano → aprovação)
-- [ ] 🏁 Revisão com 3 revisores paralelos consolidada
+- [x] Tipos de agente + subagente isolado — 4 tipos de fábrica (explorer/worker/architect/reviewer) + custom de `.codingpro/agents/*.md` (frontmatter role/tools + corpo=prompt); `executarSubagente` roda contexto isolado (tools filtradas pelo tipo, system prompt próprio, efeitos negados sem aprovador) — 2026-07-23
+- [x] Orquestrador paralelo + tetos — `orquestrarSubagentes` (concorrência limitada, ordem preservada); tetos de passos + timeout; tool `task` (até 8 subtarefas paralelas, relatórios consolidados) no chat e no headless — 2026-07-23
+- [x] Modo planejamento — comando `/plan <objetivo>` roda o arquiteto (só leitura) e salva o plano em `.codingpro/plans/AAAA-MM-DD-slug.md` — 2026-07-23
+- [ ] Upgrade F5: subprocesso stdio/JSON-RPC (hoje é in-process), teto de custo com interrupção, tarefas em background + `notify-send` + `/tasks`, aprovação/edição do plano antes de executar, isolamento por git worktree
+- [~] 🏁 Revisão com 3 revisores paralelos: mecanismo entregue e testado (orquestrador roda 3 em paralelo e consolida); falta validar ao vivo com DeepSeek
 
 ## F6 — Extensibilidade
 

@@ -368,3 +368,51 @@ describe("executarChat — memória, ramos extras", () => {
     expect(p).toContain("não encontrei: nao-existe");
   });
 });
+
+describe("executarChat — subagentes e /plan (F5)", () => {
+  let cwd: string;
+
+  beforeEach(async () => {
+    cwd = await mkdtemp(join(tmpdir(), "codingpro-chat-sub-"));
+  });
+
+  afterEach(async () => {
+    await rm(cwd, { force: true, recursive: true });
+  });
+
+  it("/plan roda o arquiteto e salva o plano em .codingpro/plans", async () => {
+    // provider ecoa: o subagente arquiteto responde com base no objetivo.
+    const provider: Provider = {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "fake",
+      model: "fake",
+      async *stream(request) {
+        const u = [...request.messages].reverse().find((m) => m.role === "user");
+        const c = u?.role === "user" ? `PLANO para ${u.content}` : "PLANO";
+        yield { text: c, type: "text-delta" };
+        yield { message: { content: c, role: "assistant" }, reason: "stop", type: "finish" };
+      },
+    };
+    const captura = fakeIo(["/plan migrar para SQLite", undefined], []);
+    await executarChat({ cwd, memoriaGlobalDir: join(cwd, "gmem"), provider }, captura.io);
+    expect(captura.saida()).toContain("PLANO para migrar para SQLite");
+    expect(captura.progresso()).toContain("plano salvo em");
+    const planos = await readFile(
+      join(
+        cwd,
+        ".codingpro",
+        "plans",
+        `${new Date().toISOString().slice(0, 10)}-migrar-para-sqlite.md`,
+      ),
+      "utf8",
+    );
+    expect(planos).toContain("PLANO para migrar para SQLite");
+  });
+
+  it("/plan sem objetivo mostra uso", async () => {
+    const { provider } = scripted([]);
+    const captura = fakeIo(["/plan", undefined], []);
+    await executarChat({ cwd, memoriaGlobalDir: join(cwd, "gmem"), provider }, captura.io);
+    expect(captura.progresso()).toContain("uso: /plan");
+  });
+});

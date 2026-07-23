@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import {
   type AgentResult,
   createReadTracker,
@@ -5,6 +6,7 @@ import {
   MEMORY_TOOL_NAMES,
   MEMORY_TOOLS,
   newSessionId,
+  ORCHESTRATION_TOOLS,
   PermissionController,
   READ_ONLY_TOOLS,
   runAgent,
@@ -17,6 +19,7 @@ import {
 import { type ChatMessage, formatCost, type Provider } from "@codingpro/llm";
 import { sanitizarTextoTerminal } from "./headless.js";
 import { criarMemoriaSessao } from "./memory-runtime.js";
+import { carregarTiposCustom, criarSpawnerSubagentes } from "./subagent-runtime.js";
 
 export interface AgenteHeadlessOptions {
   /** Retoma a sessão mais recente do `sessaoDir` quando nenhum `resumirId` é dado. */
@@ -57,7 +60,7 @@ export async function executarAgenteHeadless(
   options.signal?.throwIfAborted();
   const workspace = await Workspace.create(options.cwd);
   const registry = new ToolRegistry();
-  for (const tool of [...READ_ONLY_TOOLS, ...MEMORY_TOOLS]) {
+  for (const tool of [...READ_ONLY_TOOLS, ...MEMORY_TOOLS, ...ORCHESTRATION_TOOLS]) {
     registry.register(tool);
   }
   // Efeitos no projeto exigem aprovação (ausente aqui → negados); memória é pré-autorizada.
@@ -66,6 +69,12 @@ export async function executarAgenteHeadless(
     new PermissionController({ alwaysAllow: MEMORY_TOOL_NAMES, mode: "ask" }),
   );
   const memoria = criarMemoriaSessao(workspace.root, options.memoriaGlobalDir);
+  const spawner = criarSpawnerSubagentes({
+    custom: await carregarTiposCustom(join(workspace.root, ".codingpro", "agents")),
+    memory: memoria.scope,
+    provider: options.provider,
+    workspace,
+  });
 
   const promptMsg: ChatMessage = { content: options.prompt, role: "user" };
   let store: SessionStore | undefined;
@@ -91,6 +100,7 @@ export async function executarAgenteHeadless(
     context: {
       memory: memoria.scope,
       readTracker,
+      subagentes: spawner,
       workspace,
       ...(options.signal === undefined ? {} : { signal: options.signal }),
     },

@@ -187,3 +187,24 @@ verdes, `pnpm check` completo aprovado.
 Falta na F4: **índice SQLite/FTS5** (hoje é varredura+scoring léxico em memória) e o **consolidador
 com DeepSeek Flash** (extração de fatos esquecidos, merge por similaridade, poda por idade×força) — a
 consolidação **mecânica** (arquivar/changelog/reindexar) já está pronta.
+
+## F5 — Multi-agente (em andamento)
+
+A **F5** entregou os **subagentes e a orquestração paralela**, em processo (v1). `agent-types.ts` define
+4 tipos de fábrica — **explorer** (só leitura/busca, rápido), **worker** (geral), **architect** (planeja,
+só leitura) e **reviewer** (revisa/reporta, só leitura) — cada um com perfil de papel (`auto|main|fast`),
+tools permitidas e system prompt; tipos **custom** vêm de `.codingpro/agents/<nome>.md` (frontmatter
+`role`/`tools` + corpo = prompt), sem provider ou ID de modelo arbitrário. `executarSubagente` roda um
+subagente com **contexto isolado** (só as tools do seu tipo, seu system prompt, a tarefa como único
+input — não vê a conversa principal), com tetos de **passos + timeout**; interrupção vira relatório
+parcial. `orquestrarSubagentes` roda N tarefas com **concorrência limitada** preservando a ordem. A tool
+**`task`** delega até 8 subtarefas em paralelo e consolida os relatórios (habilita "revise este diff com
+3 revisores"); o **`SubagenteSpawner`** é injetado no `ToolContext` pelo runtime (mantém o núcleo
+agnóstico de provider). No chat/headless o spawner reusa o provider da sessão e carrega os tipos custom;
+o comando **`/plan <objetivo>`** roda o arquiteto e salva o plano em `.codingpro/plans/`. Efeitos de
+subagente passam pelo gate sem aprovador → negados fail-closed. Validado por 30 testes offline (526 no
+total) e `pnpm check` completo.
+
+Falta na F5: **subprocesso stdio/JSON-RPC** (hoje in-process), **roteamento por papel** Pro/Flash,
+**interrupção por teto de custo**, **tarefas em background** (`/tasks` + `notify-send`), **aprovação/edição
+do plano** antes de executar e **isolamento por git worktree**.

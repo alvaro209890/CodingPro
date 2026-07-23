@@ -353,3 +353,37 @@ memória persistente** (store markdown+frontmatter, `MEMORY.md`, tool `remember`
 
 F5 — multi-agente (modo subagente stdio/JSON-RPC, orquestrador paralelo com tetos de custo, tarefas
 em background com notificação, modo planejamento arquiteto→plano→aprovação).
+
+## 2026-07-23 — F5: subagentes, orquestrador paralelo e modo planejamento
+
+### Entregue
+
+- `agent-types.ts`: 4 tipos de fábrica (explorer/worker/architect/reviewer) com perfil (role
+  auto|main|fast), tools permitidas e system prompt; `parseTipoAgente` lê custom de
+  `.codingpro/agents/*.md` (frontmatter role/tools + corpo = prompt); `resolverTipoAgente`.
+- `subagent.ts`: `executarSubagente` roda um subagente com contexto ISOLADO (só as tools do tipo,
+  system prompt do tipo, tarefa como único input), tetos de passos + timeout, e interrupção
+  (tempo/cancelamento) vira relatório parcial em vez de erro. `orquestrarSubagentes` roda N tarefas
+  com concorrência limitada preservando a ordem. `SubagenteSpawner` (injetado no ToolContext).
+- Tool `task`: delega até 8 subtarefas a subagentes em paralelo e consolida os relatórios — habilita
+  "revise com 3 revisores em paralelo". Não aninha (o pool do subagente não inclui `task`).
+- CLI `subagent-runtime.ts`: `carregarTiposCustom` + `criarSpawnerSubagentes` (reusa o provider da
+  sessão). Ligado ao chat e ao headless (context.subagentes + tool `task`). Comando `/plan <objetivo>`
+  roda o arquiteto (só leitura) e salva o plano em `.codingpro/plans/AAAA-MM-DD-slug.md`.
+
+### Decisões
+
+- Subagentes in-process (não subprocesso stdio/JSON-RPC): entrega a orquestração paralela e o
+  isolamento de contexto já, testável offline; o subprocesso JSON-RPC fica de upgrade.
+- Reusam o provider da sessão (roteamento por papel Pro/Flash fica de upgrade).
+- Efeitos de subagente passam pelo gate sem aprovador → negados fail-closed (como o headless).
+- Tetos v1 = passos + timeout; interrupção por custo fica de upgrade.
+
+### Validação
+
+- 30 testes offline novos; 526 no total. `pnpm check` completo aprovado.
+- `/plan` validado de ponta a ponta no teste de integração do chat (arquiteto → plano salvo em disco).
+
+### Próximo incremento
+
+F6 — extensibilidade (cliente MCP stdio, skills .md com auto-sugestão, hooks pre/post/stop).

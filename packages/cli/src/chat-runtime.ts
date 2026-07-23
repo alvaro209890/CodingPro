@@ -1,3 +1,4 @@
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   ALL_TOOLS,
@@ -15,6 +16,8 @@ import {
   resumoProjeto,
   runAgent,
   SessionStore,
+  slugify,
+  type SubagenteSpawner,
   SYSTEM_PROMPT_V1,
   ToolGate,
   ToolRegistry,
@@ -26,6 +29,7 @@ import { type ChatMessage, type CostBreakdown, formatCost, type Provider } from 
 import { sanitizarTextoTerminal } from "./headless.js";
 import { criarAprovadorInterativo } from "./interactive.js";
 import { criarMemoriaSessao, type MemoriaSessao } from "./memory-runtime.js";
+import { carregarTiposCustom, criarSpawnerSubagentes } from "./subagent-runtime.js";
 
 export interface ChatIo {
   /** Faz uma pergunta (aprovações) e resolve com a resposta digitada. */
@@ -51,7 +55,35 @@ const AJUDA =
   "/undo [N] desfaz as últimas edições · /redo [N] refaz · /checkpoint lista a linha do tempo · " +
   "/mapa mostra o repo map do projeto · /lembrar <fato> salva na memória · " +
   "/memory [list|forget <slug>|edit <slug>] gerencia a memória · " +
+  "/plan <objetivo> gera um plano (subagente arquiteto) · " +
   "/init gera CODINGPRO.md com o projeto detectado\n";
+
+/** Roda o subagente arquiteto para produzir um plano, salva em `.codingpro/plans/` e o exibe. */
+async function comandoPlan(
+  spawner: SubagenteSpawner,
+  root: string,
+  objetivo: string,
+  io: ChatIo,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (objetivo.trim().length === 0) {
+    io.progresso("· uso: /plan <objetivo>\n");
+    return;
+  }
+  io.progresso("· arquiteto planejando…\n");
+  const rel = await spawner.executar("architect", objetivo, signal);
+  const plano = rel.texto.length > 0 ? rel.texto : "(o arquiteto não produziu plano)";
+  io.saida(`${plano}\n`);
+  try {
+    const dir = join(root, ".codingpro", "plans");
+    await mkdir(dir, { recursive: true });
+    const arquivo = join(dir, `${new Date().toISOString().slice(0, 10)}-${slugify(objetivo)}.md`);
+    await writeFile(arquivo, `# Plano: ${objetivo}\n\n${plano}\n`, "utf8");
+    io.progresso(`· plano salvo em ${arquivo}\n`);
+  } catch {
+    io.progresso("· não consegui salvar o plano em disco\n");
+  }
+}
 
 /** Gera (ou regenera, com confirmação) o CODINGPRO.md a partir do projeto detectado. */
 async function comandoInit(workspace: Workspace, io: ChatIo): Promise<void> {
@@ -166,6 +198,14 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
   );
   // Memória persistente: índices sempre no contexto + retrieval por turno; `remember` grava aqui.
   const memoria = criarMemoriaSessao(workspace.root, options.memoriaGlobalDir);
+  // Subagentes: tipos padrão + custom de `.codingpro/agents`; a tool `task` e o `/plan` usam isto.
+  const tiposCustom = await carregarTiposCustom(join(workspace.root, ".codingpro", "agents"));
+  const spawner = criarSpawnerSubagentes({
+    custom: tiposCustom,
+    memory: memoria.scope,
+    provider: options.provider,
+    workspace,
+  });
 
   const store =
     options.sessaoDir === undefined ? undefined : await SessionStore.create(options.sessaoDir);
@@ -228,6 +268,11 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       await comandoMemoria(memoria, mensagem, io);
       continue;
     }
+    if (mensagem === "/plan" || mensagem.startsWith("/plan ") || mensagem.startsWith("/plano ")) {
+      const objetivo = mensagem.replace(/^\/plan(o)?\s*/u, "");
+      await comandoPlan(spawner, workspace.root, objetivo, io, options.signal);
+      continue;
+    }
     if (mensagem === "/mapa" || mensagem === "/map") {
       const mapa = await construirRepoMap(workspace, {
         cacheDir: join(workspace.root, ".codingpro"),
@@ -288,6 +333,7 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
         checkpoints,
         memory: memoria.scope,
         readTracker,
+        subagentes: spawner,
         workspace,
         ...(options.signal === undefined ? {} : { signal: options.signal }),
       },

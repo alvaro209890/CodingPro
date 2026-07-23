@@ -1,6 +1,7 @@
 import type { JsonObject, Tool, ToolResult } from "@codingpro/llm";
 import type { CheckpointRecorder } from "./checkpoints.js";
 import type { MemoryStore } from "./memory-store.js";
+import type { SubagenteSpawner } from "./subagent.js";
 import type { Workspace } from "./workspace.js";
 
 /**
@@ -44,6 +45,8 @@ export interface ToolContext {
   readonly checkpoints?: CheckpointRecorder;
   /** Lojas de memória; a tool `remember` grava aqui. */
   readonly memory?: MemoryScope;
+  /** Fábrica de subagentes; a tool `task` delega através dela. */
+  readonly subagentes?: SubagenteSpawner;
 }
 
 /**
