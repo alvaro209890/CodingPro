@@ -6,7 +6,9 @@ import type { ChatIo } from "./chat-runtime.js";
 import { criarLeitorDeLinhas } from "./line-reader.js";
 import { executarCli } from "./program.js";
 import { criarPromptTty } from "./prompt-tty.js";
+import { arquivoPetPadrao, petHabilitado } from "./pet-runtime.js";
 import { criarProviderRuntime } from "./provider-runtime.js";
+import { carregarNomeTema } from "./tema-config.js";
 import { criarTema } from "./tema.js";
 
 const controller = new AbortController();
@@ -23,7 +25,8 @@ const interrupt = () => {
 process.on("SIGINT", interrupt);
 
 // Tema visual detectado do terminal real (truecolor/256/16/nenhuma), respeitando NO_COLOR.
-const tema = criarTema();
+// A paleta (aurora/solar/neon/mono) é refinada em main() a partir de settings.json/env.
+let tema = criarTema();
 /** UI rica: precisa de stdin TTY (setas/raw). stdout/stderr TTY só melhoram cor. */
 const stdinTty = process.stdin.isTTY === true;
 const saidaTty = process.stdout.isTTY === true && process.stderr.isTTY === true;
@@ -86,6 +89,13 @@ function criarChatIo(): ChatIo {
  */
 async function main(): Promise<number> {
   try {
+    // Paleta escolhida em settings.json/env (mantém a cor/ascii já detectadas do terminal).
+    const nomeTema = await carregarNomeTema(process.cwd(), homedir()).catch(
+      () => "aurora" as const,
+    );
+    tema = criarTema({ ascii: tema.ascii, nivel: tema.cor, paleta: nomeTema });
+    // Companheiro/XP: resolvido aqui (settings/env) e repassado ao chat via services.
+    const petLigado = await petHabilitado(process.cwd(), homedir()).catch(() => false);
     return await executarCli(
       process.argv.slice(2),
       {
@@ -105,6 +115,8 @@ async function main(): Promise<number> {
             },
             controller.signal,
           ),
+        petArquivo: arquivoPetPadrao(homedir()),
+        petHabilitado: petLigado,
         raizMemoriaGlobal: join(homedir(), ".codingpro", "memory"),
         raizProjeto: process.cwd(),
         raizSessoes: join(homedir(), ".codingpro", "sessions"),

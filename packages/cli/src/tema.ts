@@ -19,18 +19,112 @@ interface CorRGB {
   readonly ansi256: number;
 }
 
-const AURORA = {
+/** Tons base compartilhados entre paletas (erros/avisos precisam ser legíveis em todo tema). */
+const TOM = {
   amarelo: { ansi16: 93, ansi256: 221, b: 71, g: 191, r: 245 },
+  azulNeon: { ansi16: 94, ansi256: 63, b: 255, g: 120, r: 96 },
   branco: { ansi16: 97, ansi256: 255, b: 245, g: 245, r: 245 },
+  cianoNeon: { ansi16: 96, ansi256: 51, b: 238, g: 211, r: 34 },
   ciano: { ansi16: 96, ansi256: 45, b: 212, g: 182, r: 6 },
   cinza: { ansi16: 90, ansi256: 245, b: 148, g: 148, r: 148 },
+  cinzaClaro: { ansi16: 37, ansi256: 250, b: 180, g: 180, r: 180 },
+  cinzaMedio: { ansi16: 90, ansi256: 244, b: 120, g: 120, r: 120 },
   esmeralda: { ansi16: 92, ansi256: 43, b: 129, g: 185, r: 16 },
+  lima: { ansi16: 92, ansi256: 148, b: 22, g: 204, r: 132 },
+  magenta: { ansi16: 95, ansi256: 198, b: 172, g: 60, r: 255 },
+  laranja: { ansi16: 93, ansi256: 208, b: 22, g: 115, r: 249 },
+  rosa: { ansi16: 91, ansi256: 204, b: 94, g: 63, r: 244 },
+  solAmarelo: { ansi16: 93, ansi256: 220, b: 21, g: 204, r: 250 },
+  verdeNeon: { ansi16: 92, ansi256: 48, b: 160, g: 230, r: 16 },
   vermelho: { ansi16: 91, ansi256: 203, b: 92, g: 92, r: 239 },
   violeta: { ansi16: 95, ansi256: 141, b: 246, g: 92, r: 139 },
 } as const satisfies Record<string, CorRGB>;
 
-/** Gradiente do banner (esmeralda → ciano → violeta). */
-const GRADIENTE: readonly CorRGB[] = [AURORA.esmeralda, AURORA.ciano, AURORA.violeta];
+/** Nomes dos temas selecionáveis. `aurora` é o padrão histórico. */
+export type TemaNome = "aurora" | "solar" | "neon" | "mono";
+
+/** Paleta semântica de um tema: cada slot mapeia para um papel da UI. */
+export interface Paleta {
+  /** Cor de destaque/sucesso e do wordmark em 16 cores. */
+  readonly primaria: CorRGB;
+  /** Ferramentas, cabeçalho do projeto e tag de status. */
+  readonly acento: CorRGB;
+  /** Símbolo do prompt (❯). */
+  readonly prompt: CorRGB;
+  readonly sucesso: CorRGB;
+  readonly erro: CorRGB;
+  readonly aviso: CorRGB;
+  /** Texto esmaecido (notas, régua, sub-título). */
+  readonly cinza: CorRGB;
+  /** Gradiente do banner e do pulso do spinner (≥ 2 paradas). */
+  readonly gradiente: readonly CorRGB[];
+}
+
+/** Catálogo dos 4 temas. Ordem = ordem de exibição no `/tema`. */
+export const PALETAS: Readonly<Record<TemaNome, Paleta>> = Object.freeze({
+  aurora: {
+    acento: TOM.ciano,
+    aviso: TOM.amarelo,
+    cinza: TOM.cinza,
+    erro: TOM.vermelho,
+    gradiente: [TOM.esmeralda, TOM.ciano, TOM.violeta],
+    primaria: TOM.esmeralda,
+    prompt: TOM.violeta,
+    sucesso: TOM.esmeralda,
+  },
+  mono: {
+    acento: TOM.cinzaClaro,
+    aviso: TOM.amarelo,
+    cinza: TOM.cinzaMedio,
+    erro: TOM.vermelho,
+    gradiente: [TOM.branco, TOM.cinzaClaro, TOM.cinzaMedio],
+    primaria: TOM.branco,
+    prompt: TOM.branco,
+    sucesso: TOM.branco,
+  },
+  neon: {
+    acento: TOM.magenta,
+    aviso: TOM.solAmarelo,
+    cinza: TOM.cinza,
+    erro: TOM.vermelho,
+    gradiente: [TOM.magenta, TOM.azulNeon, TOM.cianoNeon],
+    primaria: TOM.cianoNeon,
+    prompt: TOM.magenta,
+    sucesso: TOM.verdeNeon,
+  },
+  solar: {
+    acento: TOM.solAmarelo,
+    aviso: TOM.solAmarelo,
+    cinza: TOM.cinza,
+    erro: TOM.rosa,
+    gradiente: [TOM.solAmarelo, TOM.laranja, TOM.rosa],
+    primaria: TOM.laranja,
+    prompt: TOM.rosa,
+    sucesso: TOM.lima,
+  },
+});
+
+/** Ordem canônica dos temas (para listar no `/tema`). */
+export const TEMAS: readonly TemaNome[] = Object.freeze(["aurora", "solar", "neon", "mono"]);
+
+/** Descrição curta de cada tema (pt-BR) para o menu `/tema`. */
+export const DESCRICAO_TEMA: Readonly<Record<TemaNome, string>> = Object.freeze({
+  aurora: "esmeralda → ciano → violeta (padrão)",
+  mono: "grafite minimalista, alto contraste",
+  neon: "magenta → azul → ciano vibrante",
+  solar: "âmbar → laranja → rosa quente",
+});
+
+/** Valida/normaliza um nome de tema; entradas inválidas caem em `aurora`. */
+export function nomeTemaValido(valor: unknown): TemaNome {
+  if (typeof valor === "string") {
+    const n = valor.trim().toLowerCase();
+    if (n === "aurora" || n === "solar" || n === "neon" || n === "mono") {
+      return n;
+    }
+  }
+  return "aurora";
+}
 
 const ESC = "\u001b";
 const RESET = `${ESC}[0m`;
@@ -235,12 +329,12 @@ function negrito(texto: string, nivel: NivelCor): string {
 /**
  * Esmaecer: em Windows CMD o SGR 2 (dim) é fraco/inexistente — usa cinza brilhante em nível 16.
  */
-function esmaecer(texto: string, nivel: NivelCor, preferCinza: boolean): string {
+function esmaecer(texto: string, nivel: NivelCor, preferCinza: boolean, cinza: CorRGB): string {
   if (nivel === "nenhuma") {
     return texto;
   }
   if (preferCinza || nivel === "16") {
-    return pintar(texto, AURORA.cinza, nivel);
+    return pintar(texto, cinza, nivel);
   }
   return `${ESC}[2m${texto}${RESET}`;
 }
@@ -261,14 +355,19 @@ function interpolar(a: CorRGB, b: CorRGB, t: number): CorRGB {
  * largura para todas as linhas de um bloco multi-linha faz as faixas de cor alinharem
  * verticalmente (sweep coerente), em vez de cada linha recomeçar o degradê do zero.
  */
-function gradienteColuna(texto: string, nivel: NivelCor, largura: number): string {
+function gradienteColuna(
+  texto: string,
+  nivel: NivelCor,
+  largura: number,
+  gradiente: readonly CorRGB[],
+): string {
   if (nivel === "nenhuma" || nivel === "16") {
     // Gradiente por caractere não vale a pena em 16 cores (CMD)
-    return nivel === "nenhuma" ? texto : pintar(texto, AURORA.esmeralda, nivel);
+    return nivel === "nenhuma" ? texto : pintar(texto, gradiente[0] as CorRGB, nivel);
   }
   const chars = [...texto];
   const n = Math.max(1, largura - 1);
-  const segmentos = GRADIENTE.length - 1;
+  const segmentos = Math.max(1, gradiente.length - 1);
   const corpo = chars
     .map((ch, i) => {
       if (ch === " ") {
@@ -276,7 +375,7 @@ function gradienteColuna(texto: string, nivel: NivelCor, largura: number): strin
       }
       const pos = (i / n) * segmentos;
       const idx = Math.min(segmentos - 1, Math.floor(pos));
-      const cor = interpolar(GRADIENTE[idx] as CorRGB, GRADIENTE[idx + 1] as CorRGB, pos - idx);
+      const cor = interpolar(gradiente[idx] as CorRGB, gradiente[idx + 1] as CorRGB, pos - idx);
       return `${codigoFg(cor, nivel)}${ch}`;
     })
     .join("");
@@ -286,6 +385,8 @@ function gradienteColuna(texto: string, nivel: NivelCor, largura: number): strin
 export interface Tema {
   readonly cor: NivelCor;
   readonly ascii: boolean;
+  /** Nome do tema ativo (`aurora`, `solar`, `neon`, `mono`). */
+  readonly nome: TemaNome;
   banner(): string;
   /** Mesmo conteúdo de `banner()`, como linhas separadas — usado para revelar com animação. */
   bannerLinhas(): readonly string[];
@@ -313,9 +414,16 @@ export interface OpcoesTema {
   readonly ascii?: boolean;
   /** Preferir cinza em vez de SGR dim (melhor no CMD). Default: true se ascii ou win32. */
   readonly preferCinza?: boolean;
+  /** Paleta selecionada. Default: `CODINGPRO_TEMA` do ambiente ou `aurora`. */
+  readonly paleta?: TemaNome;
 }
 
-/** Cria o tema (default: detecta cor + ASCII do ambiente). */
+/** Lê o tema padrão da variável `CODINGPRO_TEMA` (inválida/ausente → aurora). */
+function temaDoAmbiente(env: Record<string, string | undefined>): TemaNome {
+  return nomeTemaValido(env.CODINGPRO_TEMA);
+}
+
+/** Cria o tema (default: detecta cor + ASCII + tema do ambiente). */
 export function criarTema(
   nivelOuOpcoes: NivelCor | OpcoesTema = detectarNivelCor(
     process.env,
@@ -327,6 +435,8 @@ export function criarTema(
   const nivel = opcoes.nivel ?? detectarNivelCor(process.env, Boolean(process.stdout.isTTY));
   const ascii = opcoes.ascii ?? detectarAscii(process.env);
   const preferCinza = opcoes.preferCinza ?? (ascii || process.platform === "win32");
+  const nomeTema = opcoes.paleta ?? temaDoAmbiente(process.env);
+  const p = PALETAS[nomeTema];
   const g = glifosPara(ascii);
 
   /**
@@ -344,26 +454,32 @@ export function criarTema(
         return padded;
       }
       if (nivel === "16") {
-        return pintar(padded, AURORA.esmeralda, nivel);
+        return pintar(padded, p.primaria, nivel);
       }
-      return `${ESC}[1m${gradienteColuna(padded, nivel, largura)}${RESET}`;
+      return `${ESC}[1m${gradienteColuna(padded, nivel, largura, p.gradiente)}${RESET}`;
     };
 
     const subFmt = esmaecer(
       preencher("DeepSeek V4 Pro/Flash  ·  1M context  ·  pt-BR"),
       nivel,
       preferCinza,
+      p.cinza,
     );
     const vazio = " ".repeat(largura);
 
     const bordar = (s: string): string =>
-      nivel === "nenhuma" ? s : esmaecer(s, nivel, preferCinza);
+      nivel === "nenhuma" ? s : esmaecer(s, nivel, preferCinza, p.cinza);
     const topo = bordar(`${g.cantoTL}${g.linhaH.repeat(largura + 2)}${g.cantoTR}`);
     const fundo = bordar(`${g.cantoBL}${g.linhaH.repeat(largura + 2)}${g.cantoBR}`);
     const lado = bordar(g.linhaV);
     const envolver = (conteudo: string): string => `${lado} ${conteudo} ${lado}`;
 
-    const dica = esmaecer("digite / para comandos   ·   /ajuda lista tudo", nivel, preferCinza);
+    const dica = esmaecer(
+      "digite / para comandos   ·   /ajuda lista tudo",
+      nivel,
+      preferCinza,
+      p.cinza,
+    );
 
     return [
       topo,
@@ -381,6 +497,7 @@ export function criarTema(
   return {
     ascii,
     cor: nivel,
+    nome: nomeTema,
     banner() {
       return `\n${montarBlocoBanner().join("\n")}\n`;
     },
@@ -391,44 +508,65 @@ export function criarTema(
       if (nivel === "nenhuma") {
         return glifo;
       }
-      const paleta = GRADIENTE;
+      const paleta = p.gradiente;
       const i = ((tick % paleta.length) + paleta.length) % paleta.length;
       return pintar(glifo, paleta[i] as CorRGB, nivel);
     },
     prompt() {
       const sim = g.prompt.trimEnd();
-      return `${pintar(sim, AURORA.violeta, nivel)} `;
+      return `${pintar(sim, p.prompt, nivel)} `;
     },
     progresso(texto) {
-      return `${pintar(g.bullet, AURORA.cinza, nivel)} ${esmaecer(texto, nivel, preferCinza)}`;
+      return `${pintar(g.bullet, p.cinza, nivel)} ${esmaecer(texto, nivel, preferCinza, p.cinza)}`;
     },
     ferramenta(texto) {
-      return `${pintar(g.tool, AURORA.ciano, nivel)} ${pintar(texto, AURORA.ciano, nivel)}`;
+      return `${pintar(g.tool, p.acento, nivel)} ${pintar(texto, p.acento, nivel)}`;
     },
     sucesso(texto) {
-      return `${pintar(g.ok, AURORA.esmeralda, nivel)} ${texto}`;
+      return `${pintar(g.ok, p.sucesso, nivel)} ${texto}`;
     },
     erro(texto) {
-      return `${pintar(g.fail, AURORA.vermelho, nivel)} ${pintar(texto, AURORA.vermelho, nivel)}`;
+      return `${pintar(g.fail, p.erro, nivel)} ${pintar(texto, p.erro, nivel)}`;
     },
     aviso(texto) {
-      return `${pintar(g.warn, AURORA.amarelo, nivel)} ${pintar(texto, AURORA.amarelo, nivel)}`;
+      return `${pintar(g.warn, p.aviso, nivel)} ${pintar(texto, p.aviso, nivel)}`;
     },
     destaque(texto) {
-      return pintar(texto, AURORA.esmeralda, nivel);
+      return pintar(texto, p.primaria, nivel);
     },
     nota(texto) {
-      return esmaecer(texto, nivel, preferCinza);
+      return esmaecer(texto, nivel, preferCinza, p.cinza);
     },
     cabecalhoProjeto(resumo) {
-      return `${pintar(g.project, AURORA.ciano, nivel)} ${negrito("Projeto:", nivel)} ${resumo}`;
+      return `${pintar(g.project, p.acento, nivel)} ${negrito("Projeto:", nivel)} ${resumo}`;
     },
     regua() {
-      return esmaecer(g.rule, nivel, preferCinza);
+      return esmaecer(g.rule, nivel, preferCinza, p.cinza);
     },
     statusLinha(linha: string) {
-      const tag = ascii ? "·" : "·";
-      return `${pintar(tag, AURORA.violeta, nivel)} ${esmaecer(linha, nivel, preferCinza)}`;
+      const tag = "·";
+      return `${pintar(tag, p.acento, nivel)} ${esmaecer(linha, nivel, preferCinza, p.cinza)}`;
     },
   };
+}
+
+/**
+ * Amostra visual (swatch) do gradiente de um tema — usada no menu `/tema`.
+ * Em `nenhuma`/ASCII cai para um rótulo textual legível (sem depender de cor).
+ */
+export function amostraTema(nome: TemaNome, nivel: NivelCor, ascii = false): string {
+  const grad = PALETAS[nome].gradiente;
+  if (nivel === "nenhuma" || ascii) {
+    return "▪".repeat(grad.length).replace(/▪/gu, ascii ? "#" : "▪");
+  }
+  const blocos = 9;
+  const segmentos = Math.max(1, grad.length - 1);
+  let out = "";
+  for (let i = 0; i < blocos; i += 1) {
+    const pos = (i / (blocos - 1)) * segmentos;
+    const idx = Math.min(segmentos - 1, Math.floor(pos));
+    const cor = interpolar(grad[idx] as CorRGB, grad[idx + 1] as CorRGB, pos - idx);
+    out += `${codigoFg(cor, nivel)}█`;
+  }
+  return `${out}${RESET}`;
 }

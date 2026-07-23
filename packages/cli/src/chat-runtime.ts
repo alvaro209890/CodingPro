@@ -67,7 +67,16 @@ import {
   resolverOrcamentoContexto,
 } from "./status.js";
 import { carregarTiposCustom, criarSpawnerSubagentes } from "./subagent-runtime.js";
-import { criarTema, type Tema } from "./tema.js";
+import { arquivoPetPadrao, carregarEstadoPet, salvarEstadoPet } from "./pet-runtime.js";
+import { type EstadoPet, formatarPet, ganharXp } from "./pet.js";
+import {
+  amostraTema,
+  criarTema,
+  DESCRICAO_TEMA,
+  nomeTemaValido,
+  type Tema,
+  TEMAS,
+} from "./tema.js";
 
 export interface ChatIo {
   /** Faz uma pergunta (aprovações) e resolve com a resposta digitada. */
@@ -108,6 +117,12 @@ export interface ChatOptions {
   readonly signal?: AbortSignal;
   /** Tema visual; ausente = sem cor (usado nos testes). */
   readonly tema?: Tema;
+  /** Habilita o companheiro/XP (default: resolve settings/env; false nos testes sem opção). */
+  readonly petHabilitado?: boolean;
+  /** Caminho do estado do pet (default `~/.codingpro/pet.json`). */
+  readonly petArquivo?: string;
+  /** Diretório pessoal (para resolver settings/pet); default = homedir real. */
+  readonly homeDir?: string;
   /** Runner do biome (testes); default = pnpm exec biome. */
   readonly qualityRunner?: RunnerBiome;
   /** Sobrescreve auto-fix (default: env / true). */
@@ -271,7 +286,8 @@ function descreverCheckpoint(meta: CheckpointMeta): string {
  */
 export async function executarChat(options: ChatOptions, io: ChatIo): Promise<void> {
   options.signal?.throwIfAborted();
-  const tema = options.tema ?? criarTema("nenhuma");
+  // `tema` é mutável: /tema troca a paleta da sessão (mesma cor/ascii, nova paleta).
+  let tema = options.tema ?? criarTema("nenhuma");
 
   // Banner ANTES de qualquer I/O pesado — se o init travar, o usuário já vê a UI.
   if (options.pularBanner !== true) {
@@ -329,6 +345,15 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
   let planoAtivo: PlanoAtivo | undefined;
   // Estado do auto-effort: decide automaticamente Flash/Pro a cada turno.
   const autoEffort: AutoEffortState = criarAutoEffortState();
+
+  // Companheiro/XP (cosmético, desligável). Habilitação resolvida pelo caller (program.ts);
+  // ausente = desligado (mantém a saída dos testes limpa).
+  const petLigado = options.petHabilitado ?? false;
+  const petArquivo = options.petArquivo ?? arquivoPetPadrao(options.homeDir);
+  let pet: EstadoPet | undefined = petLigado ? await carregarEstadoPet(petArquivo) : undefined;
+  if (pet !== undefined) {
+    io.progresso(`${tema.destaque(formatarPet(pet, tema.ascii))}\n`);
+  }
 
   // Cabeçalho do projeto + prompt. Sem dump de todos os comandos (use /ajuda).
   io.progresso(`${tema.cabecalhoProjeto(resumoProjeto(await detectarProjeto(workspace)))}\n`);
@@ -405,6 +430,41 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
     }
     if (mensagem === "/init") {
       await comandoInit(workspace, io);
+      continue;
+    }
+    if (mensagem === "/tema" || mensagem === "/theme" || mensagem.startsWith("/tema ")) {
+      const alvo = mensagem
+        .replace(/^\/tema\s*/u, "")
+        .trim()
+        .toLowerCase();
+      if (alvo.length === 0) {
+        io.progresso(`${tema.nota(`tema atual: ${tema.nome}`)}\n`);
+        for (const nome of TEMAS) {
+          const marca = nome === tema.nome ? tema.destaque("●") : tema.nota("○");
+          const swatch = amostraTema(nome, tema.cor, tema.ascii);
+          io.progresso(`  ${marca} ${swatch} ${nome} — ${tema.nota(DESCRICAO_TEMA[nome])}\n`);
+        }
+        io.progresso(
+          `${tema.nota('troque com /tema <nome>; fixe com "theme" no settings.json')}\n`,
+        );
+        continue;
+      }
+      if (!TEMAS.includes(nomeTemaValido(alvo)) || nomeTemaValido(alvo) !== alvo) {
+        io.progresso(`${tema.erro(`tema desconhecido: ${alvo} (use ${TEMAS.join(", ")})`)}\n`);
+        continue;
+      }
+      tema = criarTema({ ascii: tema.ascii, nivel: tema.cor, paleta: nomeTemaValido(alvo) });
+      io.progresso(
+        `${tema.sucesso(`tema: ${tema.nome}`)} ${tema.nota("(prompt/banner aplicam no próximo início)")}\n`,
+      );
+      continue;
+    }
+    if (mensagem === "/pet") {
+      if (pet === undefined) {
+        io.progresso(`${tema.nota('pet desligado (ligue com "pet": true no settings.json)')}\n`);
+      } else {
+        io.progresso(`${tema.destaque(formatarPet(pet, tema.ascii))}\n`);
+      }
       continue;
     }
     if (
@@ -750,6 +810,17 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
     }
     if (store !== undefined) {
       await store.save(sessaoId, msgs);
+    }
+
+    // Pet/XP: ganha XP por turno (bônus se editou), sobe de nível e persiste (best-effort).
+    if (pet !== undefined) {
+      const houveEdicao = arquivosEfeito.length > 0;
+      const ganho = ganharXp(pet, houveEdicao);
+      pet = ganho.estado;
+      await salvarEstadoPet(petArquivo, pet);
+      if (ganho.subiuNiveis > 0) {
+        io.progresso(`${tema.sucesso(`subiu de nível!  ${formatarPet(pet, tema.ascii)}`)}\n`);
+      }
     }
   }
   if (hooks.length > 0) {

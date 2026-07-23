@@ -5,7 +5,7 @@
 
 **Stack:** TypeScript / Node.js ≥ 24 · monorepo pnpm · comando `codingpro` (alias `cpro`)
 **Licença:** proprietária source-available (ver `LICENSE`; código de terceiros portado mantém a licença original)
-**Status geral:** 🟢 **Fase 1 / CLI 1.0 usável** — loop agêntico, edit/undo, memória, multi-agente, MCP/skills/hooks, Aurora (header limpo + autocomplete `/` + status de tokens), auto-correção Biome, auto-compact (janela DeepSeek 1M), **busca vetorial local** (`code_search` + `/index`), hardening/evals no CI. Gate: `pnpm check`. Manual: `npm publish`. Pós-1.0: voz, pet, tree-sitter AST, embeddings ONNX.
+**Status geral:** 🟢 **Fase 1 / CLI 1.0 completa** — loop agêntico, edit/undo, memória, multi-agente, MCP/skills/hooks, **TUI Aurora finalizada** (header limpo + autocomplete `/` + status de tokens + **4 temas selecionáveis** aurora/solar/neon/mono + **pet/XP desligável**), auto-correção Biome, auto-compact (janela DeepSeek 1M), **busca vetorial local** (`code_search` + `/index`), hardening/evals no CI. Gate: `pnpm check` (757 testes). Manual (Álvaro): `npm publish` + QA visual humano. Pós-1.0: voz, tree-sitter AST, embeddings ONNX.
 
 📖 **Guia do usuário:** [`docs/GUIA-DO-USUARIO.md`](docs/GUIA-DO-USUARIO.md)  
 📋 **Estado consolidado da Fase 1:** [`docs/ESTADO_PROJETO.md`](docs/ESTADO_PROJETO.md) — o que foi feito, estrutura, como rodar, o que falta.
@@ -96,7 +96,7 @@ permanecer dentro dele e a fixture é lida em snapshot seguro. Consulte o
 
 | Fase | O quê | Planos | Status |
 |---|---|---|---|
-| **1** | **CLI executada localmente e funcional** (sem backend próprio; inferência via DeepSeek) | [`planos/`](planos/) — docs 01–16 | 🟢 funcionalmente completa (falta polimento visual + `npm publish`) |
+| **1** | **CLI executada localmente e funcional** (sem backend próprio; inferência via DeepSeek) | [`planos/`](planos/) — docs 01–16 | 🟢 **100% completa no plano de engenharia** (TUI com 4 temas + pet finalizada; resta só QA visual humano + `npm publish`) |
 | **2** | **App Windows** (Electron, estilo Claude Code desktop; core da CLI reaproveitado) | [`fase2-app-windows/`](fase2-app-windows/) · [`packages/desktop/README.md`](packages/desktop/README.md) | 🟢 W0–W2 estáveis (chat, permissões+diff, terminal, paleta, cancel, sessões); W3 empacotamento pendente |
 | **3** | **Plataforma web**: site, contas, proxy LLM com **limites por usuário** (backend neste PC + Cloudflare Tunnel em `cursar.space`) | [`fase3-plataforma-web/`](fase3-plataforma-web/) | 📋 planejada |
 

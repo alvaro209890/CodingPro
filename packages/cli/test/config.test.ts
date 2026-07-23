@@ -200,6 +200,16 @@ describe("loadConfig", () => {
     });
   });
 
+  it("tolera as chaves de UI (theme/pet/attribution) junto do provider", async () => {
+    cwd = homeDirectory;
+    await writeSettings(
+      "global",
+      '{ "provider": "deepseek", "theme": "neon", "pet": false, "attribution": "none" }',
+    );
+
+    await expect(loadConfig(options())).resolves.toEqual({ provider: "deepseek" });
+  });
+
   it.each([
     ["JSONC malformado", '{ "provider":'],
     ["raiz array", "[]"],

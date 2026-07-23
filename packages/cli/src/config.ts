@@ -142,7 +142,13 @@ function parseConfig(
     throw invalidConfig(layer, "o JSONC está malformado.");
   }
 
-  const root = propertiesOf(tree, layer, new Set(["provider", "replay", "version"]));
+  // `attribution`, `theme` e `pet` são consumidos por outros runtimes (atribuição/tema/pet);
+  // aqui só precisam ser tolerados para não invalidarem a carga do provider.
+  const root = propertiesOf(
+    tree,
+    layer,
+    new Set(["attribution", "pet", "provider", "replay", "theme", "version"]),
+  );
   const versionNode = root.get("version");
   if (versionNode !== undefined && (versionNode.type !== "number" || versionNode.value !== 1)) {
     throw invalidConfig(layer, "a versão deve ser 1.");

@@ -31,6 +31,10 @@ export interface CliServices {
   readonly signal?: AbortSignal;
   /** Tema visual do chat; ausente = sem cor. */
   readonly tema?: Tema;
+  /** Habilita o companheiro/XP no chat; ausente = desligado. */
+  readonly petHabilitado?: boolean;
+  /** Caminho do estado do pet; ausente usa o padrão. */
+  readonly petArquivo?: string;
 }
 
 class CliUsageError extends Error {
@@ -195,6 +199,10 @@ export function criarPrograma(
             ...(services.raizSessoes === undefined ? {} : { sessaoDir: services.raizSessoes }),
             ...(services.signal === undefined ? {} : { signal: services.signal }),
             ...(services.tema === undefined ? {} : { tema: services.tema }),
+            ...(services.petHabilitado === undefined
+              ? {}
+              : { petHabilitado: services.petHabilitado }),
+            ...(services.petArquivo === undefined ? {} : { petArquivo: services.petArquivo }),
           },
           chatIo,
         );

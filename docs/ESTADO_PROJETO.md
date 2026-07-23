@@ -2,8 +2,9 @@
 
 **Última atualização:** 2026-07-23  
 **Branch:** `master` · **Repo:** https://github.com/alvaro209890/CodingPro  
-**Status:** 🟢 CLI 1.0 **funcional e usável** no dia a dia. Empacotamento/CI ok.  
-`npm publish` e sessão humana de 1h ficam com o Álvaro. Pós-1.0: voz, pet, tree-sitter AST, etc.
+**Status:** 🟢 CLI 1.0 **completa** no plano de engenharia. Empacotamento/CI ok.  
+TUI finalizada: **4 temas** (aurora/solar/neon/mono) + **pet/XP** desligável, com `/tema` e `/pet`.  
+`npm publish`, QA visual humano e sessão de 1h ficam com o Álvaro. Pós-1.0: voz, tree-sitter AST, etc.
 
 ---
 
@@ -121,6 +122,8 @@ Chave: `~/.config/codingpro/deepseek.env` (`DEEPSEEK_API_KEY=...`, permissão `0
 | `/mapa` | Repo map |
 | `/review` | Revisa diff |
 | `/undo` `/redo` | Checkpoints |
+| `/tema [nome]` | Mostra/troca o tema (aurora/solar/neon/mono) |
+| `/pet` | Companheiro/XP da sessão |
 | `/sair` | Sai |
 
 ### Variáveis úteis
@@ -128,6 +131,8 @@ Chave: `~/.config/codingpro/deepseek.env` (`DEEPSEEK_API_KEY=...`, permissão `0
 | Env | Efeito |
 |-----|--------|
 | `DEEPSEEK_API_KEY` | Provider DeepSeek |
+| `CODINGPRO_TEMA` | Tema visual (aurora/solar/neon/mono) |
+| `CODINGPRO_PET` | Liga/desliga o pet (0/1) |
 | `CODINGPRO_ASCII=1` | UI ASCII (CMD Windows / SSH legado) |
 | `CODINGPRO_QUALITY_AUTOFIX` | Auto biome `--write` (default true) |
 | `CODINGPRO_QUALITY_MAX_REPAIR` | Re-turnos IA no lint residual (default 1) |
@@ -188,9 +193,9 @@ pnpm smoke:deepseek # opt-in, rede + chave (bloqueado no CI)
 | Item | Dono |
 |------|------|
 | `npm publish` + setup &lt; 10 min em máquina limpa | Álvaro |
-| 1h de uso real sem atrito anotado | Álvaro |
+| 1h de uso real sem atrito anotado + QA visual dos 6 terminais | Álvaro |
 | F7 Voz (whisper/Piper) | Release 1.1 |
-| Pet/XP, 4 temas, Ctrl+O reasoning | Cosmético |
+| ~~Pet/XP, 4 temas~~ ✅ **entregues 2026-07-23**; Ctrl+O reasoning colapsado | Pós-1.0 |
 | web-tree-sitter / ONNX embeddings densos | Upgrade F3/vector |
 | Subagente subprocesso, background tasks | Upgrade F5 |
 | Quality no `settings.json` (hoje env) | Melhoria |

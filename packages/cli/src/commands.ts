@@ -117,6 +117,18 @@ export const COMANDOS_CHAT: readonly ComandoChat[] = Object.freeze([
     descricao: "gera CODINGPRO.md do projeto",
     nome: "/init",
   },
+  {
+    aceitaArgs: true,
+    aliases: ["/theme"],
+    descricao: "mostra/troca o tema visual (aurora, solar, neon, mono)",
+    nome: "/tema",
+  },
+  {
+    aceitaArgs: false,
+    aliases: [],
+    descricao: "mostra o companheiro/XP da sessão (desligável)",
+    nome: "/pet",
+  },
 ]);
 
 export interface SugestaoComando {

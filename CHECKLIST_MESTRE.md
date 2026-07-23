@@ -43,7 +43,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] Identidade visual Aurora via **ANSI** (`tema.ts`): banner gradiente, cabeçalho, régua, prompt ❯, tools ciano, aprovação/erros — 2026-07-23
 - [x] Detecção truecolor/256/16/NO_COLOR + `FORCE_COLOR` + degradação em pipe — 2026-07-23
 - [x] Spinner braille + timeline de tools + banner animado no chat TTY (`animacao`/`prompt-tty`) — 2026-07-23
-- [ ] 4 temas selecionáveis + fallback de glyphs + QA nos 6 terminais — polimento pós-1.0 (Ink full-screen removido do build; git `fd6f3b1`)
+- [x] **4 temas selecionáveis** (aurora/solar/neon/mono) + fallback de glyphs ASCII — `tema.ts` com paletas semânticas, `/tema` no chat (swatch + troca de sessão), `settings.json "theme"` e `CODINGPRO_TEMA` — 2026-07-23. QA visual humano nos 6 terminais permanece produto/pós-1.0
 - [ ] 3 propostas de banner/logo p/ o Álvaro escolher — produto/design
 - [ ] Eval A/B idioma do system prompt (en+diretiva-pt vs 100% pt) — opt-in / pós-1.0
 - [ ] QA visual nos 6 terminais + sessão de aprovação visual com o Álvaro — produto
@@ -146,14 +146,14 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 
 - [x] Undercover (attribution full/trailer/none) — campo `attribution` no settings vira diretriz de assinatura de commits no system prompt (chat e headless) — 2026-07-23
 - [x] `/review` com achados por severidade — `/review [alvo]` revisa o diff (não commitado ou `git diff <alvo>`) via subagente reviewer — 2026-07-23
-- [ ] Pet/XP/conquistas (desligável) — pós-1.0, polimento cosmético; não bloqueia a Fase 2
+- [x] **Pet/XP (desligável)** — `pet.ts`/`pet-runtime.ts`: companheiro evolui (ovo→dragão) ganhando XP por turno (bônus em edição), sobe de nível, persiste em `~/.codingpro/pet.json`; `/pet` mostra; liga/desliga por `settings.json "pet"` ou `CODINGPRO_PET` — 2026-07-23
 - [x] Camada visual Aurora (banner compacto, cores, prompt, detecção de cor, ASCII p/ CMD) — `tema.ts` — 2026-07-23
 - [x] Prompt interativo TTY: autocomplete `/`, spinner estável, status de sessão ($/ctx), sem dump de comandos na abertura — 2026-07-23
 - [x] Status tokens/custo + `/compact` + auto-compact (janela DeepSeek 1M, budget 800k) — `status.ts` — 2026-07-23
 - [x] Auto-correção Biome (`--write` + re-turno residual) — `quality-runtime` — 2026-07-23
 - [x] `/plan` interativo (Q&A) + plano ativo na sessão — `plan-runtime` — 2026-07-23
 - [x] Busca vetorial local SQLite FTS5 + embeddings offline; tool `code_search`; `/index` — 2026-07-23
-- [ ] Polimento opcional pós-1.0: 4 temas selecionáveis, QA nos 6 terminais, pet/XP
+- [x] Polimento da TUI entregue: 4 temas selecionáveis + pet/XP (2026-07-23). Resta só QA visual humano nos 6 terminais — item de produto, fora do gate de engenharia
 - [ ] i18n pt-BR: auditoria final de toda string da UI (UI já é pt-BR; consolidação pós-1.0)
 - [ ] 🏁 1h de uso real sem atrito anotado — sessão de produto humana; fora do gate de engenharia
 
@@ -165,4 +165,5 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
 - [x] Hardening final offline (caminhos com espaço/acento, tetos em árvore grande, sem rede fail-closed, chave ausente/inválida) — suite `hardening-evals` em core+cli; `pnpm test:evals` + incluso no `pnpm check`/CI — 2026-07-23
 - [x] Evals mínimos no CI (doc 10): tortura offline determinística (sem LLM ao vivo no gate padrão); live DeepSeek permanece opt-in (`smoke:deepseek`) — 2026-07-23
 - [ ] 🏁 Setup < 10 min em máquina nova (validar ao vivo após `npm publish` — passo do Álvaro)
-- [x] **Fase 1 / CLI 1.0 — núcleo fechado offline** (2026-07-23): F0–F6 + F8 essencial + F9 empacotamento/docs/hardening/evals. Diferido pós-1.0: F7 voz, pet/XP, upgrades tree-sitter/SQLite/subprocesso, QA visual humano, `npm publish`
+- [x] **Fase 1 / CLI 1.0 — núcleo fechado offline** (2026-07-23): F0–F6 + F8 essencial + F9 empacotamento/docs/hardening/evals. Diferido pós-1.0: F7 voz, upgrades tree-sitter/SQLite/subprocesso, QA visual humano, `npm publish`
+- [x] **TUI finalizada** (2026-07-23): 4 temas selecionáveis (aurora/solar/neon/mono) + pet/XP desligável, com `/tema` e `/pet` no chat, persistência em settings.json/env, 757 testes verdes + `pnpm check`. Fase 1 100% completa no plano de engenharia — só falta QA visual humano e `npm publish` (passos do Álvaro)

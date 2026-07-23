@@ -200,6 +200,56 @@ describe("executarChat", () => {
     expect(captura.progresso()).toContain("Comandos:");
   });
 
+  it("/tema lista os temas e troca a paleta da sessão", async () => {
+    const { provider, requests } = scripted([]);
+    const captura = fakeIo(["/tema", "/tema solar", "/tema banana", undefined], []);
+    await executarChat({ cwd, provider }, captura.io);
+    expect(requests).toEqual([]);
+    const out = captura.progresso();
+    expect(out).toContain("tema atual: aurora");
+    expect(out).toContain("solar");
+    expect(out).toContain("neon");
+    expect(out).toContain("mono");
+    expect(out).toContain("tema: solar");
+    expect(out).toContain("tema desconhecido: banana");
+  });
+
+  it("/pet mostra o companheiro quando ligado e avisa quando desligado", async () => {
+    const petArquivo = join(cwd, "pet.json");
+    const ligado = scripted([]);
+    const comPet = fakeIo(["/pet", undefined], []);
+    await executarChat(
+      { cwd, petArquivo, petHabilitado: true, provider: ligado.provider },
+      comPet.io,
+    );
+    expect(comPet.progresso()).toContain("nível 1");
+
+    const desligado = scripted([]);
+    const semPet = fakeIo(["/pet", undefined], []);
+    await executarChat(
+      { cwd, petArquivo, petHabilitado: false, provider: desligado.provider },
+      semPet.io,
+    );
+    expect(semPet.progresso()).toContain("pet desligado");
+  });
+
+  it("o pet ganha XP e persiste após um turno com edição", async () => {
+    const petArquivo = join(cwd, "pet.json");
+    const call: ToolCall = {
+      id: "1",
+      input: { content: "oi", path: "novo.txt" },
+      name: "write_file",
+    };
+    const { provider } = scripted([
+      [finish({ content: "", role: "assistant", toolCalls: [call] })],
+      [finish({ content: "pronto", role: "assistant" })],
+    ]);
+    const captura = fakeIo(["cria o arquivo", undefined], ["s"]);
+    await executarChat({ cwd, petArquivo, petHabilitado: true, provider }, captura.io);
+    const salvo = JSON.parse(await readFile(petArquivo, "utf8")) as { xp: number };
+    expect(salvo.xp).toBeGreaterThan(0);
+  });
+
   it("mostra o resumo do projeto detectado no cabeçalho", async () => {
     await writeFile(join(cwd, "package.json"), JSON.stringify({ dependencies: { react: "18" } }));
     await writeFile(join(cwd, "app.tsx"), "export default () => null;\n");

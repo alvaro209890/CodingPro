@@ -34,6 +34,11 @@ describe("commands — catálogo e filtro", () => {
 
     const des = filtrarSugestoes("/des");
     expect(des.some((s) => s.nome === "/undo")).toBe(true);
+
+    // /theme é alias de /tema
+    const theme = filtrarSugestoes("/the");
+    expect(theme.some((s) => s.nome === "/tema" && s.match === "/theme")).toBe(true);
+    expect(filtrarSugestoes("/pet").some((s) => s.nome === "/pet")).toBe(true);
   });
 
   it("textoAjudaComandos lista cada comando", () => {

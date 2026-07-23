@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  amostraTema,
   criarTema,
+  DESCRICAO_TEMA,
   detectarAscii,
   detectarNivelCor,
   glifosPara,
   type NivelCor,
+  nomeTemaValido,
+  PALETAS,
+  TEMAS,
+  type TemaNome,
 } from "../src/tema.js";
 
 const ESC = "\u001b";
@@ -141,4 +147,65 @@ describe("criarTema", () => {
     expect(cor.pulso("⠋", 0)).toContain(ESC);
     expect(semAnsi(cor.pulso("⠋", 0))).toBe("⠋");
   });
+});
+
+describe("temas selecionáveis", () => {
+  it("TEMAS lista os 4 nomes e cada um tem paleta + descrição", () => {
+    expect([...TEMAS].sort()).toEqual(["aurora", "mono", "neon", "solar"]);
+    for (const nome of TEMAS) {
+      const p = PALETAS[nome];
+      expect(p.gradiente.length).toBeGreaterThanOrEqual(2);
+      expect(DESCRICAO_TEMA[nome].length).toBeGreaterThan(0);
+    }
+  });
+
+  it("nomeTemaValido normaliza e cai em aurora quando inválido", () => {
+    expect(nomeTemaValido("SOLAR")).toBe("solar");
+    expect(nomeTemaValido(" neon ")).toBe("neon");
+    expect(nomeTemaValido("mono")).toBe("mono");
+    expect(nomeTemaValido("inexistente")).toBe("aurora");
+    expect(nomeTemaValido(undefined)).toBe("aurora");
+    expect(nomeTemaValido(42)).toBe("aurora");
+  });
+
+  it("criarTema aplica a paleta escolhida e expõe .nome", () => {
+    for (const nome of TEMAS) {
+      const t = criarTema({ ascii: false, nivel: "truecolor", paleta: nome });
+      expect(t.nome).toBe(nome);
+    }
+    // aurora (default) permanece com o prompt violeta sem cor
+    expect(criarTema({ ascii: false, nivel: "nenhuma" }).nome).toBe("aurora");
+  });
+
+  it("paletas distintas produzem banners com cores diferentes", () => {
+    const aurora = criarTema({ ascii: false, nivel: "truecolor", paleta: "aurora" }).banner();
+    const solar = criarTema({ ascii: false, nivel: "truecolor", paleta: "solar" }).banner();
+    expect(aurora).not.toBe(solar);
+  });
+
+  it("CODINGPRO_TEMA do ambiente vira o tema padrão", () => {
+    const orig = process.env.CODINGPRO_TEMA;
+    try {
+      process.env.CODINGPRO_TEMA = "neon";
+      expect(criarTema({ ascii: false, nivel: "nenhuma" }).nome).toBe("neon");
+      process.env.CODINGPRO_TEMA = "xyz";
+      expect(criarTema({ ascii: false, nivel: "nenhuma" }).nome).toBe("aurora");
+    } finally {
+      if (orig === undefined) {
+        delete process.env.CODINGPRO_TEMA;
+      } else {
+        process.env.CODINGPRO_TEMA = orig;
+      }
+    }
+  });
+
+  it.each<TemaNome>(["aurora", "solar", "neon", "mono"])(
+    "amostraTema(%s) colore em truecolor e degrada em nenhuma/ascii",
+    (nome) => {
+      expect(amostraTema(nome, "truecolor")).toContain(ESC);
+      expect(amostraTema(nome, "nenhuma")).not.toContain(ESC);
+      expect(amostraTema(nome, "truecolor", true)).not.toContain(ESC);
+      expect(amostraTema(nome, "nenhuma", true)).toMatch(/^#+$/u);
+    },
+  );
 });

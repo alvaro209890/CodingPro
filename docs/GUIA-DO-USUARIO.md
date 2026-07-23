@@ -35,6 +35,19 @@ A configuração é empilhada (JSONC), do menor para o maior peso:
 2. **Projeto** — `<raiz>/.codingpro/settings.json` (sobrepõe a global)
 3. **Ambiente** e **flags** de linha de comando (maior peso)
 
+Campos reconhecidos no `settings.json` (todos opcionais):
+
+```jsonc
+{
+  "provider": "deepseek",      // ou "replay" (ver testes/CI)
+  "attribution": "full",       // full | trailer | none — assinatura dos commits
+  "theme": "aurora",           // aurora | solar | neon | mono
+  "pet": true,                 // companheiro/XP (desligável)
+  "hooks": [ /* ... */ ],      // ganchos de shell (ver adiante)
+  "mcpServers": { /* ... */ }  // plugins MCP (ver adiante)
+}
+```
+
 ### A chave da DeepSeek
 
 Defina a chave por **variável de ambiente** (jeito recomendado — nunca é versionada):
@@ -99,6 +112,46 @@ A CLI detecta o terminal e **adapta glifos e cores**:
 
 No CMD legado, prefira Windows Terminal se puder; com ASCII a UI continua legível e colorida.
 
+#### Temas visuais
+
+A CLI tem **4 temas** selecionáveis (gradiente do banner + cores da UI):
+
+| Tema | Paleta |
+|------|--------|
+| `aurora` (padrão) | esmeralda → ciano → violeta |
+| `solar` | âmbar → laranja → rosa |
+| `neon` | magenta → azul → ciano vibrante |
+| `mono` | grafite minimalista, alto contraste |
+
+Como escolher (precedência: env → projeto → global → `aurora`):
+
+```bash
+CODINGPRO_TEMA=neon codingpro --chat          # por variável de ambiente
+```
+
+```jsonc
+// ~/.codingpro/settings.json ou <projeto>/.codingpro/settings.json
+{ "theme": "solar" }
+```
+
+No chat, **`/tema`** mostra as amostras de todos os temas e o atual; **`/tema <nome>`** troca a
+paleta da sessão na hora (o banner/prompt aplicam por completo no próximo início). Todos os temas
+degradam para 256/16 cores e para ASCII automaticamente.
+
+#### Companheiro / XP (pet)
+
+Um **pet cosmético** (ligado por padrão) ganha XP a cada turno — um pouco mais quando o turno
+edita arquivos — e evolui de **ovo → filhote → aprendiz → coruja → dragão**. O estado fica em
+`~/.codingpro/pet.json`. No chat, **`/pet`** mostra o nível/XP. Para desligar:
+
+```bash
+CODINGPRO_PET=0 codingpro --chat
+```
+
+```jsonc
+{ "pet": false }
+```
+
 ### Auto-correção de lint e formatação
 
 Depois de um turno que **escreve/edita** arquivos, se o projeto tiver `biome.json` / `biome.jsonc`:
@@ -135,6 +188,8 @@ Segurança: caminhos vão como argumentos do processo (sem shell). Biome ausente
 | `/review [alvo]` | revisa o diff com o subagente revisor |
 | `/skills` · `/skill <nome>` | lista skills / ativa uma skill na sessão |
 | `/init` | gera `CODINGPRO.md` com o projeto detectado |
+| `/tema` · `/theme [nome]` | mostra/troca o tema visual (aurora, solar, neon, mono) |
+| `/pet` | mostra o companheiro/XP da sessão (desligável) |
 
 
 
