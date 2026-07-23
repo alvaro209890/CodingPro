@@ -1149,7 +1149,6 @@ app.whenReady().then(() => {
                                                                                         readTracker: session.readTracker,
                                                                                         checkpoints: session.checkpoints,
                                                                                         memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
-                                                                                        signal: abort.signal,
                                                                                         subagentes: session.subagentes!,
                                                                                       },
                                                           gate: session.gate,
@@ -1158,7 +1157,6 @@ app.whenReady().then(() => {
                                                           tools: session.registry.definitions(),
                                                           systemPrompt,
                                                           contextBudget: CONTEXT_BUDGET,
-                                                          signal: abort.signal,
                                                           onEvent: (agentEvent: AgentEvent) => {
                                                             if (agentEvent.type === "step" && agentEvent.usage) {
                                                                                                                           _tokenCount =
