@@ -89,7 +89,10 @@ export const App: React.FC = () => {
               if (last && last.role === "assistant") {
                 return [...prev.slice(0, -1), { ...last, content: last.content + ae.text }];
               }
-              return [...prev, { id: String(Date.now()), role: "assistant", content: ae.text }];
+              return [
+                ...prev,
+                { id: `asst-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, role: "assistant", content: ae.text },
+              ];
             });
           } else if (ae.type === "reasoning-delta") {
             setMessages((prev) => {
@@ -102,7 +105,7 @@ export const App: React.FC = () => {
               }
               return [
                 ...prev,
-                { id: String(Date.now()), role: "assistant", content: "", reasoning: ae.text },
+                { id: `asst-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, role: "assistant", content: "", reasoning: ae.text },
               ];
             });
           } else if (ae.type === "tool-call") {
@@ -173,7 +176,10 @@ export const App: React.FC = () => {
     if (!customPrompt) setInputPrompt("");
     setIsRunning(true);
 
-    setMessages((prev) => [...prev, { id: String(Date.now()), role: "user", content: textToSend }]);
+    setMessages((prev) => [
+      ...prev,
+      { id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, role: "user", content: textToSend },
+    ]);
 
     if (window.codingproAPI) {
       await window.codingproAPI.sendMessage(textToSend);
