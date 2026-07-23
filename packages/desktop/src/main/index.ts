@@ -1252,6 +1252,88 @@ app.whenReady().then(() => {
     return true;
   });
 
+  /** Login direto: email + senha → device flow interno → token salvo. Sem navegador. */
+  ipcMain.handle(
+    "codingpro:conta-login-direto",
+    async (_, email: string, senha: string) => {
+      const API = "https://codingpro-api.cursar.space";
+      // Passo 1: login
+      const login = await fetch(`${API}/api/login`, {
+        body: JSON.stringify({ email, senha }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+        redirect: "manual",
+      });
+      if (!login.ok) {
+        const err = await login.json().catch(() => ({})) as { mensagem?: string };
+        throw new Error(err.mensagem || "E-mail ou senha incorretos.");
+      }
+      const cookies = login.headers.getSetCookie?.() ?? [];
+      const sessao = cookies.find((c) => c.startsWith("sessao_codingpro="));
+      if (!sessao) throw new Error("Sessão não estabelecida. Tente de novo.");
+      const cookieHeader = sessao.split(";")[0] ?? "";
+
+      // Passo 2: iniciar device flow
+      const inicio = await fetch(`${API}/api/device/iniciar`, {
+        body: "{}",
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      if (!inicio.ok) throw new Error("Não consegui iniciar o login do dispositivo.");
+      const dev = (await inicio.json()) as {
+        codigoDispositivo: string;
+        codigoUsuario: string;
+      };
+
+      // Passo 3: aprovar o dispositivo (com o cookie de sessão)
+      const headers = new Headers();
+      headers.set("content-type", "application/json");
+      headers.set("cookie", cookieHeader);
+      await fetch(`${API}/api/device/aprovar`, {
+        body: JSON.stringify({ codigoUsuario: dev.codigoUsuario }),
+        headers,
+        method: "POST",
+      });
+
+      // Passo 4: resgatar o token
+      const tokenRes = await fetch(`${API}/api/device/token`, {
+        body: JSON.stringify({ codigoDispositivo: dev.codigoDispositivo }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      const corpo = (await tokenRes.json()) as { token?: string };
+      if (typeof corpo.token !== "string") throw new Error("Token não encontrado.");
+
+      // Salvar no mesmo arquivo da CLI
+      const dir = join(homedir(), ".codingpro");
+      mkdirSync(dir, { mode: 0o700, recursive: true });
+      writeFileSync(
+        join(dir, "credenciais.json"),
+        `${JSON.stringify({ apiUrl: API, criadoEm: new Date().toISOString(), token: corpo.token }, null, 2)}\n`,
+        { mode: 0o600 },
+      );
+    },
+  );
+
+  /** Cadastro: cria conta pendente e devolve mensagem. */
+  ipcMain.handle(
+    "codingpro:conta-cadastrar",
+    async (_, email: string, nome: string, senha: string) => {
+      const API = "https://codingpro-api.cursar.space";
+      const res = await fetch(`${API}/api/cadastro`, {
+        body: JSON.stringify({ email, nome, senha }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      const corpo = (await res.json()) as { usuario?: { status: string }; mensagem?: string };
+      if (!res.ok) throw new Error(corpo.mensagem || "Erro ao criar conta.");
+      if (corpo.usuario?.status === "pendente") {
+        return "Conta criada! O administrador precisa aprová-la antes de usar. Você será avisado.";
+      }
+      return "Conta criada com sucesso!";
+    },
+  );
+
   ipcMain.handle("codingpro:choose-workspace-folder", async () => {
     const chosen = await escolherPastaProjeto(
       ehMonorepoCodingPro(selectedWorkspacePath) ? pastaDownloads() : selectedWorkspacePath,

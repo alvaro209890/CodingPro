@@ -26,6 +26,12 @@ const api: CodingProDesktopAPI = {
   contaLogin: (apiUrl?: string) => {
     return ipcRenderer.invoke("codingpro:conta-login", apiUrl);
   },
+  contaLoginDireto: (email: string, senha: string) => {
+    return ipcRenderer.invoke("codingpro:conta-login-direto", email, senha);
+  },
+  contaCadastrar: (email: string, nome: string, senha: string) => {
+    return ipcRenderer.invoke("codingpro:conta-cadastrar", email, nome, senha);
+  },
   contaConsultar: (apiUrl: string, codigoDispositivo: string) => {
     return ipcRenderer.invoke("codingpro:conta-consultar", apiUrl, codigoDispositivo);
   },

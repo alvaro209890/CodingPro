@@ -3,8 +3,8 @@ import type { Usuario } from "../api.js";
 import { Aviso, Cartao } from "../componentes.js";
 import { propsLink } from "../rotas.js";
 
-const REPO = "https://github.com/alvaro209890/CodingPro";
-const RELEASES = `${REPO}/releases/latest`;
+const REPO = "https://codingpro.cursar.space";
+const RELEASES = `${REPO}/downloads/CodingPro-portable-0.1.0.zip`;
 
 function Bloco({ children }: { children: string }) {
   const [copiado, setCopiado] = useState(false);
@@ -218,11 +218,12 @@ function PassosWindows() {
           integrado.
         </p>
         <a className="botao primario" href={RELEASES}>
-          Baixar para Windows (.exe)
+          Baixar para Windows (.zip)
         </a>
         <p className="fraco" style={{ marginTop: "0.75rem" }}>
-          Os instaladores ficam na página de <a href={RELEASES}>releases</a> do repositório. Se
-          ainda não houver um arquivo publicado, use a CLI — ela já está no ar.
+          Descompacte o arquivo e execute <code>CodingPro.exe</code>. O Windows pode mostrar um aviso de
+          aplicativo desconhecido (o app ainda não é assinado): clique em{" "}
+          <strong>Mais informações</strong> → <strong>Executar assim mesmo</strong>.
         </p>
       </Passo>
 
