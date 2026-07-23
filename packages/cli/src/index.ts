@@ -10,20 +10,31 @@ import { criarProviderRuntime } from "./provider-runtime.js";
 import { criarTema } from "./tema.js";
 
 const controller = new AbortController();
-const interrupt = () => controller.abort();
-process.once("SIGINT", interrupt);
+let sigintCount = 0;
+const interrupt = () => {
+  sigintCount += 1;
+  controller.abort();
+  // 2º Ctrl+C: força saída (caso algum await ignore o abort).
+  if (sigintCount >= 2) {
+    process.stderr.write("\nerro: interrompido (forçado)\n");
+    process.exit(130);
+  }
+};
+process.on("SIGINT", interrupt);
 
 // Tema visual detectado do terminal real (truecolor/256/16/nenhuma), respeitando NO_COLOR.
 const tema = criarTema();
-const ehTty =
-  process.stdin.isTTY === true && process.stdout.isTTY === true && process.stderr.isTTY === true;
+/** UI rica: precisa de stdin TTY (setas/raw). stdout/stderr TTY só melhoram cor. */
+const stdinTty = process.stdin.isTTY === true;
+const saidaTty = process.stdout.isTTY === true && process.stderr.isTTY === true;
+const ehTtyRico = stdinTty && saidaTty;
 
 /** Fecha raw-mode / readline ao sair (evita terminal "preso"). */
 let fecharIo: (() => void) | undefined;
 
-/** Chat IO rico em TTY (autocomplete `/`, setas, spinner); fallback readline em pipe. */
+/** Chat IO rico em TTY (autocomplete `/`, setas, spinner); fallback readline se só stdin for TTY. */
 function criarChatIo(): ChatIo {
-  if (ehTty) {
+  if (ehTtyRico) {
     const prompt = criarPromptTty({
       input: process.stdin,
       output: process.stderr,
@@ -35,7 +46,6 @@ function criarChatIo(): ChatIo {
       abrir: () => prompt.bannerAnimado(),
       pergunta: async (texto) => (await prompt.ler(texto)) ?? "",
       progresso: (texto) => {
-        // Sempre limpa o spinner antes de linhas permanentes (não deixa lixo no terminal).
         if (prompt.spinner.ativo()) {
           prompt.spinner.stop();
         }
@@ -57,7 +67,7 @@ function criarChatIo(): ChatIo {
     };
   }
 
-  // Pipe / não-TTY: leitor por eventos (sem raw mode, sem animações).
+  // stdin TTY mas saída redirecionada: readline clássico (ainda interativo).
   const leitor = criarLeitorDeLinhas(process.stdin, process.stderr);
   fecharIo = () => leitor.close();
   return {
@@ -72,7 +82,7 @@ function criarChatIo(): ChatIo {
  * Entrypoint sem top-level await.
  * No Node 22+/24, TLA no módulo principal dispara
  * "Warning: Detected unsettled top-level await" se o processo sair
- * (SIGINT, handles, process.exit interno) antes da promise assentar.
+ * antes da promise assentar.
  */
 async function main(): Promise<number> {
   try {
@@ -83,7 +93,8 @@ async function main(): Promise<number> {
         stdout: (texto) => process.stdout.write(texto),
       },
       {
-        criarChatIo,
+        // Só expõe chat se houver teclado interativo — senão a CLI recusa com msg clara.
+        ...(stdinTty ? { criarChatIo } : {}),
         criarProvider: (flags) =>
           criarProviderRuntime(
             {
@@ -113,11 +124,16 @@ async function main(): Promise<number> {
 
 void main().then(
   (code) => {
-    process.exit(code);
+    // setImmediate: deixa stderr/stdout drenarem antes do exit (evita banner “sumir”).
+    setImmediate(() => {
+      process.exit(code);
+    });
   },
   (error: unknown) => {
     const mensagem = error instanceof Error ? error.message : String(error);
     process.stderr.write(`erro: ${mensagem}\n`);
-    process.exit(1);
+    setImmediate(() => {
+      process.exit(1);
+    });
   },
 );

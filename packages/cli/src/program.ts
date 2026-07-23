@@ -1,17 +1,17 @@
 import { CoreError } from "@codingpro/core";
+import { type Provider, ProviderError } from "@codingpro/llm";
 import { Command, CommanderError, type Help, Option } from "commander";
-import { ProviderError, type Provider } from "@codingpro/llm";
 import packageJson from "../package.json" with { type: "json" };
 import { executarAgenteHeadless } from "./agent-runtime.js";
 import { type ChatIo, executarChat } from "./chat-runtime.js";
 import { ConfigError, type ProviderOverrides } from "./config.js";
 import { rodarDoctor } from "./doctor.js";
 import { executarPromptHeadless } from "./headless.js";
-import type { Tema } from "./tema.js";
 import { carregarHooks } from "./hooks-runtime.js";
 import { mensagens } from "./i18n/pt-BR.js";
 import { iniciarServidoresMcp } from "./mcp-runtime.js";
 import { carregarSkills, dirsSkills } from "./skills-runtime.js";
+import type { Tema } from "./tema.js";
 
 export interface CliIo {
   readonly stdout: (texto: string) => void;
@@ -151,9 +151,12 @@ export function criarPrograma(
     if (options.chat === true) {
       const criarChatIo = services.criarChatIo;
       if (criarChatIo === undefined) {
+        // index.ts só injeta criarChatIo com stdin TTY; sem isso o chat “piscava” e saía no EOF.
         throw new CliUsageError(mensagens.erro.chatIndisponivel);
       }
       services.signal?.throwIfAborted();
+      // Feedback imediato: provider/MCP/hooks podem demorar antes do banner.
+      io.stderr("· abrindo chat…\n");
       const provider = await services.criarProvider({
         ...(options.provider === undefined ? {} : { provider: options.provider }),
         ...(options.replayFile === undefined ? {} : { replayFile: options.replayFile }),

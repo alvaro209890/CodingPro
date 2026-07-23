@@ -7,7 +7,8 @@ export const mensagens = {
   erro: {
     argumentoAusente: "argumento obrigatório ausente",
     argumentosDemais: "argumentos demais",
-    chatIndisponivel: "o modo chat exige um terminal interativo",
+    chatIndisponivel:
+      "o modo chat exige um terminal interativo (TTY).\n  Abra o Konsole/GNOME Terminal e rode:  codingpro --chat",
     inesperado: "não foi possível concluir a solicitação",
     interrompido: "operação interrompida",
     opcaoDesconhecida: "opção desconhecida",
