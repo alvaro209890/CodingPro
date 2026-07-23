@@ -87,8 +87,9 @@ describe("executarChat", () => {
     const captura = fakeIo(["oi", undefined], []);
     await executarChat({ cwd, provider }, captura.io);
     expect(captura.saida()).toContain("Olá!");
-    // status de sessão / contexto aparece no progresso
-    expect(captura.progresso()).toMatch(/ctx|rest|janela|auto-compact/iu);
+    // status de sessão / contexto aparece no progresso (sem dump de todos os comandos)
+    expect(captura.progresso()).toMatch(/ctx|rest|CodingPro|DeepSeek/iu);
+    expect(captura.progresso()).not.toMatch(/\/undo \(\/desfazer\)/u);
   });
 
   it("/compact reduz o histórico e /custo mostra a sessão", async () => {

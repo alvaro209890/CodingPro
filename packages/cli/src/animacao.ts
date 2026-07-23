@@ -55,29 +55,12 @@ export function linhaSpinner(tick: number, rotulo: string): string {
  * Frames do banner de abertura (texto puro, sem ANSI). Cada frame é multi-linha.
  * `ascii=true` usa caixa +-* compatível com Windows CMD / SSH legado.
  */
-export function framesBannerAbertura(tick: number, ascii = false): string {
+/** Banner estático compacto (sem multi-frame que duplicava linhas no terminal). */
+export function framesBannerAbertura(_tick: number, ascii = false): string {
   if (ascii) {
-    const f = tick % 2 === 0 ? "*" : "+";
-    return [
-      `  ${f}  +------------------------------------------+`,
-      `     |                                          |`,
-      `     |   *  C O D I N G P R O                   |`,
-      `     |   DeepSeek V4 · 1M ctx · pt-BR           |`,
-      `     |                                          |`,
-      `  ${f}  +------------------------------------------+`,
-    ].join("\n");
+    return ["  * CodingPro  ·  DeepSeek V4 · 1M · pt-BR", "  digite / para comandos"].join("\n");
   }
-  const f = frameFaisca(tick);
-  const f2 = frameFaisca(tick + 2);
-  const f3 = frameFaisca(tick + 4);
-  return [
-    `  ${f}  ╭──────────────────────────────────────────╮  ${f2}`,
-    `     │                                          │`,
-    `     │   ◈  C O D I N G P R O                   │`,
-    `     │   DeepSeek V4 · 1M ctx · pt-BR           │`,
-    `     │                                          │`,
-    `  ${f3}  ╰──────────────────────────────────────────╯  ${f}`,
-  ].join("\n");
+  return ["  ◈ CodingPro  ·  DeepSeek V4 · 1M · pt-BR", "  digite / para comandos"].join("\n");
 }
 
 /** Spinner ASCII quando braille não renderiza (CMD). */
@@ -102,9 +85,13 @@ export interface SpinnerHandle {
   readonly ativo: () => boolean;
 }
 
+const ESC = "\u001b";
+/** Limpa a linha atual e volta ao início (não sobe linhas anteriores). */
+const CLEAR_LINE = `\r${ESC}[2K`;
+
 /**
- * Spinner de uma linha (reescrita com CR). `escrever` recebe o texto a cada tick
- * (inclui `\r` e limpeza). Não assume ANSI — o caller pode colorir o `rotulo`.
+ * Spinner de uma linha. Usa clear-line (não sobe o cursor) para não corromper o histórico
+ * nem apagar o prompt de forma errática.
  */
 export function criarSpinner(
   escrever: (texto: string) => void,
@@ -117,15 +104,16 @@ export function criarSpinner(
   let ligado = false;
 
   const pintar = (): void => {
-    // Limpa até 80 colunas e reescreve
     const linha = linhaSpinnerModo(tick, rotulo, ascii);
-    escrever(`\r${linha}${" ".repeat(Math.max(0, 48 - linha.length))}`);
+    // Só reescreve a linha atual; padding curto para não estourar o wrap
+    escrever(`${CLEAR_LINE}${linha}`);
   };
 
   return {
     start(r = "trabalhando") {
       rotulo = r;
       if (ligado) {
+        pintar();
         return;
       }
       ligado = true;
@@ -135,7 +123,6 @@ export function criarSpinner(
         tick += 1;
         pintar();
       }, intervaloMs);
-      // Não deixa o timer manter o processo vivo sozinho.
       timer.unref?.();
     },
     update(r: string) {
@@ -146,7 +133,7 @@ export function criarSpinner(
     },
     stop(mensagemFinal) {
       if (!ligado) {
-        if (mensagemFinal !== undefined) {
+        if (mensagemFinal !== undefined && mensagemFinal.length > 0) {
           escrever(`${mensagemFinal}\n`);
         }
         return;
@@ -156,8 +143,8 @@ export function criarSpinner(
         clearInterval(timer);
         timer = undefined;
       }
-      // Apaga a linha do spinner
-      escrever(`\r${" ".repeat(60)}\r`);
+      // Apaga a linha do spinner e deixa o cursor no início da linha limpa
+      escrever(CLEAR_LINE);
       if (mensagemFinal !== undefined && mensagemFinal.length > 0) {
         escrever(`${mensagemFinal}\n`);
       }

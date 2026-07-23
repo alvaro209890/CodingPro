@@ -31,12 +31,18 @@ function criarChatIo(): ChatIo {
       abrir: () => prompt.bannerAnimado(),
       pergunta: async (texto) => (await prompt.ler(texto)) ?? "",
       progresso: (texto) => {
+        // Sempre limpa o spinner antes de linhas permanentes (não deixa lixo no terminal).
         if (prompt.spinner.ativo()) {
           prompt.spinner.stop();
         }
         process.stderr.write(texto);
       },
-      proximaMensagem: () => prompt.ler(tema.prompt()),
+      proximaMensagem: async () => {
+        if (prompt.spinner.ativo()) {
+          prompt.spinner.stop();
+        }
+        return prompt.ler(tema.prompt());
+      },
       saida: (texto) => {
         if (prompt.spinner.ativo()) {
           prompt.spinner.stop();

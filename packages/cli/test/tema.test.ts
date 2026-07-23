@@ -66,7 +66,7 @@ describe("criarTema", () => {
   it("nível 'nenhuma' + unicode padrão produz texto limpo", () => {
     const t = criarTema({ ascii: false, nivel: "nenhuma" });
     expect(t.banner()).not.toContain(ESC);
-    expect(t.banner()).toMatch(/DeepSeek|1M|pt-BR|████|___/u);
+    expect(t.banner()).toMatch(/CodingPro|DeepSeek|1M|pt-BR/u);
     expect(t.progresso("Lendo")).toBe("· Lendo");
     expect(t.cabecalhoProjeto("TS")).toBe("▸ Projeto: TS");
     expect(t.prompt()).toBe("❯ ");
@@ -78,9 +78,9 @@ describe("criarTema", () => {
     const t = criarTema({ ascii: true, nivel: "16" });
     expect(t.ascii).toBe(true);
     const ban = semAnsi(t.banner());
-    expect(ban).toContain("+--");
-    expect(ban).toMatch(/DeepSeek|1M|pt-BR|____/u);
+    expect(ban).toMatch(/CodingPro|DeepSeek|1M|pt-BR/u);
     expect(ban).not.toContain("╭");
+    expect(ban.split("\n").filter((l) => l.trim().length > 0).length).toBeLessThanOrEqual(4);
     expect(t.prompt()).toContain(">");
     expect(semAnsi(t.progresso("ok"))).toMatch(/^\* /u);
     expect(semAnsi(t.sucesso("feito"))).toContain("+");

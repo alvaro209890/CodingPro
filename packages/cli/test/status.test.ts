@@ -79,6 +79,6 @@ describe("status — sessão e contexto", () => {
     const linha = formatarStatusLinha(s, true);
     expect(linha).toContain("Flash");
     expect(linha).toContain("rest");
-    expect(linha).toContain("1.00M");
+    expect(linha).toMatch(/ctx|1\.00k|250/u);
   });
 });

@@ -315,24 +315,18 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
   // Estado do auto-effort: decide automaticamente Flash/Pro a cada turno.
   const autoEffort: AutoEffortState = criarAutoEffortState();
 
+  // Abertura enxuta: banner + projeto. Sem dump de todos os comandos (use /ajuda).
   if (io.abrir !== undefined) {
     await io.abrir();
   } else {
-    io.progresso(`${tema.banner()}\n`);
+    io.progresso(tema.banner());
   }
   io.progresso(`${tema.cabecalhoProjeto(resumoProjeto(await detectarProjeto(workspace)))}\n`);
-  io.progresso(`${tema.regua()}\n`);
-  io.progresso(
-    `${tema.nota("digite / para ver comandos · ↑↓ seleciona · Tab completa · Enter envia")}\n`,
-  );
-  io.progresso(`${tema.nota(AJUDA.trimEnd())}\n`);
-  io.progresso(
-    `${tema.nota(`auto-compact em ${orcamentoContexto.toLocaleString("pt-BR")} tok (janela DeepSeek 1M) · /compact força`)}\n`,
-  );
+  io.progresso("\n");
 
   for (;;) {
     options.signal?.throwIfAborted();
-    // Cantinho de status: custo da sessão + contexto restante (antes de cada prompt).
+    // Status compacto numa linha, depois o prompt (barra digitável).
     stats = atualizarEstimativaContexto(stats, transcrito);
     io.progresso(`${tema.statusLinha(formatarStatusLinha(stats, tema.ascii))}\n`);
 
@@ -591,8 +585,9 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
         messages: entrada,
         onEvent: (event) => {
           if (event.type === "text-delta") {
-            if (!respondeu) {
-              io.spinner?.stop();
+            // Texto da IA: limpa spinner e escreve sem reabrir (mantém o fluxo legível).
+            if (io.spinner?.ativo() === true) {
+              io.spinner.stop();
             }
             respondeu = true;
             io.saida(sanitizarTextoTerminal(event.text));
@@ -612,11 +607,11 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
             const texto = sanitizarTextoTerminal(progresso);
             const linha =
               event.type === "tool-call" ? tema.ferramenta(texto) : tema.progresso(texto);
-            // Evento permanente na timeline; spinner recomeça em seguida se houver.
+            // Linha permanente: apaga spinner, imprime, e só volta a animar após tool-result.
             io.spinner?.stop();
             io.progresso(`${linha}\n`);
-            if (event.type === "tool-call" || event.type === "tool-result") {
-              io.spinner?.start("continuando");
+            if (event.type === "tool-result") {
+              io.spinner?.start(`pensando (${modeloNome})`);
             }
           }
         },
@@ -631,6 +626,9 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
 
     if (respondeu) {
       io.saida("\n");
+    } else {
+      // Garante linha limpa antes do próximo status/prompt
+      io.progresso("\n");
     }
 
     // Atualiza auto-effort: um erro de ferramenta neste turno escala o próximo para Pro.

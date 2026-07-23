@@ -165,26 +165,9 @@ export function glifosPara(ascii: boolean): Glifos {
   };
 }
 
-/** Logo multi-linha (wordmark). ASCII para CMD; Unicode para terminais modernos. */
+/** Marca curta (1 linha) — evita arte ASCII larga que quebra o terminal. */
 export function logoLinhas(ascii: boolean): readonly string[] {
-  if (ascii) {
-    return [
-      "   ____          _ _             ____",
-      "  / ___|___   __| (_)_ __   __ _|  _ \\ _ __ ___",
-      " | |   / _ \\ / _` | | '_ \\ / _` | |_) | '__/ _ \\",
-      " | |__| (_) | (_| | | | | | (_| |  __/| | | (_) |",
-      "  \\____\\___/ \\__,_|_|_| |_|\\__, |_|   |_|  \\___/",
-      "                           |___/",
-    ];
-  }
-  return [
-    "   ██████╗ ██████╗ ██████╗ ██╗███╗   ██╗ ██████╗ ██████╗ ██████╗  ██████╗",
-    "  ██╔════╝██╔═══██╗██╔══██╗██║████╗  ██║██╔════╝ ██╔══██╗██╔══██╗██╔═══██╗",
-    "  ██║     ██║   ██║██║  ██║██║██╔██╗ ██║██║  ███╗██████╔╝██████╔╝██║   ██║",
-    "  ██║     ██║   ██║██║  ██║██║██║╚██╗██║██║   ██║██╔═══╝ ██╔══██╗██║   ██║",
-    "  ╚██████╗╚██████╔╝██████╔╝██║██║ ╚████║╚██████╔╝██║     ██║  ██║╚██████╔╝",
-    "   ╚═════╝ ╚═════╝ ╚═════╝ ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝ ╚═════╝",
-  ];
+  return ascii ? ["* CodingPro"] : ["◈ CodingPro"];
 }
 
 function codigoFg(cor: CorRGB, nivel: NivelCor): string {
@@ -300,28 +283,24 @@ export function criarTema(
     ascii,
     cor: nivel,
     banner() {
-      const linhasLogo = logoLinhas(ascii).map((l) =>
-        nivel === "nenhuma" ? l : `${ESC}[1m${gradiente(l, nivel)}${RESET}`,
-      );
+      const marca =
+        nivel === "nenhuma"
+          ? (logoLinhas(ascii)[0] ?? "CodingPro")
+          : `${ESC}[1m${gradiente(logoLinhas(ascii)[0] ?? "CodingPro", nivel)}${RESET}`;
       const sub = esmaecer(
-        ascii
-          ? "CLI de codigo · DeepSeek V4 · janela 1M tok · pt-BR"
-          : "CLI de código · DeepSeek V4 · janela 1M tok · pt-BR",
+        ascii ? "DeepSeek V4 · 1M tok · pt-BR" : "DeepSeek V4 · 1M tok · pt-BR",
         nivel,
         preferCinza,
       );
       const dica = esmaecer(
         ascii
-          ? "/ comandos · setas Tab Enter · /compact · /custo"
-          : "/ comandos · ↑↓ Tab Enter · /compact · /custo",
+          ? "digite / para comandos  ·  /ajuda lista tudo"
+          : "digite / para comandos  ·  /ajuda lista tudo",
         nivel,
         preferCinza,
       );
-      const top = esmaecer(g.boxTop, nivel, preferCinza);
-      const bot = esmaecer(g.boxBot, nivel, preferCinza);
-      const side = (inner: string): string => `${esmaecer(g.boxSide, nivel, preferCinza)} ${inner}`;
-      // Logo larga: sem moldura lateral em cada linha (evita quebra no CMD estreito).
-      return `\n${top}\n${linhasLogo.join("\n")}\n${side(sub)}\n${side(dica)}\n${bot}\n`;
+      // Cabeçalho compacto (3 linhas) — sem animação multi-frame nem arte larga.
+      return `\n  ${marca}  ${sub}\n  ${dica}\n${esmaecer(g.rule, nivel, preferCinza)}\n`;
     },
     prompt() {
       const sim = g.prompt.trimEnd();
@@ -355,14 +334,8 @@ export function criarTema(
       return esmaecer(g.rule, nivel, preferCinza);
     },
     statusLinha(linha: string) {
-      const tag = ascii ? "[$]" : "◈";
-      const corpo = esmaecer(linha, nivel, preferCinza);
-      const left = pintar(tag, AURORA.violeta, nivel);
-      if (ascii) {
-        return `${left} ${corpo}`;
-      }
-      // Cantinho: fundo sutil com borda
-      return `${pintar("┌─", AURORA.violeta, nivel)} ${corpo}`;
+      const tag = ascii ? "·" : "·";
+      return `${pintar(tag, AURORA.violeta, nivel)} ${esmaecer(linha, nivel, preferCinza)}`;
     },
   };
 }

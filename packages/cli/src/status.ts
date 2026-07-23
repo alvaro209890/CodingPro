@@ -153,12 +153,13 @@ export function formatarStatusLinha(stats: SessionStats, ascii = false): string 
   const modelo = stats.lastModel ?? "—";
   const cache =
     stats.inputTokens > 0 ? Math.round((stats.cacheReadTokens / stats.inputTokens) * 100) : 0;
+  // Linha curta: cabe no terminal sem wrap (evita “sumir” o prompt).
   return (
-    `${modelo} · ${formatUsd(stats.totalCostUsd)} · ` +
-    `in ${formatTok(stats.inputTokens)} out ${formatTok(stats.outputTokens)} ` +
-    `(cache ${cache}%) · ` +
+    `${modelo} ${formatUsd(stats.totalCostUsd)} · ` +
+    `${formatTok(stats.inputTokens)}↓ ${formatTok(stats.outputTokens)}↑ · ` +
     `ctx ${formatTok(stats.contextTokens)}/${formatTok(stats.contextBudget)} ` +
-    `${bar} ${pct}% · rest ${formatTok(rest)} · janela ${formatTok(stats.contextWindow)}`
+    `${bar} ${pct}% · rest ${formatTok(rest)}` +
+    (cache > 0 ? ` · cache ${cache}%` : "")
   );
 }
 

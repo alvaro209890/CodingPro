@@ -12,7 +12,7 @@ import {
   type PromptState,
 } from "./prompt-input.js";
 import type { Tema } from "./tema.js";
-import { criarSpinner, framesBannerAbertura, type SpinnerHandle } from "./animacao.js";
+import { criarSpinner, type SpinnerHandle } from "./animacao.js";
 
 const ESC = "\u001b";
 const HIDE_CURSOR = `${ESC}[?25l`;
@@ -222,29 +222,8 @@ export function criarPromptTty(options: PromptTtyOptions): PromptTty {
   };
 
   const bannerAnimado = async (): Promise<void> => {
-    write(HIDE_CURSOR);
-    const frames = 10;
-    const linhasBanner = 6;
-    for (let t = 0; t < frames; t += 1) {
-      if (t > 0) {
-        write(`${CURSOR_UP(linhasBanner - 1)}\r`);
-      }
-      const corpo = framesBannerAbertura(t, tema.ascii);
-      const colorido = corpo
-        .split("\n")
-        .map((linha, i) => {
-          // palavra CodingPro no meio
-          if (i === 2) {
-            return tema.destaque(linha);
-          }
-          return tema.nota(linha);
-        })
-        .join("\n");
-      write(`${colorido}\n`);
-      await new Promise((r) => setTimeout(r, 40));
-    }
-    write(SHOW_CURSOR);
-    write(`\n${tema.regua()}\n`);
+    // Uma única impressão do banner do tema (sem multi-frame / CURSOR_UP que duplicava linhas).
+    write(tema.banner());
   };
 
   return {

@@ -88,7 +88,7 @@ describe("prompt-tty", () => {
     const p = prompt.bannerAnimado();
     await vi.runAllTimersAsync();
     await p;
-    expect(out.texto()).toMatch(/C O D I N G|DeepSeek|1M/u);
+    expect(out.texto()).toMatch(/CodingPro|DeepSeek|1M/u);
     prompt.close();
     vi.useRealTimers();
   });
