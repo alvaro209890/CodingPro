@@ -245,7 +245,9 @@ async function repassar(
         try {
           const json = JSON.parse(pedacos.join("")) as { usage?: Record<string, unknown> };
           if (json.usage) uso = normalizarUso(json.usage);
-        } catch { /* não é JSON — ignora */ }
+        } catch {
+          /* não é JSON — ignora */
+        }
       }
       await registrar(ctx, {
         competencia: args.competencia,

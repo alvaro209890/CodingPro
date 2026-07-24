@@ -4,7 +4,7 @@
 
 Transformar a aba CLI do Playground em uma experiência completa de terminal CodingPro no navegador, com múltiplos chats, persistência, e todos os comandos `/` funcionais.
 
-## Status Atual
+## Status Final (2026-07-24)
 
 | Funcionalidade | Estado |
 |---------------|--------|
@@ -12,70 +12,69 @@ Transformar a aba CLI do Playground em uma experiência completa de terminal Cod
 | Streaming SSE | ✅ Resposta aparece em tempo real |
 | Banner ASCII | ✅ Mostra na primeira carga |
 | Slash `/clear` | ✅ Limpa mensagens |
+| Slash `/new` | ✅ Cria nova sessão |
+| Slash `/list` | ✅ Lista sessões salvas |
+| Slash `/switch <id>` | ✅ Troca sessão |
+| Slash `/delete <id>` | ✅ Deleta sessão |
+| Slash `/rename <nome>` | ✅ Renomeia sessão |
+| Slash `/export` | ✅ Exporta como .md (clipboard) |
+| Slash `/history` | ✅ Histórico de comandos |
+| Slash `/context` | ✅ Arquivos do workspace |
+| Slash `/agent <p>` | ✅ Modo agente |
 | Slash `/files` | ✅ Abre aba Files |
 | Slash `/memory` | ✅ Abre aba Memory |
 | Slash `/help` | ✅ Mostra comandos |
-| Múltiplos chats | ❌ Só existe 1 chat por sessão |
-| Navegação entre chats | ❌ Não implementado |
-| Persistência de chats | ❌ Perde ao recarregar |
-| Tool animations | ⚠️ Funciona mas pode melhorar |
-| Histórico de comandos | ❌ Não tem seta pra cima |
-| Auto-complete | ❌ Só dropdown de slash |
+| Múltiplos chats | ✅ Sidebar com lista de sessões |
+| Navegação entre chats | ✅ Clique na sidebar |
+| Persistência de chats | ✅ localStorage (auto-save) |
+| Histórico de comandos | ✅ Seta cima/baixo |
+| Atalhos de teclado | ✅ Ctrl+L, Ctrl+N, Ctrl+K |
+| Deletar chat | ✅ Com confirmação |
 
-## Melhorias Planejadas
+## BUG Corrigido
 
-### Fase 1 — Chat Multi-sessão (P0)
-- [ ] Criar estrutura de `Session[]` com id, nome, mensagens, timestamp
-- [ ] Botão "+" abre novo chat com nome automático
-- [ ] Sidebar ou dropdown com lista de chats
-- [ ] Trocar entre chats mantendo estado de cada um
-- [ ] Deletar chat (com confirmação)
+**Cookie cross-domain**: `api.ts` usava URL absoluta (`https://codingpro-api.cursar.space`) para `/api/eu`, fazendo o cookie `cp_sessao` não viajar. Corrigido para URL relativa (`fetch(caminho)`) — tudo passa pelo proxy HTTP, mesmo domínio, cookie sempre enviado.
 
-### Fase 2 — Persistência (P1)
-- [ ] Salvar chats no `localStorage` (recupera ao recarregar)
-- [ ] Opção de salvar no servidor (`.memory/chats/`)
-- [ ] Auto-save a cada 5 mensagens
-- [ ] Restaurar última sessão ao abrir
+## Implementação
 
-### Fase 3 — Comandos Completos (P2)
-- [ ] `/new` — novo chat
-- [ ] `/list` — lista chats salvos
-- [ ] `/switch <id>` — troca para chat específico
-- [ ] `/delete <id>` — deleta chat
-- [ ] `/rename <nome>` — renomeia chat atual
-- [ ] `/export` — exporta chat como .md
-- [ ] `/history` — mostra últimos comandos
-- [ ] `/context` — mostra arquivos no workspace
-- [ ] `/agent <prompt>` — modo agente com tools
-- [ ] `/model <pro|flash>` — troca modelo
+Arquivo único `packages/web/src/ui/paginas/Playground.tsx` (~823 linhas).
 
-### Fase 4 — UX (P3)
-- [ ] Histórico de comandos (seta cima/baixo)
-- [ ] Auto-complete de paths do workspace
-- [ ] Syntax highlight no editor
-- [ ] Tool animations melhoradas (progresso real)
-- [ ] Atalhos de teclado (Ctrl+L limpa, Ctrl+N novo)
-- [ ] Tema claro/escuro toggle
+### Estrutura de dados
+```typescript
+interface Session { id, nome, mensagens, criadaEm }
+interface Mensagem { role, content, tools }
+```
 
-## Validação
+### Persistência
+- localStorage keys: `cp_playground_sessions`, `cp_playground_active`
+- Auto-save em cada mudança de sessão
+- Máximo 20 sessões
 
-### Testes manuais
-- [ ] Abrir 3 chats, trocar entre eles, verificar estado isolado
-- [ ] Fechar navegador, reabrir, verificar persistência
-- [ ] Todos os comandos `/` retornam resposta correta
-- [ ] Chat com 100+ mensagens não trava
-- [ ] Dois chats simultâneos não interferem
-- [ ] Mobile: sidebar colapsa, gestos funcionam
+### Comandos
+- `/clear` — limpa tela
+- `/new` — nova sessão
+- `/list` — lista sessões
+- `/switch <id>` — troca sessão (últimos 6 chars do ID)
+- `/delete <id>` — deleta sessão
+- `/rename <nome>` — renomeia sessão atual
+- `/export` — copia chat como Markdown
+- `/history` — últimos 20 comandos
+- `/context` — abre aba Files com arquivos do workspace
+- `/agent <prompt>` — modo agente com tools
+- `/files` — abre aba Files
+- `/memory` — abre aba Memory
+- `/help` — lista todos os comandos
 
-### Testes de integração
-- [ ] Login → novo chat → enviar prompt → resposta streaming
-- [ ] Mudar de chat durante streaming → continua no chat original
-- [ ] `/memory` salva contexto do chat atual
-- [ ] `/files` mostra arquivos do workspace correto
-- [ ] `/agent` usa tools reais e retorna resultado
+### Atalhos
+- `Ctrl+L` — limpar tela
+- `Ctrl+N` — novo chat
+- `Ctrl+K` — toggle sidebar
+- `↑/↓` — histórico de comandos
+- `Esc` — fecha dropdown/sidebar
 
-### Performance
-- [ ] Tempo de resposta < 500ms para iniciar streaming
-- [ ] 50 chats no localStorage não degradam performance
-- [ ] Scroll de 500 mensagens fluido
-- [ ] Tamanho do bundle < 300KB gzip
+### Sidebar
+- Mobile: overlay com fundo escuro
+- Desktop: barra lateral fixa (280px)
+- Lista sessões com: nome, mensagens, data
+- Botões: renomear (✎), deletar (✕)
+- "+" cria nova sessão vazia

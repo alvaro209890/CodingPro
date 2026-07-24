@@ -70,11 +70,22 @@ export function TelaConta({ aoConectar }: { aoConectar: () => void }) {
           <form onSubmit={entrar}>
             <label>
               E-mail
-              <input autoFocus onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" type="email" value={email} />
+              <input
+                autoFocus
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu@email.com"
+                type="email"
+                value={email}
+              />
             </label>
             <label>
               Senha
-              <input onChange={(e) => setSenha(e.target.value)} placeholder="••••••" type="password" value={senha} />
+              <input
+                onChange={(e) => setSenha(e.target.value)}
+                placeholder="••••••"
+                type="password"
+                value={senha}
+              />
             </label>
             <button className="tela-conta__botao" disabled={enviando} type="submit">
               {enviando ? "Entrando…" : "Entrar"}
@@ -84,15 +95,30 @@ export function TelaConta({ aoConectar }: { aoConectar: () => void }) {
           <form onSubmit={cadastrar}>
             <label>
               Nome
-              <input autoFocus onChange={(e) => setNome(e.target.value)} placeholder="Seu nome" value={nome} />
+              <input
+                autoFocus
+                onChange={(e) => setNome(e.target.value)}
+                placeholder="Seu nome"
+                value={nome}
+              />
             </label>
             <label>
               E-mail
-              <input onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" type="email" value={email} />
+              <input
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu@email.com"
+                type="email"
+                value={email}
+              />
             </label>
             <label>
               Senha
-              <input onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 8 caracteres" type="password" value={senha} />
+              <input
+                onChange={(e) => setSenha(e.target.value)}
+                placeholder="Mínimo 8 caracteres"
+                type="password"
+                value={senha}
+              />
             </label>
             <button className="tela-conta__botao" disabled={enviando} type="submit">
               {enviando ? "Criando…" : "Criar conta"}
@@ -104,14 +130,30 @@ export function TelaConta({ aoConectar }: { aoConectar: () => void }) {
           {modo === "login" ? (
             <>
               Não tem conta?{" "}
-              <button className="tela-conta__link" onClick={() => { setModo("cadastro"); setErro(""); setSucesso(""); }} type="button">
+              <button
+                className="tela-conta__link"
+                onClick={() => {
+                  setModo("cadastro");
+                  setErro("");
+                  setSucesso("");
+                }}
+                type="button"
+              >
                 Criar agora
               </button>
             </>
           ) : (
             <>
               Já tem conta?{" "}
-              <button className="tela-conta__link" onClick={() => { setModo("login"); setErro(""); setSucesso(""); }} type="button">
+              <button
+                className="tela-conta__link"
+                onClick={() => {
+                  setModo("login");
+                  setErro("");
+                  setSucesso("");
+                }}
+                type="button"
+              >
                 Fazer login
               </button>
             </>

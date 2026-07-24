@@ -20,7 +20,8 @@ export class ErroApi extends Error {
 async function pedir<T>(caminho: string, init?: RequestInit): Promise<T> {
   let resposta: Response;
   try {
-    resposta = await fetch(`${API_URL}${caminho}`, {
+    // URLs relativas → passam pelo proxy HTTP → mesmo domínio → cookie viaja sempre
+    resposta = await fetch(caminho, {
       credentials: "include",
       headers: { "content-type": "application/json" },
       ...init,

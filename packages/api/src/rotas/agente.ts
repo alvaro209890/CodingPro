@@ -28,12 +28,18 @@ function listarArquivos(dir: string, base: string = dir, prof = 0): string {
       const st = statSync(p);
       out += `${st.isDirectory() ? "d" : "-"} ${nome}${st.isDirectory() ? "/" : ""} (${st.size} bytes)\n`;
       if (st.isDirectory() && prof < 2) out += listarArquivos(p, base, prof + 1);
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
   return out;
 }
 
-async function executarTool(nome: string, args: Record<string, unknown>, workspace: string): Promise<string> {
+async function executarTool(
+  nome: string,
+  args: Record<string, unknown>,
+  workspace: string,
+): Promise<string> {
   try {
     switch (nome) {
       case "read_file": {
@@ -73,7 +79,14 @@ async function executarTool(nome: string, args: Record<string, unknown>, workspa
         // Simples: busca nos arquivos do workspace
         const pattern = String(args.pattern ?? "");
         if (!pattern) return "Erro: padrão vazio.";
-        const files = readdirSync(workspace).filter((f) => f.endsWith(".js") || f.endsWith(".ts") || f.endsWith(".json") || f.endsWith(".md") || f.endsWith(".txt"));
+        const files = readdirSync(workspace).filter(
+          (f) =>
+            f.endsWith(".js") ||
+            f.endsWith(".ts") ||
+            f.endsWith(".json") ||
+            f.endsWith(".md") ||
+            f.endsWith(".txt"),
+        );
         let result = "";
         for (const f of files.slice(0, 10)) {
           try {
@@ -81,7 +94,9 @@ async function executarTool(nome: string, args: Record<string, unknown>, workspa
             for (const [i, line] of content.split("\n").entries()) {
               if (line.includes(pattern)) result += `${f}:${i + 1}: ${line.trim().slice(0, 200)}\n`;
             }
-          } catch { /* skip */ }
+          } catch {
+            /* skip */
+          }
         }
         return result || `Nenhuma ocorrência de '${pattern}' encontrada.`;
       }
@@ -100,13 +115,85 @@ async function executarTool(nome: string, args: Record<string, unknown>, workspa
 }
 
 const TOOLS = [
-  { type: "function" as const, function: { name: "read_file", description: "Lê um arquivo do workspace. Use para analisar código.", parameters: { type: "object", properties: { path: { type: "string", description: "Caminho relativo do arquivo" } }, required: ["path"] } } },
-  { type: "function" as const, function: { name: "write_file", description: "Cria ou edita um arquivo no workspace.", parameters: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] } } },
-  { type: "function" as const, function: { name: "list_dir", description: "Lista arquivos e pastas. Use para explorar o workspace.", parameters: { type: "object", properties: { path: { type: "string", description: "Caminho (ex: '.' ou 'Documents')" } } } } },
-  { type: "function" as const, function: { name: "bash", description: "Executa comando no terminal Linux do VPS.", parameters: { type: "object", properties: { command: { type: "string" } }, required: ["command"] } } },
-  { type: "function" as const, function: { name: "grep", description: "Busca texto nos arquivos do workspace.", parameters: { type: "object", properties: { pattern: { type: "string" } }, required: ["pattern"] } } },
-  { type: "function" as const, function: { name: "web_search", description: "Pesquisa na web (desabilitado).", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } } },
-  { type: "function" as const, function: { name: "task", description: "Subagente (desabilitado no VPS).", parameters: { type: "object", properties: { goal: { type: "string" } }, required: ["goal"] } } },
+  {
+    type: "function" as const,
+    function: {
+      name: "read_file",
+      description: "Lê um arquivo do workspace. Use para analisar código.",
+      parameters: {
+        type: "object",
+        properties: { path: { type: "string", description: "Caminho relativo do arquivo" } },
+        required: ["path"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "write_file",
+      description: "Cria ou edita um arquivo no workspace.",
+      parameters: {
+        type: "object",
+        properties: { path: { type: "string" }, content: { type: "string" } },
+        required: ["path", "content"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "list_dir",
+      description: "Lista arquivos e pastas. Use para explorar o workspace.",
+      parameters: {
+        type: "object",
+        properties: { path: { type: "string", description: "Caminho (ex: '.' ou 'Documents')" } },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "bash",
+      description: "Executa comando no terminal Linux do VPS.",
+      parameters: {
+        type: "object",
+        properties: { command: { type: "string" } },
+        required: ["command"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "grep",
+      description: "Busca texto nos arquivos do workspace.",
+      parameters: {
+        type: "object",
+        properties: { pattern: { type: "string" } },
+        required: ["pattern"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "web_search",
+      description: "Pesquisa na web (desabilitado).",
+      parameters: {
+        type: "object",
+        properties: { query: { type: "string" } },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "task",
+      description: "Subagente (desabilitado no VPS).",
+      parameters: { type: "object", properties: { goal: { type: "string" } }, required: ["goal"] },
+    },
+  },
 ];
 
 export function registrarRotaAgente(app: FastifyInstance, ctx: Contexto): void {
@@ -132,7 +219,9 @@ export function registrarRotaAgente(app: FastifyInstance, ctx: Contexto): void {
 
     try {
       const messages: any[] = [
-        { role: "system", content: `Você é o CodingPro, um assistente de IA rodando num VPS Linux. Você tem acesso REAL ao sistema de arquivos do workspace do usuário.
+        {
+          role: "system",
+          content: `Você é o CodingPro, um assistente de IA rodando num VPS Linux. Você tem acesso REAL ao sistema de arquivos do workspace do usuário.
 
 Workspace: ${workspace}
 
@@ -143,7 +232,8 @@ Use as tools disponíveis para:
 - bash: executar comandos no terminal
 - grep: buscar texto nos arquivos
 
-Sempre responda em português. Seja direto e útil. Quando o usuário pedir para analisar algo, USE AS TOOLS para explorar os arquivos reais antes de responder.` },
+Sempre responda em português. Seja direto e útil. Quando o usuário pedir para analisar algo, USE AS TOOLS para explorar os arquivos reais antes de responder.`,
+        },
         { role: "user", content: prompt },
       ];
 
@@ -153,15 +243,30 @@ Sempre responda em português. Seja direto e útil. Quando o usuário pedir para
       for (let iter = 0; iter < 5; iter++) {
         const upstream = await ctx.fetch(`${ctx.config.deepseekBaseUrl}/chat/completions`, {
           method: "POST",
-          headers: { authorization: `Bearer ${ctx.config.deepseekApiKey}`, "content-type": "application/json" },
-          body: JSON.stringify({ model: "deepseek-v4-pro", messages, tools: TOOLS, max_tokens: 4096, stream: false }),
+          headers: {
+            authorization: `Bearer ${ctx.config.deepseekApiKey}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "deepseek-v4-pro",
+            messages,
+            tools: TOOLS,
+            max_tokens: 4096,
+            stream: false,
+          }),
         });
 
-        if (!upstream.ok) { send("error", { message: "Provedor indisponível" }); break; }
+        if (!upstream.ok) {
+          send("error", { message: "Provedor indisponível" });
+          break;
+        }
 
-        const corpo = await upstream.json() as any;
+        const corpo = (await upstream.json()) as any;
         const msg = corpo.choices?.[0]?.message;
-        if (!msg) { send("error", { message: "Resposta vazia" }); break; }
+        if (!msg) {
+          send("error", { message: "Resposta vazia" });
+          break;
+        }
 
         // Tool calls?
         if (msg.tool_calls?.length > 0) {
@@ -169,10 +274,20 @@ Sempre responda em português. Seja direto e útil. Quando o usuário pedir para
           for (const tc of msg.tool_calls) {
             const nome = tc.function?.name ?? "?";
             const args = JSON.parse(tc.function?.arguments ?? "{}");
-            send("tool-start", { id: tc.id, name: nome, args: JSON.stringify(args).slice(0, 200), timestamp: Date.now() });
+            send("tool-start", {
+              id: tc.id,
+              name: nome,
+              args: JSON.stringify(args).slice(0, 200),
+              timestamp: Date.now(),
+            });
 
             const resultado = await executarTool(nome, args, workspace);
-            send("tool-end", { id: tc.id, name: nome, result: resultado.slice(0, 500), timestamp: Date.now() });
+            send("tool-end", {
+              id: tc.id,
+              name: nome,
+              result: resultado.slice(0, 500),
+              timestamp: Date.now(),
+            });
 
             messages.push({ role: "tool", tool_call_id: tc.id, content: resultado });
           }

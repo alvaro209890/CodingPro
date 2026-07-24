@@ -18,10 +18,14 @@ export async function iniciarTui(context: ProviderRuntimeContext): Promise<void>
       tema: "aurora",
       async onSend(prompt: string) {
         let content = "";
-        const stream = provider.stream({ messages: [{ role: "user", content: prompt }], toolChoice: "none" });
+        const stream = provider.stream({
+          messages: [{ role: "user", content: prompt }],
+          toolChoice: "none",
+        });
         for await (const event of stream) {
           if (event.type === "text-delta") content += event.text;
-          else if (event.type === "finish") return [{ role: "assistant", content: content || "(sem resposta)" }];
+          else if (event.type === "finish")
+            return [{ role: "assistant", content: content || "(sem resposta)" }];
         }
         return [{ role: "assistant", content: content || "(sem resposta)" }];
       },

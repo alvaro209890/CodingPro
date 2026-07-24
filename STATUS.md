@@ -43,7 +43,11 @@ Navegador → codingpro.cursar.space (Vite+React SPA + proxy HTTP)
 
 ### Playground VPS (`/playground`)
 7 abas: ⚡ CLI | 💬 Chat | 📁 Files | ✏️ Editor | >_ Terminal | 🔀 Git | 🧠 Memory
-- CLI: banner ASCII, input direto, streaming SSE, slash commands
+- CLI: banner ASCII, input direto, streaming SSE, slash commands (12 comandos)
+- **Multi-chat**: sidebar com múltiplas sessões, criar/trocar/deletar/renomear
+- **Persistência**: localStorage (auto-save), restaura ao recarregar
+- **Histórico**: seta cima/baixo para comandos anteriores
+- **Atalhos**: Ctrl+L (limpar), Ctrl+N (novo chat), Ctrl+K (sidebar)
 - Chat: agente com tools reais (list_dir, read_file, write_file, bash, grep)
 - Workspace isolado: `~/Documentos/vps-workspaces/<id>/`
 - Terminal: shell real, git clone/pull/status

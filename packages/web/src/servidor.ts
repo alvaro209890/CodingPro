@@ -43,7 +43,9 @@ function proxyApi(req: IncomingMessage, res: ServerResponse): void {
         method: req.method,
         headers: {
           ...Object.fromEntries(
-            Object.entries(req.headers).filter(([k]) => !["host", "origin", "referer"].includes(k.toLowerCase())),
+            Object.entries(req.headers).filter(
+              ([k]) => !["host", "origin", "referer"].includes(k.toLowerCase()),
+            ),
           ),
           host: url.host,
         },
@@ -61,7 +63,8 @@ function proxyApi(req: IncomingMessage, res: ServerResponse): void {
           }
           headers[k] = val;
         }
-        headers["access-control-allow-origin"] = req.headers.origin || "https://codingpro.cursar.space";
+        headers["access-control-allow-origin"] =
+          req.headers.origin || "https://codingpro.cursar.space";
         headers["access-control-allow-credentials"] = "true";
         res.writeHead(proxyRes.statusCode ?? 200, headers);
         proxyRes.pipe(res);

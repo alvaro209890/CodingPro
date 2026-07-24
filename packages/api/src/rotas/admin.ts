@@ -13,9 +13,14 @@ function tamanhoWorkspaceMb(userId: number): number {
   const dir = join(RAIZ_VPS, String(userId));
   if (!existsSync(dir)) return 0;
   try {
-    const out = execSync(`du -sm "${dir}" 2>/dev/null || echo 0`, { timeout: 3000, encoding: "utf8" });
+    const out = execSync(`du -sm "${dir}" 2>/dev/null || echo 0`, {
+      timeout: 3000,
+      encoding: "utf8",
+    });
     return Number.parseInt(out.split(/\s/)[0] ?? "0") || 0;
-  } catch { return 0; }
+  } catch {
+    return 0;
+  }
 }
 
 /** Métricas do processo alimentadas pelo hook de request do app. */

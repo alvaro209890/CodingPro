@@ -221,8 +221,8 @@ function PassosWindows() {
           Baixar para Windows (.zip)
         </a>
         <p className="fraco" style={{ marginTop: "0.75rem" }}>
-          Descompacte o arquivo e execute <code>CodingPro.exe</code>. O Windows pode mostrar um aviso de
-          aplicativo desconhecido (o app ainda não é assinado): clique em{" "}
+          Descompacte o arquivo e execute <code>CodingPro.exe</code>. O Windows pode mostrar um
+          aviso de aplicativo desconhecido (o app ainda não é assinado): clique em{" "}
           <strong>Mais informações</strong> → <strong>Executar assim mesmo</strong>.
         </p>
       </Passo>
@@ -230,21 +230,21 @@ function PassosWindows() {
       <Passo numero={2} titulo="Extraia e abra">
         <p>
           Descompacte o arquivo <code>.zip</code> em qualquer pasta e execute o{" "}
-          <code>CodingPro.exe</code>. O Windows pode mostrar um aviso de aplicativo
-          desconhecido (o app ainda não é assinado): clique em{" "}
-          <strong>Mais informações</strong> → <strong>Executar assim mesmo</strong>.
+          <code>CodingPro.exe</code>. O Windows pode mostrar um aviso de aplicativo desconhecido (o
+          app ainda não é assinado): clique em <strong>Mais informações</strong> →{" "}
+          <strong>Executar assim mesmo</strong>.
         </p>
       </Passo>
 
       <Passo numero={3} titulo="Entre com sua conta">
         <p>
           Na tela inicial, digite seu <strong>e-mail e senha</strong> e clique em{" "}
-          <strong>Entrar</strong>. O app conecta direto na sua conta — sem navegador,
-          sem código. Quem ainda não tem conta pode criar ali mesmo, em segundos.
+          <strong>Entrar</strong>. O app conecta direto na sua conta — sem navegador, sem código.
+          Quem ainda não tem conta pode criar ali mesmo, em segundos.
         </p>
         <p className="fraco" style={{ margin: 0 }}>
-          Se você já rodou <code>codingpro login</code> nesta máquina, o app reaproveita
-          a mesma conta e nem pede login.
+          Se você já rodou <code>codingpro login</code> nesta máquina, o app reaproveita a mesma
+          conta e nem pede login.
         </p>
       </Passo>
 

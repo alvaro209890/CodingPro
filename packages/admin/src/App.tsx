@@ -64,7 +64,12 @@ function TelaLogin({ erro }: { erro?: string }) {
               value={senha}
             />
           </label>
-          <button className="botao primario" disabled={enviando} type="submit" style={{ width: "100%" }}>
+          <button
+            className="botao primario"
+            disabled={enviando}
+            type="submit"
+            style={{ width: "100%" }}
+          >
             {enviando ? "Entrando…" : "Entrar"}
           </button>
         </form>

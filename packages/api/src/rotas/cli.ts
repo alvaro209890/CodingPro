@@ -32,7 +32,11 @@ export function registrarRotaCli(app: FastifyInstance, ctx: Contexto): void {
     // Symlink CLI se nao existe
     const alvoCli = join(ws, "codingpro.mjs");
     if (!existsSync(alvoCli)) {
-      try { symlinkSync(CLI, alvoCli); } catch { /* ja existe */ }
+      try {
+        symlinkSync(CLI, alvoCli);
+      } catch {
+        /* ja existe */
+      }
     }
     // Credenciais
     const credDir = join(ws, ".codingpro");
@@ -43,7 +47,9 @@ export function registrarRotaCli(app: FastifyInstance, ctx: Contexto): void {
       try {
         const { copyFileSync } = await import("node:fs");
         copyFileSync(homeCred, credFile);
-      } catch { /* ok */ }
+      } catch {
+        /* ok */
+      }
     }
 
     resposta.raw.writeHead(200, {

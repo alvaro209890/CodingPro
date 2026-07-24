@@ -8,12 +8,15 @@ function textoMsg(msg: ChatMessage): string {
 }
 
 export function Bolha({ msg, tema }: { msg: ChatMessage; tema: Tema }) {
-  const corBorda = msg.role === "user" ? tema.secundaria : msg.role === "tool" ? tema.suave : tema.primaria;
+  const corBorda =
+    msg.role === "user" ? tema.secundaria : msg.role === "tool" ? tema.suave : tema.primaria;
   const rotulo = msg.role === "user" ? "Você" : msg.role === "tool" ? "Tool" : "CodingPro";
 
   return (
     <Box flexDirection="column" marginY={1}>
-      <Text color={corBorda} bold>╭─ {rotulo}</Text>
+      <Text color={corBorda} bold>
+        ╭─ {rotulo}
+      </Text>
       <Text color={msg.role === "tool" ? tema.suave : tema.texto}>
         {textoMsg(msg).slice(0, 1000)}
       </Text>

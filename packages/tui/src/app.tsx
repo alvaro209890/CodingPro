@@ -15,7 +15,12 @@ export type TuiProps = {
   historicoInicial?: readonly ChatMessage[];
 };
 
-export function App({ tema: nomeTema = "aurora", onSend, onApprove, historicoInicial = [] }: TuiProps) {
+export function App({
+  tema: nomeTema = "aurora",
+  onSend,
+  onApprove,
+  historicoInicial = [],
+}: TuiProps) {
   const tema = (TEMAS[nomeTema] ?? TEMAS.aurora)!;
   const [mensagens, setMensagens] = useState<ChatMessage[]>(() => [...historicoInicial]);
   const [input, setInput] = useState("");
@@ -28,14 +33,20 @@ export function App({ tema: nomeTema = "aurora", onSend, onApprove, historicoIni
     if (!prompt || enviando) return;
     setInput("");
     setEnviando(true);
-    setMensagens((prev) => [...prev, { role: "user" as const, content: prompt } satisfies ChatMessage]);
+    setMensagens((prev) => [
+      ...prev,
+      { role: "user" as const, content: prompt } satisfies ChatMessage,
+    ]);
     try {
       const resposta = await onSend(prompt);
       setMensagens((prev) => [...prev, ...resposta]);
     } catch (erro: unknown) {
       setMensagens((prev) => [
         ...prev,
-        { role: "assistant" as const, content: `Erro: ${erro instanceof Error ? erro.message : "falha"}` } satisfies ChatMessage,
+        {
+          role: "assistant" as const,
+          content: `Erro: ${erro instanceof Error ? erro.message : "falha"}`,
+        } satisfies ChatMessage,
       ]);
     } finally {
       setEnviando(false);
@@ -44,8 +55,13 @@ export function App({ tema: nomeTema = "aurora", onSend, onApprove, historicoIni
 
   useInput((tecla, key) => {
     if (pendente && onApprove) {
-      if (tecla === "y" || tecla === "a") { onApprove(pendente, true); setPendente(null); }
-      else if (tecla === "n" || tecla === "r") { onApprove(pendente, false); setPendente(null); }
+      if (tecla === "y" || tecla === "a") {
+        onApprove(pendente, true);
+        setPendente(null);
+      } else if (tecla === "n" || tecla === "r") {
+        onApprove(pendente, false);
+        setPendente(null);
+      }
       return;
     }
     if (key.return && !enviando) enviar();
@@ -53,10 +69,14 @@ export function App({ tema: nomeTema = "aurora", onSend, onApprove, historicoIni
 
   return (
     <Box flexDirection="column" padding={1} minHeight={30}>
-      <Gradient name="summer"><Text bold>⚡ CodingPro</Text></Gradient>
+      <Gradient name="summer">
+        <Text bold>⚡ CodingPro</Text>
+      </Gradient>
       {enviando && <Spinner type="dots" />}
       {custo && (
-        <Text dimColor>US$ {custo.totalCostUsd.toFixed(4)} · {custo.inputTokens + custo.outputTokens} tokens</Text>
+        <Text dimColor>
+          US$ {custo.totalCostUsd.toFixed(4)} · {custo.inputTokens + custo.outputTokens} tokens
+        </Text>
       )}
       <Box flexDirection="column" marginY={1} minHeight={20}>
         {mensagens.slice(-30).map((msg, i) => (
@@ -65,16 +85,25 @@ export function App({ tema: nomeTema = "aurora", onSend, onApprove, historicoIni
       </Box>
       {pendente && (
         <Box borderStyle="round" borderColor={tema.aviso} padding={1} marginY={1}>
-          <Text color={tema.aviso} bold>⚠ {pendente.toolName}</Text>
-          <Text color={tema.suave}> [Y] Aprovar  [N] Negar</Text>
+          <Text color={tema.aviso} bold>
+            ⚠ {pendente.toolName}
+          </Text>
+          <Text color={tema.suave}> [Y] Aprovar [N] Negar</Text>
         </Box>
       )}
       <Box>
-        <Text color={tema.primaria} bold>▸ </Text>
+        <Text color={tema.primaria} bold>
+          ▸{" "}
+        </Text>
         {enviando ? (
           <Text dimColor>Pensando…</Text>
         ) : (
-          <TextInput onChange={setInput} onSubmit={enviar} placeholder="Pergunte algo…" value={input} />
+          <TextInput
+            onChange={setInput}
+            onSubmit={enviar}
+            placeholder="Pergunte algo…"
+            value={input}
+          />
         )}
       </Box>
     </Box>

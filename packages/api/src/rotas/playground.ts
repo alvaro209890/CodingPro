@@ -57,7 +57,9 @@ function listarArquivos(dir: string, base: string = dir, profundidade = 0): stri
       } else {
         resultado.push(rel);
       }
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
   return resultado.sort();
 }
@@ -91,7 +93,10 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
     const caminho = resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.path, 500));
     if (!caminho) return erro(resposta, 403, "acesso_negado", "Acesso negado.");
     try {
-      return resposta.send({ content: readFileSync(caminho, "utf8").slice(0, 500_000), path: (req.body as any)?.path });
+      return resposta.send({
+        content: readFileSync(caminho, "utf8").slice(0, 500_000),
+        path: (req.body as any)?.path,
+      });
     } catch {
       return erro(resposta, 404, "nao_encontrado", "Arquivo não encontrado.");
     }
@@ -102,7 +107,8 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
     if (!u) return;
     const caminho = resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.path, 500));
     if (!caminho) return erro(resposta, 403, "acesso_negado", "Acesso negado.");
-    const conteudo = typeof (req.body as any)?.content === "string" ? (req.body as any).content : "";
+    const conteudo =
+      typeof (req.body as any)?.content === "string" ? (req.body as any).content : "";
     try {
       writeFileSync(caminho, conteudo, "utf8");
       return resposta.send({ ok: true });
@@ -130,7 +136,9 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
     const u = await exigirUsuario(ctx, req, resposta);
     if (!u) return;
     const comando = texto((req.body as any)?.command, 2000);
-    const cwd = resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.cwd, 500) || ".") ?? dirUsuario(u.id);
+    const cwd =
+      resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.cwd, 500) || ".") ??
+      dirUsuario(u.id);
     if (!comando) return erro(resposta, 400, "comando_vazio", "Comando vazio.");
     try {
       const { stdout, stderr } = await exec(comando, {
@@ -139,7 +147,11 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
         maxBuffer: MAX_OUTPUT,
         env: { ...process.env, HOME: dirUsuario(u.id) },
       });
-      return resposta.send({ stdout: stdout.slice(0, MAX_OUTPUT), stderr: stderr.slice(0, MAX_OUTPUT), cwd });
+      return resposta.send({
+        stdout: stdout.slice(0, MAX_OUTPUT),
+        stderr: stderr.slice(0, MAX_OUTPUT),
+        cwd,
+      });
     } catch (e: any) {
       return resposta.send({
         stdout: e.stdout?.slice(0, MAX_OUTPUT) ?? "",
@@ -155,7 +167,9 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
     const u = await exigirUsuario(ctx, req, resposta);
     if (!u) return;
     const action = texto((req.body as any)?.action, 50);
-    const cwd = resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.cwd, 500) || ".") ?? dirUsuario(u.id);
+    const cwd =
+      resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.cwd, 500) || ".") ??
+      dirUsuario(u.id);
     try {
       let cmd = "";
       if (action === "clone") {
@@ -187,14 +201,16 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
       }
       if (action === "save") {
         const nome = texto((req.body as any)?.name, 100) || "nota";
-        const conteudo = typeof (req.body as any)?.content === "string" ? (req.body as any).content : "";
+        const conteudo =
+          typeof (req.body as any)?.content === "string" ? (req.body as any).content : "";
         writeFileSync(join(memDir, `${nome.replace(/[^a-zA-Z0-9_-]/g, "_")}.md`), conteudo, "utf8");
         return resposta.send({ ok: true });
       }
       if (action === "load") {
         const nome = texto((req.body as any)?.name, 100);
         const caminho = join(memDir, `${nome.replace(/[^a-zA-Z0-9_-]/g, "_")}.md`);
-        if (!existsSync(caminho)) return erro(resposta, 404, "nao_encontrado", "Memória não encontrada.");
+        if (!existsSync(caminho))
+          return erro(resposta, 404, "nao_encontrado", "Memória não encontrada.");
         return resposta.send({ content: readFileSync(caminho, "utf8") });
       }
       return erro(resposta, 400, "acao_invalida", "Ação inválida.");

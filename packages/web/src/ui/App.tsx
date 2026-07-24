@@ -79,9 +79,7 @@ export function App() {
         )}
       </main>
 
-      <footer className="rodape">
-        CodingPro — desenvolvimento assistido por IA em português
-      </footer>
+      <footer className="rodape">CodingPro — desenvolvimento assistido por IA em português</footer>
     </div>
   );
 }
