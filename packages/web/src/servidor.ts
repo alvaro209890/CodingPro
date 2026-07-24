@@ -49,10 +49,17 @@ function proxyApi(req: IncomingMessage, res: ServerResponse): void {
         },
       },
       (proxyRes) => {
-        // Forward CORS headers
+        // Forward CORS + rewrite Set-Cookie domain
         const headers: Record<string, string> = {};
         for (const [k, v] of Object.entries(proxyRes.headers)) {
-          if (v) headers[k] = Array.isArray(v) ? v.join(", ") : v;
+          if (!v) continue;
+          let val = Array.isArray(v) ? v.join(", ") : v;
+          // Strip domain from Set-Cookie so it applies to codingpro.cursar.space
+          if (k.toLowerCase() === "set-cookie") {
+            val = val.replace(/;\s*domain=[^;]+/gi, "");
+            val = val.replace(/;\s*secure/gi, ""); // proxy is HTTPS via CF, but internal is HTTP
+          }
+          headers[k] = val;
         }
         headers["access-control-allow-origin"] = req.headers.origin || "https://codingpro.cursar.space";
         headers["access-control-allow-credentials"] = "true";
