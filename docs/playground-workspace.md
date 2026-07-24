@@ -13,11 +13,30 @@ A aba **Files** permite organizar o próprio workspace pelo navegador.
 
 O servidor valida caminhos e bloqueia travessia de diretórios. Arquivos existentes também são resolvidos sem permitir que links simbólicos saiam do workspace.
 
-## CLI, terminal e IA
+## Chat e agente (SSE)
 
-A aba **CLI** é a entrada principal. Ela mantém conversas no navegador, streaming de respostas, atalhos (`Ctrl+N`, `Ctrl+K`, `Ctrl+L`) e comandos iniciados por `/`. A hierarquia visual, os cards de início, o terminal e as transições seguem o sistema Aurora do aplicativo desktop.
+A aba **Chat** é a entrada principal. Ela mantém conversas no navegador, atalhos (`Ctrl+N`, `Ctrl+K`, `Ctrl+L`) e comandos iniciados por `/`.
 
-O terminal trabalha no workspace do usuário e guarda o histórico da sessão. A IA usa a mesma raiz de arquivos da aba Files e cria automaticamente subpastas quando escreve um novo arquivo. O fluxo SSE encerra cada execução uma única vez, evitando mensagens duplicadas na interface.
+### Fluxo de uma mensagem
+
+1. O usuário envia texto ou `/comando`.
+2. O frontend faz `POST /api/vps/agent` com `{ prompt }` e lê o corpo como stream SSE.
+3. Durante a geração, a UI mostra:
+   - status (“Pensando…”, nome da tool);
+   - raciocínio do modelo (`think`), expansível;
+   - lista de ferramentas em execução (`tool-start` / `tool-end`);
+   - texto da resposta (`text`) antes do `done`.
+4. Ao receber `done` ou `error`, a mensagem do assistente é gravada na sessão ativa com `content`, `thinking` e `tools`.
+5. O estado efêmero (stream, raciocínio ao vivo, tasks) é limpo — nada fica preso na tela.
+
+### Comportamentos importantes
+
+- **Trocar de chat** durante uma geração cancela a requisição anterior (`AbortController`).
+- **Scroll:** só acompanha o fim automaticamente se você já estiver perto do final; senão aparece “↓ Nova resposta”.
+- **Sessões** ficam em `localStorage` (`cp_playground_sessions`, `cp_playground_active`).
+- Cada mensagem tem `id` estável; o raciocínio fica em `mensagem.thinking` e pode ser reaberto com **▸ Pensamento**.
+
+O terminal trabalha no workspace do usuário e guarda o histórico da sessão. A IA usa a mesma raiz de arquivos da aba Files e cria automaticamente subpastas quando escreve um novo arquivo.
 
 ## Operação no servidor
 

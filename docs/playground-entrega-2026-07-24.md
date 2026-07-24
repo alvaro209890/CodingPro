@@ -54,9 +54,10 @@ Este documento consolida a evolução entregue no Playground do site e os proced
 | Typecheck (workspace, web, admin) | aprovado |
 | `pnpm test:coverage` | 919 testes aprovados; 40 dependentes de banco ignorados |
 | `pnpm build` | aprovado |
-| `pnpm test:package` | aprovado |
+| `pnpm --filter @codingpro/web typecheck` | aprovado (chat refactor) |
+| `pnpm biome check` (paginas web) | aprovado |
 
-### Correções da sessão de validação (24/07)
+### Correções da sessão de validação (24/07 — manhã)
 
 - **Workspace unificado:** módulo `workspace.ts` remove caminhos hardcoded (`/home/acer/...`) de `admin.ts` e `cli.ts`.
 - **SSE do agente:** parser no Playground passou a respeitar blocos `\n\n` do protocolo SSE, evitando JSON truncado.
@@ -64,6 +65,51 @@ Este documento consolida a evolução entregue no Playground do site e os proced
 - **Acessibilidade:** sessões da sidebar viraram `<button>`, labels de formulário associados, semântica da landing corrigida.
 - **Lint:** supressões Biome ajustadas em modais do admin e zonas de drag-and-drop.
 - **Windows:** teste de permissão `0o600` em credenciais pula em `win32` (chmod não é confiável no NTFS).
+
+### Chat moderno e correções de stream (24/07 — tarde)
+
+Refatoração do chat do Playground para UX estilo ChatGPT, com correção dos bugs de pensamento, ferramentas e SSE.
+
+#### Bugs corrigidos
+
+| Problema | Correção |
+| --- | --- |
+| Balão de pensamento ficava para sempre após cada resposta | Estado efêmero (`reasoning`, `tasks`, `stream`) limpo em `done`/`error`/`finally` |
+| CSS de thinking/tasks só existia em `@media (max-width: 820px)` | Estilos movidos para o escopo global em `estilo.css` |
+| Trocar de chat durante geração poluía a nova sessão | `AbortController` cancela o fetch anterior; mensagens vinculadas ao `sessionId` da requisição |
+| Stream sem `done` perdia a resposta parcial | Commit da mensagem do assistente mesmo se a conexão cair antes do evento final |
+| Tools sem alvo legível (`d.target` inexistente) | Parser lê `args` do SSE e extrai `path`/`command` |
+| Scroll forçava o fim a cada tick | Auto-scroll só se o usuário estiver a ≤96px do fim; botão “↓ Nova resposta” caso contrário |
+| Passos de pensamento falsos (“Analisando prompt…”) | Removidos; usa eventos reais `status`, `think`, `tool-start`, `tool-end` |
+| Chaves React instáveis nas mensagens | Cada `Mensagem` tem `id` único; raciocínio salvo em `mensagem.thinking` |
+
+#### UX nova
+
+- Coluna de chat centralizada (max ~52rem), bolhas do usuário à direita, assistente em texto limpo.
+- Durante a geração: painel compacto “Pensando…” com timer; raciocínio expansível ao vivo.
+- Após a resposta: **▸ Pensamento** recolhido dentro da mensagem do assistente.
+- Ferramentas executadas em `<details>` por tool, não mais cards duplicados.
+- Empty state “Como posso ajudar?” com sugestões.
+- Input arredondado, slash dropdown ancorado na área de digitação.
+
+#### Contrato SSE (inalterado)
+
+O frontend continua consumindo `POST /api/vps/agent` com eventos JSON em `data:`:
+
+`status` · `think` · `tool-start` · `tool-end` · `text` · `done` · `error`
+
+#### Arquivos alterados nesta entrega
+
+| Arquivo | Mudança |
+| --- | --- |
+| `Playground.tsx` | Ciclo SSE, abort, `reasoning`, scroll inteligente, `novaMensagem()` |
+| `ChatView.tsx` | Layout de turno único, `ThinkingFold`, jump-to-bottom |
+| `ThinkingBalloon.tsx` | Pensamento ao vivo recolhível; `ThinkingFold` para histórico |
+| `PlaygroundTypes.ts` | `Mensagem.id`, `Mensagem.thinking`, helper `novaMensagem()` |
+| `TaskTrackerCard.tsx` | Labels mais curtas; recolhido por padrão ao terminar |
+| `Banner.tsx` | Empty state moderno |
+| `estilo.css` | Chat, thinking, tasks e input no desktop e mobile |
+
 
 O teste visual local tentou usar o navegador automatizado. O servidor de desenvolvimento não permaneceu acessível nesta sessão Windows; o bundle de produção, porém, foi compilado com sucesso. A verificação visual final deve ser feita no endereço publicado após o reinício dos serviços.
 
@@ -86,3 +132,4 @@ Após o retorno de `{"ok":true,...}` na rota de saúde, abra `https://codingpro.
 
 - `fd32140 feat(playground): add workspace uploads and refined browser UI`
 - `5b05936 fix(playground): unify workspace and harden CLI runtime`
+- *(próximo)* `fix(playground): chat moderno, SSE estável e pensamento efêmero`

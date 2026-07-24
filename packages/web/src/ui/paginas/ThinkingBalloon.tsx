@@ -4,7 +4,8 @@ interface ThinkingBalloonProps {
   loading: boolean;
   statusText: string;
   elapsedMs: number;
-  thinkingSteps?: string[];
+  /** Texto bruto de reasoning (pode ser longo). */
+  reasoning?: string;
 }
 
 function formatTime(ms: number): string {
@@ -15,63 +16,57 @@ function formatTime(ms: number): string {
   return `${mins}m ${secs}s`;
 }
 
+/** Painel de pensamento ao vivo — recolhido por padrão, só aparece durante a geração. */
 export function ThinkingBalloon({
   loading,
   statusText,
   elapsedMs,
-  thinkingSteps = [],
+  reasoning = "",
 }: ThinkingBalloonProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [open, setOpen] = useState(false);
 
-  if (!loading && thinkingSteps.length === 0) return null;
+  if (!loading) return null;
+
+  const temReasoning = reasoning.trim().length > 0;
 
   return (
-    <div className="playground__thinkingBalloon playground__card-rotating-border">
-      <div className="playground__thinkingHeader">
-        <div className="playground__thinkingTitleGroup">
-          <span className="playground__thinkingBrainIcon">🧠</span>
-          <span className="playground__thinkingTitle">
-            {loading ? statusText || "Pensando..." : "Pensamento concluído"}
-          </span>
-          <span className="playground__thinkingTimerBadge">{formatTime(elapsedMs)}</span>
-        </div>
+    <div className="playground__thinkingBalloon">
+      <button
+        type="button"
+        className="playground__thinkingHeader"
+        onClick={() => temReasoning && setOpen((v) => !v)}
+        aria-expanded={open}
+        disabled={!temReasoning}
+      >
+        <span className="playground__thinkingPulse" aria-hidden />
+        <span className="playground__thinkingTitle">{statusText || "Pensando…"}</span>
+        <span className="playground__thinkingTimerBadge">{formatTime(elapsedMs)}</span>
+        {temReasoning && (
+          <span className="playground__thinkingToggle">{open ? "ocultar" : "ver raciocínio"}</span>
+        )}
+      </button>
 
-        <div className="playground__thinkingControls">
-          {loading && <span className="playground__thinkingSpinner" />}
-          {thinkingSteps.length > 0 && (
-            <button
-              type="button"
-              className="playground__thinkingCollapseBtn"
-              onClick={() => setCollapsed(!collapsed)}
-              title={collapsed ? "Expandir raciocínio" : "Recolher raciocínio"}
-            >
-              {collapsed ? "▶ Raciocínio" : "▼ Raciocínio"}
-            </button>
-          )}
-        </div>
-      </div>
+      {open && temReasoning && <pre className="playground__thinkingBody">{reasoning.trim()}</pre>}
+    </div>
+  );
+}
 
-      {!collapsed && (thinkingSteps.length > 0 || loading) && (
-        <div className="playground__thinkingBody">
-          {thinkingSteps.map((step) => (
-            <div key={step} className="playground__thinkingStepRow">
-              <span className="playground__thinkingStepDot">▸</span>
-              <span>{step}</span>
-            </div>
-          ))}
+/** Bloco de pensamento já gravado na mensagem (estilo ChatGPT). */
+export function ThinkingFold({ thinking }: { thinking: string }) {
+  const [open, setOpen] = useState(false);
+  if (!thinking.trim()) return null;
 
-          {loading && (
-            <div className="playground__thinkingPulseLine">
-              <span className="playground__thinkingPulseDot" />
-              <span className="playground__thinkingPulseDot" />
-              <span className="playground__thinkingPulseDot" />
-              <span className="playground__thinkingStatusText">
-                {statusText || "Analisando contexto e planejando ações..."}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
+  return (
+    <div className="playground__thinkingFold">
+      <button
+        type="button"
+        className="playground__thinkingFoldBtn"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        {open ? "▾" : "▸"} Pensamento
+      </button>
+      {open && <pre className="playground__thinkingFoldBody">{thinking.trim()}</pre>}
     </div>
   );
 }

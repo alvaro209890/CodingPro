@@ -48,7 +48,7 @@ function labelForTask(name: string, target?: string): string {
 }
 
 export function TaskTrackerCard({ tasks, isRunning }: TaskTrackerCardProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(!isRunning);
 
   if (tasks.length === 0 && !isRunning) return null;
 
@@ -65,12 +65,12 @@ export function TaskTrackerCard({ tasks, isRunning }: TaskTrackerCardProps) {
           onClick={() => setCollapsed(!collapsed)}
           title={collapsed ? "Expandir tarefas" : "Recolher tarefas"}
         >
-          {collapsed ? "▶" : "▼"}
+          {collapsed ? "▸" : "▾"}
         </button>
         <span className="playground__taskTrackerTitle">
           {isRunning && hasRunning
-            ? `Executando tarefas (${done}/${total} concluídas)`
-            : `${done}/${total} tarefas concluídas`}
+            ? `Ferramentas · ${done}/${total}`
+            : `${done} ferramenta${done === 1 ? "" : "s"}`}
         </span>
         {isRunning && <span className="playground__taskTrackerSpinner" />}
       </div>

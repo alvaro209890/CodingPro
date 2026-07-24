@@ -5,7 +5,7 @@ interface BannerProps {
 const SUGESTOES = [
   {
     title: "Explorar workspace",
-    text: "Analise arquivos e estrutura do projeto",
+    text: "Liste arquivos e entenda a estrutura",
     prompt: "/context",
   },
   {
@@ -15,12 +15,12 @@ const SUGESTOES = [
   },
   {
     title: "Debugar",
-    text: "Encontre e corrija erros no código",
+    text: "Encontre e corrija problemas",
     prompt: "Analise os arquivos do workspace e encontre possíveis bugs",
   },
   {
-    title: "Executar tarefas",
-    text: "Use o agente com tools reais",
+    title: "Agente com tools",
+    text: "Use o workspace real via ferramentas",
     prompt: "/agent Liste os arquivos do workspace e sugira melhorias",
   },
 ];
@@ -28,7 +28,11 @@ const SUGESTOES = [
 export function Banner({ onSelectSuggestion }: BannerProps) {
   return (
     <div className="playground__banner">
-      <h2 className="playground__bannerTitle">O que você quer criar hoje?</h2>
+      <p className="playground__bannerEyebrow">Playground</p>
+      <h2 className="playground__bannerTitle">Como posso ajudar?</h2>
+      <p className="playground__bannerSub">
+        Converse com a IA no seu workspace isolado — arquivos, terminal e Git no mesmo lugar.
+      </p>
 
       <div className="playground__suggestions">
         {SUGESTOES.map((item, index) => (
