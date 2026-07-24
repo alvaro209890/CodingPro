@@ -227,23 +227,24 @@ function PassosWindows() {
         </p>
       </Passo>
 
-      <Passo numero={2} titulo="Instale e abra">
+      <Passo numero={2} titulo="Extraia e abra">
         <p>
-          Execute o arquivo baixado. O Windows pode mostrar um aviso de aplicativo desconhecido (o
-          instalador ainda não é assinado): clique em <strong>Mais informações</strong> →{" "}
-          <strong>Executar assim mesmo</strong>.
+          Descompacte o arquivo <code>.zip</code> em qualquer pasta e execute o{" "}
+          <code>CodingPro.exe</code>. O Windows pode mostrar um aviso de aplicativo
+          desconhecido (o app ainda não é assinado): clique em{" "}
+          <strong>Mais informações</strong> → <strong>Executar assim mesmo</strong>.
         </p>
       </Passo>
 
       <Passo numero={3} titulo="Entre com sua conta">
         <p>
-          Na primeira abertura o app mostra a tela <strong>Entrar com minha conta</strong>. Clique,
-          que ele abre o navegador na página de autorização e exibe um código — digite o código lá e
-          o app conclui sozinho.
+          Na tela inicial, digite seu <strong>e-mail e senha</strong> e clique em{" "}
+          <strong>Entrar</strong>. O app conecta direto na sua conta — sem navegador,
+          sem código. Quem ainda não tem conta pode criar ali mesmo, em segundos.
         </p>
         <p className="fraco" style={{ margin: 0 }}>
-          Se você já rodou <code>codingpro login</code> nesta máquina, o app reaproveita a mesma
-          conta e nem pede login.
+          Se você já rodou <code>codingpro login</code> nesta máquina, o app reaproveita
+          a mesma conta e nem pede login.
         </p>
       </Passo>
 
