@@ -1,24 +1,40 @@
 # Playground Workspace no navegador
 
-O Playground é o espaço isolado de cada usuário no CodingPro. Ele reúne a conversa com a IA, CLI, terminal, Git, memória, editor e arquivos no mesmo fluxo.
+O Playground é o espaço isolado de cada usuário no CodingPro. Ele reúne conversa com IA, CLI, terminal, Git, memória, editor e arquivos no mesmo fluxo.
 
 ## Arquivos
 
 A aba **Files** permite organizar o próprio workspace pelo navegador.
 
-- Arraste arquivos para a área de envio, incluindo `.zip`.
-- Use **Enviar pasta** para preservar a estrutura completa de uma pasta selecionada no navegador.
-- Navegue pelas migalhas de navegação, abra arquivos de texto no editor integrado, salve com `Ctrl+S` e exclua itens quando necessário.
-- Cada upload é gravado no workspace isolado do usuário. O limite é de 512 MB por arquivo e até 1.000 arquivos por envio.
+- Arraste arquivos e ZIPs para a área de envio.
+- Use **Enviar pasta** para preservar a estrutura de uma pasta selecionada.
+- Navegue pelas migalhas de navegação, abra arquivos no editor integrado, salve com `Ctrl+S` e exclua itens quando necessário.
+- Cada upload fica no workspace isolado do usuário. O limite é de 512 MB por arquivo e até 1.000 arquivos por envio.
 
-O servidor recusa caminhos externos e travessia de diretórios, portanto um usuário não consegue escrever fora do próprio workspace.
+O servidor valida caminhos e bloqueia travessia de diretórios. Arquivos existentes também são resolvidos sem permitir que links simbólicos saiam do workspace.
 
 ## CLI, terminal e IA
 
-A aba **CLI** é a entrada principal e mantém conversas no navegador. Use `/` para descobrir comandos, `Ctrl+N` para um novo chat e `Ctrl+K` para abrir a lista de chats. A resposta em streaming, o cursor e os cards iniciais usam as mesmas referências visuais do aplicativo desktop.
+A aba **CLI** é a entrada principal. Ela mantém conversas no navegador, streaming de respostas, atalhos (`Ctrl+N`, `Ctrl+K`, `Ctrl+L`) e comandos iniciados por `/`. A hierarquia visual, os cards de início, o terminal e as transições seguem o sistema Aurora do aplicativo desktop.
 
-O terminal executa comandos no workspace do usuário. O Git pode clonar repositórios e consultar status, histórico ou atualizações. A aba **Memory** armazena anotações persistentes no mesmo workspace.
+O terminal trabalha no workspace do usuário e guarda o histórico da sessão. A IA usa a mesma raiz de arquivos da aba Files e cria automaticamente subpastas quando escreve um novo arquivo. O fluxo SSE encerra cada execução uma única vez, evitando mensagens duplicadas na interface.
 
-## Operação
+## Operação no servidor
 
-Para publicar a mudança, construa os pacotes web e API e reinicie os serviços `codingpro-web` e `codingpro-api` no servidor. O frontend chama o upload por `POST /api/vps/upload` usando `multipart/form-data`; o proxy same-origin preserva a sessão do usuário.
+O frontend chama o upload por `POST /api/vps/upload` usando `multipart/form-data`; o proxy same-origin preserva a sessão do usuário. A API, a CLI e a aba Files usam a mesma raiz: `~/Documentos/vps-workspaces/<id>/`.
+
+Para mudar essa raiz de forma explícita, defina `CODINGPRO_WORKSPACE_ROOT` no arquivo de ambiente carregado pelos serviços systemd.
+
+Depois de atualizar o repositório no VPS, execute:
+
+```bash
+cd ~/Documentos/CodingPro
+nvm use 24.18.0
+pnpm install --frozen-lockfile
+pnpm plataforma:build
+systemctl --user restart codingpro-api codingpro-web
+systemctl --user --no-pager status codingpro-api codingpro-web
+curl -fsS https://codingpro-api.cursar.space/saude
+```
+
+Os serviços estão definidos em `deploy/systemd/`. Não é necessário reiniciar o aplicativo desktop para publicar mudanças do Playground web.

@@ -1246,27 +1246,76 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: #090d14;
+}
+
+.playground__terminalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 42px;
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid var(--borda);
+  color: var(--texto);
+  font-size: 0.73rem;
+}
+
+.playground__terminalHeader small {
+  color: var(--texto-fraco);
+  margin-left: 0.35rem;
+}
+.playground__terminalDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  background: var(--esmeralda);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
+}
+.playground__terminalActions {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+}
+.playground__terminalActions button {
+  border: 1px solid var(--borda);
+  border-radius: 4px;
+  padding: 0.2rem 0.36rem;
+  background: transparent;
+  color: var(--texto-fraco);
+  cursor: pointer;
+  font: 0.62rem inherit;
+  white-space: nowrap;
+}
+.playground__terminalActions button:hover {
+  border-color: var(--ciano);
+  color: var(--texto);
 }
 
 .playground__terminalOutput {
   flex: 1;
   overflow: auto;
-  padding: 0.5rem;
+  padding: 1rem;
   white-space: pre-wrap;
-  font-size: 0.82rem;
-  color: var(--esmeralda);
+  font-size: 0.8rem;
+  line-height: 1.65;
+  color: #c7f9dc;
 }
 
 .playground__terminalInput {
   display: flex;
-  padding: 0.3rem;
+  padding: 0.55rem 0.75rem;
   border-top: 1px solid var(--borda);
+  background: rgba(255, 255, 255, 0.025);
 }
 
 .playground__terminalPrompt {
-  color: var(--esmeralda);
-  padding: 0.3rem;
+  color: var(--ciano);
+  padding: 0.15rem 0.55rem 0.15rem 0;
   font-weight: 700;
+  font-size: 1.1rem;
 }
 
 .playground__terminalInput input,

@@ -72,7 +72,7 @@ function resolverSeguro(dirBase: string, relativo: string): string | null {
   try {
     const real = realpathSync(alvo);
     const realBase = realpathSync(dirBase);
-    return real.startsWith(realBase) ? real : null;
+    return real === realBase || real.startsWith(`${realBase}${sep}`) ? real : null;
   } catch {
     return null;
   }

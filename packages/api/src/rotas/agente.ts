@@ -3,19 +3,50 @@
  * A IA pode listar diretórios, ler/escrever arquivos, executar comandos.
  */
 import { exec as execCb } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import type { FastifyInstance } from "fastify";
 import { type Contexto, erro, exigirUsuario, texto } from "../contexto.js";
 
 const exec = promisify(execCb);
-const RAIZ = "/home/acer/Documentos/vps-workspaces";
+const RAIZ =
+  process.env.CODINGPRO_WORKSPACE_ROOT || join(homedir(), "Documentos", "vps-workspaces");
 
 function dirUsuario(id: number): string {
   const dir = join(RAIZ, String(id));
   mkdirSync(dir, { recursive: true });
+  for (const pasta of ["Documents", "Downloads", "Projects", ".memory"]) {
+    mkdirSync(join(dir, pasta), { recursive: true });
+  }
   return dir;
+}
+
+function caminhoDoWorkspace(workspace: string, relativo: string): string | null {
+  if (!relativo || relativo.includes("\0")) return null;
+  const alvo = resolve(workspace, relativo);
+  return alvo === workspace || alvo.startsWith(`${workspace}${sep}`) ? alvo : null;
+}
+
+function arquivoExistenteSeguro(workspace: string, relativo: string): string | null {
+  const alvo = caminhoDoWorkspace(workspace, relativo);
+  if (!alvo || !existsSync(alvo)) return null;
+  try {
+    const raizReal = realpathSync(workspace);
+    const alvoReal = realpathSync(alvo);
+    return alvoReal === raizReal || alvoReal.startsWith(`${raizReal}${sep}`) ? alvoReal : null;
+  } catch {
+    return null;
+  }
 }
 
 function listarArquivos(dir: string, base: string = dir, prof = 0): string {
@@ -44,24 +75,24 @@ async function executarTool(
     switch (nome) {
       case "read_file": {
         const path = String(args.path ?? "");
-        const alvo = resolve(join(workspace, path));
-        if (!alvo.startsWith(workspace)) return "Erro: acesso negado.";
-        if (!existsSync(alvo)) return `Erro: arquivo '${path}' não encontrado.`;
+        const alvo = arquivoExistenteSeguro(workspace, path);
+        if (!alvo) return `Erro: arquivo '${path}' não encontrado ou acesso negado.`;
         const content = readFileSync(alvo, "utf8");
         return content.slice(0, 10000);
       }
       case "write_file": {
         const path = String(args.path ?? "");
         const content = String(args.content ?? "");
-        const alvo = resolve(join(workspace, path));
-        if (!alvo.startsWith(workspace)) return "Erro: acesso negado.";
+        const alvo = caminhoDoWorkspace(workspace, path);
+        if (!alvo) return "Erro: acesso negado.";
+        mkdirSync(dirname(alvo), { recursive: true });
         writeFileSync(alvo, content, "utf8");
         return `✓ Arquivo '${path}' salvo (${content.length} bytes).`;
       }
       case "list_dir": {
         const path = String(args.path ?? ".");
-        const alvo = resolve(join(workspace, path));
-        if (!alvo.startsWith(workspace)) return "Erro: acesso negado.";
+        const alvo = arquivoExistenteSeguro(workspace, path);
+        if (!alvo) return "Erro: acesso negado.";
         const lista = listarArquivos(alvo);
         return lista || "(diretório vazio)";
       }
@@ -72,6 +103,7 @@ async function executarTool(
           cwd: workspace,
           timeout: 30_000,
           maxBuffer: 50_000,
+          env: { ...process.env, HOME: workspace },
         });
         return (stdout + (stderr ? "\n" + stderr : "")).slice(0, 10000) || "(sem saída)";
       }
@@ -217,6 +249,7 @@ export function registrarRotaAgente(app: FastifyInstance, ctx: Contexto): void {
       resposta.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
 
+    let concluiu = false;
     try {
       const messages: any[] = [
         {
@@ -298,11 +331,17 @@ Sempre responda em português. Seja direto e útil. Quando o usuário pedir para
           const content = msg.content || "(sem resposta)";
           send("text", { type: "text", content });
           send("done", { type: "done", content });
+          concluiu = true;
           break;
         }
       }
 
-      send("done", { type: "done", content: "" });
+      if (!concluiu) {
+        send("done", {
+          type: "done",
+          content: "A tarefa excedeu o limite de etapas. Tente dividir o pedido em partes menores.",
+        });
+      }
     } catch (e: any) {
       send("error", { type: "error", message: e.message || "Erro no agente" });
     } finally {

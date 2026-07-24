@@ -789,6 +789,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               cmd={cmd}
               onCmdChange={setCmd}
               onRun={() => runCmd()}
+              onClear={() => setOut("")}
               cmdRef={cmdRef}
             />
           )}
