@@ -62,14 +62,21 @@ export function Playground({ usuario }: { usuario: Usuario }) {
     scrollDown();
     try {
       const toolsLog: { nome: string; result: string }[] = [];
-      const r = await fetch("https://codingpro-api.cursar.space/api/vps/agent", {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: p }), credentials: "include",
-      });
-      if (!r.ok || !r.body) {
-        const err = await r.json().catch(() => ({ mensagem: "Load failed" })) as any;
-        throw new Error(err.mensagem || err.erro || `Erro ${r.status}`);
+      let r: Response;
+      try {
+        r = await fetch("https://codingpro-api.cursar.space/api/vps/agent", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ prompt: p }), credentials: "include",
+        });
+      } catch (netErr: any) {
+        throw new Error(`Rede: ${netErr.message || "sem conexão"}`);
       }
+      if (!r.ok) {
+        let msg = `Erro ${r.status}`;
+        try { const e = await r.json(); msg = e.mensagem || e.erro || msg; } catch {}
+        throw new Error(msg);
+      }
+      if (!r.body) throw new Error("Resposta vazia do servidor");
       const reader = r.body.getReader();
       const dec = new TextDecoder(); let buf = ""; let content = "";
       while (true) {
