@@ -1,28 +1,50 @@
-import { exec } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, symlinkSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+/**
+ * Workspace VPS — backend completo.
+ * Cada usuário tem um workspace isolado com:
+ *  - Pastas padrão: Documents, Downloads, Projects, .memory
+ *  - Git: clone, pull, status, log
+ *  - Terminal: comandos com timeout e limite de output
+ *  - Memória persistente: notas .md no .memory/
+ *  - CodingPro AI: chat integrado com contexto do workspace
+ */
+import { exec as execCb } from "node:child_process";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
+import { join, resolve } from "node:path";
+import { promisify } from "node:util";
 import type { FastifyInstance } from "fastify";
 import { type Contexto, erro, exigirUsuario, texto } from "../contexto.js";
 
-const RAIZ = join(homedir(), "Documentos", "playground-workspaces");
-const TIMEOUT_MS = 30_000;
+const exec = promisify(execCb);
+const RAIZ = join(homedir(), "Documentos", "vps-workspaces");
+const TIMEOUT_CMD = 60_000;
+const MAX_OUTPUT = 100_000;
+
+// ─── Workspace ────────────────────────────────────────────────
 
 function dirUsuario(id: number): string {
   const dir = join(RAIZ, String(id));
   mkdirSync(dir, { recursive: true });
-  // Monta a pasta Documentos do PC como symlink
-  const docsLink = join(dir, "Documentos");
-  if (!existsSync(docsLink)) {
-    try { symlinkSync(join(homedir(), "Documentos"), docsLink, "dir"); } catch { /* já existe ou sem permissão */ }
+  // Pastas padrão
+  for (const pasta of ["Documents", "Downloads", "Projects", ".memory"]) {
+    const p = join(dir, pasta);
+    if (!existsSync(p)) mkdirSync(p, { recursive: true });
   }
   return dir;
 }
 
-/** Lista arquivos do workspace (em árvore plana com paths relativos). Segue symlinks. */
 function listarArquivos(dir: string, base: string = dir, profundidade = 0): string[] {
   const resultado: string[] = [];
-  if (!existsSync(dir) || profundidade > 4) return resultado;
+  if (!existsSync(dir) || profundidade > 5) return resultado;
   for (const nome of readdirSync(dir)) {
     if (nome.startsWith(".") || nome === "node_modules") continue;
     const caminho = join(dir, nome);
@@ -31,113 +53,179 @@ function listarArquivos(dir: string, base: string = dir, profundidade = 0): stri
       const st = statSync(caminho);
       if (st.isDirectory() || st.isSymbolicLink()) {
         resultado.push(rel + "/");
-        if (profundidade < 4) resultado.push(...listarArquivos(caminho, base, profundidade + 1));
+        if (profundidade < 5) resultado.push(...listarArquivos(caminho, base, profundidade + 1));
       } else {
         resultado.push(rel);
       }
-    } catch { /* permissão ou arquivo movido */ }
+    } catch { /* skip */ }
   }
   return resultado.sort();
 }
 
-function resolverSeguro(dirUsuario: string, caminhoRelativo: string): string | null {
-  if (!caminhoRelativo || caminhoRelativo.includes("..")) return null;
-  const alvo = resolve(join(dirUsuario, caminhoRelativo));
-  try { return realpathSync(alvo); } catch { return null; }
-  const real = realpathSync(alvo);
-  const realBase = realpathSync(dirUsuario);
-  return real.startsWith(realBase) ? real : null;
+function resolverSeguro(dirBase: string, relativo: string): string | null {
+  if (!relativo || relativo.includes("..") || relativo.includes("~")) return null;
+  const alvo = resolve(join(dirBase, relativo));
+  try {
+    const real = realpathSync(alvo);
+    const realBase = realpathSync(dirBase);
+    return real.startsWith(realBase) ? real : null;
+  } catch {
+    return null;
+  }
 }
 
+// ─── Rotas ────────────────────────────────────────────────────
+
 export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): void {
-  // Listar arquivos
-  app.post("/api/playground/files", async (req, resposta) => {
-    const usuario = await exigirUsuario(ctx, req, resposta);
-    if (!usuario) return resposta;
-    const dir = dirUsuario(usuario.id);
-    // Cria um arquivo inicial se estiver vazio
-    if (listarArquivos(dir).length === 0) {
-      writeFileSync(join(dir, "index.js"), "// Bem-vindo ao CodingPro Playground!\nconsole.log('Olá, mundo!');\n");
-    }
-    return resposta.send({ files: listarArquivos(dir), raiz: dir });
+  // ── Files ──
+  app.post("/api/vps/files", async (req, resposta) => {
+    const u = await exigirUsuario(ctx, req, resposta);
+    if (!u) return;
+    const raiz = dirUsuario(u.id);
+    return resposta.send({ files: listarArquivos(raiz), raiz });
   });
 
-  // Ler arquivo
-  app.post("/api/playground/read", async (req, resposta) => {
-    const usuario = await exigirUsuario(ctx, req, resposta);
-    if (!usuario) return resposta;
-    const dir = dirUsuario(usuario.id);
-    const caminho = texto((req.body as Record<string, unknown> | undefined)?.path, 500);
-    if (!caminho || caminho.includes("..")) return erro(resposta, 400, "path_invalido", "Caminho inválido.");
-    const alvo = resolve(join(dir, caminho));
-    if (!alvo.startsWith(dir)) return erro(resposta, 403, "fora_do_workspace", "Acesso negado.");
+  app.post("/api/vps/read", async (req, resposta) => {
+    const u = await exigirUsuario(ctx, req, resposta);
+    if (!u) return;
+    const caminho = resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.path, 500));
+    if (!caminho) return erro(resposta, 403, "acesso_negado", "Acesso negado.");
     try {
-      const conteudo = readFileSync(alvo, "utf8");
-      return resposta.send({ content: conteudo, path: caminho });
+      return resposta.send({ content: readFileSync(caminho, "utf8").slice(0, 500_000), path: (req.body as any)?.path });
     } catch {
-      return erro(resposta, 404, "arquivo_nao_encontrado", "Arquivo não encontrado.");
+      return erro(resposta, 404, "nao_encontrado", "Arquivo não encontrado.");
     }
   });
 
-  // Escrever arquivo
-  app.post("/api/playground/write", async (req, resposta) => {
-    const usuario = await exigirUsuario(ctx, req, resposta);
-    if (!usuario) return resposta;
-    const dir = dirUsuario(usuario.id);
-    const caminho = texto((req.body as Record<string, unknown> | undefined)?.path, 500);
-    const conteudo = typeof (req.body as Record<string, unknown> | undefined)?.content === "string"
-      ? (req.body as Record<string, unknown>).content as string
-      : "";
-    if (!caminho || caminho.includes("..")) return erro(resposta, 400, "path_invalido", "Caminho inválido.");
-    const alvo = resolve(join(dir, caminho));
-    if (!alvo.startsWith(dir)) return erro(resposta, 403, "fora_do_workspace", "Acesso negado.");
+  app.post("/api/vps/write", async (req, resposta) => {
+    const u = await exigirUsuario(ctx, req, resposta);
+    if (!u) return;
+    const caminho = resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.path, 500));
+    if (!caminho) return erro(resposta, 403, "acesso_negado", "Acesso negado.");
+    const conteudo = typeof (req.body as any)?.content === "string" ? (req.body as any).content : "";
     try {
-      writeFileSync(alvo, conteudo, "utf8");
+      writeFileSync(caminho, conteudo, "utf8");
       return resposta.send({ ok: true });
     } catch {
-      return erro(resposta, 500, "erro_escrita", "Não consegui salvar o arquivo.");
+      return erro(resposta, 500, "erro_escrita", "Falha ao salvar.");
     }
   });
 
-  // Executar código (Node.js)
-  app.post("/api/playground/run", async (req, resposta) => {
-    const usuario = await exigirUsuario(ctx, req, resposta);
-    if (!usuario) return resposta;
-    const dir = dirUsuario(usuario.id);
-    const caminho = texto((req.body as Record<string, unknown> | undefined)?.path, 500) || "index.js";
-    const alvo = resolve(join(dir, caminho));
-    if (!alvo.startsWith(dir)) return erro(resposta, 403, "fora_do_workspace", "Acesso negado.");
-    if (!existsSync(alvo)) return erro(resposta, 404, "arquivo_nao_encontrado", "Arquivo não encontrado para executar.");
-
+  app.post("/api/vps/delete", async (req, resposta) => {
+    const u = await exigirUsuario(ctx, req, resposta);
+    if (!u) return;
+    const caminho = resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.path, 500));
+    if (!caminho) return erro(resposta, 403, "acesso_negado", "Acesso negado.");
     try {
-      const resultado = await new Promise<{ stdout: string; stderr: string; code: number }>((resolve) => {
-        exec(`node "${alvo}"`, { cwd: dir, timeout: TIMEOUT_MS }, (err, stdout, stderr) => {
-          resolve({ stdout: stdout.slice(0, 50000), stderr: stderr.slice(0, 50000), code: err?.code ?? 0 });
-        });
-      });
-      return resposta.send(resultado);
-    } catch (causa) {
-      return erro(resposta, 500, "erro_execucao", "Erro ao executar o código.");
+      const { rmSync } = await import("node:fs");
+      rmSync(caminho, { recursive: true, force: true });
+      return resposta.send({ ok: true });
+    } catch {
+      return erro(resposta, 500, "erro_delete", "Falha ao deletar.");
     }
   });
 
-  // Chat via proxy (usa o token cp_ do usuário)
-  app.post("/api/playground/chat", async (req, resposta) => {
-    const usuario = await exigirUsuario(ctx, req, resposta);
-    if (!usuario) return resposta;
-    if (usuario.status !== "ativo") {
-      return erro(resposta, 403, "conta_nao_aprovada", "Conta não aprovada.");
+  // ── Terminal ──
+  app.post("/api/vps/terminal", async (req, resposta) => {
+    const u = await exigirUsuario(ctx, req, resposta);
+    if (!u) return;
+    const comando = texto((req.body as any)?.command, 2000);
+    const cwd = resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.cwd, 500) || ".") ?? dirUsuario(u.id);
+    if (!comando) return erro(resposta, 400, "comando_vazio", "Comando vazio.");
+    try {
+      const { stdout, stderr } = await exec(comando, {
+        cwd,
+        timeout: TIMEOUT_CMD,
+        maxBuffer: MAX_OUTPUT,
+        env: { ...process.env, HOME: dirUsuario(u.id) },
+      });
+      return resposta.send({ stdout: stdout.slice(0, MAX_OUTPUT), stderr: stderr.slice(0, MAX_OUTPUT), cwd });
+    } catch (e: any) {
+      return resposta.send({
+        stdout: e.stdout?.slice(0, MAX_OUTPUT) ?? "",
+        stderr: (e.stderr ?? e.message ?? "").slice(0, MAX_OUTPUT),
+        code: e.code ?? 1,
+        cwd,
+      });
     }
+  });
 
-    const prompt = texto((req.body as Record<string, unknown> | undefined)?.prompt, 10000);
+  // ── Git ──
+  app.post("/api/vps/git", async (req, resposta) => {
+    const u = await exigirUsuario(ctx, req, resposta);
+    if (!u) return;
+    const action = texto((req.body as any)?.action, 50);
+    const cwd = resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.cwd, 500) || ".") ?? dirUsuario(u.id);
+    try {
+      let cmd = "";
+      if (action === "clone") {
+        const url = texto((req.body as any)?.url, 500);
+        if (!url) return erro(resposta, 400, "url_faltando", "URL do repositório necessária.");
+        cmd = `git clone "${url}"`;
+      } else if (action === "pull") cmd = "git pull";
+      else if (action === "status") cmd = "git status --short";
+      else if (action === "log") cmd = "git log --oneline -10";
+      else return erro(resposta, 400, "acao_invalida", "Ação git inválida.");
+
+      const { stdout, stderr } = await exec(cmd, { cwd, timeout: 120_000, maxBuffer: MAX_OUTPUT });
+      return resposta.send({ ok: true, output: stdout || stderr, cwd });
+    } catch (e: any) {
+      return resposta.send({ ok: false, output: e.stderr || e.message || "erro", cwd });
+    }
+  });
+
+  // ── Memória ──
+  app.post("/api/vps/memory", async (req, resposta) => {
+    const u = await exigirUsuario(ctx, req, resposta);
+    if (!u) return;
+    const memDir = join(dirUsuario(u.id), ".memory");
+    try {
+      const action = texto((req.body as any)?.action, 20);
+      if (action === "list") {
+        const arquivos = listarArquivos(memDir).filter((f) => f.endsWith(".md"));
+        return resposta.send({ files: arquivos });
+      }
+      if (action === "save") {
+        const nome = texto((req.body as any)?.name, 100) || "nota";
+        const conteudo = typeof (req.body as any)?.content === "string" ? (req.body as any).content : "";
+        writeFileSync(join(memDir, `${nome.replace(/[^a-zA-Z0-9_-]/g, "_")}.md`), conteudo, "utf8");
+        return resposta.send({ ok: true });
+      }
+      if (action === "load") {
+        const nome = texto((req.body as any)?.name, 100);
+        const caminho = join(memDir, `${nome.replace(/[^a-zA-Z0-9_-]/g, "_")}.md`);
+        if (!existsSync(caminho)) return erro(resposta, 404, "nao_encontrado", "Memória não encontrada.");
+        return resposta.send({ content: readFileSync(caminho, "utf8") });
+      }
+      return erro(resposta, 400, "acao_invalida", "Ação inválida.");
+    } catch (e: any) {
+      return erro(resposta, 500, "erro_memoria", e.message);
+    }
+  });
+
+  // ── CodingPro AI Chat ──
+  app.post("/api/vps/chat", async (req, resposta) => {
+    const u = await exigirUsuario(ctx, req, resposta);
+    if (!u) return;
+    if (u.status !== "ativo") return erro(resposta, 403, "nao_aprovado", "Conta não aprovada.");
+
+    const prompt = texto((req.body as any)?.prompt, 10000);
     if (!prompt) return erro(resposta, 400, "prompt_vazio", "Prompt vazio.");
+
+    const contexto = texto((req.body as any)?.contexto, 5000) || "";
+    const systemPrompt = contexto
+      ? `Você é o CodingPro, um assistente de código. O usuário está trabalhando no workspace com estes arquivos:\n${contexto}\n\nResponda de forma útil e direta.`
+      : "Você é o CodingPro, um assistente de código. Responda de forma útil e direta.";
 
     try {
       const upstream = await ctx.fetch(`${ctx.config.deepseekBaseUrl}/chat/completions`, {
         body: JSON.stringify({
-          model: "deepseek-v4-flash",
-          messages: [{ role: "user", content: prompt }],
-          max_tokens: 4096,
+          model: "deepseek-v4-pro",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: prompt },
+          ],
+          max_tokens: 8192,
         }),
         headers: {
           authorization: `Bearer ${ctx.config.deepseekApiKey}`,
@@ -145,24 +233,26 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
         },
         method: "POST",
       });
-
-      if (!upstream.ok) {
-        return erro(resposta, 502, "provedor_erro", "Erro no provedor de IA.");
-      }
-
-      const corpo = await upstream.json() as Record<string, unknown>;
-      return resposta.send({ reply: extrairConteudo(corpo) });
-    } catch (causa) {
-      return erro(resposta, 502, "provedor_indisponivel", "Provedor indisponível.");
+      if (!upstream.ok) return erro(resposta, 502, "provedor_erro", "Erro no provedor.");
+      const corpo = (await upstream.json()) as any;
+      const reply = corpo?.choices?.[0]?.message?.content ?? "(sem resposta)";
+      return resposta.send({ reply });
+    } catch {
+      return erro(resposta, 502, "indisponivel", "Provedor indisponível.");
     }
   });
-}
 
-function extrairConteudo(corpo: Record<string, unknown>): string {
-  try {
-    const choices = corpo.choices as Array<{ message?: { content?: string } }> | undefined;
-    return choices?.[0]?.message?.content ?? "(sem resposta)";
-  } catch {
-    return "(sem resposta)";
-  }
+  // ── Info do workspace ──
+  app.post("/api/vps/info", async (req, resposta) => {
+    const u = await exigirUsuario(ctx, req, resposta);
+    if (!u) return;
+    const raiz = dirUsuario(u.id);
+    const arquivos = listarArquivos(raiz);
+    return resposta.send({
+      arquivos: arquivos.length,
+      pastas: ["Documents", "Downloads", "Projects", ".memory"],
+      raiz,
+      git: existsSync(join(raiz, ".git")),
+    });
+  });
 }
