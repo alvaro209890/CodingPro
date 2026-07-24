@@ -284,7 +284,8 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
             { role: "system", content: systemPrompt },
             { role: "user", content: prompt },
           ],
-          max_tokens: 8192,
+          max_tokens: 16384,
+          reasoning_effort: "high",
         }),
         headers: {
           authorization: `Bearer ${ctx.config.deepseekApiKey}`,
@@ -294,8 +295,10 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
       });
       if (!upstream.ok) return erro(resposta, 502, "provedor_erro", "Erro no provedor.");
       const corpo = (await upstream.json()) as any;
-      const reply = corpo?.choices?.[0]?.message?.content ?? "(sem resposta)";
-      return resposta.send({ reply });
+      const msg = corpo?.choices?.[0]?.message;
+      const reply = msg?.content ?? "(sem resposta)";
+      const reasoning = msg?.reasoning_content || "";
+      return resposta.send({ reply, reasoning });
     } catch {
       return erro(resposta, 502, "indisponivel", "Provedor indisponível.");
     }

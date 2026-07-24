@@ -284,7 +284,8 @@ Sempre responda em português. Seja direto e útil. Quando o usuário pedir para
             model: "deepseek-v4-pro",
             messages,
             tools: TOOLS,
-            max_tokens: 4096,
+            max_tokens: 16384,
+            reasoning_effort: "high",
             stream: false,
           }),
         });
@@ -303,6 +304,10 @@ Sempre responda em português. Seja direto e útil. Quando o usuário pedir para
 
         // Tool calls?
         if (msg.tool_calls?.length > 0) {
+          // Envia reasoning (pensamento) do DeepSeek antes das tools
+          if (msg.reasoning_content) {
+            send("think", { type: "think", content: msg.reasoning_content });
+          }
           messages.push(msg);
           for (const tc of msg.tool_calls) {
             const nome = tc.function?.name ?? "?";
@@ -327,6 +332,10 @@ Sempre responda em português. Seja direto e útil. Quando o usuário pedir para
             messages.push({ role: "tool", tool_call_id: tc.id, content: resultado });
           }
         } else {
+          // Envia reasoning (pensamento) antes da resposta final
+          if (msg.reasoning_content) {
+            send("think", { type: "think", content: msg.reasoning_content });
+          }
           // Resposta final
           const content = msg.content || "(sem resposta)";
           send("text", { type: "text", content });

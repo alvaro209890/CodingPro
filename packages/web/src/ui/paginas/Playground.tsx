@@ -298,6 +298,9 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               if (d.type === "text") {
                 content += d.content ?? "";
                 setStream(content);
+              } else if (d.type === "think") {
+                // Pensamento/reasoning do DeepSeek
+                setThinkingSteps((prev) => [...prev, d.content || ""]);
               } else if (d.type === "tool-start") {
                 const toolName = d.name || "ferramenta";
                 setStatus(`🔧 ${toolName}...`);
