@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 interface ThinkingBalloonProps {
   loading: boolean;
@@ -15,6 +15,17 @@ function formatTime(ms: number): string {
   return `${mins}m ${secs}s`;
 }
 
+function iconeDoPasso(texto: string, ativo: boolean, concluido: boolean): string {
+  if (concluido) return "✓";
+  if (ativo) return "◎";
+  const t = texto.toLowerCase();
+  if (t.includes("ferramenta") || t.includes("executando") || t.includes("🔧")) return "⚙";
+  if (t.includes("concluído") || t.includes("concluida")) return "✓";
+  if (t.includes("planej")) return "◈";
+  if (t.includes("analis")) return "◉";
+  return "·";
+}
+
 export function ThinkingBalloon({
   loading,
   statusText,
@@ -22,43 +33,73 @@ export function ThinkingBalloon({
   thinkingSteps = [],
 }: ThinkingBalloonProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const passos = useMemo(() => thinkingSteps.filter(Boolean), [thinkingSteps]);
 
-  if (!loading && thinkingSteps.length === 0) return null;
+  if (!loading && passos.length === 0) return null;
+
+  const titulo = loading
+    ? statusText?.replace(/^🔧\s*/, "") || "Raciocinando..."
+    : "Raciocínio concluído";
 
   return (
-    <div className="playground__thinkingBalloon playground__card-rotating-border">
-      <div className="playground__thinkingHeader">
+    <div
+      className={`playground__thinkingBalloon ${loading ? "playground__thinkingBalloon--live" : "playground__thinkingBalloon--done"}`}
+      aria-live="polite"
+      aria-busy={loading}
+    >
+      <div className="playground__thinkingAura" aria-hidden="true" />
+
+      <header className="playground__thinkingHeader">
         <div className="playground__thinkingTitleGroup">
-          <span className="playground__thinkingBrainIcon">🧠</span>
-          <span className="playground__thinkingTitle">
-            {loading ? statusText || "Pensando..." : "Pensamento concluído"}
-          </span>
+          <span className="playground__thinkingOrb" aria-hidden="true" />
+          <div className="playground__thinkingTitleBlock">
+            <span className="playground__thinkingKicker">Raciocínio da IA</span>
+            <span className="playground__thinkingTitle">{titulo}</span>
+          </div>
           <span className="playground__thinkingTimerBadge">{formatTime(elapsedMs)}</span>
         </div>
 
         <div className="playground__thinkingControls">
-          {loading && <span className="playground__thinkingSpinner" />}
-          {thinkingSteps.length > 0 && (
+          {loading && <span className="playground__thinkingSpinner" aria-hidden="true" />}
+          {passos.length > 0 && (
             <button
               type="button"
               className="playground__thinkingCollapseBtn"
-              onClick={() => setCollapsed(!collapsed)}
-              title={collapsed ? "Expandir raciocínio" : "Recolher raciocínio"}
+              onClick={() => setCollapsed((v) => !v)}
+              aria-expanded={!collapsed}
             >
-              {collapsed ? "▶ Raciocínio" : "▼ Raciocínio"}
+              {collapsed ? "Mostrar" : "Ocultar"}
             </button>
           )}
         </div>
-      </div>
+      </header>
 
-      {!collapsed && (thinkingSteps.length > 0 || loading) && (
+      {loading && (
+        <div className="playground__thinkingProgress" aria-hidden="true">
+          <span className="playground__thinkingProgressBar" />
+        </div>
+      )}
+
+      {!collapsed && (passos.length > 0 || loading) && (
         <div className="playground__thinkingBody">
-          {thinkingSteps.map((step) => (
-            <div key={step} className="playground__thinkingStepRow">
-              <span className="playground__thinkingStepDot">▸</span>
-              <span>{step}</span>
-            </div>
-          ))}
+          <ol className="playground__thinkingTimeline">
+            {passos.map((step, i) => {
+              const ultimo = i === passos.length - 1;
+              const ativo = loading && ultimo;
+              const concluido = !ativo && (!loading || !ultimo);
+              return (
+                <li
+                  key={`${i}-${step.slice(0, 32)}`}
+                  className={`playground__thinkingStep ${ativo ? "playground__thinkingStep--active" : ""} ${concluido ? "playground__thinkingStep--done" : ""}`}
+                >
+                  <span className="playground__thinkingStepIcon" aria-hidden="true">
+                    {iconeDoPasso(step, ativo, concluido)}
+                  </span>
+                  <span className="playground__thinkingStepText">{step}</span>
+                </li>
+              );
+            })}
+          </ol>
 
           {loading && (
             <div className="playground__thinkingPulseLine">
@@ -66,7 +107,7 @@ export function ThinkingBalloon({
               <span className="playground__thinkingPulseDot" />
               <span className="playground__thinkingPulseDot" />
               <span className="playground__thinkingStatusText">
-                {statusText || "Analisando contexto e planejando ações..."}
+                {statusText || "Processando contexto e planejando próximos passos..."}
               </span>
             </div>
           )}

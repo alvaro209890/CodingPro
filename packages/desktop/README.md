@@ -109,9 +109,18 @@ Lacunas detalhadas: [`docs/LACUNAS_FASES.md`](../../docs/LACUNAS_FASES.md).
 - [x] **Temas**: aurora/solar/neon/mono + persistência
 - [ ] Wizard de onboarding (chave + git)
 - [ ] Drag & drop de arquivos (não implementado no renderer)
-- [ ] Empacotador `electron-builder` (config existe; **dependência ausente**; `.exe` não verificável)
+- [x] **Empacotador `electron-builder`**: portable `.zip` em `release/`; servido pelo site em `/downloads/`
 - [ ] Auto-updater + CI Windows
 - [ ] Validar preload gerado inclui APIs de conta
+
+### Publicar download no site (VPS)
+
+1. Gerar artefatos: `pnpm desktop:build` (ou copiar `CodingPro-portable-0.1.0.zip` para `packages/desktop/release/`).
+2. Garantir `CODINGPRO_DOWNLOADS_DIR` apontando para essa pasta (padrão relativo ao monorepo).
+3. `pnpm plataforma:build` + `systemctl --user restart codingpro-web`.
+4. Validar: `curl -fsSI https://codingpro.cursar.space/downloads/CodingPro-portable-0.1.0.zip`.
+
+Constantes compartilhadas no front: `packages/web/src/ui/downloads.ts`.
 
 Ver `fase2-app-windows/04_roadmap_checklist.md`.
 

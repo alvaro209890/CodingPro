@@ -1,10 +1,8 @@
 import { useState } from "react";
 import type { Usuario } from "../api.js";
-import { Aviso, Cartao } from "../componentes.js";
+import { Cartao, Aviso } from "../componentes.js";
 import { propsLink } from "../rotas.js";
-
-const REPO = "https://codingpro.cursar.space";
-const RELEASES = `${REPO}/downloads/CodingPro-portable-0.1.0.zip`;
+import { DESKTOP_VERSAO, DOWNLOAD_WINDOWS, urlDownload } from "../downloads.js";
 
 function Bloco({ children }: { children: string }) {
   const [copiado, setCopiado] = useState(false);
@@ -210,13 +208,30 @@ function PassosCli() {
 }
 
 function PassosWindows() {
+  const portable = DOWNLOAD_WINDOWS.portable;
+  const setup = DOWNLOAD_WINDOWS.setup;
+
   return (
     <Cartao>
       <Passo numero={1} titulo="Baixe o aplicativo">
-        <p>Aplicativo de desktop com a mesma engine da CLI: chat, diffs e terminal integrado.</p>
-        <a className="botao primario" href={RELEASES}>
-          Baixar para Windows (.zip — 115 MB)
-        </a>
+        <p>
+          Aplicativo de desktop com a mesma engine da CLI: chat, diffs e terminal integrado. Versão{" "}
+          <strong>{DESKTOP_VERSAO}</strong>.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "0.5rem" }}>
+          <a className="botao primario" href={urlDownload(portable.arquivo)}>
+            Baixar {portable.rotulo} — {portable.tamanho}
+          </a>
+          <p className="fraco" style={{ margin: 0 }}>
+            {portable.descricao}
+          </p>
+          <a className="botao" href={urlDownload(setup.arquivo)} style={{ alignSelf: "flex-start" }}>
+            Alternativa: {setup.rotulo}
+          </a>
+          <p className="fraco" style={{ margin: 0 }}>
+            {setup.descricao}
+          </p>
+        </div>
       </Passo>
 
       <Passo numero={2} titulo="Extraia o .zip antes de executar">

@@ -1,5 +1,45 @@
 # Diário de desenvolvimento
 
+## 2026-07-24 — Balão de raciocínio, download Windows e rota `/downloads`
+
+### Entregue
+
+- **Balão de raciocínio** (`ThinkingBalloon.tsx` + CSS): timeline de passos, barra de progresso, kicker “Raciocínio da IA”, orb animado, estados *live* / *concluído*, botão ocultar/mostrar.
+- **Download Windows funcional**: rota `GET /downloads/<arquivo>` em `packages/web/src/servidor.ts`, servindo `packages/desktop/release/` (ou `CODINGPRO_DOWNLOADS_DIR`).
+- **Página Como começar** (`Comecar.tsx` + `downloads.ts`): links relativos para portable `.zip` (~115 MB) e instalador `.exe`; instruções de extração e SmartScreen.
+- **Documentação**: esta entrada, `packages/desktop/README.md` (publicação), `docs/playground-entrega-2026-07-24.md`.
+
+### Artefatos Windows
+
+| Arquivo | Uso |
+| --- | --- |
+| `CodingPro-portable-0.1.0.zip` | **Recomendado** — extrair e executar `CodingPro.exe` |
+| `win-unpacked/CodingPro.exe` | Binário dentro do portable |
+| `CodingPro Setup 0.1.0.exe` | Instalador NSIS (stub pequeno; preferir portable) |
+
+### Operação
+
+```bash
+# Republicar após rebuild desktop
+pnpm desktop:build
+# zip já em packages/desktop/release/
+
+# Deploy site
+pnpm plataforma:build
+systemctl --user restart codingpro-web
+
+# Teste
+curl -fsSI http://127.0.0.1:8701/downloads/CodingPro-portable-0.1.0.zip | head
+```
+
+Variável opcional em `~/.config/codingpro/env`:
+
+```bash
+CODINGPRO_DOWNLOADS_DIR=/home/acer/Documentos/CodingPro/packages/desktop/release
+```
+
+---
+
 ## 2026-07-24 — Playground: files, chat markdown, git clone, auto-título e painel
 
 ### Entregue (código + deploy VPS)

@@ -41,6 +41,12 @@ Este documento consolida a evolução entregue no Playground do site e os proced
 - **Navegação**: botão **← Painel** no topo do workspace (`/painel`).
 - **API**: `repositorios/` pasta padrão; fix em `write` para arquivos novos.
 
+### Noite (24/07) — Raciocínio + download Windows
+
+- **Balão de raciocínio**: timeline, progresso, timer e estados live/concluído (`ThinkingBalloon.tsx`, `estilo.css`).
+- **Downloads**: `GET /downloads/*` no servidor web (`servidor.ts`); artefatos em `packages/desktop/release/`.
+- **Como começar**: links para portable `.zip` e instalador; constantes em `downloads.ts`.
+
 ## Arquivos principais alterados
 
 | Área | Arquivo | Responsabilidade |
