@@ -43,7 +43,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
   const inpRef = useRef<HTMLTextAreaElement>(null);
 
   const POST = useCallback(async <T,>(path: string, body?: unknown): Promise<T> => {
-    const r = await fetch(`https://codingpro-api.cursar.space${path}`, {
+    const r = await fetch(path, {
       method: "POST", headers: { "content-type": "application/json" },
       body: body ? JSON.stringify(body) : "{}", credentials: "include",
     });
@@ -64,7 +64,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
       const toolsLog: { nome: string; result: string }[] = [];
       let r: Response;
       try {
-        r = await fetch("https://codingpro-api.cursar.space/api/vps/agent", {
+        r = await fetch("/api/vps/agent", {
           method: "POST", headers: { "content-type": "application/json" },
           body: JSON.stringify({ prompt: p }), credentials: "include",
         });

@@ -1,13 +1,15 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
-import { createServer } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 import { dirname, extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HOST = process.env.CODINGPRO_WEB_HOST?.trim() || "127.0.0.1";
 const PORTA = Number.parseInt(process.env.CODINGPRO_WEB_PORTA ?? "8701", 10);
+const API = "https://codingpro-api.cursar.space";
 
-/** Build do Vite. `dist/` fica ao lado de `dist-site/` dentro do pacote. */
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), "..", "dist-site");
 
 const TIPOS: Readonly<Record<string, string>> = {
@@ -22,17 +24,58 @@ const TIPOS: Readonly<Record<string, string>> = {
   ".woff2": "font/woff2",
 };
 
-/**
- * Resolve a URL num arquivo dentro de `RAIZ`, ou `null` se escapar da raiz.
- * Barreira contra path traversal: só entrega o que está mesmo debaixo de `dist-site`.
- */
 function resolverArquivo(url: string): string | null {
   const caminho = decodeURIComponent(url.split("?")[0] ?? "/");
   const alvo = resolve(join(RAIZ, normalize(caminho)));
   return alvo === RAIZ || alvo.startsWith(RAIZ + "/") ? alvo : null;
 }
 
+/** Proxy: encaminha requisições /api/* para a API, repassando cookies e corpo. */
+function proxyApi(req: IncomingMessage, res: ServerResponse): void {
+  const url = new URL(req.url ?? "/", API);
+  const bodyChunks: Buffer[] = [];
+  req.on("data", (chunk: Buffer) => bodyChunks.push(chunk));
+  req.on("end", () => {
+    const body = bodyChunks.length > 0 ? Buffer.concat(bodyChunks) : undefined;
+    const proxyReq = httpsRequest(
+      url,
+      {
+        method: req.method,
+        headers: {
+          ...Object.fromEntries(
+            Object.entries(req.headers).filter(([k]) => !["host", "origin", "referer"].includes(k.toLowerCase())),
+          ),
+          host: url.host,
+        },
+      },
+      (proxyRes) => {
+        // Forward CORS headers
+        const headers: Record<string, string> = {};
+        for (const [k, v] of Object.entries(proxyRes.headers)) {
+          if (v) headers[k] = Array.isArray(v) ? v.join(", ") : v;
+        }
+        headers["access-control-allow-origin"] = req.headers.origin || "https://codingpro.cursar.space";
+        headers["access-control-allow-credentials"] = "true";
+        res.writeHead(proxyRes.statusCode ?? 200, headers);
+        proxyRes.pipe(res);
+      },
+    );
+    proxyReq.on("error", () => {
+      res.writeHead(502, { "content-type": "application/json" });
+      res.end(JSON.stringify({ erro: "proxy_error", mensagem: "Erro ao conectar à API." }));
+    });
+    if (body) proxyReq.write(body);
+    proxyReq.end();
+  });
+}
+
 const servidor = createServer(async (req, resposta) => {
+  // Proxy API requests
+  if (req.url?.startsWith("/api/")) {
+    proxyApi(req, resposta);
+    return;
+  }
+
   if (req.url === "/saude") {
     resposta.writeHead(200, { "content-type": "application/json; charset=utf-8" });
     resposta.end(JSON.stringify({ ok: true, servico: "codingpro-web" }));
@@ -41,7 +84,6 @@ const servidor = createServer(async (req, resposta) => {
 
   const alvo = resolverArquivo(req.url ?? "/");
   const indice = join(RAIZ, "index.html");
-
   let arquivo = indice;
   if (alvo) {
     const info = await stat(alvo).catch(() => null);
@@ -51,8 +93,6 @@ const servidor = createServer(async (req, resposta) => {
   const extensao = extname(arquivo);
   const ehIndice = arquivo === indice;
   resposta.writeHead(200, {
-    // Os assets do Vite têm hash no nome: cacheáveis para sempre. O index não —
-    // é ele que aponta para o build novo depois de cada deploy.
     "cache-control": ehIndice ? "no-store" : "public, max-age=31536000, immutable",
     "content-type": TIPOS[extensao] ?? "application/octet-stream",
     "referrer-policy": "no-referrer",
