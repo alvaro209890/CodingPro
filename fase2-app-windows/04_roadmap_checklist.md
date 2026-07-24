@@ -6,7 +6,8 @@ Estimativas revistas em 2026-07-23 com base na velocidade real de desenvolviment
 
 - [x] Congelar/versionar o contrato de eventos core↔UI (`events.ts` v1.0.0) — 2026-07-23
 - [x] Camada de paths por plataforma (`platform-paths.ts`, `%APPDATA%\CodingPro`, drives, UNC) — 2026-07-23
-- [x] Shell adapter PowerShell/CMD + env allowlist estendido + taskkill no Windows — 2026-07-23
+- [x] Shell adapter Windows: paths + `taskkill` + `bash` com `shell: true` — 2026-07-23
+  - **Nota 2026-07-24:** não há tool renomeada `shell` nem backend PowerShell 7 dedicado; terminal do desktop ainda usa `cmd`/`exec`. Ver lacunas.
 - [x] Downloader/resolução de binários por plataforma e tolerância em suíte de testes — 2026-07-23
 - [x] Spikes e resiliência: 723 testes Vitest passando 100% nativamente em Windows — 2026-07-23
 - [x] **Marco: a própria CLI da Fase 1 rodando nativa no Windows (100% verde)** — 2026-07-23
@@ -86,12 +87,20 @@ Sintomas: `A DeepSeek retornou uma chamada de ferramenta inválida` e em sequên
 
 ## W3 — Acabamento & empacotamento (1–2 semanas) 🔶
 
+> **Auditoria 2026-07-24:** o marco “v1.0.0 .exe entregue” estava adiantado. Ver [`docs/LACUNAS_FASES.md`](../docs/LACUNAS_FASES.md).
+
 - [ ] Wizard de onboarding visual no primeiro start (chave + git)
-- [x] Drag & drop de arquivos do Windows Explorer no floating dock — 2026-07-23
-- [x] Temas e preferências (Aurora Escuro + Sóbrio + automáticos do Windows) — 2026-07-23
-- [x] Empacotador `electron-builder`: instalador NSIS + versão Portable (`.exe`) — config ok, falta testar build
-- [ ] Auto-updater integrado com GitHub Releases — pós-build
-- [x] **Marco final: v1.0.0 do App Windows entregue (.exe)** — W2.5 completo, W3 configurado
+- [ ] Drag & drop de arquivos do Windows Explorer no floating dock — **claim antigo; handlers não encontrados no renderer (2026-07-24)**
+- [x] Temas e preferências (aurora/solar/neon/mono + persistência) — 2026-07-23
+- [ ] Empacotador `electron-builder`: instalador NSIS + Portable — config no `package.json` existe; **dependência `electron-builder` ausente; build `.exe` não verificável no repo**
+- [ ] Auto-updater integrado com GitHub Releases
+- [ ] Workflow CI Windows + release GitHub
+- [ ] Validar preload gerado (`scripts/build-preload.mjs`) inclui APIs de conta do source
+- [ ] Diff viewer lado a lado + aplicar/rejeitar por bloco (hoje: viewer simples)
+- [ ] Terminal `xterm.js` + `node-pty` / PowerShell (hoje: `exec` + `cmd`)
+- [ ] Pet visual GUI
+- [ ] Restaurar `code_search` no Electron (ou documentar omissão permanente)
+- [ ] **Marco final W3:** `.exe` NSIS + portable publicados e testados em máquina limpa Windows
 
 ## Matriz de Riscos & Mitigações
 

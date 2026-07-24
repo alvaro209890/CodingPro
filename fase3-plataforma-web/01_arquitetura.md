@@ -1,5 +1,11 @@
 # F3-01 — Arquitetura da Plataforma
 
+> **Nota 2026-07-24:** este doc descreve a arquitetura **planejada**. A implementação
+> atual usa **Vite SPA** (não Next.js) no site, **SQL/`postgres.js`** (não Drizzle) na API,
+> e admin MVP sem shadcn. Status honesto e lacunas: [`04_roadmap_checklist.md`](04_roadmap_checklist.md)
+> e [`docs/LACUNAS_FASES.md`](../docs/LACUNAS_FASES.md). Endpoint real do proxy:
+> `POST /v1/chat/completions` (não `/v1/chat`).
+
 ## Visão geral
 
 ```mermaid

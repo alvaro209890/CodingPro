@@ -1,5 +1,27 @@
 # Diário de desenvolvimento
 
+## 2026-07-24 — Auditoria de lacunas Fases 1–3 + docs alinhadas
+
+### Entregue
+
+- Documento [`docs/LACUNAS_FASES.md`](LACUNAS_FASES.md): cruzamento plano × código das três fases.
+- Roadmaps atualizados: `fase2-app-windows/04` (W3 honesto), `fase3-plataforma-web/04` (P0–P4 real).
+- READMEs das fases 2/3, `README.md` raiz, `CHECKLIST_MESTRE.md`, `ESTADO_PROJETO.md`, `STATUS.md`.
+- Nota em `fase3-plataforma-web/01_arquitetura.md` sobre stack entregue vs planejada.
+
+### Achados (resumo)
+
+- Fase 1: engenharia v1 ok; Ink/`packages/tui`, background tasks, voz, etc. ainda abertos/pós-1.0.
+- Fase 2: app usável; instalador `.exe`/auto-update e vários itens W3 incompletos (claims antigos corrigidos).
+- Fase 3: núcleo contas/proxy/limites/admin/login cloud **funcional**; P4 (2FA, SMTP, backup, beta) aberto.
+
+### Também no mesmo dia (código)
+
+- Fixes de fluxo cloud/limites: playground mede consumo, device flow atômico, cookie desktop, redirect login.
+  Commit: `d57df3c`.
+
+---
+
 ## 2026-07-22 — F0.1: fundação executável offline
 
 ### Entregue

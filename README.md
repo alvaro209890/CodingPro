@@ -94,11 +94,13 @@ permanecer dentro dele e a fixture é lida em snapshot seguro. Consulte o
 
 ## As 3 fases do projeto
 
-| Fase | O quê | Planos | Status |
+| Fase | O quê | Planos | Status (2026-07-24) |
 |---|---|---|---|
-| **1** | **CLI executada localmente e funcional** (sem backend próprio; inferência via DeepSeek) | [`planos/`](planos/) — docs 01–16 | 🟢 **100% completa no plano de engenharia** (TUI com 4 temas + pet finalizada; resta só QA visual humano + `npm publish`) |
-| **2** | **App Windows** (Electron, estilo Claude Code desktop; core da CLI reaproveitado) | [`fase2-app-windows/`](fase2-app-windows/) · [`packages/desktop/README.md`](packages/desktop/README.md) | 🟢 W0–W2 estáveis (chat, permissões+diff, terminal, paleta, cancel, sessões); W3 empacotamento pendente |
-| **3** | **Plataforma web**: site, contas, proxy LLM com **limites por usuário** (backend neste PC + Cloudflare Tunnel em `cursar.space`) | [`fase3-plataforma-web/`](fase3-plataforma-web/) | 📋 planejada |
+| **1** | **CLI** local-first (DeepSeek Pro/Flash) | [`planos/`](planos/) | 🟢 Completa no plano de engenharia v1; lacunas/pós-1.0 em [`docs/LACUNAS_FASES.md`](docs/LACUNAS_FASES.md) |
+| **2** | **App Windows** (Electron) | [`fase2-app-windows/`](fase2-app-windows/) | 🟡 W0–W2 usáveis; **W3 instalador/auto-update incompleto** |
+| **3** | **Plataforma web** (contas, proxy, limites, `cursar.space`) | [`fase3-plataforma-web/`](fase3-plataforma-web/) | 🟢 Núcleo P0–P3 funcional; **P4 hardening/beta aberto** |
+
+Auditoria plano × código: **[`docs/LACUNAS_FASES.md`](docs/LACUNAS_FASES.md)**.
 
 **API de desenvolvimento/testes (todas as fases):** a origem da chave DeepSeek neste PC é o
 Hermes. Para executar o CodingPro, disponibilize somente `DEEPSEEK_API_KEY` no arquivo dedicado
@@ -142,4 +144,5 @@ Detalhes em [09_integracao_referencias.md](planos/09_integracao_referencias.md).
 | [14_deepseek_e_economia_tokens.md](planos/14_deepseek_e_economia_tokens.md) | Pesquisa DeepSeek V4, economia de tokens (cache), esforço auto-adaptável, qualidade extrema |
 | [15_idioma_portugues.md](planos/15_idioma_portugues.md) | CLI 100% pt-BR (UI, verbos, respostas); raciocínio interno livre; custo do idioma |
 | [16_design_visual_tui.md](planos/16_design_visual_tui.md) | Identidade "Aurora": paleta, trilho de timeline, temas, componentes, mockup |
-| [CHECKLIST_MESTRE.md](CHECKLIST_MESTRE.md) | Visão única de progresso de todas as fases |
+| [CHECKLIST_MESTRE.md](CHECKLIST_MESTRE.md) | Visão única de progresso da Fase 1 |
+| [docs/LACUNAS_FASES.md](docs/LACUNAS_FASES.md) | Auditoria 2026-07-24: o que falta nas Fases 1–3 |

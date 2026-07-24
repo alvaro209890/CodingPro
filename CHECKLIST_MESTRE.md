@@ -1,8 +1,19 @@
 # CHECKLIST MESTRE — CodingPro (FASE 1: a CLI)
 
 Visão única de progresso da **Fase 1**. Detalhes nos docs de `planos/`.
-Fases 2 (app Windows) e 3 (plataforma web) têm roadmaps próprios em `fase2-app-windows/04` e `fase3-plataforma-web/04` — **só começam com a Fase 1 concluída**.
-Legenda: ☐ pendente · ✅ feito · 🔶 em andamento
+
+**Fases 2 e 3:** roadmaps em `fase2-app-windows/04` e `fase3-plataforma-web/04`.  
+**Lacunas plano × código (todas as fases):** [`docs/LACUNAS_FASES.md`](docs/LACUNAS_FASES.md) — auditoria 2026-07-24.
+
+Legenda: ☐ pendente · ✅ feito · 🔶 em andamento / parcial
+
+## Status das 3 fases (atalho)
+
+| Fase | Status |
+|------|--------|
+| 1 CLI | 🟢 Engenharia v1 completa; pós-1.0 e itens simplificados listados em LACUNAS |
+| 2 Windows | 🟡 App usável (W0–W2); W3 distribuição incompleta |
+| 3 Plataforma | 🟢 Núcleo P0–P3; P4 hardening/beta aberto |
 
 ## Planejamento
 
