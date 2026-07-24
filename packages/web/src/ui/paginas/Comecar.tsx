@@ -212,46 +212,59 @@ function PassosCli() {
 function PassosWindows() {
   return (
     <Cartao>
-      <Passo numero={1} titulo="Baixe o instalador">
+      <Passo numero={1} titulo="Baixe o aplicativo">
         <p>
-          O aplicativo de desktop traz a mesma engine da CLI numa janela, com chat, diffs e terminal
-          integrado.
+          Aplicativo de desktop com a mesma engine da CLI: chat, diffs e terminal integrado.
         </p>
         <a className="botao primario" href={RELEASES}>
-          Baixar para Windows (.zip)
+          Baixar para Windows (.zip — 115 MB)
         </a>
-        <p className="fraco" style={{ marginTop: "0.75rem" }}>
-          Descompacte o arquivo e execute <code>CodingPro.exe</code>. O Windows pode mostrar um
-          aviso de aplicativo desconhecido (o app ainda não é assinado): clique em{" "}
-          <strong>Mais informações</strong> → <strong>Executar assim mesmo</strong>.
-        </p>
       </Passo>
 
-      <Passo numero={2} titulo="Extraia e abra">
+      <Passo numero={2} titulo="Extraia o .zip antes de executar">
         <p>
-          Descompacte o arquivo <code>.zip</code> em qualquer pasta e execute o{" "}
-          <code>CodingPro.exe</code>. O Windows pode mostrar um aviso de aplicativo desconhecido (o
-          app ainda não é assinado): clique em <strong>Mais informações</strong> →{" "}
-          <strong>Executar assim mesmo</strong>.
+          <strong>⚠️ Importante:</strong> extraia TODOS os arquivos do .zip para uma pasta antes de
+          rodar o <code>CodingPro.exe</code>. Não execute direto de dentro do .zip — o app precisa
+          das DLLs que estão na mesma pasta.
+        </p>
+        <p>
+          Clique com o botão direito no arquivo .zip → <strong>Extrair tudo</strong> → escolha uma
+          pasta (ex: <code>Documentos\CodingPro</code>).
         </p>
       </Passo>
 
-      <Passo numero={3} titulo="Entre com sua conta">
+      <Passo numero={3} titulo="Execute o CodingPro.exe">
+        <p>
+          Abra a pasta extraída e dê um duplo clique em <code>CodingPro.exe</code>.
+        </p>
+        <Aviso tipo="atencao">
+          <strong>Windows SmartScreen:</strong> por não ser um app assinado (certificado digital), o
+          Windows mostra "O Windows protegeu o seu PC". Clique em{" "}
+          <strong>Mais informações</strong> e depois em <strong>Executar assim mesmo</strong>.
+        </Aviso>
+        <Aviso tipo="atencao">
+          <strong>Erro "Não foi possível executar este aplicativo"?</strong> Instale o{" "}
+          <a href="https://aka.ms/vs/17/release/vc_redist.x64.exe">
+            Visual C++ Redistributable (x64)
+          </a>{" "}
+          da Microsoft — é um componente único de ~25 MB, instala em 1 minuto e resolve.
+        </Aviso>
+      </Passo>
+
+      <Passo numero={4} titulo="Entre com sua conta">
         <p>
           Na tela inicial, digite seu <strong>e-mail e senha</strong> e clique em{" "}
           <strong>Entrar</strong>. O app conecta direto na sua conta — sem navegador, sem código.
-          Quem ainda não tem conta pode criar ali mesmo, em segundos.
         </p>
-        <p className="fraco" style={{ margin: 0 }}>
-          Se você já rodou <code>codingpro login</code> nesta máquina, o app reaproveita a mesma
-          conta e nem pede login.
+        <p className="fraco">
+          Se já usou <code>codingpro login</code> nesta máquina, o app reaproveita a mesma conta.
         </p>
       </Passo>
 
-      <Passo numero={4} titulo="Escolha a pasta do projeto">
+      <Passo numero={5} titulo="Escolha a pasta do projeto">
         <p>
-          Clique em <strong>Pasta</strong> (ou digite <code>/abrir</code>) e selecione o projeto em
-          que quer trabalhar. A partir daí é só conversar.
+          Clique em <strong>Pasta</strong> (ou digite <code>/abrir</code>) e selecione o projeto.
+          A partir daí é só conversar com a IA.
         </p>
       </Passo>
     </Cartao>
