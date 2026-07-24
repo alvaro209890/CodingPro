@@ -2073,6 +2073,31 @@ tbody tr:hover {
   margin: 0;
 }
 
+.playground__gitProgress {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.playground__gitProgressBar {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #10b981, #06b6d4, #8b5cf6, #10b981);
+  background-size: 200% 100%;
+  animation: gitProgressSlide 1.5s linear infinite;
+}
+
+.playground__gitProgress span {
+  font-size: 0.7rem;
+  color: #6b6b78;
+}
+
+@keyframes gitProgressSlide {
+  0% { background-position: 200% 0; }
+  100% { background-position: 0 0; }
+}
+
 /* ---------- Memory Panel ---------- */
 .playground__memory {
   display: flex;

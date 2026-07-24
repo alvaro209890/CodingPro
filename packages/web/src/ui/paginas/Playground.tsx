@@ -170,6 +170,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
   const [cmd, setCmd] = useState("");
   const [gitUrl, setGitUrl] = useState("");
   const [gitOut, setGitOut] = useState("");
+  const [cloning, setCloning] = useState(false);
   const [memFiles, setMemFiles] = useState<string[]>([]);
   const [memName, setMemName] = useState("");
   const [memContent, setMemContent] = useState("");
@@ -693,12 +694,22 @@ export function Playground({ usuario }: { usuario: Usuario }) {
   const git = useCallback(
     async (action: string, url?: string) => {
       setTab("git");
-      setGitOut("...");
+      if (action === "clone") {
+        setCloning(true);
+        setGitOut("Clonando...");
+      } else {
+        setGitOut("...");
+      }
       try {
-        const d = await POST<{ output: string }>("/api/vps/git", { action, cwd: "Projects", url });
+        const d = await POST<{ output: string }>("/api/vps/git", { action, cwd: "repositorios", url });
         setGitOut(d.output);
+        if (action === "clone") {
+          setGitOut((prev) => prev || "✅ Repositório clonado em repositorios/");
+        }
       } catch (e: any) {
-        setGitOut(e.message);
+        setGitOut(e.message || "Erro");
+      } finally {
+        setCloning(false);
       }
     },
     [POST],
@@ -929,6 +940,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             <GitPanel
               gitUrl={gitUrl}
               gitOut={gitOut}
+              cloning={cloning}
               onUrlChange={setGitUrl}
               onClone={() => git("clone", gitUrl)}
               onAction={git}

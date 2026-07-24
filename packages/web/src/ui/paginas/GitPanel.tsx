@@ -1,26 +1,28 @@
 interface GitPanelProps {
   gitUrl: string;
   gitOut: string;
+  cloning: boolean;
   onUrlChange: (val: string) => void;
   onClone: () => void;
   onAction: (action: string) => void;
 }
 
-export function GitPanel({ gitUrl, gitOut, onUrlChange, onClone, onAction }: GitPanelProps) {
+export function GitPanel({ gitUrl, gitOut, cloning, onUrlChange, onClone, onAction }: GitPanelProps) {
   return (
     <section className="playground__git" aria-label="Operações Git">
       <header className="playground__gitHeader">
         <div className="playground__gitTitle">
-          <span>🔀</span>
-          <strong>INTEGRAÇÃO GIT</strong>
+          <span>⑂</span>
+          <strong>Git</strong>
         </div>
         <div className="playground__gitActions">
-          {["status", "pull", "log", "diff"].map((action) => (
+          {["status", "pull", "log"].map((action) => (
             <button
               key={action}
               onClick={() => onAction(action)}
               type="button"
               className="playground__gitActionBtn"
+              disabled={cloning}
             >
               git {action}
             </button>
@@ -29,24 +31,32 @@ export function GitPanel({ gitUrl, gitOut, onUrlChange, onClone, onAction }: Git
       </header>
 
       <div className="playground__gitInputCard">
-        <label className="playground__gitLabel">Clonar Repositório Remoto:</label>
+        <label className="playground__gitLabel">Clonar repositório (vai para repositorios/)</label>
         <div className="playground__gitInputRow">
           <input
             value={gitUrl}
             onChange={(e) => onUrlChange(e.target.value)}
-            placeholder="https://github.com/usuario/repositorio.git"
+            placeholder="https://github.com/usuario/repo.git"
             aria-label="URL do repositório Git"
             className="playground__gitInputField"
+            disabled={cloning}
+            onKeyDown={(e) => { if (e.key === "Enter" && gitUrl.trim() && !cloning) onClone(); }}
           />
-          <button onClick={onClone} type="button" className="playground__gitCloneBtn">
-            Clonar Repositório
+          <button onClick={onClone} type="button" className="playground__gitCloneBtn" disabled={cloning || !gitUrl.trim()}>
+            {cloning ? "Clonando..." : "Clonar"}
           </button>
         </div>
+        {cloning && (
+          <div className="playground__gitProgress">
+            <div className="playground__gitProgressBar" />
+            <span>Clonando repositório...</span>
+          </div>
+        )}
       </div>
 
       <div className="playground__gitOutputConsole">
-        <div className="playground__gitConsoleHeader">Output do Git:</div>
-        <pre className="playground__gitOutput">{gitOut || "Nenhuma operação executada ainda. Use os botões acima."}</pre>
+        <div className="playground__gitConsoleHeader">Output:</div>
+        <pre className="playground__gitOutput">{gitOut || "Nenhuma operação ainda."}</pre>
       </div>
     </section>
   );

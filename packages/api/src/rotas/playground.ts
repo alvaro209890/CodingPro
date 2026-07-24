@@ -218,7 +218,10 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
       if (action === "clone") {
         const url = texto((req.body as any)?.url, 500);
         if (!url) return erro(resposta, 400, "url_faltando", "URL do repositório necessária.");
-        cmd = `git clone "${url}"`;
+        // Garante que a pasta repositorios existe
+        const repoDir = join(cwd, "repositorios");
+        mkdirSync(repoDir, { recursive: true });
+        cmd = `cd repositorios && git clone "${url}"`;
       } else if (action === "pull") cmd = "git pull";
       else if (action === "status") cmd = "git status --short";
       else if (action === "log") cmd = "git log --oneline -10";
