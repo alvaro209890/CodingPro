@@ -53,6 +53,8 @@ Navegador → codingpro.cursar.space (Vite+React SPA + proxy HTTP)
 - Terminal: shell real, git clone/pull/status
 - Memory: notas .md persistentes
 
+**Refatoração frontend (2026-07-24)** — `packages/web/src/ui/paginas/Playground.tsx` foi dividido de 1457 para 419 linhas (orquestrador) em 12 componentes focados: Banner, Sidebar, TabBar, ChatView, InputBar, SlashDropdown, FilesPanel, EditorPanel, TerminalPanel, GitPanel, MemoryPanel. Estilos extraídos para `estilo.css` com classes CSS usando as custom properties do design system Aurora. Navegação mobile responsiva com drawer para sidebar e transições suaves entre abas.
+
 ### Admin (`/admin`)
 - Usuários: status, consumo, VPS (MB), aprovar/bloquear/desbloquear
 - Consumo, Saúde, Auditoria, Kill Switch
