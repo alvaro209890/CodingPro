@@ -66,7 +66,11 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ prompt: p }), credentials: "include",
       });
-      const reader = r.body!.getReader();
+      if (!r.ok || !r.body) {
+        const err = await r.json().catch(() => ({ mensagem: "Load failed" })) as any;
+        throw new Error(err.mensagem || err.erro || `Erro ${r.status}`);
+      }
+      const reader = r.body.getReader();
       const dec = new TextDecoder(); let buf = ""; let content = "";
       while (true) {
         const { done, value } = await reader.read();
