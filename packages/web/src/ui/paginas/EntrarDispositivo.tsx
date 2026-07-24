@@ -30,7 +30,7 @@ export function EntrarDispositivo({ usuario }: { usuario: Usuario | null }) {
         <Cartao>
           <h2>Conectar dispositivo</h2>
           <p>Entre na sua conta primeiro para autorizar a máquina que está pedindo acesso.</p>
-          <a className="botao primario" {...propsLink("/entrar")}>
+          <a className="botao primario" {...propsLink("/entrar?voltar=/entrar-dispositivo")}>
             Entrar
           </a>
         </Cartao>

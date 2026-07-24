@@ -1,5 +1,127 @@
 # Diário de desenvolvimento
 
+## 2026-07-24 — Limite no chat, reset do banco e conta Álvaro limpa
+
+### Diagnóstico
+
+- A tarefa de QA **não entrou em loop infinito**: o agente VPS faz no máximo **5 iterações** por pedido (comportamento esperado).
+- O `/api/vps/chat` **não checava nem registrava** limite/consumo — inconsistência com agente e proxy.
+- O auto-título chamava a IA de novo (`refinarNomeSessaoViaApi`), gastando cota extra por conversa.
+- Rate limit global (300/min) podia atrapalhar rajadas de login/device flow em testes.
+
+### Correções
+
+- `playground.ts`: `checarAcessoLlm` + `registrarUsoDaResposta` no chat.
+- `Playground.tsx`: auto-título só com heurística local (sem 2ª chamada à IA).
+- `app.ts`: login, cadastro, logout e `/api/device/*` fora do rate limit global.
+
+### Banco zerado (produção)
+
+Mantida apenas **`alvaro@gmail.com`**: `ativo`, `admin`, e-mail verificado, **limite 0** (sem teto), zero tokens/eventos/consumo. Senha inalterada.
+
+---
+
+## 2026-07-24 — Balão de raciocínio, download Windows e rota `/downloads`
+
+### Entregue
+
+- **Balão de raciocínio** (`ThinkingBalloon.tsx` + CSS): timeline de passos, barra de progresso, kicker “Raciocínio da IA”, orb animado, estados *live* / *concluído*, botão ocultar/mostrar.
+- **Download Windows funcional**: rota `GET /downloads/<arquivo>` em `packages/web/src/servidor.ts`, servindo `packages/desktop/release/` (ou `CODINGPRO_DOWNLOADS_DIR`).
+- **Página Como começar** (`Comecar.tsx` + `downloads.ts`): links relativos para portable `.zip` (~115 MB) e instalador `.exe`; instruções de extração e SmartScreen.
+- **Documentação**: esta entrada, `packages/desktop/README.md` (publicação), `docs/playground-entrega-2026-07-24.md`.
+
+### Artefatos Windows
+
+| Arquivo | Uso |
+| --- | --- |
+| `CodingPro-portable-0.1.0.zip` | **Recomendado** — extrair e executar `CodingPro.exe` |
+| `win-unpacked/CodingPro.exe` | Binário dentro do portable |
+| `CodingPro Setup 0.1.0.exe` | Instalador NSIS (stub pequeno; preferir portable) |
+
+### Operação
+
+```bash
+# Republicar após rebuild desktop
+pnpm desktop:build
+# zip já em packages/desktop/release/
+
+# Deploy site
+pnpm plataforma:build
+systemctl --user restart codingpro-web
+
+# Teste
+curl -fsSI http://127.0.0.1:8701/downloads/CodingPro-portable-0.1.0.zip | head
+```
+
+Variável opcional em `~/.config/codingpro/env`:
+
+```bash
+CODINGPRO_DOWNLOADS_DIR=/home/acer/Documentos/CodingPro/packages/desktop/release
+```
+
+---
+
+## 2026-07-24 — Playground: files, chat markdown, git clone, auto-título e painel
+
+### Entregue (código + deploy VPS)
+
+- **Navegador de arquivos** (`FilesPanel`): breadcrumbs com contagem, botão rápido **Repos**, badges por pasta, ícones por extensão, dropzone recolhível, mensagens quando pasta vazia.
+- **Chat com markdown** (`MarkdownRenderer` + `ChatView`): respostas da IA com código, listas e negrito; streaming formatado; ferramentas do agente em `<details>` com saída completa.
+- **Git clone corrigido**: repositórios vão para `workspace/repositorios/<nome>/` (bug `repositorios/repositorios` após 1º clone); pasta `repositorios/` criada por padrão; após clone abre aba **Files** na pasta do repo.
+- **Editor/write corrigido**: `/api/vps/write` aceita arquivos novos (cria pastas-pai).
+- **Auto-título de chat**: após a 1ª resposta, sessões `chat-XX` ganham nome inferido da conversa (local + refinamento via `/api/vps/chat`); `/rename` marca título manual.
+- **Botão ← Painel** no workspace: volta para `/painel` (conta, tokens, consumo).
+
+### Arquivos principais
+
+| Área | Arquivo |
+| --- | --- |
+| API workspace/git/write | `packages/api/src/rotas/playground.ts`, `workspace.ts` |
+| Files | `packages/web/src/ui/paginas/FilesPanel.tsx` |
+| Chat | `packages/web/src/ui/MarkdownRenderer.tsx`, `ChatView.tsx` |
+| Título automático | `packages/web/src/ui/paginas/inferirNomeSessao.ts` |
+| Playground | `packages/web/src/ui/paginas/Playground.tsx` |
+| Estilos | `packages/web/src/ui/estilo.css` |
+
+### Operação no VPS
+
+```bash
+cd ~/Documentos/CodingPro && git pull origin master
+nvm use 24.18.0
+pnpm install --frozen-lockfile
+pnpm plataforma:build
+systemctl --user restart codingpro-api codingpro-web
+curl -fsS https://codingpro-api.cursar.space/saude
+```
+
+### Onde ficam os repositórios clonados
+
+`~/Documentos/vps-workspaces/<id-usuario>/repositorios/<nome-do-repo>/`
+
+---
+
+## 2026-07-24 — Auditoria de lacunas Fases 1–3 + docs alinhadas
+
+### Entregue
+
+- Documento [`docs/LACUNAS_FASES.md`](LACUNAS_FASES.md): cruzamento plano × código das três fases.
+- Roadmaps atualizados: `fase2-app-windows/04` (W3 honesto), `fase3-plataforma-web/04` (P0–P4 real).
+- READMEs das fases 2/3, `README.md` raiz, `CHECKLIST_MESTRE.md`, `ESTADO_PROJETO.md`, `STATUS.md`.
+- Nota em `fase3-plataforma-web/01_arquitetura.md` sobre stack entregue vs planejada.
+
+### Achados (resumo)
+
+- Fase 1: engenharia v1 ok; Ink/`packages/tui`, background tasks, voz, etc. ainda abertos/pós-1.0.
+- Fase 2: app usável; instalador `.exe`/auto-update e vários itens W3 incompletos (claims antigos corrigidos).
+- Fase 3: núcleo contas/proxy/limites/admin/login cloud **funcional**; P4 (2FA, SMTP, backup, beta) aberto.
+
+### Também no mesmo dia (código)
+
+- Fixes de fluxo cloud/limites: playground mede consumo, device flow atômico, cookie desktop, redirect login.
+  Commit: `d57df3c`.
+
+---
+
 ## 2026-07-22 — F0.1: fundação executável offline
 
 ### Entregue

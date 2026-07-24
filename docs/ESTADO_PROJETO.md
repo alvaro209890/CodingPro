@@ -1,10 +1,23 @@
-# Estado do projeto CodingPro — Fase 1 (CLI)
+# Estado do projeto CodingPro
 
-**Última atualização:** 2026-07-23  
+**Última atualização:** 2026-07-24  
 **Branch:** `master` · **Repo:** https://github.com/alvaro209890/CodingPro  
-**Status:** 🟢 CLI 1.0 **completa** no plano de engenharia. Empacotamento/CI ok.  
-TUI finalizada: **4 temas** (aurora/solar/neon/mono) + **pet/XP** desligável, com `/tema` e `/pet`.  
-`npm publish`, QA visual humano e sessão de 1h ficam com o Álvaro. Pós-1.0: voz, tree-sitter AST, etc.
+
+| Fase | Status |
+|------|--------|
+| **1 — CLI** | 🟢 Completa no plano de engenharia v1. Empacotamento/CI ok. `npm publish` + QA visual humano ficam com o Álvaro. |
+| **2 — Windows** | 🟡 App Electron usável (W0–W2). W3 instalador/auto-update **incompleto**. |
+| **3 — Plataforma** | 🟢 Contas, proxy medido, limites, site, admin MVP, `codingpro login`. **P4** (2FA, SMTP, backup, beta) aberto. |
+
+**Lacunas detalhadas (plano × código):** [`LACUNAS_FASES.md`](LACUNAS_FASES.md)
+
+---
+
+## Fase 1 — CLI
+
+**Status:** 🟢 CLI 1.0 **completa** no plano de engenharia.  
+TUI: experiência completa é **Aurora ANSI** (4 temas + pet/XP). O pacote Ink (`packages/tui`) permanece mínimo — ver lacunas.  
+Pós-1.0: voz, tree-sitter AST, background tasks, Ink full, etc.
 
 ---
 
@@ -24,16 +37,19 @@ TUI finalizada: **4 temas** (aurora/solar/neon/mono) + **pet/XP** desligável, c
 ```
 CodingPro/
 ├── packages/
-│   ├── cli/          # binário codingpro/cpro, chat, config, tema, doctor
+│   ├── cli/          # binário codingpro/cpro, chat, config, tema, doctor, login cloud
 │   ├── core/         # agent loop, tools, workspace, repo-map, vector, memória
-│   └── llm/          # Provider, DeepSeek, replay, cost
-├── docs/             # GUIA-DO-USUARIO, diário, ESTADO_PROJETO, roteiros QA
-├── planos/           # docs 01–16 de produto/arquitetura
-├── referencias/      # cline, aider, opencode, vertex (estudo)
-├── fixtures/         # replay LLM sintético
-├── install.sh
-├── CHECKLIST_MESTRE.md
-└── CODINGPRO.md
+│   ├── llm/          # Provider, DeepSeek, replay, cost
+│   ├── tui/          # protótipo Ink (mínimo; UX real = ANSI na cli)
+│   ├── desktop/      # App Electron Windows (Fase 2)
+│   ├── api/          # Proxy LLM + contas + admin API (Fase 3)
+│   ├── web/          # Site + painel + playground (Fase 3)
+│   └── admin/        # Painel admin SPA (Fase 3)
+├── docs/             # GUIA, ESTADO, LACUNAS_FASES, diário, roteiros QA
+├── planos/           # docs 01–16 (Fase 1)
+├── fase2-app-windows/
+├── fase3-plataforma-web/
+└── CHECKLIST_MESTRE.md
 ```
 
 | Pacote | Responsabilidade |
@@ -199,6 +215,8 @@ pnpm smoke:deepseek # opt-in, rede + chave (bloqueado no CI)
 | web-tree-sitter / ONNX embeddings densos | Upgrade F3/vector |
 | Subagente subprocesso, background tasks | Upgrade F5 |
 | Quality no `settings.json` (hoje env) | Melhoria |
+
+Lista completa e cruzada com Fases 2/3: **[`LACUNAS_FASES.md`](LACUNAS_FASES.md)** (2026-07-24).
 
 ---
 

@@ -65,7 +65,7 @@ export async function cadastrar(
 ): Promise<{ cookie: string; id: number; codigoVerificacao: string }> {
   const resposta = await app.inject({
     method: "POST",
-    payload: { email, nome, senha },
+    payload: { email, nome, senha, termosAceitos: true },
     url: "/api/cadastro",
   });
   const corpo = resposta.json();

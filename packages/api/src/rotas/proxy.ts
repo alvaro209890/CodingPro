@@ -2,6 +2,7 @@ import { Readable } from "node:stream";
 import type { DeepSeekModel } from "@codingpro/llm";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { type Contexto, erro, ipDe } from "../contexto.js";
+import { checarAcessoLlm } from "../limites.js";
 import {
   custoMicro,
   LeitorDeUso,
@@ -9,7 +10,7 @@ import {
   prepararCorpoUpstream,
   validarCorpo,
 } from "../proxy.js";
-import { competenciaAtual, type Usuario } from "../repositorio.js";
+import type { Usuario } from "../repositorio.js";
 import { hashToken, PREFIXO_TOKEN } from "../seguranca.js";
 
 /** Avisos de consumo enviados como header, para a CLI mostrar sem pedir nada. */
@@ -71,39 +72,13 @@ export function registrarRotasProxy(app: FastifyInstance, ctx: Contexto): void {
     if (!auth.ok) return erro(resposta, auth.status, auth.codigo, auth.msg);
     const { usuario, tokenId } = auth;
 
-    if ((await ctx.repo.lerConfig("kill_switch")) === "on") {
-      return erro(
-        resposta,
-        503,
-        "manutencao",
-        "A plataforma está temporariamente em manutenção. Tente de novo em alguns minutos.",
-      );
-    }
-
     const validacao = validarCorpo(req.body);
     if (!validacao.ok) return erro(resposta, 400, "corpo_invalido", validacao.mensagem);
     const modelo: DeepSeekModel = validacao.modelo;
 
-    const competencia = competenciaAtual();
-    const consumo = await ctx.repo.consumoDoMes(usuario.id, competencia);
-    if (consumo.limiteMicro > 0 && consumo.custoMicro >= consumo.limiteMicro) {
-      return erro(
-        resposta,
-        402,
-        "limite_atingido",
-        `Você atingiu seu limite mensal de US$ ${(consumo.limiteMicro / 1e6).toFixed(2)}. ` +
-          "Ele é renovado no primeiro dia do mês, ou fale com o administrador para aumentá-lo.",
-      );
-    }
-
-    if (ctx.config.deepseekApiKey === "") {
-      return erro(
-        resposta,
-        503,
-        "sem_chave",
-        "O servidor está sem chave de IA configurada. Avise o administrador.",
-      );
-    }
+    const acesso = await checarAcessoLlm(ctx, usuario);
+    if (!acesso.ok) return erro(resposta, acesso.status, acesso.codigo, acesso.mensagem);
+    const { competencia } = acesso;
 
     void ctx.repo.tocarToken(tokenId);
 
@@ -138,10 +113,10 @@ export function registrarRotasProxy(app: FastifyInstance, ctx: Contexto): void {
       );
     }
 
-    const aviso = cabecalhoAviso(consumo.custoMicro, consumo.limiteMicro);
+    const aviso = cabecalhoAviso(acesso.custoMicro, acesso.limiteMicro);
     if (aviso) resposta.header("x-codingpro-aviso", encodeURIComponent(aviso));
-    resposta.header("x-codingpro-uso-micro", String(consumo.custoMicro));
-    resposta.header("x-codingpro-limite-micro", String(consumo.limiteMicro));
+    resposta.header("x-codingpro-uso-micro", String(acesso.custoMicro));
+    resposta.header("x-codingpro-limite-micro", String(acesso.limiteMicro));
 
     if (!upstream.ok || !upstream.body) {
       const detalhe = await upstream.text().catch(() => "");

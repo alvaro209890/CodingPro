@@ -46,6 +46,7 @@ import { textoAjudaComandos } from "./commands.js";
 import { sanitizarTextoTerminal } from "./headless.js";
 import { criarAprovadorInterativo } from "./interactive.js";
 import { criarMemoriaSessao, type MemoriaSessao } from "./memory-runtime.js";
+import { adicionarAllowlist, lerAllowlist } from "./permissions-config.js";
 import { type EstadoPet, formatarPet, ganharXp } from "./pet.js";
 import { arquivoPetPadrao, carregarEstadoPet, salvarEstadoPet } from "./pet-runtime.js";
 import {
@@ -310,16 +311,29 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
     io.progresso,
     tema,
   );
+  const allowlistPersistida = lerAllowlist(workspace.root, options.homeDir);
   // /confiar: bypass global de aprovação (espelha o "autoApprove" do Desktop) — cuidado.
   let confiarTudo = false;
   const aprovador: Approver = {
-    request: (request, context) =>
-      confiarTudo ? Promise.resolve("approve-once") : aprovadorInterativo.request(request, context),
+    async request(request, context) {
+      const approval = confiarTudo
+        ? "approve-once"
+        : await aprovadorInterativo.request(request, context);
+      if (approval === "approve-always") {
+        await adicionarAllowlist(request.toolName, workspace.root).catch(() => {
+          io.progresso("· não foi possível persistir a aprovação permanente\n");
+        });
+      }
+      return approval;
+    },
   };
   const hooks = options.hooks ?? [];
   const gate = new ToolGate(
     registry,
-    new PermissionController({ alwaysAllow: MEMORY_TOOL_NAMES, mode: "ask" }, aprovador),
+    new PermissionController(
+      { alwaysAllow: [...MEMORY_TOOL_NAMES, ...allowlistPersistida], mode: "ask" },
+      aprovador,
+    ),
     hooks.length > 0 ? criarHookRunner(hooks) : undefined,
   );
   const skills = options.skills ?? [];

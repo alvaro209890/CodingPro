@@ -102,13 +102,25 @@ As tools **só enxergam a pasta aberta** (sandbox do `Workspace`) — se a pasta
 ` invalidavam `isChatRequest` no turno seguinte. Fix: `sanitizeToolText` + histórico sanitizado no loop + recovery de `invalid-tool-call`/`invalid-request`.
 
 
-## W3 (em andamento)
+## W3 (em andamento) — status 2026-07-24
 
-- [x] **Temas** (2026-07-23): sistema multi-tema com paletas da CLI (`aurora`, `solar`, `neon`, `mono`). CSS via `data-theme`, hook `useTheme`, seletor no `SettingsPanel`, persistência em `localStorage`, detecção automática do tema Windows (`prefers-color-scheme`).
+Lacunas detalhadas: [`docs/LACUNAS_FASES.md`](../../docs/LACUNAS_FASES.md).
+
+- [x] **Temas**: aurora/solar/neon/mono + persistência
 - [ ] Wizard de onboarding (chave + git)
-- [ ] Drag & drop de arquivos
-- [ ] Empacotador electron-builder (NSIS + Portable)
-- [ ] Auto-updater
+- [ ] Drag & drop de arquivos (não implementado no renderer)
+- [x] **Empacotador `electron-builder`**: portable `.zip` em `release/`; servido pelo site em `/downloads/`
+- [ ] Auto-updater + CI Windows
+- [ ] Validar preload gerado inclui APIs de conta
+
+### Publicar download no site (VPS)
+
+1. Gerar artefatos: `pnpm desktop:build` (ou copiar `CodingPro-portable-0.1.0.zip` para `packages/desktop/release/`).
+2. Garantir `CODINGPRO_DOWNLOADS_DIR` apontando para essa pasta (padrão relativo ao monorepo).
+3. `pnpm plataforma:build` + `systemctl --user restart codingpro-web`.
+4. Validar: `curl -fsSI https://codingpro.cursar.space/downloads/CodingPro-portable-0.1.0.zip`.
+
+Constantes compartilhadas no front: `packages/web/src/ui/downloads.ts`.
 
 Ver `fase2-app-windows/04_roadmap_checklist.md`.
 
@@ -126,9 +138,11 @@ Ver `fase2-app-windows/04_roadmap_checklist.md`.
 
 - Sem instalador NSIS / auto-update ainda
 - Sem onboarding visual da API key
-- [x] Temas: 4 temas selecionáveis (aurora/solar/neon/mono)
+- Diff viewer simples (não lado a lado / por bloco)
+- Terminal via `exec`/`cmd` (não xterm + node-pty)
 - `code_search` vetorial só na CLI até Electron com Node ≥ 22.5 (ou bundling de sql.js)
 - Subagentes/`task` disponíveis, mas UI ainda não mostra árvore de agentes
+- Pet visual da CLI sem equivalente GUI
 
 ## Segurança
 
@@ -136,15 +150,6 @@ Ver `fase2-app-windows/04_roadmap_checklist.md`.
 - Credenciais só no main (preload não expõe fs/env)
 - Efeitos passam por `PermissionController` (fail-closed)
 - Terminal embutido bloqueia multilinha; timeout 60s
-
-## Status W3 (em andamento)
-
-- [x] Wizard de onboarding visual — detecta chave e Git no 1º start
-- [x] Drag & drop — arquivos do Explorer no dock via drop handler
-- [x] Temas selecionáveis — Aurora, Solar, Neon, Mono
-- [ ] Empacotador electron-builder — NSIS + Portable (.exe)
-- [ ] Auto-updater via GitHub Releases
-- [ ] Marco v1.0.0
 
 ## Abas
 

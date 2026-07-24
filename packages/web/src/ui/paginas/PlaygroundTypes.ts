@@ -13,6 +13,8 @@ export interface Session {
   nome: string;
   mensagens: Mensagem[];
   criadaEm: number;
+  /** Quando true, o usuário renomeou manualmente — não sobrescrever com auto-título. */
+  nomeManual?: boolean;
 }
 
 export function novaMensagem(

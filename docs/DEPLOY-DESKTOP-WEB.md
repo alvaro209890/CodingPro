@@ -67,7 +67,7 @@ No PC servidor (onde roda `codingpro-web`):
 
 ```bash
 cd /caminho/CodingPro
-git pull origin main
+git pull origin master
 pnpm install --frozen-lockfile
 pnpm plataforma:build
 # Copiar downloads se build foi feito em outra máquina:

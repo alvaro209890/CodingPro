@@ -20,6 +20,8 @@ export function describeToolCall(call: ToolCall): string {
       return `Lendo ${pathArg(call) ?? "arquivo"}`;
     case "list_dir":
       return `Listando ${pathArg(call) ?? "o projeto"}`;
+    case "glob":
+      return "Buscando arquivos…";
     case "grep": {
       const pattern = call.input.pattern;
       return typeof pattern === "string" ? `Buscando "${truncate(pattern)}"` : "Buscando";

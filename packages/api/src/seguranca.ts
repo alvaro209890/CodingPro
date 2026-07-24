@@ -100,6 +100,92 @@ export function gerarSegredoAleatorio(): string {
   return randomBytes(32).toString("base64url");
 }
 
+const BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+function base32(buffer: Buffer): string {
+  let bits = 0;
+  let valor = 0;
+  let saida = "";
+  for (const byte of buffer) {
+    valor = (valor << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      saida += BASE32[(valor >>> (bits - 5)) & 31] ?? "";
+      bits -= 5;
+    }
+  }
+  if (bits > 0) saida += BASE32[(valor << (5 - bits)) & 31] ?? "";
+  return saida;
+}
+
+function decodificarBase32(segredo: string): Buffer | null {
+  const limpo = segredo.replaceAll(/\s|=/gu, "").toUpperCase();
+  if (limpo.length < 16 || !/^[A-Z2-7]+$/u.test(limpo)) return null;
+
+  let bits = 0;
+  let valor = 0;
+  const bytes: number[] = [];
+  for (const char of limpo) {
+    const indice = BASE32.indexOf(char);
+    if (indice === -1) return null;
+    valor = (valor << 5) | indice;
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((valor >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+  return Buffer.from(bytes);
+}
+
+/** Segredo TOTP em base32, compatível com apps autenticadores. */
+export function gerarSegredoTotp(): string {
+  return base32(randomBytes(20));
+}
+
+export function otpauthUrl(email: string, segredo: string, issuer = "CodingPro"): string {
+  const emissor = issuer.trim() || "CodingPro";
+  const rotulo = `${emissor}:${email}`;
+  const params = new URLSearchParams({
+    algorithm: "SHA1",
+    digits: "6",
+    issuer: emissor,
+    period: "30",
+    secret: segredo,
+  });
+  return `otpauth://totp/${encodeURIComponent(rotulo)}?${params.toString()}`;
+}
+
+function codigoTotp(segredo: string, contador: number): string | null {
+  if (contador < 0) return null;
+  const chave = decodificarBase32(segredo);
+  if (!chave) return null;
+  const buffer = Buffer.alloc(8);
+  buffer.writeBigUInt64BE(BigInt(contador));
+  const hmac = createHmac("sha1", chave).update(buffer).digest();
+  const offset = (hmac[hmac.length - 1] ?? 0) & 0x0f;
+  const binario =
+    (((hmac[offset] ?? 0) & 0x7f) << 24) |
+    (((hmac[offset + 1] ?? 0) & 0xff) << 16) |
+    (((hmac[offset + 2] ?? 0) & 0xff) << 8) |
+    ((hmac[offset + 3] ?? 0) & 0xff);
+  return String(binario % 1_000_000).padStart(6, "0");
+}
+
+/** Valida TOTP com janela curta para tolerar relógios levemente fora de sincronia. */
+export function validarTotp(segredo: string, codigo: string, agora = Date.now()): boolean {
+  const limpo = codigo.replaceAll(/\s|-/gu, "");
+  if (!/^\d{6}$/u.test(limpo)) return false;
+  const atual = Math.floor(agora / 30_000);
+  for (let deslocamento = -1; deslocamento <= 1; deslocamento += 1) {
+    const esperado = codigoTotp(segredo, atual + deslocamento);
+    if (esperado && timingSafeEqual(Buffer.from(esperado), Buffer.from(limpo))) return true;
+  }
+  return false;
+}
+
+export const verificarTotp = validarTotp;
+
 export type Sessao = {
   readonly usuarioId: number;
   readonly expiraEm: number;

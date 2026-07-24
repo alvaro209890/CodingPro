@@ -84,4 +84,25 @@ describe("modo cloud da CLI", () => {
       criarProviderRuntime(contexto({ CODINGPRO_PROVIDER: "replay" })),
     ).rejects.toMatchObject({ safeMessage: expect.stringContaining("replay") });
   });
+
+  it("CODINGPRO_TOKEN do ambiente liga o modo cloud sem arquivo de credenciais", async () => {
+    const provider = await criarProviderRuntime(
+      contexto({
+        CODINGPRO_API_URL: "http://127.0.0.1:8700",
+        CODINGPRO_TOKEN: "cp_token_pelo_ambiente",
+      }),
+    );
+    expect(provider.id).toBe("deepseek");
+  });
+
+  it("DEEPSEEK_API_KEY própria ainda vence CODINGPRO_TOKEN", async () => {
+    const provider = await criarProviderRuntime(
+      contexto({
+        CODINGPRO_TOKEN: "cp_token_pelo_ambiente",
+        CODINGPRO_PROVIDER: "deepseek",
+        DEEPSEEK_API_KEY: "sk-minha-chave",
+      }),
+    );
+    expect(provider.id).toBe("deepseek");
+  });
 });

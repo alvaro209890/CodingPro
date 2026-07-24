@@ -1,9 +1,10 @@
 import type { RefObject } from "react";
+import { renderMarkdown } from "../MarkdownRenderer.js";
 import { Banner } from "./Banner.js";
 import type { Session } from "./PlaygroundTypes.js";
 import { SlashDropdown } from "./SlashDropdown.js";
 import { type TaskRow, TaskTrackerCard } from "./TaskTrackerCard.js";
-import { ThinkingBalloon, ThinkingFold } from "./ThinkingBalloon.js";
+import { ThinkingBalloon } from "./ThinkingBalloon.js";
 
 interface ChatViewProps {
   session: Session | null;
@@ -13,12 +14,13 @@ interface ChatViewProps {
   showCmds: boolean;
   statusText?: string;
   elapsedMs?: number;
-  reasoning?: string;
+  thinkingSteps?: string[];
   tasks?: TaskRow[];
+  cmdHistory?: string[];
+  histIdx?: number;
+  pendingInput?: string;
   scrollRef: RefObject<HTMLDivElement | null>;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
-  stickToBottom?: boolean;
-  onJumpBottom?: () => void;
   onInput: (val: string) => void;
   onShowCmds: (show: boolean) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -41,6 +43,21 @@ const CMD_SLASH = [
   { cmd: "/help", desc: "Exibir todos os comandos" },
 ];
 
+function ConteudoMensagem({ role, content }: { role: string; content: string }) {
+  if (role === "assistant") {
+    const html = renderMarkdown(content);
+    return (
+      <div
+        className="playground__msgContent playground__msgContent--md"
+        // Markdown renderizado da resposta do assistente (sanitizado no renderer).
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: markdown da IA
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    );
+  }
+  return <div className="playground__msgContent">{content}</div>;
+}
+
 export function ChatView({
   session,
   stream,
@@ -49,12 +66,10 @@ export function ChatView({
   showCmds,
   statusText = "",
   elapsedMs = 0,
-  reasoning = "",
+  thinkingSteps = [],
   tasks = [],
   scrollRef,
   textareaRef,
-  stickToBottom = true,
-  onJumpBottom,
   onInput,
   onShowCmds,
   onKeyDown,
@@ -65,12 +80,11 @@ export function ChatView({
   const msgs = session.mensagens;
   const hasMessages = msgs.length > 0;
   const isStreaming = stream.length > 0;
-  const showLive = loading || isStreaming || tasks.length > 0;
 
   return (
     <div className="playground__chat">
       <div ref={scrollRef} className="playground__messages">
-        {!hasMessages && !showLive && (
+        {!hasMessages && !stream && !loading && (
           <Banner
             onSelectSuggestion={(prompt) => {
               if (prompt.startsWith("/")) {
@@ -85,113 +99,115 @@ export function ChatView({
         )}
 
         {msgs.map((m) => (
-          <article key={m.id} className={`playground__msg playground__msg--${m.role}`}>
-            <div className="playground__msgMeta">
-              <span className="playground__msgRole">
-                {m.role === "user" ? "Você" : m.role === "system" ? "Sistema" : "CodingPro"}
+          <div
+            key={`${m.role}-${m.timestamp ?? 0}-${m.content.slice(0, 48)}`}
+            className={`playground__msg playground__msg--${m.role}`}
+          >
+            <div className={`playground__msgHeader playground__msgHeader-${m.role}`}>
+              <span className="playground__msgBadge">
+                {m.role === "user" ? "Você" : m.role === "system" ? "Sistema" : "CodingPro AI"}
               </span>
-              <time className="playground__msgTime" dateTime={new Date(m.timestamp).toISOString()}>
-                {new Date(m.timestamp).toLocaleTimeString("pt-BR", {
+              <span className="playground__msgTime">
+                {new Date(m.timestamp ?? Date.now()).toLocaleTimeString("pt-BR", {
                   hour: "2-digit",
                   minute: "2-digit",
                 })}
-              </time>
+              </span>
             </div>
 
             <div className="playground__msgBubble">
-              {m.thinking && <ThinkingFold thinking={m.thinking} />}
-              <div className="playground__msgContent">{m.content}</div>
+              <ConteudoMensagem role={m.role} content={m.content} />
 
               {m.tools && m.tools.length > 0 && (
                 <div className="playground__msgToolsContainer">
-                  {m.tools.map((t) => (
+                  <div className="playground__msgToolsHeader">Ferramentas executadas</div>
+                  {m.tools.map((t, i) => (
                     <details
-                      key={`${m.id}-${t.nome}-${t.result.slice(0, 24)}`}
-                      className="playground__msgToolTag"
+                      key={`${t.nome}-${t.result?.slice(0, 24) ?? "vazio"}-${i === (m.tools?.length ?? 0) - 1 ? "last" : "mid"}`}
+                      className="playground__msgToolDetails"
+                      open={i === (m.tools?.length ?? 0) - 1}
                     >
-                      <summary className="playground__msgToolName">{t.nome}</summary>
-                      {t.result && (
-                        <pre className="playground__msgToolOutput">{t.result.slice(0, 800)}</pre>
-                      )}
+                      <summary className="playground__msgToolSummary">
+                        <span className="playground__msgToolName">{t.nome}</span>
+                        <span className="playground__msgToolHint">
+                          {t.result ? `${t.result.length} chars` : "sem saída"}
+                        </span>
+                      </summary>
+                      {t.result && <pre className="playground__msgToolPre">{t.result}</pre>}
                     </details>
                   ))}
                 </div>
               )}
             </div>
-          </article>
+          </div>
         ))}
 
-        {showLive && (
-          <div className="playground__liveTurn">
-            {loading && (
-              <ThinkingBalloon
-                loading={loading}
-                statusText={statusText}
-                elapsedMs={elapsedMs}
-                reasoning={reasoning}
+        {(loading || thinkingSteps.length > 0) && (
+          <ThinkingBalloon
+            loading={loading}
+            statusText={statusText}
+            elapsedMs={elapsedMs}
+            thinkingSteps={thinkingSteps}
+          />
+        )}
+
+        {tasks.length > 0 && <TaskTrackerCard tasks={tasks} isRunning={loading} />}
+
+        {isStreaming && (
+          <div className="playground__msg playground__msg--assistant playground__streaming">
+            <div className="playground__msgHeader playground__msgHeader-assistant">
+              <span className="playground__msgBadge">CodingPro AI</span>
+              <span className="playground__msgStreamingLabel">respondendo...</span>
+            </div>
+            <div className="playground__msgBubble">
+              <div
+                className="playground__msgContent playground__msgContent--md"
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: streaming parcial
+                dangerouslySetInnerHTML={{
+                  __html: `${renderMarkdown(stream)}<span class="playground__streamingCursor">▌</span>`,
+                }}
               />
-            )}
-            {tasks.length > 0 && <TaskTrackerCard tasks={tasks} isRunning={loading} />}
-            {isStreaming && (
-              <article className="playground__msg playground__msg--assistant playground__streaming">
-                <div className="playground__msgMeta">
-                  <span className="playground__msgRole">CodingPro</span>
-                  <span className="playground__msgStreamingLabel">gerando…</span>
-                </div>
-                <div className="playground__msgBubble">
-                  <div className="playground__msgContent">
-                    {stream}
-                    <span className="playground__streamingCursor">▍</span>
-                  </div>
-                </div>
-              </article>
-            )}
+            </div>
           </div>
         )}
       </div>
 
-      {!stickToBottom && (
-        <button type="button" className="playground__jumpBottom" onClick={onJumpBottom}>
-          ↓ Nova resposta
-        </button>
+      {showCmds && input.startsWith("/") && (
+        <SlashDropdown
+          filter={input}
+          commands={CMD_SLASH}
+          onSelect={onSelectCmd}
+          currentInput={input}
+        />
       )}
 
       <div className="playground__inputArea">
-        {showCmds && input.startsWith("/") && (
-          <SlashDropdown
-            filter={input}
-            commands={CMD_SLASH}
-            onSelect={onSelectCmd}
-            currentInput={input}
-          />
-        )}
-        <div className="playground__inputRow">
-          <textarea
-            ref={textareaRef as RefObject<HTMLTextAreaElement>}
-            value={input}
-            onChange={(e) => {
-              onInput(e.target.value);
-              onShowCmds(e.target.value.startsWith("/") && e.target.value.length <= 16);
-              const t = e.target;
-              t.style.height = "auto";
-              t.style.height = `${Math.min(t.scrollHeight, 160)}px`;
-            }}
-            onKeyDown={onKeyDown}
-            placeholder="Mensagem ou /comando…"
-            rows={1}
-            className="playground__textarea"
-            disabled={loading}
-          />
-          <button
-            onClick={onSend}
-            disabled={loading || !input.trim()}
-            type="button"
-            className="playground__sendBtn"
-            title="Enviar"
-          >
-            {loading ? "…" : "Enviar"}
-          </button>
-        </div>
+        <div className="playground__inputPrefix">▸</div>
+        <textarea
+          ref={textareaRef as RefObject<HTMLTextAreaElement>}
+          value={input}
+          onChange={(e) => {
+            onInput(e.target.value);
+            onShowCmds(e.target.value.startsWith("/") && e.target.value.length <= 16);
+            const t = e.target;
+            t.style.height = "auto";
+            t.style.height = `${Math.min(t.scrollHeight, 140)}px`;
+          }}
+          onKeyDown={onKeyDown}
+          placeholder="Digite sua mensagem ou um comando com '/' (ex: /agent, /context, /help)..."
+          rows={1}
+          className="playground__textarea"
+        />
+        <button
+          onClick={onSend}
+          disabled={loading || !input.trim()}
+          type="button"
+          className="playground__sendBtn"
+          title="Enviar mensagem"
+        >
+          <span>Enviar</span>
+          <span className="playground__sendIcon">▶</span>
+        </button>
       </div>
     </div>
   );

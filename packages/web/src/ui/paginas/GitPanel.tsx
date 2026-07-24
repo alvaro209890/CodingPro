@@ -39,7 +39,7 @@ export function GitPanel({
 
       <div className="playground__gitInputCard">
         <label className="playground__gitLabel" htmlFor="git-clone-url">
-          Clonar repositório (vai para repositorios/)
+          Clonar repositório → pasta <code>repositorios/</code> do workspace
         </label>
         <div className="playground__gitInputRow">
           <input

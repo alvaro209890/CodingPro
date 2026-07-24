@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 interface ThinkingBalloonProps {
   loading: boolean;
   statusText: string;
   elapsedMs: number;
-  /** Texto bruto de reasoning (pode ser longo). */
-  reasoning?: string;
+  thinkingSteps?: string[];
 }
 
 function formatTime(ms: number): string {
@@ -16,57 +15,104 @@ function formatTime(ms: number): string {
   return `${mins}m ${secs}s`;
 }
 
-/** Painel de pensamento ao vivo — recolhido por padrão, só aparece durante a geração. */
+function iconeDoPasso(texto: string, ativo: boolean, concluido: boolean): string {
+  if (concluido) return "✓";
+  if (ativo) return "◎";
+  const t = texto.toLowerCase();
+  if (t.includes("ferramenta") || t.includes("executando") || t.includes("🔧")) return "⚙";
+  if (t.includes("concluído") || t.includes("concluida")) return "✓";
+  if (t.includes("planej")) return "◈";
+  if (t.includes("analis")) return "◉";
+  return "·";
+}
+
 export function ThinkingBalloon({
   loading,
   statusText,
   elapsedMs,
-  reasoning = "",
+  thinkingSteps = [],
 }: ThinkingBalloonProps) {
-  const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const passos = useMemo(() => thinkingSteps.filter(Boolean), [thinkingSteps]);
 
-  if (!loading) return null;
+  if (!loading && passos.length === 0) return null;
 
-  const temReasoning = reasoning.trim().length > 0;
-
-  return (
-    <div className="playground__thinkingBalloon">
-      <button
-        type="button"
-        className="playground__thinkingHeader"
-        onClick={() => temReasoning && setOpen((v) => !v)}
-        aria-expanded={open}
-        disabled={!temReasoning}
-      >
-        <span className="playground__thinkingPulse" aria-hidden />
-        <span className="playground__thinkingTitle">{statusText || "Pensando…"}</span>
-        <span className="playground__thinkingTimerBadge">{formatTime(elapsedMs)}</span>
-        {temReasoning && (
-          <span className="playground__thinkingToggle">{open ? "ocultar" : "ver raciocínio"}</span>
-        )}
-      </button>
-
-      {open && temReasoning && <pre className="playground__thinkingBody">{reasoning.trim()}</pre>}
-    </div>
-  );
-}
-
-/** Bloco de pensamento já gravado na mensagem (estilo ChatGPT). */
-export function ThinkingFold({ thinking }: { thinking: string }) {
-  const [open, setOpen] = useState(false);
-  if (!thinking.trim()) return null;
+  const titulo = loading
+    ? statusText?.replace(/^🔧\s*/, "") || "Raciocinando..."
+    : "Raciocínio concluído";
 
   return (
-    <div className="playground__thinkingFold">
-      <button
-        type="button"
-        className="playground__thinkingFoldBtn"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        {open ? "▾" : "▸"} Pensamento
-      </button>
-      {open && <pre className="playground__thinkingFoldBody">{thinking.trim()}</pre>}
+    <div
+      className={`playground__thinkingBalloon ${loading ? "playground__thinkingBalloon--live" : "playground__thinkingBalloon--done"}`}
+      aria-live="polite"
+      aria-busy={loading}
+    >
+      <div className="playground__thinkingAura" aria-hidden="true" />
+
+      <header className="playground__thinkingHeader">
+        <div className="playground__thinkingTitleGroup">
+          <span className="playground__thinkingOrb" aria-hidden="true" />
+          <div className="playground__thinkingTitleBlock">
+            <span className="playground__thinkingKicker">Raciocínio da IA</span>
+            <span className="playground__thinkingTitle">{titulo}</span>
+          </div>
+          <span className="playground__thinkingTimerBadge">{formatTime(elapsedMs)}</span>
+        </div>
+
+        <div className="playground__thinkingControls">
+          {loading && <span className="playground__thinkingSpinner" aria-hidden="true" />}
+          {passos.length > 0 && (
+            <button
+              type="button"
+              className="playground__thinkingCollapseBtn"
+              onClick={() => setCollapsed((v) => !v)}
+              aria-expanded={!collapsed}
+            >
+              {collapsed ? "Mostrar" : "Ocultar"}
+            </button>
+          )}
+        </div>
+      </header>
+
+      {loading && (
+        <div className="playground__thinkingProgress" aria-hidden="true">
+          <span className="playground__thinkingProgressBar" />
+        </div>
+      )}
+
+      {!collapsed && (passos.length > 0 || loading) && (
+        <div className="playground__thinkingBody">
+          <ol className="playground__thinkingTimeline">
+            {passos.map((step, i) => {
+              const ultimo = i === passos.length - 1;
+              const ativo = loading && ultimo;
+              const concluido = !ativo && (!loading || !ultimo);
+              return (
+                <li
+                  key={`${step}-${ultimo ? "u" : "p"}-${ativo ? "a" : "i"}`}
+                  className={`playground__thinkingStep ${ativo ? "playground__thinkingStep--active" : ""} ${concluido ? "playground__thinkingStep--done" : ""}`}
+                >
+                  <span className="playground__thinkingStepIcon" aria-hidden="true">
+                    {iconeDoPasso(step, ativo, concluido)}
+                  </span>
+                  <span className="playground__thinkingStepText">{step}</span>
+                </li>
+              );
+            })}
+          </ol>
+
+          {loading && (
+            <div className="playground__thinkingPulseLine">
+              <span className="playground__thinkingPulseDot" />
+              <span className="playground__thinkingPulseDot" />
+              <span className="playground__thinkingPulseDot" />
+              <span className="playground__thinkingStatusText">
+                {statusText || "Processando contexto e planejando próximos passos..."}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

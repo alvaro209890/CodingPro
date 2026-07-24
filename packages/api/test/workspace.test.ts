@@ -32,6 +32,12 @@ describe("workspace", () => {
     const dir = dirUsuario(42);
     expect(dir).toBe(join(raizTemp, "42"));
     const pastas = await readdir(dir);
-    expect(pastas.sort()).toEqual([".memory", "Documents", "Downloads", "Projects"]);
+    expect(pastas.sort()).toEqual([
+      ".memory",
+      "Documents",
+      "Downloads",
+      "Projects",
+      "repositorios",
+    ]);
   });
 });

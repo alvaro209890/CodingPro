@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(__dirname, "..", "..");
+const repoRoot = join(__dirname, "..");
 const releaseCandidates = [
   join(repoRoot, "packages", "desktop", "release"),
   join(repoRoot, "packages", "desktop", ".pack", "release"),

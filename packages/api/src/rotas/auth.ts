@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { COOKIE_SESSAO, type Contexto, erro, exigirUsuario, ipDe, texto } from "../contexto.js";
+import { enviarEmail } from "../email.js";
 import {
   assinarSessao,
   conferirSenha,
@@ -7,7 +8,9 @@ import {
   hashSenha,
   normalizarEmail,
   validarForcaSenha,
+  verificarTotp,
 } from "../seguranca.js";
+import { verificarTurnstile } from "../turnstile.js";
 
 const TRINTA_DIAS_S = 30 * 24 * 60 * 60;
 
@@ -30,6 +33,9 @@ function publico(usuario: {
   admin: boolean;
   email_verificado: boolean;
   limite_mensal_micro: number;
+  totp_ativado: boolean;
+  limite_diario_micro: number;
+  rate_rpm: number;
 }) {
   return {
     admin: usuario.admin,
@@ -37,8 +43,11 @@ function publico(usuario: {
     emailVerificado: usuario.email_verificado,
     id: usuario.id,
     limiteMicro: usuario.limite_mensal_micro,
+    limiteDiarioMicro: usuario.limite_diario_micro,
     nome: usuario.nome,
+    rateRpm: usuario.rate_rpm,
     status: usuario.status,
+    totpAtivado: usuario.totp_ativado,
   };
 }
 
@@ -53,8 +62,24 @@ export function registrarRotasAuth(app: FastifyInstance, ctx: Contexto): void {
 
     if (!email) return erro(resposta, 400, "email_invalido", "Informe um e-mail válido.");
     if (nome.length < 2) return erro(resposta, 400, "nome_invalido", "Informe seu nome.");
+    if (corpo.termosAceitos !== true) {
+      return erro(resposta, 400, "termos_obrigatorios", "Aceite os termos para criar a conta.");
+    }
     const problemaSenha = validarForcaSenha(senha);
     if (problemaSenha) return erro(resposta, 400, "senha_fraca", problemaSenha);
+
+    if (ctx.config.turnstileSecret !== "") {
+      const token = texto(corpo.turnstileToken, 2048);
+      const captchaOk = await verificarTurnstile(
+        token,
+        ctx.config.turnstileSecret,
+        ipDe(req),
+        ctx.fetch,
+      );
+      if (!captchaOk) {
+        return erro(resposta, 400, "turnstile_invalido", "Não foi possível validar o captcha.");
+      }
+    }
 
     if (await ctx.repo.buscarPorEmail(email)) {
       return erro(resposta, 409, "email_em_uso", "Já existe uma conta com este e-mail.");
@@ -84,6 +109,18 @@ export function registrarRotasAuth(app: FastifyInstance, ctx: Contexto): void {
       ip: ipDe(req),
     });
 
+    await enviarEmail(
+      {
+        assunto: "Confirme seu e-mail no CodingPro",
+        para: email,
+        texto:
+          `Olá, ${usuario.nome}.\n\n` +
+          `Seu código de verificação do CodingPro é: ${codigo}\n\n` +
+          `Acesse ${ctx.config.siteUrl} para concluir a ativação da conta.`,
+      },
+      ctx.config,
+    );
+
     resposta.setCookie(COOKIE_SESSAO, assinarSessao(usuario.id, ctx.config.sessionSecret), {
       ...opcoesCookie(producao),
     });
@@ -111,6 +148,15 @@ export function registrarRotasAuth(app: FastifyInstance, ctx: Contexto): void {
     if (!usuario || !senhaOk) return erro(resposta, 401, "credenciais_invalidas", generico);
     if (usuario.status === "bloqueado") {
       return erro(resposta, 403, "bloqueado", "Esta conta está bloqueada.");
+    }
+    if (usuario.totp_ativado) {
+      const totp = texto(corpo.totp, 20);
+      if (totp === "") {
+        return erro(resposta, 401, "totp_obrigatorio", "Informe o código 2FA para continuar.");
+      }
+      if (!usuario.totp_secret || !verificarTotp(usuario.totp_secret, totp)) {
+        return erro(resposta, 401, "totp_invalido", "Código 2FA inválido.");
+      }
     }
 
     await ctx.repo.registrarLogin(usuario.id);

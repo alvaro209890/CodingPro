@@ -29,6 +29,23 @@
           "style": { "noNonNullAssertion": "off" }
         }
       }
+    },
+    {
+      "includes": ["packages/web/src/ui/paginas/ChatView.tsx"],
+      "linter": {
+        "rules": {
+          "security": { "noDangerouslySetInnerHtml": "off" },
+          "suspicious": { "noArrayIndexKey": "off" }
+        }
+      }
+    },
+    {
+      "includes": ["packages/web/src/ui/paginas/ThinkingBalloon.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": { "noArrayIndexKey": "off" }
+        }
+      }
     }
   ],
   "assist": {

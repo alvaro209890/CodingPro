@@ -1,0 +1,8 @@
+[Unit]
+Description=Backup diário Postgres CodingPro
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/Documentos/CodingPro/deploy/backup-codingpro.sh
+Nice=10

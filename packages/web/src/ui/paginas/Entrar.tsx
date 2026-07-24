@@ -3,9 +3,18 @@ import { api, ErroApi, type Usuario } from "../api.js";
 import { Aviso, Cartao } from "../componentes.js";
 import { navegar, propsLink } from "../rotas.js";
 
-export function Entrar({ aoEntrar }: { aoEntrar: (usuario: Usuario) => void }) {
+export function Entrar({
+  aoEntrar,
+  destino = "/painel",
+}: {
+  aoEntrar: (usuario: Usuario) => void;
+  /** Para onde ir depois do login (ex.: /playground ou /entrar-dispositivo). */
+  destino?: string;
+}) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [totp, setTotp] = useState("");
+  const [precisaTotp, setPrecisaTotp] = useState(false);
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
 
@@ -14,10 +23,19 @@ export function Entrar({ aoEntrar }: { aoEntrar: (usuario: Usuario) => void }) {
     setErro("");
     setEnviando(true);
     try {
-      const dados = await api.post<{ usuario: Usuario }>("/api/login", { email, senha });
+      const dados = await api.post<{ usuario: Usuario }>("/api/login", {
+        email,
+        senha,
+        ...(precisaTotp ? { totp } : {}),
+      });
       aoEntrar(dados.usuario);
-      navegar("/painel");
+      navegar(destinoSeguro(destino));
     } catch (causa) {
+      if (causa instanceof ErroApi && causa.status === 401 && causa.codigo === "totp_obrigatorio") {
+        setPrecisaTotp(true);
+        setErro(causa.message);
+        return;
+      }
       setErro(causa instanceof ErroApi ? causa.message : "Não consegui entrar.");
     } finally {
       setEnviando(false);
@@ -37,7 +55,11 @@ export function Entrar({ aoEntrar }: { aoEntrar: (usuario: Usuario) => void }) {
             <span>E-mail</span>
             <input
               autoComplete="email"
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setPrecisaTotp(false);
+                setTotp("");
+              }}
               required
               type="email"
               value={email}
@@ -53,8 +75,22 @@ export function Entrar({ aoEntrar }: { aoEntrar: (usuario: Usuario) => void }) {
               value={senha}
             />
           </label>
+          {precisaTotp && (
+            <label>
+              <span>Código 2FA</span>
+              <input
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                maxLength={6}
+                onChange={(e) => setTotp(e.target.value)}
+                placeholder="000000"
+                required
+                value={totp}
+              />
+            </label>
+          )}
           <button className="primario auth-submit" disabled={enviando} type="submit">
-            {enviando ? "Entrando…" : "Entrar"}
+            {enviando ? "Entrando…" : precisaTotp ? "Confirmar 2FA" : "Entrar"}
           </button>
         </form>
         <p className="fraco centro" style={{ margin: "1rem 0 0" }}>
@@ -63,4 +99,11 @@ export function Entrar({ aoEntrar }: { aoEntrar: (usuario: Usuario) => void }) {
       </Cartao>
     </div>
   );
+}
+
+/** Só aceita caminhos internos relativos — evita open redirect. */
+export function destinoSeguro(bruto: string | null | undefined, padrao = "/painel"): string {
+  if (!bruto) return padrao;
+  if (!bruto.startsWith("/") || bruto.startsWith("//") || bruto.includes("://")) return padrao;
+  return bruto;
 }

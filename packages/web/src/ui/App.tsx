@@ -3,12 +3,22 @@ import { API_URL, api, type Usuario } from "./api.js";
 import { Carregando } from "./componentes.js";
 import { Cadastro } from "./paginas/Cadastro.js";
 import { Comecar } from "./paginas/Comecar.js";
-import { Entrar } from "./paginas/Entrar.js";
+import { destinoSeguro, Entrar } from "./paginas/Entrar.js";
 import { EntrarDispositivo } from "./paginas/EntrarDispositivo.js";
 import { Landing } from "./paginas/Landing.js";
 import { Painel } from "./paginas/Painel.js";
 import { Playground } from "./paginas/Playground.js";
+import { Privacidade } from "./paginas/Privacidade.js";
+import { Termos } from "./paginas/Termos.js";
 import { navegar, propsLink, useCaminho } from "./rotas.js";
+
+function destinoDaQuery(): string {
+  try {
+    return destinoSeguro(new URLSearchParams(window.location.search).get("voltar"));
+  } catch {
+    return "/painel";
+  }
+}
 
 export function App() {
   const caminho = useCaminho();
@@ -34,7 +44,9 @@ export function App() {
   // Playground roda em tela cheia, sem header/footer
   if (caminho === "/playground") {
     if (carregando) return <Carregando />;
-    if (!usuario) return <Entrar aoEntrar={setDepoisDeEntrar(recarregarUsuario)} />;
+    if (!usuario) {
+      return <Entrar aoEntrar={setDepoisDeEntrar(recarregarUsuario)} destino="/playground" />;
+    }
     return <Playground usuario={usuario} />;
   }
 
@@ -88,7 +100,11 @@ export function App() {
 
       <footer className="rodape">
         <span>© {new Date().getFullYear()} CodingPro</span>
-        <span>Desenvolvimento assistido por IA, em português.</span>
+        <span className="rodape-links">
+          <a {...propsLink("/termos")}>Termos</a>
+          <a {...propsLink("/privacidade")}>Privacidade</a>
+          <span>Desenvolvimento assistido por IA, em português.</span>
+        </span>
       </footer>
     </div>
   );
@@ -115,7 +131,7 @@ function Conteudo({
     return usuario ? (
       <Painel aoAtualizar={recarregar} usuario={usuario} />
     ) : (
-      <Entrar aoEntrar={setDepoisDeEntrar(recarregar)} />
+      <Entrar aoEntrar={setDepoisDeEntrar(recarregar)} destino={destinoDaQuery()} />
     );
   }
 
@@ -123,12 +139,22 @@ function Conteudo({
     return <Comecar usuario={usuario} />;
   }
 
+  if (caminho === "/termos") {
+    return <Termos />;
+  }
+
+  if (caminho === "/privacidade") {
+    return <Privacidade />;
+  }
+
   if (caminho === "/entrar-dispositivo") {
     return <EntrarDispositivo usuario={usuario} />;
   }
 
   if (caminho === "/painel") {
-    if (!usuario) return <Entrar aoEntrar={setDepoisDeEntrar(recarregar)} />;
+    if (!usuario) {
+      return <Entrar aoEntrar={setDepoisDeEntrar(recarregar)} destino="/painel" />;
+    }
     return <Painel aoAtualizar={recarregar} usuario={usuario} />;
   }
 

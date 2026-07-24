@@ -1,11 +1,8 @@
 import { useState } from "react";
 import type { Usuario } from "../api.js";
-import { Aviso, Cartao } from "../componentes.js";
+import { Cartao, Aviso } from "../componentes.js";
 import { propsLink } from "../rotas.js";
-
-const REPO = "https://codingpro.cursar.space";
-const SETUP_EXE = `${REPO}/downloads/CodingPro-Setup-0.1.0.exe`;
-const PORTABLE_EXE = `${REPO}/downloads/CodingPro-portable-0.1.0.exe`;
+import { DESKTOP_VERSAO, DOWNLOAD_WINDOWS, urlDownload } from "../downloads.js";
 
 function Bloco({ children }: { children: string }) {
   const [copiado, setCopiado] = useState(false);
@@ -211,28 +208,51 @@ function PassosCli() {
 }
 
 function PassosWindows() {
+  const portable = DOWNLOAD_WINDOWS.portable;
+  const setup = DOWNLOAD_WINDOWS.setup;
+
   return (
     <Cartao>
       <Passo numero={1} titulo="Baixe o aplicativo">
-        <p>Aplicativo de desktop com a mesma engine da CLI: chat, diffs e terminal integrado.</p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
-          <a className="botao primario" href={SETUP_EXE}>
-            Instalador Windows (.exe)
+        <p>
+          Aplicativo de desktop com a mesma engine da CLI: chat, diffs e terminal integrado. Versão{" "}
+          <strong>{DESKTOP_VERSAO}</strong>.
+        </p>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.75rem",
+            marginBottom: "0.5rem",
+          }}
+        >
+          <a className="botao primario" href={urlDownload(setup.arquivo)}>
+            Baixar {setup.rotulo} — {setup.tamanho}
           </a>
-          <a className="botao" href={PORTABLE_EXE}>
-            Portátil (.exe — sem instalar)
+          <p className="fraco" style={{ margin: 0 }}>
+            {setup.descricao}
+          </p>
+          <a
+            className="botao"
+            href={urlDownload(portable.arquivo)}
+            style={{ alignSelf: "flex-start" }}
+          >
+            Alternativa: {portable.rotulo} — {portable.tamanho}
           </a>
+          <p className="fraco" style={{ margin: 0 }}>
+            {portable.descricao}
+          </p>
         </div>
       </Passo>
 
       <Passo numero={2} titulo="Instale ou execute">
         <p>
-          <strong>Instalador:</strong> execute <code>CodingPro-Setup-0.1.0.exe</code> e siga o
-          assistente.
+          <strong>Instalador:</strong> execute <code>CodingPro-Setup-{DESKTOP_VERSAO}.exe</code> e
+          siga o assistente.
         </p>
         <p>
-          <strong>Portátil:</strong> execute <code>CodingPro-portable-0.1.0.exe</code> — pode rodar
-          de qualquer pasta, sem instalação.
+          <strong>Portátil:</strong> execute <code>CodingPro-portable-{DESKTOP_VERSAO}.exe</code> —
+          pode rodar de qualquer pasta, sem instalação.
         </p>
       </Passo>
 

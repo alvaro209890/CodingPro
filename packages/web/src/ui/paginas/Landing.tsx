@@ -1,4 +1,5 @@
 import { Cartao } from "../componentes.js";
+import { DESKTOP_VERSAO, DOWNLOAD_WINDOWS, urlDownload } from "../downloads.js";
 import { propsLink } from "../rotas.js";
 
 const RECURSOS = [
@@ -92,9 +93,27 @@ export function Landing() {
         <pre>
           <code>{"npm i -g codingpro\ncodingpro login\ncodingpro --chat"}</code>
         </pre>
-        <a className="botao pequeno" {...propsLink("/comecar")}>
-          Guia de instalação →
-        </a>
+        <div className="landing-install-actions">
+          <a className="botao pequeno" {...propsLink("/comecar")}>
+            Guia de instalação →
+          </a>
+          <a
+            className="botao pequeno"
+            download
+            href={urlDownload(DOWNLOAD_WINDOWS.portable.arquivo)}
+            title={DOWNLOAD_WINDOWS.portable.descricao}
+          >
+            {DOWNLOAD_WINDOWS.portable.rotulo} · {DOWNLOAD_WINDOWS.portable.tamanho}
+          </a>
+          <a
+            className="botao pequeno"
+            download
+            href={urlDownload(DOWNLOAD_WINDOWS.setup.arquivo)}
+            title={DOWNLOAD_WINDOWS.setup.descricao}
+          >
+            {DOWNLOAD_WINDOWS.setup.rotulo} · v{DESKTOP_VERSAO}
+          </a>
+        </div>
       </section>
 
       <section className="landing-section">

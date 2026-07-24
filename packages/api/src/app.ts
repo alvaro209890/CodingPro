@@ -11,10 +11,12 @@ import { criarMetricas, registrarRotasAdmin } from "./rotas/admin.js";
 import { registrarRotaAgente } from "./rotas/agente.js";
 import { registrarRotasAuth } from "./rotas/auth.js";
 import { registrarRotaCli } from "./rotas/cli.js";
+import { registrarRotasConta } from "./rotas/conta.js";
 import { registrarRotasConsumo } from "./rotas/consumo.js";
 import { registrarRotasDevice } from "./rotas/device.js";
 import { registrarRotasPlayground } from "./rotas/playground.js";
 import { registrarRotasProxy } from "./rotas/proxy.js";
+import { registrarRotasPublicas } from "./rotas/publico.js";
 import { registrarRotasTokens } from "./rotas/tokens.js";
 
 /** Momento em que o processo subiu — base do uptime reportado em /saude. */
@@ -72,6 +74,10 @@ export async function criarApp(opcoes: OpcoesApp): Promise<FastifyInstance> {
     resposta.header("x-content-type-options", "nosniff");
     resposta.header("referrer-policy", "no-referrer");
     resposta.header("x-frame-options", "DENY");
+    resposta.header(
+      "content-security-policy",
+      "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://codingpro-api.cursar.space https://challenges.cloudflare.com",
+    );
     if (config.ambiente === "producao") {
       resposta.header("strict-transport-security", "max-age=31536000; includeSubDomains");
     }
@@ -87,8 +93,16 @@ export async function criarApp(opcoes: OpcoesApp): Promise<FastifyInstance> {
   });
 
   await app.register(rateLimit, {
-    // Teto global por IP. O proxy tem o seu próprio limite, mais apertado.
-    allowList: () => false,
+    // Teto global por IP. Login/cadastro/device ficam de fora para não travar QA nem device flow.
+    allowList: (req) => {
+      const url = req.url?.split("?")[0] ?? "";
+      return (
+        url === "/api/login" ||
+        url === "/api/cadastro" ||
+        url === "/api/logout" ||
+        url.startsWith("/api/device/")
+      );
+    },
     max: 300,
     timeWindow: "1 minute",
   });
@@ -132,6 +146,8 @@ export async function criarApp(opcoes: OpcoesApp): Promise<FastifyInstance> {
       );
   });
 
+  registrarRotasPublicas(app, config);
+
   if (opcoes.repo) {
     const ctx: Contexto = {
       config,
@@ -140,6 +156,7 @@ export async function criarApp(opcoes: OpcoesApp): Promise<FastifyInstance> {
     };
 
     registrarRotasAuth(app, ctx);
+    registrarRotasConta(app, ctx);
     registrarRotasTokens(app, ctx);
     registrarRotasConsumo(app, ctx);
     registrarRotasDevice(app, ctx);

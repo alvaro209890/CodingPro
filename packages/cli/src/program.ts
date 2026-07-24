@@ -118,6 +118,11 @@ export function criarPrograma(
     .option("--chat", mensagens.opcao.chat)
     .option("--tui", `${mensagens.opcao.chat} (modo TUI com Ink)`)
     .option("--agente", mensagens.opcao.agente)
+    .addOption(
+      new Option("--output-format <fmt>", "formato da saída")
+        .choices(["text", "json"])
+        .default("text"),
+    )
     .option("--doctor", mensagens.opcao.doctor)
     .option("--continuar", mensagens.opcao.continuar)
     .addOption(
@@ -152,6 +157,7 @@ export function criarPrograma(
       continuar?: boolean;
       doctor?: boolean;
       maxContexto?: number;
+      outputFormat?: "json" | "text";
       prompt?: string;
       provider?: string;
       replayFile?: string;
@@ -204,6 +210,7 @@ export function criarPrograma(
             hooks: hooksChat,
             mcpTools: mcp.tools,
             provider,
+            homeDir: services.homeDirectory ?? homedir(),
             pularBanner: true,
             skills: skillsChat,
             ...(options.maxContexto === undefined ? {} : { maxContexto: options.maxContexto }),
@@ -246,6 +253,60 @@ export function criarPrograma(
       programa.outputHelp();
       return;
     }
+    const outputFormat = options.outputFormat ?? "text";
+    if (outputFormat === "json") {
+      try {
+        if (prompt.trim().length === 0) {
+          throw new CliUsageError(mensagens.erro.promptVazio);
+        }
+        services.signal?.throwIfAborted();
+        const provider = await services.criarProvider({
+          ...(options.provider === undefined ? {} : { provider: options.provider }),
+          ...(options.replayFile === undefined ? {} : { replayFile: options.replayFile }),
+        });
+        if (options.agente === true) {
+          const cwdAgente = services.raizProjeto ?? process.cwd();
+          const [hooksAgente, skillsAgente] = await Promise.all([
+            carregarHooks(cwdAgente),
+            carregarSkills(dirsSkills(cwdAgente)),
+          ]);
+          const { resultado, sessaoId, texto } = await executarAgenteHeadless(
+            {
+              continuarUltima: options.continuar === true,
+              cwd: cwdAgente,
+              hooks: hooksAgente,
+              homeDir: services.homeDirectory ?? homedir(),
+              prompt,
+              provider,
+              skills: skillsAgente,
+              ...(options.maxContexto === undefined ? {} : { maxContexto: options.maxContexto }),
+              ...(services.raizMemoriaGlobal === undefined
+                ? {}
+                : { memoriaGlobalDir: services.raizMemoriaGlobal }),
+              ...(options.resume === undefined ? {} : { resumirId: options.resume }),
+              ...(services.raizSessoes === undefined ? {} : { sessaoDir: services.raizSessoes }),
+              ...(services.signal === undefined ? {} : { signal: services.signal }),
+            },
+            { progresso: io.stderr, saida: () => {} },
+          );
+          escreverJson(io, {
+            cost: resultado.cost ?? null,
+            ok: true,
+            sessionId: sessaoId ?? null,
+            text: texto,
+          });
+          return;
+        }
+
+        const text = await executarPromptHeadless(prompt, provider, () => {}, services.signal);
+        escreverJson(io, { cost: null, ok: true, sessionId: null, text });
+      } catch (error) {
+        escreverJson(io, { error: mensagemErroSeguro(error, services.signal), ok: false });
+        estado.codigo = codigoErroSeguro(error, services.signal);
+      }
+      return;
+    }
+
     if (prompt.trim().length === 0) {
       throw new CliUsageError(mensagens.erro.promptVazio);
     }
@@ -267,6 +328,7 @@ export function criarPrograma(
           continuarUltima: options.continuar === true,
           cwd: cwdAgente,
           hooks: hooksAgente,
+          homeDir: services.homeDirectory ?? homedir(),
           prompt,
           provider,
           skills: skillsAgente,
@@ -359,6 +421,37 @@ export async function executarPrograma(
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
+}
+
+function escreverJson(io: CliIo, payload: Record<string, unknown>): void {
+  io.stdout(`${JSON.stringify(payload)}\n`);
+}
+
+function mensagemErroSeguro(error: unknown, signal?: AbortSignal): string {
+  if (signal?.aborted === true || isAbortError(error)) {
+    return mensagens.erro.interrompido;
+  }
+  if (error instanceof CliUsageError) {
+    return error.message;
+  }
+  if (
+    error instanceof ConfigError ||
+    error instanceof ProviderError ||
+    error instanceof CoreError
+  ) {
+    return error.safeMessage;
+  }
+  return mensagens.erro.inesperado;
+}
+
+function codigoErroSeguro(error: unknown, signal?: AbortSignal): number {
+  if (signal?.aborted === true || isAbortError(error)) {
+    return 130;
+  }
+  if (error instanceof CliUsageError) {
+    return 1;
+  }
+  return 2;
 }
 
 export async function executarCli(

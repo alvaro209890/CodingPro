@@ -1,28 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Usuario } from "../api.js";
+import { navegar } from "../rotas.js";
 import { ChatView } from "./ChatView.js";
 import { EditorPanel } from "./EditorPanel.js";
 import { FilesPanel } from "./FilesPanel.js";
 import { GitPanel } from "./GitPanel.js";
+import { ehNomePadrao, inferirNomeSessao } from "./inferirNomeSessao.js";
 import { MemoryPanel } from "./MemoryPanel.js";
-import { type Mensagem, novaMensagem, type Session } from "./PlaygroundTypes.js";
+import type { Mensagem, Session } from "./PlaygroundTypes.js";
 import { Sidebar } from "./Sidebar.js";
 import { TabBar } from "./TabBar.js";
 import type { TaskRow } from "./TaskTrackerCard.js";
 import { TerminalPanel } from "./TerminalPanel.js";
-
-function alvoDaTool(name: string, argsRaw?: string, target?: string): string {
-  if (typeof target === "string" && target.trim()) return target.trim();
-  if (!argsRaw) return name;
-  try {
-    const args = JSON.parse(argsRaw) as Record<string, unknown>;
-    const v = args.path ?? args.command ?? args.pattern ?? args.query;
-    if (typeof v === "string" && v.trim()) return v.trim().slice(0, 120);
-  } catch {
-    /* args não-JSON */
-  }
-  return argsRaw.slice(0, 80) || name;
-}
 
 type Tab = "chat" | "files" | "editor" | "terminal" | "git" | "memory";
 
@@ -67,26 +56,7 @@ function carregarSessions(): Session[] {
     const raw = localStorage.getItem(SESSIONS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map((s: Session, i: number) => {
-      const id = s.id || gerarId();
-      return {
-        id,
-        nome: s.nome || nomeAutomatico(i),
-        criadaEm: s.criadaEm || Date.now(),
-        mensagens: (s.mensagens ?? []).map((m, j) => {
-          const msg: Mensagem = {
-            id: m.id || `${id}-${j}-${m.timestamp ?? j}`,
-            role: m.role === "user" || m.role === "system" ? m.role : "assistant",
-            content: String(m.content ?? ""),
-            timestamp: m.timestamp ?? Date.now(),
-          };
-          if (m.tools?.length) msg.tools = m.tools;
-          if (m.thinking) msg.thinking = m.thinking;
-          return msg;
-        }),
-      };
-    });
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
@@ -124,20 +94,11 @@ export function Playground({ usuario }: { usuario: Usuario }) {
   const [globalDragging, setGlobalDragging] = useState(false);
   const dragCounterRef = useRef(0);
 
-  const [tab, setTab] = useState<Tab>("chat");
-  const [stream, setStream] = useState("");
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showCmds, setShowCmds] = useState(false);
-  const [status, setStatus] = useState("");
+  // Runtime / Thinking / Task Tracker States
   const [elapsedMs, setElapsedMs] = useState(0);
-  const [reasoning, setReasoning] = useState("");
+  const [thinkingSteps, setThinkingSteps] = useState<string[]>([]);
   const [tasks, setTasks] = useState<TaskRow[]>([]);
-  const [stickToBottom, setStickToBottom] = useState(true);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  const activeIdRef = useRef(activeId);
-  activeIdRef.current = activeId;
+  const timerRef = useRef<any>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -150,16 +111,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      abortRef.current?.abort();
     };
-  }, []);
-
-  const limparEphemeral = useCallback(() => {
-    setStream("");
-    setStatus("");
-    setReasoning("");
-    setTasks([]);
-    setElapsedMs(0);
   }, []);
 
   const activeIdx = sessions.findIndex((s) => s.id === activeId);
@@ -196,20 +148,18 @@ export function Playground({ usuario }: { usuario: Usuario }) {
 
   const setMsgs = useCallback(
     (fn: (prev: Mensagem[]) => Mensagem[]) => {
-      const id = activeIdRef.current;
-      if (!id) return;
-      updateSession(id, (s) => ({ ...s, mensagens: fn(s.mensagens) }));
+      if (!activeSession) return;
+      updateSession(activeSession.id, (s) => ({ ...s, mensagens: fn(s.mensagens) }));
     },
-    [updateSession],
+    [activeSession, updateSession],
   );
 
-  const appendMsg = useCallback(
-    (sessionId: string, msg: Mensagem) => {
-      updateSession(sessionId, (s) => ({ ...s, mensagens: [...s.mensagens, msg] }));
-    },
-    [updateSession],
-  );
-
+  const [tab, setTab] = useState<Tab>("chat");
+  const [stream, setStream] = useState("");
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showCmds, setShowCmds] = useState(false);
+  const [status, setStatus] = useState("");
   const [cmdHistory, setCmdHistory] = useState<string[]>([]);
   const [histIdx, setHistIdx] = useState(-1);
   const [pendingInput, setPendingInput] = useState("");
@@ -231,24 +181,10 @@ export function Playground({ usuario }: { usuario: Usuario }) {
   const inpRef = useRef<HTMLTextAreaElement>(null);
   const cmdRef = useRef<HTMLInputElement>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: re-rola só se o usuário estiver perto do fim
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-rola ao receber mensagens ou streaming
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el || !stickToBottom) return;
-    el.scrollTop = el.scrollHeight;
-  }, [_msgs, stream, loading, reasoning, tasks, stickToBottom]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reanexa listener ao trocar de chat
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
-      setStickToBottom(dist < 96);
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, [activeId]);
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [_msgs, stream, loading]);
 
   const POST = useCallback(async <T,>(path: string, body?: unknown): Promise<T> => {
     const r = await fetch(path, {
@@ -274,19 +210,14 @@ export function Playground({ usuario }: { usuario: Usuario }) {
     setSidebarOpen(false);
   }, [sessions.length]);
 
-  const trocarSessao = useCallback(
-    (id: string) => {
-      abortRef.current?.abort();
-      abortRef.current = null;
-      if (timerRef.current) clearInterval(timerRef.current);
-      setLoading(false);
-      limparEphemeral();
-      setActiveId(id);
-      setSidebarOpen(false);
-      setStickToBottom(true);
-    },
-    [limparEphemeral],
-  );
+  const trocarSessao = useCallback((id: string) => {
+    setActiveId(id);
+    setSidebarOpen(false);
+    setStream("");
+    setStatus("");
+    setTasks([]);
+    setThinkingSteps([]);
+  }, []);
 
   const deletarSessao = useCallback(
     (id: string) => {
@@ -315,49 +246,32 @@ export function Playground({ usuario }: { usuario: Usuario }) {
   const enviar = useCallback(
     async (prompt?: string) => {
       const p = (prompt ?? input).trim();
-      const sessionId = activeIdRef.current;
-      if (!p || loading || !sessionId) return;
-
-      abortRef.current?.abort();
-      const ac = new AbortController();
-      abortRef.current = ac;
-
+      if (!p || loading) return;
       setCmdHistory((prev) => [p, ...prev.slice(0, 49)]);
       setHistIdx(-1);
       setInput("");
       setLoading(true);
-      limparEphemeral();
-      setStatus("Pensando…");
-      setStickToBottom(true);
+      setStream("");
+      setStatus("Pensando...");
+      setThinkingSteps([
+        "Analisando prompt do usuário...",
+        "Planejando resposta e seleção de ferramentas...",
+      ]);
+      setTasks([]);
+      setElapsedMs(0);
 
       const startTime = Date.now();
-      if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = setInterval(() => {
         setElapsedMs(Date.now() - startTime);
-      }, 200);
+      }, 100);
 
-      appendMsg(sessionId, novaMensagem("user", p));
-
-      let content = "";
-      let thinkingAcc = "";
-      let committed = false;
-      const toolsLog: { nome: string; result: string }[] = [];
-
-      const commitAssistant = (texto: string) => {
-        if (committed) return;
-        committed = true;
-        const body = texto.trim();
-        if (!body && !thinkingAcc && toolsLog.length === 0) return;
-        appendMsg(
-          sessionId,
-          novaMensagem("assistant", body || "(sem resposta)", {
-            ...(toolsLog.length > 0 ? { tools: [...toolsLog] } : {}),
-            ...(thinkingAcc.trim() ? { thinking: thinkingAcc.trim() } : {}),
-          }),
-        );
-      };
-
+      setMsgs((prev) => [...prev, { role: "user", content: p, timestamp: Date.now() }]);
+      const sessaoId = activeSession?.id;
+      const podeAutoNomear = Boolean(
+        activeSession && !activeSession.nomeManual && ehNomePadrao(activeSession.nome),
+      );
       try {
+        const toolsLog: { nome: string; result: string }[] = [];
         let r: Response;
         try {
           r = await fetch("/api/vps/agent", {
@@ -365,99 +279,86 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ prompt: p }),
             credentials: "include",
-            signal: ac.signal,
           });
-        } catch (netErr: unknown) {
-          if (ac.signal.aborted) return;
-          const msg = netErr instanceof Error ? netErr.message : "sem conexão";
-          throw new Error(`Rede: ${msg}`);
+        } catch (netErr: any) {
+          throw new Error(`Rede: ${netErr.message || "sem conexão"}`);
         }
         if (!r.ok) {
           let msg = `Erro ${r.status}`;
           try {
-            const e = (await r.json()) as { mensagem?: string; erro?: string };
+            const e = await r.json();
             msg = e.mensagem || e.erro || msg;
-          } catch {
-            /* ignore */
-          }
+          } catch {}
           throw new Error(msg);
         }
         if (!r.body) throw new Error("Resposta vazia do servidor");
-
         const reader = r.body.getReader();
         const dec = new TextDecoder();
         let buf = "";
+        let content = "";
 
         const processarEvento = (payload: string) => {
           try {
-            const d = JSON.parse(payload) as Record<string, unknown>;
-            const tipo = String(d.type ?? "");
-
-            if (tipo === "thinking" || tipo === "status") {
-              setStatus(String(d.message ?? "Pensando…"));
-              return;
-            }
-
-            if (tipo === "text") {
-              const chunk = String(d.content ?? "");
-              content = chunk || content;
-              if (chunk) setStream(content);
-              setStatus("");
-              return;
-            }
-
-            if (tipo === "think") {
-              const step = String(d.content ?? "").trim();
-              if (!step) return;
-              thinkingAcc = thinkingAcc ? `${thinkingAcc}\n\n${step}` : step;
-              setReasoning(thinkingAcc);
-              setStatus("Raciocinando…");
-              return;
-            }
-
-            if (tipo === "tool-start") {
-              const toolName = String(d.name || "ferramenta");
-              const toolId = String(d.id || `${toolName}-${Date.now()}`);
-              const target = alvoDaTool(toolName, String(d.args ?? ""), String(d.target ?? ""));
-              setStatus(`${toolName}…`);
+            const d = JSON.parse(payload);
+            if (d.type === "text") {
+              content += d.content ?? "";
+              setStream(content);
+            } else if (d.type === "think") {
+              setThinkingSteps((prev) => [...prev, d.content || ""]);
+            } else if (d.type === "tool-start") {
+              const toolName = d.name || "ferramenta";
+              setStatus(`🔧 ${toolName}...`);
+              setThinkingSteps((prev) => [...prev, `Executando ${toolName}...`]);
               setTasks((prev) => [
-                ...prev.filter((t) => t.id !== toolId),
-                { id: toolId, name: toolName, target, status: "running" },
+                ...prev,
+                {
+                  id: `${toolName}-${Date.now()}`,
+                  name: toolName,
+                  target: d.target || toolName,
+                  status: "running",
+                },
               ]);
-              return;
-            }
-
-            if (tipo === "tool-end") {
-              const toolName = String(d.name || "ferramenta");
-              const toolId = typeof d.id === "string" ? d.id : "";
-              const result = String(d.result ?? "");
-              toolsLog.push({ nome: toolName, result });
+            } else if (d.type === "tool-end") {
+              const toolName = d.name || "ferramenta";
+              toolsLog.push({ nome: toolName, result: d.result || "" });
               setStatus("");
+              setThinkingSteps((prev) => [...prev, `Concluído: ${toolName}`]);
               setTasks((prev) =>
-                prev.map((t) => {
-                  if (toolId ? t.id === toolId : t.status === "running" && t.name === toolName) {
-                    return { ...t, status: "done" as const, result };
-                  }
-                  return t;
-                }),
+                prev.map((t) =>
+                  t.status === "running" && t.name === toolName
+                    ? { ...t, status: "done", result: d.result }
+                    : t,
+                ),
               );
-              return;
-            }
-
-            if (tipo === "done") {
-              if (!content) content = String(d.content ?? "");
-              commitAssistant(content || String(d.content ?? ""));
-              if (timerRef.current) clearInterval(timerRef.current);
-              setLoading(false);
-              limparEphemeral();
-              return;
-            }
-
-            if (tipo === "error") {
-              commitAssistant(String(d.message || "Erro no agente"));
-              if (timerRef.current) clearInterval(timerRef.current);
-              setLoading(false);
-              limparEphemeral();
+            } else if (d.type === "done") {
+              const textoFinal = content || d.content || "";
+              setMsgs((prev) => [
+                ...prev,
+                {
+                  role: "assistant",
+                  content: textoFinal,
+                  tools: toolsLog,
+                  timestamp: Date.now(),
+                },
+              ]);
+              if (sessaoId && podeAutoNomear) {
+                const tituloLocal = inferirNomeSessao(p, textoFinal);
+                updateSession(sessaoId, (s) => (s.nomeManual ? s : { ...s, nome: tituloLocal }));
+                // Título local basta — evita chamada extra à IA (auto-título não deve gastar cota).
+              }
+              setStream("");
+              setStatus("");
+            } else if (d.type === "error") {
+              setMsgs((prev) => [
+                ...prev,
+                {
+                  role: "assistant",
+                  content: `❌ ${d.message || "Erro no agente"}`,
+                  timestamp: Date.now(),
+                },
+              ]);
+              setStream("");
+              setStatus("");
             }
           } catch {
             /* linha SSE inválida */
@@ -467,14 +368,6 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          if (ac.signal.aborted) {
-            try {
-              await reader.cancel();
-            } catch {
-              /* ignore */
-            }
-            return;
-          }
           buf += dec.decode(value, { stream: true });
 
           let sepIdx = buf.indexOf("\n\n");
@@ -492,23 +385,19 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             if (line.startsWith("data: ")) processarEvento(line.slice(6));
           }
         }
-
-        // Stream encerrou sem evento done — preserva resposta parcial
-        if (!committed && (content || thinkingAcc || toolsLog.length > 0)) {
-          commitAssistant(content);
-        }
-      } catch (e: unknown) {
-        if (ac.signal.aborted) return;
-        const msg = e instanceof Error ? e.message : String(e);
-        commitAssistant(msg.startsWith("❌") ? msg : `❌ ${msg}`);
+      } catch (e: any) {
+        setMsgs((prev) => [
+          ...prev,
+          { role: "assistant", content: `❌ ${e.message}`, timestamp: Date.now() },
+        ]);
       } finally {
-        if (abortRef.current === ac) abortRef.current = null;
         if (timerRef.current) clearInterval(timerRef.current);
         setLoading(false);
-        limparEphemeral();
+        setStream("");
+        setStatus("");
       }
     },
-    [input, loading, appendMsg, limparEphemeral],
+    [input, loading, setMsgs, activeSession, updateSession],
   );
 
   const handleSlash = useCallback(
@@ -517,7 +406,10 @@ export function Playground({ usuario }: { usuario: Usuario }) {
       switch (cmdName) {
         case "/clear":
           setMsgs(() => []);
-          limparEphemeral();
+          setStream("");
+          setStatus("");
+          setTasks([]);
+          setThinkingSteps([]);
           break;
         case "/new":
           novaSessao();
@@ -525,16 +417,18 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         case "/list":
           setMsgs((prev) => [
             ...prev,
-            novaMensagem(
-              "system",
-              sessions
-                .filter((s) => s.mensagens.length > 0)
-                .map(
-                  (s) =>
-                    `  ${s.id.slice(-6)}  ${s.nome}  ${s.mensagens.length} msgs  ${new Date(s.criadaEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`,
-                )
-                .join("\n") || "  Nenhum chat salvo.",
-            ),
+            {
+              role: "system",
+              content:
+                sessions
+                  .filter((s) => s.mensagens.length > 0)
+                  .map(
+                    (s) =>
+                      `  ${s.id.slice(-6)}  ${s.nome}  ${s.mensagens.length} msgs  ${new Date(s.criadaEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`,
+                  )
+                  .join("\n") || "  Nenhum chat salvo.",
+              timestamp: Date.now(),
+            },
           ]);
           break;
         case "/switch":
@@ -546,10 +440,11 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               else
                 setMsgs((prev) => [
                   ...prev,
-                  novaMensagem(
-                    "system",
-                    `Chat '${target}' não encontrado. Use /list para ver os chats.`,
-                  ),
+                  {
+                    role: "system",
+                    content: `Chat '${target}' não encontrado. Use /list para ver os chats.`,
+                    timestamp: Date.now(),
+                  },
                 ]);
             }
           }
@@ -560,14 +455,23 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             if (target) {
               const found = sessions.find((s) => s.id.endsWith(target));
               if (found) {
-                const nome = found.nome;
                 deletarSessao(found.id);
-                // mensagem no chat ativo restante
-                setMsgs((prev) => [...prev, novaMensagem("system", `Chat '${nome}' deletado.`)]);
+                setMsgs((prev) => [
+                  ...prev,
+                  {
+                    role: "system",
+                    content: `Chat '${found.nome}' deletado.`,
+                    timestamp: Date.now(),
+                  },
+                ]);
               } else
                 setMsgs((prev) => [
                   ...prev,
-                  novaMensagem("system", `Chat '${target}' não encontrado.`),
+                  {
+                    role: "system",
+                    content: `Chat '${target}' não encontrado.`,
+                    timestamp: Date.now(),
+                  },
                 ]);
             }
           }
@@ -576,10 +480,18 @@ export function Playground({ usuario }: { usuario: Usuario }) {
           if (fullInput && activeSession) {
             const novoNome = fullInput.slice("/rename ".length).trim();
             if (novoNome) {
-              updateSession(activeSession.id, (s) => ({ ...s, nome: novoNome.slice(0, 30) }));
+              updateSession(activeSession.id, (s) => ({
+                ...s,
+                nome: novoNome.slice(0, 30),
+                nomeManual: true,
+              }));
               setMsgs((prev) => [
                 ...prev,
-                novaMensagem("system", `Chat renomeado para '${novoNome.slice(0, 30)}'.`),
+                {
+                  role: "system",
+                  content: `Chat renomeado para '${novoNome.slice(0, 30)}'.`,
+                  timestamp: Date.now(),
+                },
               ]);
             }
           }
@@ -608,7 +520,11 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             await navigator.clipboard.writeText(md.join("\n"));
             setMsgs((prev) => [
               ...prev,
-              novaMensagem("system", "Chat exportado para a área de transferência como Markdown."),
+              {
+                role: "system",
+                content: "📋 Chat exportado para a área de transferência como Markdown.",
+                timestamp: Date.now(),
+              },
             ]);
           } catch {
             const joined = md.join("\n");
@@ -625,15 +541,17 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         case "/history":
           setMsgs((prev) => [
             ...prev,
-            novaMensagem(
-              "system",
-              cmdHistory.length > 0
-                ? cmdHistory
-                    .slice(0, 20)
-                    .map((c, i) => `  ${String(i + 1).padStart(2)}. ${c}`)
-                    .join("\n")
-                : "  Nenhum comando no histórico.",
-            ),
+            {
+              role: "system",
+              content:
+                cmdHistory.length > 0
+                  ? cmdHistory
+                      .slice(0, 20)
+                      .map((c, i) => `  ${String(i + 1).padStart(2)}. ${c}`)
+                      .join("\n")
+                  : "  Nenhum comando no histórico.",
+              timestamp: Date.now(),
+            },
           ]);
           break;
         case "/context":
@@ -642,15 +560,18 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             setFiles(d.files);
             setMsgs((prev) => [
               ...prev,
-              novaMensagem(
-                "system",
-                `Workspace: ${d.files.length} arquivos/diretórios. Veja a aba Files.`,
-              ),
+              {
+                role: "system",
+                content: `📁 Workspace: ${d.files.length} arquivos/diretórios. Veja a aba Files.`,
+                timestamp: Date.now(),
+              },
             ]);
             setTab("files");
-          } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : String(e);
-            setMsgs((prev) => [...prev, novaMensagem("system", `❌ ${msg}`)]);
+          } catch (e: any) {
+            setMsgs((prev) => [
+              ...prev,
+              { role: "system", content: `❌ ${e.message}`, timestamp: Date.now() },
+            ]);
           }
           break;
         case "/agent":
@@ -664,10 +585,12 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             setTab("chat");
             setMsgs((prev) => [
               ...prev,
-              novaMensagem(
-                "system",
-                "Modo agente ativado. Digite seu prompt para usar ferramentas reais (list_dir, read_file, write_file, bash, grep).",
-              ),
+              {
+                role: "system",
+                content:
+                  "Modo agente ativado. Digite seu prompt para usar ferramentas reais (list_dir, read_file, write_file, bash, grep).",
+                timestamp: Date.now(),
+              },
             ]);
           }
           break;
@@ -688,7 +611,11 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         case "/help":
           setMsgs((prev) => [
             ...prev,
-            novaMensagem("system", CMD_SLASH.map((c) => `${c.cmd} — ${c.desc}`).join("\n")),
+            {
+              role: "system",
+              content: CMD_SLASH.map((c) => `${c.cmd} — ${c.desc}`).join("\n"),
+              timestamp: Date.now(),
+            },
           ]);
           break;
       }
@@ -704,7 +631,6 @@ export function Playground({ usuario }: { usuario: Usuario }) {
       POST,
       enviar,
       setMsgs,
-      limparEphemeral,
     ],
   );
 
@@ -834,19 +760,31 @@ export function Playground({ usuario }: { usuario: Usuario }) {
       setTab("git");
       if (action === "clone") {
         setCloning(true);
-        setGitOut("Clonando...");
+        setGitOut("Clonando em workspace/repositorios/ ...");
       } else {
         setGitOut("...");
       }
       try {
-        const d = await POST<{ output: string }>("/api/vps/git", {
+        const d = await POST<{ output: string; ok?: boolean; repoPath?: string }>("/api/vps/git", {
           action,
           cwd: "repositorios",
           url,
         });
-        setGitOut(d.output);
+        const saida = d.output?.trim() || "";
         if (action === "clone") {
-          setGitOut((prev) => prev || "✅ Repositório clonado em repositorios/");
+          const destino = d.repoPath || "repositorios/<nome-do-repo>";
+          setGitOut(
+            d.ok !== false
+              ? `✅ Clonado com sucesso.\n\nDestino: ${destino}\n\n${saida}`
+              : `❌ Falha no clone.\n\n${saida}`,
+          );
+          if (d.ok !== false) {
+            await refreshFiles();
+            setFilesCwd(d.repoPath || "repositorios");
+            setTab("files");
+          }
+        } else {
+          setGitOut(saida || "Concluído.");
         }
       } catch (e: any) {
         setGitOut(e.message || "Erro");
@@ -854,7 +792,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         setCloning(false);
       }
     },
-    [POST],
+    [POST, refreshFiles],
   );
 
   useEffect(() => {
@@ -974,7 +912,11 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         onDelete={deletarSessao}
         onCancelRename={() => {
           if (renameId && renameVal.trim()) {
-            updateSession(renameId, (s) => ({ ...s, nome: renameVal.trim().slice(0, 30) }));
+            updateSession(renameId, (s) => ({
+              ...s,
+              nome: renameVal.trim().slice(0, 30),
+              nomeManual: true,
+            }));
           }
           setRenameId(null);
           setRenameVal("");
@@ -989,6 +931,14 @@ export function Playground({ usuario }: { usuario: Usuario }) {
 
       <div className="playground__main">
         <div className="playground__topbar">
+          <button
+            type="button"
+            className="playground__topbarPainelBtn"
+            onClick={() => navegar("/painel")}
+            title="Voltar ao painel da conta"
+          >
+            ← Painel
+          </button>
           <button
             onClick={() => setSidebarOpen(true)}
             style={{ display: sidebarOpen ? "none" : "flex" }}
@@ -1040,17 +990,13 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               showCmds={showCmds}
               statusText={status}
               elapsedMs={elapsedMs}
-              reasoning={reasoning}
+              thinkingSteps={thinkingSteps}
               tasks={tasks}
+              cmdHistory={cmdHistory}
+              histIdx={histIdx}
+              pendingInput={pendingInput}
               scrollRef={scrollRef}
               textareaRef={inpRef}
-              stickToBottom={stickToBottom}
-              onJumpBottom={() => {
-                setStickToBottom(true);
-                if (scrollRef.current) {
-                  scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-                }
-              }}
               onInput={setInput}
               onShowCmds={setShowCmds}
               onKeyDown={handleInputKeyDown}

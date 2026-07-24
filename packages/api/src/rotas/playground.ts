@@ -23,6 +23,7 @@ import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import type { FastifyInstance } from "fastify";
 import { type Contexto, erro, exigirUsuario, texto } from "../contexto.js";
+import { checarAcessoLlm, registrarUsoDaResposta } from "../limites.js";
 import { dirUsuario } from "../workspace.js";
 
 const exec = promisify(execCb);
@@ -133,11 +134,14 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
   app.post("/api/vps/write", async (req, resposta) => {
     const u = await exigirUsuario(ctx, req, resposta);
     if (!u) return;
-    const caminho = resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.path, 500));
+    const relativo = texto((req.body as any)?.path, 500);
+    if (relativo.includes("~")) return erro(resposta, 403, "acesso_negado", "Acesso negado.");
+    const caminho = destinoUploadSeguro(dirUsuario(u.id), relativo);
     if (!caminho) return erro(resposta, 403, "acesso_negado", "Acesso negado.");
     const conteudo =
       typeof (req.body as any)?.content === "string" ? (req.body as any).content : "";
     try {
+      mkdirSync(dirname(caminho), { recursive: true });
       writeFileSync(caminho, conteudo, "utf8");
       return resposta.send({ ok: true });
     } catch {
@@ -195,27 +199,49 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
     const u = await exigirUsuario(ctx, req, resposta);
     if (!u) return;
     const action = texto((req.body as any)?.action, 50);
-    const cwd =
-      resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.cwd, 500) || ".") ??
-      dirUsuario(u.id);
+    const raiz = dirUsuario(u.id);
+    const cwdRel = texto((req.body as any)?.cwd, 500) || "repositorios";
     try {
       let cmd = "";
+      let cwd = raiz;
+      let repoPath: string | undefined;
+
       if (action === "clone") {
         const url = texto((req.body as any)?.url, 500);
         if (!url) return erro(resposta, 400, "url_faltando", "URL do repositório necessária.");
-        // Garante que a pasta repositorios existe
-        const repoDir = join(cwd, "repositorios");
+        const repoDir = join(raiz, "repositorios");
         mkdirSync(repoDir, { recursive: true });
-        cmd = `cd repositorios && git clone "${url}"`;
-      } else if (action === "pull") cmd = "git pull";
-      else if (action === "status") cmd = "git status --short";
-      else if (action === "log") cmd = "git log --oneline -10";
-      else return erro(resposta, 400, "acao_invalida", "Ação git inválida.");
+        cwd = repoDir;
+        cmd = `git clone "${url}"`;
+        const nomeRepo =
+          url
+            .trim()
+            .replace(/\/$/, "")
+            .replace(/\.git$/i, "")
+            .split("/")
+            .pop() || "repo";
+        repoPath = `repositorios/${nomeRepo}`;
+      } else {
+        cwd = resolverSeguro(raiz, cwdRel) ?? resolverSeguro(raiz, ".") ?? raiz;
+        if (action === "pull") cmd = "git pull";
+        else if (action === "status") cmd = "git status --short";
+        else if (action === "log") cmd = "git log --oneline -10";
+        else return erro(resposta, 400, "acao_invalida", "Ação git inválida.");
+      }
 
       const { stdout, stderr } = await exec(cmd, { cwd, timeout: 120_000, maxBuffer: MAX_OUTPUT });
-      return resposta.send({ ok: true, output: stdout || stderr, cwd });
+      return resposta.send({
+        cwd: cwd.slice(raiz.length + 1).replaceAll("\\", "/") || ".",
+        ok: true,
+        output: stdout || stderr,
+        ...(repoPath ? { repoPath } : {}),
+      });
     } catch (e: any) {
-      return resposta.send({ ok: false, output: e.stderr || e.message || "erro", cwd });
+      return resposta.send({
+        cwd: cwdRel,
+        ok: false,
+        output: e.stderr || e.message || "erro",
+      });
     }
   });
 
@@ -259,15 +285,21 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
     const prompt = texto((req.body as any)?.prompt, 10000);
     if (!prompt) return erro(resposta, 400, "prompt_vazio", "Prompt vazio.");
 
+    const acesso = await checarAcessoLlm(ctx, u);
+    if (!acesso.ok) return erro(resposta, acesso.status, acesso.codigo, acesso.mensagem);
+
     const contexto = texto((req.body as any)?.contexto, 5000) || "";
     const systemPrompt = contexto
       ? `Você é o CodingPro, um assistente de código. O usuário está trabalhando no workspace com estes arquivos:\n${contexto}\n\nResponda de forma útil e direta.`
       : "Você é o CodingPro, um assistente de código. Responda de forma útil e direta.";
 
+    const modelo = "deepseek-v4-pro" as const;
+    const inicioChamada = Date.now();
+
     try {
       const upstream = await ctx.fetch(`${ctx.config.deepseekBaseUrl}/chat/completions`, {
         body: JSON.stringify({
-          model: "deepseek-v4-pro",
+          model: modelo,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: prompt },
@@ -281,8 +313,28 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
         },
         method: "POST",
       });
-      if (!upstream.ok) return erro(resposta, 502, "provedor_erro", "Erro no provedor.");
+      if (!upstream.ok) {
+        await registrarUsoDaResposta(ctx, {
+          competencia: acesso.competencia,
+          duracaoMs: Date.now() - inicioChamada,
+          erro: `upstream_${upstream.status}`,
+          modelo,
+          tokenId: null,
+          usage: null,
+          usuarioId: u.id,
+        }).catch(() => {});
+        return erro(resposta, 502, "provedor_erro", "Erro no provedor.");
+      }
       const corpo = (await upstream.json()) as any;
+      await registrarUsoDaResposta(ctx, {
+        competencia: acesso.competencia,
+        duracaoMs: Date.now() - inicioChamada,
+        erro: null,
+        modelo,
+        tokenId: null,
+        usage: corpo.usage,
+        usuarioId: u.id,
+      }).catch(() => {});
       const msg = corpo?.choices?.[0]?.message;
       const reply = msg?.content ?? "(sem resposta)";
       const reasoning = msg?.reasoning_content || "";
@@ -300,7 +352,7 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
     const arquivos = listarArquivos(raiz);
     return resposta.send({
       arquivos: arquivos.length,
-      pastas: ["Documents", "Downloads", "Projects", ".memory"],
+      pastas: ["Documents", "Downloads", "Projects", "repositorios", ".memory"],
       raiz,
       git: existsSync(join(raiz, ".git")),
     });

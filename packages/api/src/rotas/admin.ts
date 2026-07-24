@@ -4,7 +4,7 @@ import { freemem, loadavg, totalmem } from "node:os";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { type Contexto, erro, exigirAdmin, ipDe, texto } from "../contexto.js";
-import { competenciaAtual, type StatusUsuario } from "../repositorio.js";
+import { type AtualizacaoUsuario, competenciaAtual, type StatusUsuario } from "../repositorio.js";
 import { raizWorkspace } from "../workspace.js";
 
 const STATUS_VALIDOS = new Set<StatusUsuario>(["pendente", "ativo", "bloqueado"]);
@@ -68,8 +68,12 @@ export function registrarRotasAdmin(app: FastifyInstance, ctx: Contexto, metrica
           email: u.email,
           emailVerificado: u.email_verificado,
           id: u.id,
+          limiteDiarioMicro: u.limite_diario_micro,
           limiteMicro: u.limite_mensal_micro,
           nome: u.nome,
+          overrideLimiteAte: u.override_limite_ate,
+          overrideLimiteMicro: u.override_limite_micro,
+          rateRpm: u.rate_rpm,
           requisicoes: consumo.requisicoes,
           status: u.status,
           ultimoLogin: u.ultimo_login,
@@ -89,7 +93,7 @@ export function registrarRotasAdmin(app: FastifyInstance, ctx: Contexto, metrica
     if (!Number.isSafeInteger(id)) return erro(resposta, 400, "id_invalido", "Usuário inválido.");
 
     const corpo = (req.body ?? {}) as Record<string, unknown>;
-    const campos: { status?: StatusUsuario; limiteMicro?: number; admin?: boolean } = {};
+    const campos: AtualizacaoUsuario = {};
 
     if (corpo.status !== undefined) {
       const status = texto(corpo.status, 20) as StatusUsuario;
@@ -104,6 +108,20 @@ export function registrarRotasAdmin(app: FastifyInstance, ctx: Contexto, metrica
         return erro(resposta, 400, "limite_invalido", "Limite inválido.");
       }
       campos.limiteMicro = limite;
+    }
+    if (corpo.limiteDiarioMicro !== undefined) {
+      const limite = Number(corpo.limiteDiarioMicro);
+      if (!Number.isSafeInteger(limite) || limite < 0) {
+        return erro(resposta, 400, "limite_diario_invalido", "Limite diário inválido.");
+      }
+      campos.limiteDiarioMicro = limite;
+    }
+    if (corpo.rateRpm !== undefined) {
+      const rate = Number(corpo.rateRpm);
+      if (!Number.isSafeInteger(rate) || rate < 0) {
+        return erro(resposta, 400, "rate_invalido", "Rate limit inválido.");
+      }
+      campos.rateRpm = rate;
     }
     if (corpo.admin !== undefined) {
       if (id === admin.id && corpo.admin === false) {
@@ -158,14 +176,19 @@ export function registrarRotasAdmin(app: FastifyInstance, ctx: Contexto, metrica
     if (!admin) return resposta;
 
     const competencia = competenciaAtual();
-    const [diario, top] = await Promise.all([
+    const [diario, top, total] = await Promise.all([
       ctx.repo.consumoDiario(null, 30),
       ctx.repo.topUsuarios(competencia, 5),
+      ctx.repo.consumoTotalDoMes(competencia),
     ]);
-    const totalMicro = top.reduce((soma, u) => soma + u.custoMicro, 0);
-    const totalRequisicoes = diario.reduce((soma, d) => soma + d.requisicoes, 0);
 
-    return resposta.send({ competencia, diario, top, totalMicro, totalRequisicoes });
+    return resposta.send({
+      competencia,
+      diario,
+      top,
+      totalMicro: total.custoMicro,
+      totalRequisicoes: total.requisicoes,
+    });
   });
 
   app.get("/api/admin/saude", async (req, resposta) => {

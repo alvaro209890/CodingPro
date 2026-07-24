@@ -12,6 +12,12 @@ export type Usuario = {
   readonly email_verificado: boolean;
   readonly codigo_verificacao: string | null;
   readonly limite_mensal_micro: number;
+  readonly totp_secret: string | null;
+  readonly totp_ativado: boolean;
+  readonly limite_diario_micro: number;
+  readonly rate_rpm: number;
+  readonly override_limite_ate: Date | null;
+  readonly override_limite_micro: number | null;
   readonly criado_em: Date;
   readonly ultimo_login: Date | null;
 };
@@ -30,6 +36,16 @@ export type ConsumoMes = {
   readonly custoMicro: number;
   readonly requisicoes: number;
   readonly limiteMicro: number;
+};
+
+export type AtualizacaoUsuario = {
+  status?: StatusUsuario;
+  limiteMicro?: number;
+  limiteDiarioMicro?: number;
+  rateRpm?: number;
+  overrideLimiteAte?: Date | null;
+  overrideLimiteMicro?: number | null;
+  admin?: boolean;
 };
 
 /** Competência no formato `YYYY-MM`, em horário local do servidor. */
@@ -90,6 +106,27 @@ export function criarRepositorio(sql: Sql) {
       await sql`UPDATE usuarios SET senha_hash = ${senhaHash} WHERE id = ${id}`;
     },
 
+    async salvarTotp(id: number, segredo: string): Promise<void> {
+      await sql`
+        UPDATE usuarios
+        SET totp_secret = ${segredo}, totp_ativado = false
+        WHERE id = ${id}
+      `;
+    },
+
+    async ativarTotp(id: number): Promise<void> {
+      await sql`UPDATE usuarios SET totp_ativado = true WHERE id = ${id} AND totp_secret IS NOT NULL`;
+    },
+
+    async desativarTotp(id: number): Promise<void> {
+      await sql`UPDATE usuarios SET totp_secret = NULL, totp_ativado = false WHERE id = ${id}`;
+    },
+
+    async apagarUsuario(id: number): Promise<boolean> {
+      const linhas = await sql`DELETE FROM usuarios WHERE id = ${id} RETURNING id`;
+      return linhas.length > 0;
+    },
+
     async listarUsuarios(busca: string): Promise<readonly Usuario[]> {
       const like = `%${busca.trim().toLowerCase()}%`;
       return await sql<Usuario[]>`
@@ -100,15 +137,22 @@ export function criarRepositorio(sql: Sql) {
       `;
     },
 
-    async atualizarUsuario(
-      id: number,
-      campos: { status?: StatusUsuario; limiteMicro?: number; admin?: boolean },
-    ): Promise<Usuario | null> {
+    async atualizarUsuario(id: number, campos: AtualizacaoUsuario): Promise<Usuario | null> {
       const [usuario] = await sql<Usuario[]>`
         UPDATE usuarios SET
-          status              = COALESCE(${campos.status ?? null}, status),
-          limite_mensal_micro = COALESCE(${campos.limiteMicro ?? null}, limite_mensal_micro),
-          admin               = COALESCE(${campos.admin ?? null}, admin)
+          status                 = COALESCE(${campos.status ?? null}, status),
+          limite_mensal_micro    = COALESCE(${campos.limiteMicro ?? null}, limite_mensal_micro),
+          limite_diario_micro    = COALESCE(${campos.limiteDiarioMicro ?? null}, limite_diario_micro),
+          rate_rpm               = COALESCE(${campos.rateRpm ?? null}, rate_rpm),
+          override_limite_ate    = CASE
+            WHEN ${campos.overrideLimiteAte !== undefined} THEN ${campos.overrideLimiteAte ?? null}
+            ELSE override_limite_ate
+          END,
+          override_limite_micro  = CASE
+            WHEN ${campos.overrideLimiteMicro !== undefined} THEN ${campos.overrideLimiteMicro ?? null}
+            ELSE override_limite_micro
+          END,
+          admin                  = COALESCE(${campos.admin ?? null}, admin)
         WHERE id = ${id}
         RETURNING *
       `;
@@ -130,6 +174,99 @@ export function criarRepositorio(sql: Sql) {
         SELECT id, usuario_id, nome, prefixo, criado_em, ultimo_uso, revogado_em
         FROM tokens_cli WHERE usuario_id = ${usuarioId} ORDER BY criado_em DESC
       `;
+    },
+
+    async listarEventosUso(usuarioId: number, limite: number) {
+      return await sql<
+        {
+          id: number;
+          criado_em: Date;
+          modelo: string;
+          tokens_entrada: number;
+          tokens_saida: number;
+          tokens_cache: number;
+          tokens_raciocinio: number;
+          custo_micro: number;
+          duracao_ms: number;
+          erro: string | null;
+        }[]
+      >`
+        SELECT id, criado_em, modelo, tokens_entrada, tokens_saida, tokens_cache,
+               tokens_raciocinio, custo_micro, duracao_ms, erro
+        FROM eventos_uso
+        WHERE usuario_id = ${usuarioId}
+        ORDER BY criado_em DESC
+        LIMIT ${limite}
+      `;
+    },
+
+    async exportarDadosUsuario(usuarioId: number) {
+      const [usuario] = await sql<Usuario[]>`SELECT * FROM usuarios WHERE id = ${usuarioId}`;
+      if (!usuario) return null;
+      const tokens = await sql<TokenCli[]>`
+        SELECT id, usuario_id, nome, prefixo, criado_em, ultimo_uso, revogado_em
+        FROM tokens_cli WHERE usuario_id = ${usuarioId} ORDER BY criado_em DESC
+      `;
+      const usoRecente = await sql<
+        {
+          id: number;
+          criado_em: Date;
+          modelo: string;
+          tokens_entrada: number;
+          tokens_saida: number;
+          tokens_cache: number;
+          tokens_raciocinio: number;
+          custo_micro: number;
+          duracao_ms: number;
+          erro: string | null;
+        }[]
+      >`
+        SELECT id, criado_em, modelo, tokens_entrada, tokens_saida, tokens_cache,
+               tokens_raciocinio, custo_micro, duracao_ms, erro
+        FROM eventos_uso
+        WHERE usuario_id = ${usuarioId}
+        ORDER BY criado_em DESC
+        LIMIT 100
+      `;
+
+      return {
+        tokens: tokens.map((token) => ({
+          criadoEm: token.criado_em,
+          id: token.id,
+          nome: token.nome,
+          prefixo: token.prefixo,
+          revogadoEm: token.revogado_em,
+          ultimoUso: token.ultimo_uso,
+        })),
+        usoRecente: usoRecente.map((uso) => ({
+          criadoEm: uso.criado_em,
+          custoMicro: Number(uso.custo_micro),
+          duracaoMs: uso.duracao_ms,
+          erro: uso.erro,
+          id: uso.id,
+          modelo: uso.modelo,
+          tokensCache: uso.tokens_cache,
+          tokensEntrada: uso.tokens_entrada,
+          tokensRaciocinio: uso.tokens_raciocinio,
+          tokensSaida: uso.tokens_saida,
+        })),
+        usuario: {
+          admin: usuario.admin,
+          criadoEm: usuario.criado_em,
+          email: usuario.email,
+          emailVerificado: usuario.email_verificado,
+          id: usuario.id,
+          limiteDiarioMicro: usuario.limite_diario_micro,
+          limiteMicro: usuario.limite_mensal_micro,
+          nome: usuario.nome,
+          overrideLimiteAte: usuario.override_limite_ate,
+          overrideLimiteMicro: usuario.override_limite_micro,
+          rateRpm: usuario.rate_rpm,
+          status: usuario.status,
+          totpAtivado: usuario.totp_ativado,
+          ultimoLogin: usuario.ultimo_login,
+        },
+      };
     },
 
     async revogarToken(usuarioId: number, tokenId: number): Promise<boolean> {
@@ -179,6 +316,21 @@ export function criarRepositorio(sql: Sql) {
         custoMicro: Number(linha?.custo_micro ?? 0),
         limiteMicro: Number(linha?.limite ?? 0),
         requisicoes: linha?.requisicoes ?? 0,
+      };
+    },
+
+    async consumoDoDia(usuarioId: number): Promise<{ custoMicro: number; requisicoes: number }> {
+      const [linha] = await sql<{ custo_micro: number; requisicoes: number }[]>`
+        SELECT COALESCE(sum(custo_micro), 0)::bigint AS custo_micro,
+               count(*)::bigint                     AS requisicoes
+        FROM eventos_uso
+        WHERE usuario_id = ${usuarioId}
+          AND criado_em >= date_trunc('day', now())
+          AND criado_em < date_trunc('day', now()) + interval '1 day'
+      `;
+      return {
+        custoMicro: Number(linha?.custo_micro ?? 0),
+        requisicoes: Number(linha?.requisicoes ?? 0),
       };
     },
 
@@ -330,6 +482,59 @@ export function criarRepositorio(sql: Sql) {
         RETURNING codigo_dispositivo
       `;
       return linhas.length > 0;
+    },
+
+    /**
+     * Aprova o device flow e cria o token numa transação só.
+     * Evita tokens órfãos quando duas abas aprovam o mesmo código ao mesmo tempo.
+     */
+    async aprovarDeviceComToken(dados: {
+      codigoUsuario: string;
+      usuarioId: number;
+      nome: string;
+      prefixo: string;
+      hash: string;
+      tokenTexto: string;
+    }): Promise<"ok" | "invalido" | "ja_usado"> {
+      return await sql.begin(async (tx) => {
+        const [linha] = await tx<
+          { codigo_dispositivo: string; token_texto: string | null; expira_em: Date }[]
+        >`
+          SELECT codigo_dispositivo, token_texto, expira_em
+          FROM codigos_dispositivo
+          WHERE codigo_usuario = ${dados.codigoUsuario}
+          FOR UPDATE
+        `;
+        if (!linha || linha.expira_em.getTime() <= Date.now()) return "invalido";
+        if (linha.token_texto !== null) return "ja_usado";
+
+        await tx`
+          INSERT INTO tokens_cli (usuario_id, nome, prefixo, hash)
+          VALUES (${dados.usuarioId}, ${dados.nome}, ${dados.prefixo}, ${dados.hash})
+        `;
+        await tx`
+          UPDATE codigos_dispositivo
+          SET usuario_id = ${dados.usuarioId}, token_texto = ${dados.tokenTexto}
+          WHERE codigo_usuario = ${dados.codigoUsuario} AND token_texto IS NULL
+        `;
+        return "ok";
+      });
+    },
+
+    /** Soma real do mês (não só o top N) — usado no painel admin. */
+    async consumoTotalDoMes(
+      competencia: string,
+    ): Promise<{ custoMicro: number; requisicoes: number }> {
+      const [linha] = await sql<{ custo: number; requisicoes: number }[]>`
+        SELECT COALESCE(sum(custo_micro), 0)::bigint AS custo,
+               COALESCE(sum(requisicoes), 0)::bigint AS requisicoes
+        FROM uso_mensal
+        WHERE competencia = ${competencia}
+      `;
+      return {
+        custoMicro: Number(linha?.custo ?? 0),
+        requisicoes: Number(linha?.requisicoes ?? 0),
+      };
     },
 
     /** Consome o código: devolve o token uma vez só e apaga a linha. */
