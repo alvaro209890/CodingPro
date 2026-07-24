@@ -73,6 +73,22 @@ describe("taskTool", () => {
     expect(r.type).toBe("error-text");
   });
 
+  it("aceita alias em inglês tasks/type", async () => {
+    const chamadas: { tipo: string; prompt: string }[] = [];
+    const context: ToolContext = {
+      subagentes: spawnerFake(chamadas),
+      workspace: {} as ToolContext["workspace"],
+    };
+    const r = await taskTool.execute(
+      {
+        tasks: [{ prompt: "revise a", type: "reviewer" }],
+      },
+      context,
+    );
+    expect(chamadas).toEqual([{ prompt: "revise a", tipo: "reviewer" }]);
+    expect(texto(r)).toContain("Subagente 1 — reviewer");
+  });
+
   it("recusa tipo desconhecido e entrada inválida", async () => {
     const context: ToolContext = {
       subagentes: spawnerFake([]),

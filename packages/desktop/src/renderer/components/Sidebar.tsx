@@ -81,12 +81,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2.5"
+            strokeWidth="2"
           >
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
+            <path d="M12 5v14M5 12h14" />
           </svg>
-          Novo
+          New Agent
+        </button>
+        <button
+          type="button"
+          className="sidebar-action-btn"
+          onClick={onNewSession}
+          title="Buscar sessões (Ctrl+K)"
+        >
+          <svg
+            aria-hidden="true"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+          Search
         </button>
         <button
           type="button"
@@ -149,7 +168,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           <div className="sidebar-section-header">
-            <span>Recentes</span>
+            <span>Recent</span>
           </div>
 
           <div className="sidebar-recent-list">
@@ -202,7 +221,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="sidebar-footer">
             <div className="sidebar-user-badge">
               <div className="user-avatar">Á</div>
-              <span>IMAP · Pro</span>
+              <span>Álvaro Emanuel · Pro Plan</span>
             </div>
           </div>
         </>

@@ -17,14 +17,30 @@ import { TelaConta } from "./components/TelaConta.js";
 import { type ToolItem, ToolSummaryBlock } from "./components/ToolSummaryBlock.js";
 import { useTheme } from "./useTheme.js";
 import "./aurora.css";
+import "./cursor-skin.css";
 
-const CollapsibleReasoning: React.FC<{ text?: string | undefined }> = ({ text }) => {
+const CollapsibleReasoning: React.FC<{ text?: string | undefined; startedAt?: number }> = ({
+  text,
+  startedAt,
+}) => {
   const [open, setOpen] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!text || startedAt === undefined) return;
+    const tick = () => setElapsed(Math.max(1, Math.round((Date.now() - startedAt) / 1000)));
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [text, startedAt]);
+
   if (!text) return null;
+  const label =
+    elapsed > 0 ? `Thought for ${elapsed}s` : "Thought";
   return (
     <div className="reasoning-box">
       <button type="button" className="reasoning-toggle" onClick={() => setOpen(!open)}>
-        🧠 Raciocínio {open ? "▾" : "▸"}
+        {open ? "▾" : "▸"} {label}
       </button>
       {open && (
         <div
@@ -42,6 +58,7 @@ interface ChatMessageUI {
   role: "user" | "assistant";
   content: string;
   reasoning?: string;
+  reasoningStartedAt?: number;
   toolGroup?: {
     summaryText: string;
     items: ToolItem[];
@@ -245,12 +262,22 @@ export const App: React.FC = () => {
             if (last && last.role === "assistant" && !last.toolGroup) {
               return [
                 ...prev.slice(0, -1),
-                { ...last, reasoning: (last.reasoning ?? "") + ae.text },
+                {
+                  ...last,
+                  reasoning: (last.reasoning ?? "") + ae.text,
+                  reasoningStartedAt: last.reasoningStartedAt ?? Date.now(),
+                },
               ];
             }
             return [
               ...prev,
-              { id: newId("asst"), role: "assistant", content: "", reasoning: ae.text },
+              {
+                id: newId("asst"),
+                role: "assistant",
+                content: "",
+                reasoning: ae.text,
+                reasoningStartedAt: Date.now(),
+              },
             ];
           });
         } else if (ae.type === "notice") {
@@ -290,7 +317,9 @@ export const App: React.FC = () => {
               const input = ae.call.input as Record<string, unknown> | undefined;
               const taskList = Array.isArray(input?.tarefas)
                 ? (input.tarefas as Array<{ prompt?: string }>)
-                : [];
+                : Array.isArray(input?.tasks)
+                  ? (input.tasks as Array<{ prompt?: string }>)
+                  : [];
               taskList.forEach((t, idx) => {
                 const label = t?.prompt ? t.prompt.slice(0, 50) : `Subtarefa ${idx + 1}`;
                 setSubAgents((prev) => [
@@ -794,7 +823,12 @@ export const App: React.FC = () => {
                       totalDel={m.toolGroup.diffDel}
                     />
                   )}
-                  <CollapsibleReasoning text={m.reasoning} />
+                  <CollapsibleReasoning
+                    text={m.reasoning}
+                    {...(m.reasoningStartedAt !== undefined
+                      ? { startedAt: m.reasoningStartedAt }
+                      : {})}
+                  />
                   {/* biome-ignore lint/security/noDangerouslySetInnerHtml: markdown do LLM */}
                   {m.content && (
                     <div

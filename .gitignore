@@ -21,3 +21,4 @@ coverage/
 *.local.json
 credentials*.json
 release/
+packages/desktop/.pack/

@@ -684,7 +684,7 @@ describe("DeepSeekProvider", () => {
       delta: {
         tool_calls: [
           {
-            function: { arguments: '{"a":"19","b":23}', name: "somar" },
+            function: { arguments: '{"a":"não-número","b":23}', name: "somar" },
             id: "call_tipo",
             index: 0,
           },
@@ -835,7 +835,7 @@ describe("DeepSeekProvider", () => {
           streamChunk({
             tool_calls: [
               {
-                function: { arguments: '{"a":"19","b":23}', name: "somar" },
+                function: { arguments: '{"a":19,"b":23}', name: "somar" },
                 id: "call_mutacao",
                 index: 0,
               },
@@ -854,7 +854,12 @@ describe("DeepSeekProvider", () => {
       type: "string",
     };
 
-    await expect(iterator.next()).rejects.toMatchObject({ code: "invalid-tool-call" });
+    await expect(iterator.next()).resolves.toMatchObject({
+      value: {
+        call: { id: "call_mutacao", input: { a: 19, b: 23 }, name: "somar" },
+        type: "tool-call",
+      },
+    });
   });
 
   it("mantém IDs e argumentos separados em calls paralelas intercaladas", async () => {

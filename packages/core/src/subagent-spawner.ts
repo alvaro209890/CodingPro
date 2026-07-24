@@ -8,7 +8,7 @@ import {
   type TipoAgente,
 } from "./agent-types.js";
 import { executarSubagente, type SubagenteRelatorio, type SubagenteSpawner } from "./subagent.js";
-import type { MemoryScope } from "./tool.js";
+import type { ExecutableTool, MemoryScope } from "./tool.js";
 import { SUBAGENT_TOOL_POOL } from "./tool-groups.js";
 import type { Workspace } from "./workspace.js";
 
@@ -44,9 +44,13 @@ export async function carregarTiposCustom(dir: string): Promise<Record<string, T
 export interface SpawnerOptions {
   readonly workspace: Workspace;
   readonly provider: Provider;
+  /** Provider por papel do subagente; se ausente, usa `provider` para todos. */
+  readonly criarProvider?: (role: TipoAgente["role"]) => Provider;
   readonly memory?: MemoryScope;
   /** Tipos custom já carregados (de `.codingpro/agents`). */
   readonly custom?: Record<string, TipoAgente>;
+  /** Pool de tools disponível no runtime (ex.: sem `code_search` no Electron). */
+  readonly toolPool?: readonly ExecutableTool[];
   readonly maxParalelo?: number;
   readonly timeoutMs?: number;
 }
@@ -57,6 +61,7 @@ export interface SpawnerOptions {
  */
 export function criarSpawnerSubagentes(options: SpawnerOptions): SubagenteSpawner {
   const custom = options.custom ?? {};
+  const toolPool = options.toolPool ?? SUBAGENT_TOOL_POOL;
   const tiposDisponiveis = [
     ...new Set([...Object.keys(TIPOS_AGENTE_PADRAO), ...Object.keys(custom)]),
   ].sort();
@@ -66,16 +71,17 @@ export function criarSpawnerSubagentes(options: SpawnerOptions): SubagenteSpawne
       if (tipo === undefined) {
         throw new Error(`Tipo de subagente desconhecido: ${tipoNome}.`);
       }
+      const provider = options.criarProvider?.(tipo.role) ?? options.provider;
       return executarSubagente({
         context: {
           workspace: options.workspace,
           ...(options.memory === undefined ? {} : { memory: options.memory }),
         },
         prompt,
-        provider: options.provider,
+        provider,
         timeoutMs: options.timeoutMs ?? SUBAGENTE_TIMEOUT_MS,
         tipo,
-        toolPool: SUBAGENT_TOOL_POOL,
+        toolPool,
         ...(signal === undefined ? {} : { signal }),
       });
     },

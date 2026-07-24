@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import {
   type AgentEvent,
   ALL_TOOLS,
+  filtrarToolsDoRuntime,
+  SUBAGENT_TOOL_POOL,
   type Approval,
   type Approver,
   type AutoEffortState,
@@ -360,7 +362,11 @@ function criarProvider(role?: "main" | "fast"): Provider {
   // para a cota da plataforma sem pedir.
   const apiKey = obterApiKey();
   if (apiKey !== undefined && apiKey.trim().length > 0) {
-    return new DeepSeekProvider({ apiKey, ...papel });
+    return new DeepSeekProvider({
+      apiKey,
+      ...papel,
+      ...(role === "fast" ? { thinking: false } : {}),
+    });
   }
 
   const conta = obterCredenciaisConta();
@@ -369,6 +375,7 @@ function criarProvider(role?: "main" | "fast"): Provider {
       apiKey: conta.token,
       baseUrl: `${conta.apiUrl}/v1`,
       ...papel,
+      ...(role === "fast" ? { thinking: false } : {}),
     });
   }
 
@@ -487,12 +494,7 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
 
   const workspace = await Workspace.create(normalized);
   const registry = new ToolRegistry();
-  const sqliteOk = isNodeSqliteDisponivel();
-  for (const tool of ALL_TOOLS) {
-    // Electron 34 (Node 20) não tem node:sqlite — omite code_search nesse runtime.
-    if (!sqliteOk && tool.definition.name === "code_search") {
-      continue;
-    }
+  for (const tool of filtrarToolsDoRuntime(ALL_TOOLS)) {
     registry.register(tool);
   }
 
@@ -535,8 +537,23 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
   // inclui tipos customizados de `.codingpro/agents/*.md` (paridade com a CLI).
   const spawner = criarSpawnerSubagentes({
     custom: tiposCustom,
+    criarProvider: (role) => {
+      if (role === "fast") {
+        try {
+          return criarProvider("fast");
+        } catch {
+          return criarProvider();
+        }
+      }
+      try {
+        return criarProvider("main");
+      } catch {
+        return criarProvider();
+      }
+    },
     memory: { global: memoryGlobal, projeto: memoryProjeto },
     provider,
+    toolPool: filtrarToolsDoRuntime(SUBAGENT_TOOL_POOL),
     workspace,
   });
 

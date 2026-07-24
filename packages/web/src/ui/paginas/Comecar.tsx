@@ -4,7 +4,8 @@ import { Aviso, Cartao } from "../componentes.js";
 import { propsLink } from "../rotas.js";
 
 const REPO = "https://codingpro.cursar.space";
-const RELEASES = `${REPO}/downloads/CodingPro-portable-0.1.0.zip`;
+const SETUP_EXE = `${REPO}/downloads/CodingPro-Setup-0.1.0.exe`;
+const PORTABLE_EXE = `${REPO}/downloads/CodingPro-portable-0.1.0.exe`;
 
 function Bloco({ children }: { children: string }) {
   const [copiado, setCopiado] = useState(false);
@@ -214,27 +215,28 @@ function PassosWindows() {
     <Cartao>
       <Passo numero={1} titulo="Baixe o aplicativo">
         <p>Aplicativo de desktop com a mesma engine da CLI: chat, diffs e terminal integrado.</p>
-        <a className="botao primario" href={RELEASES}>
-          Baixar para Windows (.zip — 115 MB)
-        </a>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+          <a className="botao primario" href={SETUP_EXE}>
+            Instalador Windows (.exe)
+          </a>
+          <a className="botao" href={PORTABLE_EXE}>
+            Portátil (.exe — sem instalar)
+          </a>
+        </div>
       </Passo>
 
-      <Passo numero={2} titulo="Extraia o .zip antes de executar">
+      <Passo numero={2} titulo="Instale ou execute">
         <p>
-          <strong>⚠️ Importante:</strong> extraia TODOS os arquivos do .zip para uma pasta antes de
-          rodar o <code>CodingPro.exe</code>. Não execute direto de dentro do .zip — o app precisa
-          das DLLs que estão na mesma pasta.
+          <strong>Instalador:</strong> execute <code>CodingPro-Setup-0.1.0.exe</code> e siga o
+          assistente.
         </p>
         <p>
-          Clique com o botão direito no arquivo .zip → <strong>Extrair tudo</strong> → escolha uma
-          pasta (ex: <code>Documentos\CodingPro</code>).
+          <strong>Portátil:</strong> execute <code>CodingPro-portable-0.1.0.exe</code> — pode rodar
+          de qualquer pasta, sem instalação.
         </p>
       </Passo>
 
-      <Passo numero={3} titulo="Execute o CodingPro.exe">
-        <p>
-          Abra a pasta extraída e dê um duplo clique em <code>CodingPro.exe</code>.
-        </p>
+      <Passo numero={3} titulo="Abra o CodingPro">
         <Aviso tipo="atencao">
           <strong>Windows SmartScreen:</strong> por não ser um app assinado (certificado digital), o
           Windows mostra "O Windows protegeu o seu PC". Clique em <strong>Mais informações</strong>{" "}

@@ -273,7 +273,7 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
           <span
             style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}
           >
-            Ctrl+K paleta · Ctrl+. cancela · / sugere
+            This PC · Ctrl+K · Ctrl+.
           </span>
         </div>
       </div>
@@ -283,7 +283,7 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
           ref={textareaRef}
           onPaste={onImagePaste ? handleImagePaste(onImagePaste) : undefined}
           className="dock-textarea"
-          placeholder="O que deseja construir? (ex: liste os arquivos, /ajuda, /custo, /abrir...)"
+          placeholder="Send follow-up"
           value={inputPrompt}
           onChange={(e) => onChangeInput(e.target.value)}
           onKeyDown={handleKeyDown}

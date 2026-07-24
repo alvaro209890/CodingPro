@@ -227,6 +227,47 @@ function toModelMessage(message: ChatMessage): ModelMessage {
   };
 }
 
+type ToolInputSchema = CodingProTool["inputSchema"];
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Coerce tipos comuns que o modelo manda como string (ex.: offset "10" → 10). */
+function normalizarInputTool(schema: ToolInputSchema, value: unknown): unknown {
+  if (schema.type !== "object" || !isPlainObject(value)) {
+    return value;
+  }
+  const out: Record<string, unknown> = { ...value };
+  for (const [key, prop] of Object.entries(schema.properties)) {
+    const raw = out[key];
+    if (prop.type === "integer" && typeof raw === "string") {
+      const parsed = Number(raw);
+      if (Number.isSafeInteger(parsed)) {
+        out[key] = parsed;
+      }
+    } else if (prop.type === "number" && typeof raw === "string") {
+      const parsed = Number(raw);
+      if (Number.isFinite(parsed)) {
+        out[key] = parsed;
+      }
+    } else if (prop.type === "boolean" && typeof raw === "string") {
+      if (raw === "true") {
+        out[key] = true;
+      } else if (raw === "false") {
+        out[key] = false;
+      }
+    } else if (prop.type === "object" && isPlainObject(raw)) {
+      out[key] = normalizarInputTool(prop as ToolInputSchema, raw);
+    } else if (prop.type === "array" && Array.isArray(raw) && isPlainObject(prop.items)) {
+      out[key] = raw.map((item) =>
+        isPlainObject(item) ? normalizarInputTool(prop.items as ToolInputSchema, item) : item,
+      );
+    }
+  }
+  return out;
+}
+
 function toAiTools(definitions: readonly CodingProTool[]): ToolSet {
   const tools: ToolSet = Object.create(null) as ToolSet;
   for (const definition of definitions) {
@@ -525,8 +566,12 @@ export class DeepSeekProvider implements Provider {
           reasoning += part.text;
           yield { text: part.text, type: "reasoning-delta" };
         } else if (part.type === "tool-call") {
-          const candidate = { id: part.toolCallId, input: part.input, name: part.toolName };
           const definition = toolDefinitions.get(part.toolName);
+          const input =
+            definition === undefined
+              ? part.input
+              : normalizarInputTool(definition.inputSchema, part.input);
+          const candidate = { id: part.toolCallId, input, name: part.toolName };
           const motivo =
             definition === undefined
               ? `ferramenta desconhecida "${part.toolName}"`
@@ -540,8 +585,6 @@ export class DeepSeekProvider implements Provider {
             snapshot.toolChoice === "none" ||
             (typeof snapshot.toolChoice === "object" &&
               snapshot.toolChoice.toolName !== part.toolName) ||
-            part.dynamic === true ||
-            part.providerExecuted === true ||
             definition === undefined ||
             !isToolCall(candidate) ||
             !toolAcceptsInput(definition.inputSchema, candidate.input) ||

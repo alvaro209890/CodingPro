@@ -1,0 +1,224 @@
+/**
+ * Cursor-like skin — sobrescreve Aurora com paleta e espaçamento do Cursor IDE.
+ */
+
+:root {
+  --bg-app: #0d0d0d;
+  --bg-sidebar: #141414;
+  --bg-header: transparent;
+  --bg-card: #1a1a1a;
+  --bg-card-hover: #222222;
+  --bg-input: #1c1c1c;
+  --bg-subtle: rgba(255, 255, 255, 0.04);
+
+  --border-subtle: #2a2a2a;
+  --border-strong: #333333;
+
+  --text-primary: #ececec;
+  --text-secondary: #9b9b9b;
+  --text-muted: #6b6b6b;
+
+  --accent-blue: #6b9bd1;
+}
+
+.sidebar {
+  width: 248px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.sidebar-top-tabs {
+  display: none;
+}
+
+.sidebar-actions {
+  padding: 8px 10px 4px;
+  gap: 0;
+}
+
+.sidebar-action-btn {
+  border-radius: 6px;
+  font-size: 13px;
+  padding: 7px 10px;
+  color: var(--text-secondary);
+}
+
+.sidebar-action-btn.new-chat {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.sidebar-action-btn:hover {
+  transform: none;
+  background: var(--bg-subtle);
+}
+
+.sidebar-section-header {
+  padding: 12px 12px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-muted);
+}
+
+.recent-item.active,
+.recent-item:hover {
+  background: var(--bg-subtle) !important;
+}
+
+.sidebar-footer {
+  border-top: 1px solid var(--border-subtle);
+  padding: 10px 12px;
+}
+
+.sidebar-user-badge span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.main-content {
+  background: var(--bg-app);
+}
+
+.top-header {
+  background: transparent;
+  border-bottom: none;
+  padding: 14px 24px 8px;
+  min-height: auto;
+}
+
+.header-title-container {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  gap: 8px;
+}
+
+.header-title-container svg {
+  display: none;
+}
+
+.header-project-tag {
+  display: none;
+}
+
+.chat-feed {
+  padding: 8px 24px 260px;
+  gap: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.message-group {
+  max-width: 100%;
+}
+
+.user-message-bubble {
+  background: #2a2a2a;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  max-width: min(85%, 640px);
+}
+
+.assistant-message-card {
+  gap: 8px;
+}
+
+.text-response-block {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-primary);
+}
+
+.reasoning-box {
+  margin: 4px 0;
+}
+
+.reasoning-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reasoning-toggle:hover {
+  color: var(--text-secondary);
+}
+
+.reasoning-body {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--border-strong);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.floating-input-dock {
+  left: 248px;
+  right: 0;
+  bottom: 0;
+  margin: 0 auto;
+  max-width: 820px;
+  padding: 0 24px 16px;
+  background: linear-gradient(to top, var(--bg-app) 70%, transparent);
+  border: none;
+  box-shadow: none;
+}
+
+.floating-input-dock:focus-within {
+  box-shadow: none;
+}
+
+.dock-textarea-row {
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 4px 4px 4px 12px;
+}
+
+.dock-textarea {
+  font-size: 14px;
+  min-height: 44px;
+}
+
+.dock-git-row {
+  font-size: 11px;
+  margin-bottom: 6px;
+  opacity: 0.85;
+}
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.typing-indicator::before {
+  content: "Thinking";
+  font-weight: 500;
+}
+
+.tool-summary-card {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.subagent-panel {
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+}

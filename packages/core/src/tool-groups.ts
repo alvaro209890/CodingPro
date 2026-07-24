@@ -1,3 +1,5 @@
+import type { ExecutableTool } from "./tool.js";
+import { isNodeSqliteDisponivel } from "./vector/vector-store.js";
 import { bashTool } from "./tools/bash.js";
 import { codeSearchTool } from "./tools/code-search.js";
 import { editFileTool } from "./tools/edit-file.js";
@@ -50,3 +52,13 @@ export const SUBAGENT_TOOL_POOL = Object.freeze([
   ...MEMORY_TOOLS,
   ...EFFECT_TOOLS,
 ] as const);
+
+/** Omite `code_search` quando `node:sqlite` não existe (Electron 34 / Node 20). */
+export function filtrarToolsDoRuntime(
+  tools: readonly ExecutableTool[],
+): readonly ExecutableTool[] {
+  if (isNodeSqliteDisponivel()) {
+    return tools;
+  }
+  return tools.filter((tool) => tool.definition.name !== "code_search");
+}

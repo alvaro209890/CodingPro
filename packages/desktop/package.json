@@ -11,8 +11,9 @@
     "dev": "node scripts/dev.mjs",
     "start": "node scripts/start.mjs",
     "preview": "vite preview",
-    "pack": "pnpm build && electron-builder --dir",
-    "dist": "pnpm build && electron-builder"
+    "prepare-pack": "node scripts/prepare-pack.mjs",
+    "pack": "node scripts/prepare-pack.mjs && cd .pack && electron-builder --dir",
+    "dist": "node scripts/prepare-pack.mjs && cd .pack && electron-builder"
   },
   "dependencies": {
     "@codingpro/core": "workspace:*",
@@ -26,12 +27,14 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^34.2.0",
+    "electron-builder": "^25.1.8",
     "typescript": "^6.0.3",
     "vite": "^6.2.0"
   },
   "build": {
     "appId": "com.codingpro.desktop",
     "productName": "CodingPro",
+    "electronVersion": "34.2.0",
     "directories": {
       "output": "release"
     },
@@ -58,7 +61,11 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "CodingPro-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "CodingPro-portable-${version}.${ext}"
     }
   }
 }

@@ -12,29 +12,39 @@ import { errorResult, textResult } from "../tool.js";
 
 export const TASK_MAX_TAREFAS = 8;
 
+const itemTarefa = {
+  additionalProperties: false,
+  properties: {
+    prompt: { description: "A tarefa para o subagente.", type: "string" },
+    tipo: { description: "O tipo de subagente (explorer/worker/architect/reviewer).", type: "string" },
+    type: {
+      description: "Alias em inglês de `tipo` (explorer/worker/architect/reviewer).",
+      type: "string",
+    },
+  },
+  required: ["prompt"],
+  type: "object",
+} as const;
+
 const definition: Tool = {
   description:
     "Delega tarefas a subagentes isolados e devolve seus relatórios consolidados. Use para " +
     "exploração, revisão multi-perspectiva, planejamento ou comparação de abordagens em paralelo. " +
-    "Cada tarefa tem um `tipo` (explorer/worker/architect/reviewer ou custom) e um `prompt`.",
+    "Cada tarefa tem `tipo` (ou `type`) e `prompt`. Envie `tarefas` (preferido) ou `tasks`.",
   inputSchema: {
     additionalProperties: false,
     properties: {
       tarefas: {
         description: "Lista de subtarefas a rodar em paralelo.",
-        items: {
-          additionalProperties: false,
-          properties: {
-            prompt: { description: "A tarefa para o subagente.", type: "string" },
-            tipo: { description: "O tipo de subagente.", type: "string" },
-          },
-          required: ["tipo", "prompt"],
-          type: "object",
-        },
+        items: itemTarefa,
+        type: "array",
+      },
+      tasks: {
+        description: "Alias em inglês de `tarefas`.",
+        items: itemTarefa,
         type: "array",
       },
     },
-    required: ["tarefas"],
     type: "object",
   },
   name: "task",
@@ -45,7 +55,8 @@ interface Entrada {
   readonly prompt: string;
 }
 
-function parseTarefas(value: JsonValue | undefined): Entrada[] {
+function parseTarefas(input: JsonObject): Entrada[] {
+  const value = (input.tarefas ?? input.tasks) as JsonValue | undefined;
   if (!Array.isArray(value) || value.length === 0) {
     throw new CoreError("invalid-input", "Informe ao menos uma tarefa.");
   }
@@ -54,7 +65,7 @@ function parseTarefas(value: JsonValue | undefined): Entrada[] {
   }
   return value.map((item) => {
     const obj = item as Record<string, unknown>;
-    const tipo = obj?.tipo;
+    const tipo = obj?.tipo ?? obj?.type;
     const prompt = obj?.prompt;
     if (typeof tipo !== "string" || typeof prompt !== "string" || prompt.trim().length === 0) {
       throw new CoreError("invalid-input", "Cada tarefa precisa de `tipo` e `prompt`.");
@@ -79,7 +90,7 @@ export const taskTool: ExecutableTool = {
     }
     let tarefas: Entrada[];
     try {
-      tarefas = parseTarefas(input.tarefas);
+      tarefas = parseTarefas(input);
     } catch (error) {
       return error instanceof CoreError
         ? errorResult(error.message)
