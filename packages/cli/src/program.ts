@@ -116,6 +116,7 @@ export function criarPrograma(
     .version(packageJson.version, "-v, --versao", mensagens.opcao.versao)
     .option("-p, --prompt <texto>", mensagens.opcao.prompt)
     .option("--chat", mensagens.opcao.chat)
+    .option("--tui", mensagens.opcao.chat + " (modo TUI com Ink)")
     .option("--agente", mensagens.opcao.agente)
     .option("--doctor", mensagens.opcao.doctor)
     .option("--continuar", mensagens.opcao.continuar)
@@ -147,6 +148,7 @@ export function criarPrograma(
     const options = programa.opts<{
       agente?: boolean;
       chat?: boolean;
+      tui?: boolean;
       continuar?: boolean;
       doctor?: boolean;
       maxContexto?: number;
@@ -221,6 +223,21 @@ export function criarPrograma(
       } finally {
         mcp.fechar();
       }
+      return;
+    }
+
+    if (options.tui === true) {
+      const { iniciarTui } = await import("./tui-runtime.js");
+      const cwd = services.raizProjeto ?? process.cwd();
+      await iniciarTui({
+        cwd,
+        environment: process.env as Record<string, string | undefined>,
+        flags: {
+          ...(options.provider === undefined ? {} : { provider: options.provider }),
+          ...(options.replayFile === undefined ? {} : { replayFile: options.replayFile }),
+        },
+        homeDirectory: homedir(),
+      });
       return;
     }
 

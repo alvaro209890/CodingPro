@@ -42,6 +42,7 @@
   "devDependencies": {
     "@codingpro/core": "workspace:*",
     "@codingpro/llm": "workspace:*",
+    "@codingpro/tui": "workspace:*",
     "commander": "catalog:",
     "jsonc-parser": "3.3.1"
   }
