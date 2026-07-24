@@ -173,8 +173,15 @@ export function Playground({ usuario }: { usuario: Usuario }) {
   const [memName, setMemName] = useState("");
   const [memContent, setMemContent] = useState("");
 
-  const ref = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const inpRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-scroll ao final quando mensagens ou streaming mudam
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [msgs, stream]);
 
   // ─── Helpers ───
   const POST = useCallback(async <T,>(path: string, body?: unknown): Promise<T> => {
@@ -187,8 +194,6 @@ export function Playground({ usuario }: { usuario: Usuario }) {
     if (!r.ok) throw new Error(((await r.json().catch(() => ({}))) as any).mensagem || "Erro");
     return r.json() as T;
   }, []);
-
-  const scrollDown = () => setTimeout(() => ref.current?.scrollTo(0, ref.current.scrollHeight), 50);
 
   // ─── Session management ───
   const novaSessao = useCallback(() => {
@@ -261,7 +266,6 @@ export function Playground({ usuario }: { usuario: Usuario }) {
       setStream("");
       setStatus("Pensando...");
       setMsgs((prev) => [...prev, { role: "user", content: p }]);
-      scrollDown();
       try {
         const toolsLog: { nome: string; result: string }[] = [];
         let r: Response;
@@ -299,7 +303,6 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               if (d.type === "text") {
                 content += d.content ?? "";
                 setStream(content);
-                scrollDown();
               } else if (d.type === "tool-start") setStatus(`🔧 ${d.name || ""}...`);
               else if (d.type === "tool-end") {
                 toolsLog.push({ nome: d.name || "", result: d.result || "" });
@@ -329,7 +332,6 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         setLoading(false);
         setStream("");
         setStatus("");
-        scrollDown();
       }
     },
     [input, loading, setMsgs],
@@ -904,7 +906,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
           {/* CLI + Chat */}
           {isCliChat && (
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <div ref={ref} style={{ flex: 1, overflow: "auto", padding: "0.5rem 0.75rem" }}>
+              <div ref={scrollRef} style={{ flex: 1, overflow: "auto", padding: "0.5rem 0.75rem" }}>
                 {msgs.length === 0 && !stream && (
                   <div style={{ padding: "1.5rem 0", textAlign: "center" }}>
                     <pre
