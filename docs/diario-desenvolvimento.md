@@ -1,5 +1,26 @@
 # Diário de desenvolvimento
 
+## 2026-07-24 — Limite no chat, reset do banco e conta Álvaro limpa
+
+### Diagnóstico
+
+- A tarefa de QA **não entrou em loop infinito**: o agente VPS faz no máximo **5 iterações** por pedido (comportamento esperado).
+- O `/api/vps/chat` **não checava nem registrava** limite/consumo — inconsistência com agente e proxy.
+- O auto-título chamava a IA de novo (`refinarNomeSessaoViaApi`), gastando cota extra por conversa.
+- Rate limit global (300/min) podia atrapalhar rajadas de login/device flow em testes.
+
+### Correções
+
+- `playground.ts`: `checarAcessoLlm` + `registrarUsoDaResposta` no chat.
+- `Playground.tsx`: auto-título só com heurística local (sem 2ª chamada à IA).
+- `app.ts`: login, cadastro, logout e `/api/device/*` fora do rate limit global.
+
+### Banco zerado (produção)
+
+Mantida apenas **`alvaro@gmail.com`**: `ativo`, `admin`, e-mail verificado, **limite 0** (sem teto), zero tokens/eventos/consumo. Senha inalterada.
+
+---
+
 ## 2026-07-24 — Balão de raciocínio, download Windows e rota `/downloads`
 
 ### Entregue

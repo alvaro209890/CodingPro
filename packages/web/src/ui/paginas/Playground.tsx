@@ -5,7 +5,7 @@ import { ChatView } from "./ChatView.js";
 import { EditorPanel } from "./EditorPanel.js";
 import { FilesPanel } from "./FilesPanel.js";
 import { GitPanel } from "./GitPanel.js";
-import { ehNomePadrao, inferirNomeSessao, refinarNomeSessaoViaApi } from "./inferirNomeSessao.js";
+import { ehNomePadrao, inferirNomeSessao } from "./inferirNomeSessao.js";
 import { MemoryPanel } from "./MemoryPanel.js";
 import type { Mensagem, Session } from "./PlaygroundTypes.js";
 import { Sidebar } from "./Sidebar.js";
@@ -346,12 +346,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
                 updateSession(sessaoId, (s) =>
                   s.nomeManual ? s : { ...s, nome: tituloLocal },
                 );
-                void refinarNomeSessaoViaApi(POST, p, textoFinal).then((refinado) => {
-                  if (!refinado) return;
-                  updateSession(sessaoId, (s) =>
-                    s.nomeManual ? s : { ...s, nome: refinado },
-                  );
-                });
+                // Título local basta — evita chamada extra à IA (auto-título não deve gastar cota).
               }
               setStream("");
               setStatus("");

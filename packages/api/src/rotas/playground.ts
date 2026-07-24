@@ -23,6 +23,7 @@ import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import type { FastifyInstance } from "fastify";
 import { type Contexto, erro, exigirUsuario, texto } from "../contexto.js";
+import { checarAcessoLlm, registrarUsoDaResposta } from "../limites.js";
 import { dirUsuario } from "../workspace.js";
 
 const exec = promisify(execCb);
@@ -287,15 +288,21 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
     const prompt = texto((req.body as any)?.prompt, 10000);
     if (!prompt) return erro(resposta, 400, "prompt_vazio", "Prompt vazio.");
 
+    const acesso = await checarAcessoLlm(ctx, u);
+    if (!acesso.ok) return erro(resposta, acesso.status, acesso.codigo, acesso.mensagem);
+
     const contexto = texto((req.body as any)?.contexto, 5000) || "";
     const systemPrompt = contexto
       ? `Você é o CodingPro, um assistente de código. O usuário está trabalhando no workspace com estes arquivos:\n${contexto}\n\nResponda de forma útil e direta.`
       : "Você é o CodingPro, um assistente de código. Responda de forma útil e direta.";
 
+    const modelo = "deepseek-v4-pro" as const;
+    const inicioChamada = Date.now();
+
     try {
       const upstream = await ctx.fetch(`${ctx.config.deepseekBaseUrl}/chat/completions`, {
         body: JSON.stringify({
-          model: "deepseek-v4-pro",
+          model: modelo,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: prompt },
@@ -309,8 +316,28 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
         },
         method: "POST",
       });
-      if (!upstream.ok) return erro(resposta, 502, "provedor_erro", "Erro no provedor.");
+      if (!upstream.ok) {
+        await registrarUsoDaResposta(ctx, {
+          competencia: acesso.competencia,
+          duracaoMs: Date.now() - inicioChamada,
+          erro: `upstream_${upstream.status}`,
+          modelo,
+          tokenId: null,
+          usage: null,
+          usuarioId: u.id,
+        }).catch(() => {});
+        return erro(resposta, 502, "provedor_erro", "Erro no provedor.");
+      }
       const corpo = (await upstream.json()) as any;
+      await registrarUsoDaResposta(ctx, {
+        competencia: acesso.competencia,
+        duracaoMs: Date.now() - inicioChamada,
+        erro: null,
+        modelo,
+        tokenId: null,
+        usage: corpo.usage,
+        usuarioId: u.id,
+      }).catch(() => {});
       const msg = corpo?.choices?.[0]?.message;
       const reply = msg?.content ?? "(sem resposta)";
       const reasoning = msg?.reasoning_content || "";

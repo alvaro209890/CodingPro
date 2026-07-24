@@ -87,8 +87,16 @@ export async function criarApp(opcoes: OpcoesApp): Promise<FastifyInstance> {
   });
 
   await app.register(rateLimit, {
-    // Teto global por IP. O proxy tem o seu próprio limite, mais apertado.
-    allowList: () => false,
+    // Teto global por IP. Login/cadastro/device ficam de fora para não travar QA nem device flow.
+    allowList: (req) => {
+      const url = req.url?.split("?")[0] ?? "";
+      return (
+        url === "/api/login" ||
+        url === "/api/cadastro" ||
+        url === "/api/logout" ||
+        url.startsWith("/api/device/")
+      );
+    },
     max: 300,
     timeWindow: "1 minute",
   });
