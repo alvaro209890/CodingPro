@@ -661,7 +661,7 @@ export const App: React.FC = () => {
               setAutoApprove(next);
               void window.codingproAPI?.setAutoApprove(next);
             }}
-            modelName={modelInfo?.modelName ?? "DeepSeek V4"}
+            modelName={modelInfo?.modelName ?? "DeepSeek V4 Pro"}
             effortLevel={modelInfo?.effort ?? "—"}
             tema={tema}
             onTemaChange={setTema}
@@ -678,31 +678,9 @@ export const App: React.FC = () => {
         />
 
         {statusNote && (
-          <div
-            style={{
-              margin: "8px 24px 0",
-              padding: "8px 12px",
-              borderRadius: 8,
-              background: "rgba(56, 189, 248, 0.08)",
-              border: "1px solid rgba(56, 189, 248, 0.25)",
-              color: "var(--text-secondary)",
-              fontSize: 12,
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 12,
-            }}
-          >
+          <div className="status-banner">
             <span>{statusNote}</span>
-            <button
-              type="button"
-              onClick={() => setStatusNote(null)}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "var(--text-muted)",
-                cursor: "pointer",
-              }}
-            >
+            <button type="button" className="status-banner-close" onClick={() => setStatusNote(null)}>
               ✕
             </button>
           </div>
@@ -713,96 +691,20 @@ export const App: React.FC = () => {
           <SubagentPanel agents={subAgents} />
 
           {messages.length === 0 && (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                flex: 1,
-                gap: 12,
-                opacity: 0.6,
-                paddingTop: 80,
-              }}
-            >
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg, var(--accent-purple), var(--accent-blue))",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 24,
-                  fontWeight: 700,
-                  color: "#fff",
-                  boxShadow: "0 0 24px rgba(56, 189, 248, 0.2)",
-                }}
-              >
-                CP
+            <div className="empty-chat">
+              <div className="empty-chat-title">New Agent</div>
+              <div className="empty-chat-hint">
+                Digite abaixo para começar. O agente trabalha na pasta aberta deste PC.
               </div>
-              <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}>
-                CodingPro Desktop
-              </div>
-              <div
-                style={{
-                  fontSize: 13,
-                  color: "var(--text-muted)",
-                  maxWidth: 480,
-                  textAlign: "center",
-                  lineHeight: 1.5,
-                }}
-              >
-                Igual à CLI Linux: o agente analisa a <strong>pasta aberta</strong>. Use tools
-                (list_dir, read_file…) nela.{" "}
-                <strong style={{ color: "var(--accent-blue)" }}>Ctrl+K</strong> paleta ·{" "}
-                <strong style={{ color: "var(--accent-blue)" }}>Ctrl+.</strong> cancela.
-              </div>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: "var(--text-secondary)",
-                  fontFamily: "var(--font-mono)",
-                  maxWidth: 520,
-                  textAlign: "center",
-                  wordBreak: "break-all",
-                }}
-              >
-                {workspaceInfo.cwd}
-                {workspaceInfo.projectSummary ? ` · ${workspaceInfo.projectSummary}` : ""}
-              </div>
-              {workspaceInfo.isCodingProMonorepo && (
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-muted)",
-                    maxWidth: 440,
-                    textAlign: "center",
-                  }}
-                >
-                  Você está no monorepo do CodingPro. Para analisar um app em Downloads (como `cd` +
-                  CLI), abra a pasta do projeto.
-                </div>
-              )}
+              <div className="empty-chat-path">{workspaceInfo.cwd}</div>
               <button
                 type="button"
+                className="empty-chat-open"
                 onClick={() => {
                   void handleChooseWorkspace();
                 }}
-                style={{
-                  marginTop: 8,
-                  padding: "10px 18px",
-                  borderRadius: 10,
-                  border: "1px solid rgba(56, 189, 248, 0.35)",
-                  background: "rgba(56, 189, 248, 0.12)",
-                  color: "var(--accent-blue)",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontSize: 13,
-                }}
               >
-                Abrir pasta do projeto…
+                Abrir pasta…
               </button>
             </div>
           )}
@@ -879,9 +781,11 @@ export const App: React.FC = () => {
             setAutoApprove(next);
             void window.codingproAPI?.setAutoApprove(next);
           }}
+          onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
+          isTerminalOpen={isTerminalOpen}
           branchName="master"
-          modelName={modelInfo?.modelName ?? "DeepSeek V4"}
-          effortLevel={modelInfo?.effort ?? "—"}
+          modelName={modelInfo?.modelName ?? "DeepSeek V4 Pro"}
+          effortLevel={modelInfo?.effort ?? "Auto"}
           cost={sessionCost}
         />
 

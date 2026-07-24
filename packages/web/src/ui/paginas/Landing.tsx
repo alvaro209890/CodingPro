@@ -80,7 +80,7 @@ export function Landing() {
           </div>
           <div className="landing-consoleFoot">
             <span>● Conectado</span>
-            <span>DeepSeek V4</span>
+            <span>DeepSeek V4 Pro</span>
           </div>
         </section>
       </section>

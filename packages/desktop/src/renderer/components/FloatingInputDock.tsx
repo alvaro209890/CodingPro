@@ -113,6 +113,8 @@ interface FloatingInputDockProps {
   isRunning: boolean;
   autoApprove?: boolean;
   onToggleAutoApprove?: () => void;
+  onToggleTerminal?: () => void;
+  isTerminalOpen?: boolean;
   branchName?: string;
   modelName?: string;
   effortLevel?: string;
@@ -126,7 +128,6 @@ interface FloatingInputDockProps {
   } | null;
 }
 
-/** Handler de colagem de imagem: converte para base64 e chama callback. */
 function handleImagePaste(cb: (b64: string) => void) {
   return async (e: React.ClipboardEvent) => {
     const items = Array.from(e.clipboardData?.items ?? []);
@@ -156,9 +157,11 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
   isRunning,
   autoApprove = false,
   onToggleAutoApprove,
+  onToggleTerminal,
+  isTerminalOpen = false,
   branchName = "master",
-  modelName = "DeepSeek V4",
-  effortLevel = "Alto",
+  modelName = "DeepSeek V4 Pro",
+  effortLevel = "Auto",
   cost = null,
 }) => {
   const [sugestoes, setSugestoes] = useState<SugestaoComando[]>([]);
@@ -234,51 +237,25 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
         </div>
       )}
 
-      <div className="dock-git-row">
-        <div className="git-branch-info">
-          <svg
-            aria-hidden="true"
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <line x1="6" y1="3" x2="6" y2="15" />
-            <circle cx="18" cy="6" r="3" />
-            <circle cx="6" cy="18" r="3" />
-            <path d="M18 9a9 9 0 01-9 9" />
-          </svg>
-          <span style={{ color: "var(--accent-blue)" }}>{branchName}</span>
+      {onToggleTerminal && (
+        <div className="dock-terminals-row">
+          <button type="button" className="dock-terminals-pill" onClick={onToggleTerminal}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="4 17 10 11 4 5" />
+              <line x1="12" y1="19" x2="20" y2="19" />
+            </svg>
+            {isTerminalOpen ? "Terminal" : "Terminals"}
+          </button>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {cost && cost.turns > 0 && (
-            <span
-              style={{
-                fontSize: 10,
-                color: "var(--text-muted)",
-                fontFamily: "var(--font-mono)",
-                background: "rgba(56,189,248,0.08)",
-                padding: "2px 6px",
-                borderRadius: 4,
-              }}
-            >
-              US$ {cost.totalCostUsd.toFixed(4)} · {cost.turns}t
-              {cost.contextTokens > 0 && (
-                <> · {Math.round((cost.contextTokens / cost.contextBudget) * 100)}% ctx</>
-              )}
-            </span>
-          )}
-          <span
-            style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}
-          >
-            This PC · Ctrl+K · Ctrl+.
-          </span>
-        </div>
-      </div>
+      )}
 
-      <div className="dock-textarea-row">
+      <div className="dock-composer">
+        <button type="button" className="dock-plus-btn" title="Anexar / comandos" tabIndex={-1}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+
         <textarea
           ref={textareaRef}
           onPaste={onImagePaste ? handleImagePaste(onImagePaste) : undefined}
@@ -290,89 +267,64 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
           rows={1}
           disabled={isRunning}
         />
-        {isRunning ? (
-          <button
-            type="button"
-            className="dock-send-btn active"
-            onClick={onCancel}
-            title="Cancelar (Ctrl+.)"
-            style={{ background: "var(--accent-red, #ef4444)" }}
-          >
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <rect x="6" y="6" width="12" height="12" rx="2" />
-            </svg>
-          </button>
-        ) : (
-          <button
-            type="button"
-            className={`dock-send-btn ${inputPrompt.trim() ? "active" : ""}`}
-            onClick={onSend}
-            disabled={!inputPrompt.trim()}
-            title="Enviar (Enter)"
-          >
-            <svg
-              aria-hidden="true"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
-          </button>
-        )}
-      </div>
 
-      <div className="dock-toolbar-row">
-        <div className="toolbar-left">
-          <div className="toolbar-badge">
-            <svg
-              aria-hidden="true"
-              width="10"
-              height="10"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-            </svg>
-            Automático
-          </div>
-          {onToggleAutoApprove && (
+        <div className="dock-composer-right">
+          <button
+            type="button"
+            className="dock-model-chip"
+            title={onToggleAutoApprove ? (autoApprove ? "Auto-aprovar ligado" : "Auto-aprovar") : undefined}
+            onClick={onToggleAutoApprove}
+          >
+            {modelName}
+            {effortLevel ? ` · ${effortLevel}` : ""}
+          </button>
+
+          {isRunning ? (
             <button
               type="button"
-              className={`toolbar-badge ${autoApprove ? "auto-approve-on" : ""}`}
-              onClick={onToggleAutoApprove}
-              title={autoApprove ? "Auto-aprovar LIGADO" : "Auto-aprovar desligado"}
-              style={{
-                marginLeft: 4,
-                background: autoApprove ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
-                border: autoApprove
-                  ? "1px solid rgba(34,197,94,0.35)"
-                  : "1px solid rgba(255,255,255,0.08)",
-                color: autoApprove ? "var(--accent-green)" : "var(--text-muted)",
-                cursor: "pointer",
-                borderRadius: 6,
-                padding: "3px 8px",
-                fontSize: 10.5,
-                fontFamily: "var(--font-mono)",
-              }}
+              className="dock-stop-btn"
+              onClick={onCancel}
+              title="Parar (Ctrl+.)"
             >
-              {autoApprove ? "✓ Auto" : "Auto"}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={`dock-send-btn ${inputPrompt.trim() ? "active" : ""}`}
+              onClick={onSend}
+              disabled={!inputPrompt.trim()}
+              title="Enviar (Enter)"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
             </button>
           )}
         </div>
+      </div>
 
-        <div className="toolbar-right">
-          <div className="model-selector">
-            <span>{modelName}</span>
-            <span style={{ opacity: 0.5 }}>·</span>
-            <span>{effortLevel}</span>
-          </div>
+      <div className="dock-status-bar">
+        <div className="dock-status-left">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="6" y1="3" x2="6" y2="15" />
+            <circle cx="18" cy="6" r="3" />
+            <circle cx="6" cy="18" r="3" />
+            <path d="M18 9a9 9 0 01-9 9" />
+          </svg>
+          <span>{branchName}</span>
+          <span className="dock-status-sep">·</span>
+          <span>This PC</span>
+        </div>
+        <div className="dock-status-right">
+          {cost && cost.turns > 0 && (
+            <span>
+              US$ {cost.totalCostUsd.toFixed(4)} · {cost.turns}t
+            </span>
+          )}
         </div>
       </div>
     </div>

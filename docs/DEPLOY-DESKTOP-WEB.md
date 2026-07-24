@@ -112,7 +112,8 @@ Sem certificado de assinatura, o Windows pode mostrar “editor desconhecido”.
 
 ## 6. Changelog desta release (0.1.0)
 
-- UI estilo Cursor (sidebar, chat, “Thought for Xs”, input “Send follow-up”)
+- UI estilo Cursor (sidebar Agents, composer “Send follow-up”, Thought for Xs)
+- Modelo padrão na UI: **DeepSeek V4 Pro** (`deepseek-v4-pro`); Flash só em papel `fast`
 - Correção: tool `task` aceita `tasks`/`type` (inglês)
 - Correção: `code_search` omitido no Electron (sem SQLite)
 - Correção: provider DeepSeek não rejeita tool calls válidas

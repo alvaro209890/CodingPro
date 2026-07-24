@@ -54,7 +54,7 @@ Contrato de eventos: `@codingpro/core` → `events.ts` (**v1.2.0**), com `reques
 
 | Recurso | Status |
 | --- | --- |
-| Chat com streaming DeepSeek V4 | ✅ |
+| Chat com streaming DeepSeek V4 Pro | ✅ |
 | Histórico multi-turno (sessão no main) | ✅ |
 | Aprovação de efeitos + diff (`write_file`/`edit_file`) | ✅ |
 | Cancelar execução (botão / `Ctrl+.` / `/cancelar`) | ✅ |
