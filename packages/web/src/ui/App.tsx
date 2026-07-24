@@ -7,6 +7,7 @@ import { Entrar } from "./paginas/Entrar.js";
 import { EntrarDispositivo } from "./paginas/EntrarDispositivo.js";
 import { Landing } from "./paginas/Landing.js";
 import { Painel } from "./paginas/Painel.js";
+import { Playground } from "./paginas/Playground.js";
 import { navegar, propsLink, useCaminho } from "./rotas.js";
 
 export function App() {
@@ -118,6 +119,11 @@ function Conteudo({
   if (caminho === "/painel") {
     if (!usuario) return <Entrar aoEntrar={setDepoisDeEntrar(recarregar)} />;
     return <Painel aoAtualizar={recarregar} usuario={usuario} />;
+  }
+
+  if (caminho === "/playground") {
+    if (!usuario) return <Entrar aoEntrar={setDepoisDeEntrar(recarregar)} />;
+    return <Playground usuario={usuario} />;
   }
 
   return <Landing />;
