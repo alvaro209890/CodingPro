@@ -898,6 +898,26 @@ tbody tr:hover {
 }
 
 /* ---------- Topbar ---------- */
+.playground__topbarPainelBtn {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(18, 18, 26, 0.85);
+  color: #c4c4d0;
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.playground__topbarPainelBtn:hover {
+  border-color: #10b981;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+}
+
 .playground__topbar {
   display: flex;
   align-items: center;
@@ -1531,6 +1551,155 @@ tbody tr:hover {
   background: rgba(10, 10, 15, 0.5);
 }
 
+.playground__msgContent--md {
+  white-space: normal;
+}
+
+.playground__msgContent--md .md-code-block {
+  margin: 0.5rem 0;
+  padding: 0.65rem 0.75rem;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.playground__msgContent--md .md-inline-code {
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.8em;
+}
+
+.playground__msgContent--md .md-h2,
+.playground__msgContent--md .md-h3 {
+  margin: 0.6rem 0 0.35rem;
+  color: #f0f0f5;
+}
+
+.playground__msgContent--md .md-list {
+  margin: 0.35rem 0 0.35rem 1.1rem;
+  padding: 0;
+}
+
+.playground__msgToolDetails {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  margin-top: 0.25rem;
+}
+
+.playground__msgToolSummary {
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  list-style: none;
+}
+
+.playground__msgToolHint {
+  color: #6b6b78;
+  font-size: 0.65rem;
+}
+
+.playground__msgToolPre {
+  margin: 0;
+  padding: 0.5rem;
+  max-height: 200px;
+  overflow: auto;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  color: #a8a8b8;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.playground__filesHeaderMain {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.playground__filesMeta {
+  font-size: 0.68rem;
+  color: #6b6b78;
+}
+
+.playground__breadcrumbSep {
+  display: inline-flex;
+  align-items: center;
+}
+
+.playground__breadcrumbSlash {
+  color: #4a4a58;
+  margin: 0 0.15rem;
+}
+
+.playground__filesActionBtnGit {
+  border-color: rgba(99, 102, 241, 0.5);
+  color: #a5b4fc;
+}
+
+.playground__dropzoneToggle {
+  margin: 0.5rem 1rem 0;
+  padding: 0.35rem 0.6rem;
+  border: none;
+  background: transparent;
+  color: #6b6b78;
+  font-size: 0.72rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.playground__fileBadge {
+  margin-left: auto;
+  font-size: 0.65rem;
+  color: #6b6b78;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+}
+
+.playground__fileTag {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+}
+
+.playground__fileIcon--dir {
+  color: #10b981;
+  font-weight: 700;
+  min-width: 1.4rem;
+  text-align: center;
+}
+
+.playground__fileIcon--muted {
+  color: #6b6b78;
+}
+
+.playground__fileName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playground__filesEmpty span {
+  font-size: 0.75rem;
+  color: #6b6b78;
+}
+
 .playground__filesHeader {
   display: flex;
   align-items: center;
@@ -1540,7 +1709,9 @@ tbody tr:hover {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(14, 14, 22, 0.6);
   backdrop-filter: blur(12px);
+  flex-wrap: wrap;
 }
+
 
 .playground__breadcrumbs,
 .playground__filesActions {
@@ -1632,6 +1803,7 @@ tbody tr:hover {
   align-items: center;
   gap: 0.6rem;
   flex: 1;
+  min-width: 0;
   background: transparent;
   border: none;
   color: #e6e6ec;

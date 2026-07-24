@@ -32,6 +32,15 @@ Este documento consolida a evolução entregue no Playground do site e os proced
 - A resolução de caminhos bloqueia travessia de diretórios e impede que links simbólicos levem a leituras fora do workspace.
 - O fluxo SSE do agente emite uma conclusão única por execução e devolve uma mensagem clara caso a tarefa ultrapasse o limite de cinco iterações.
 
+### Atualização da tarde (24/07)
+
+- **Files**: navegador refinado (contagem, atalho Repos, badges, dropzone recolhível).
+- **Chat**: markdown nas respostas da IA; ferramentas expansíveis com saída completa.
+- **Git**: clone em `repositorios/<repo>`; lista atualiza e abre Files após clone.
+- **Auto-título**: chats `chat-XX` renomeados pela conversa (heurística + IA).
+- **Navegação**: botão **← Painel** no topo do workspace (`/painel`).
+- **API**: `repositorios/` pasta padrão; fix em `write` para arquivos novos.
+
 ## Arquivos principais alterados
 
 | Área | Arquivo | Responsabilidade |

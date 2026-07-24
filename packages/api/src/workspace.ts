@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-const PASTAS_PADRAO = ["Documents", "Downloads", "Projects", ".memory"] as const;
+const PASTAS_PADRAO = ["Documents", "Downloads", "Projects", "repositorios", ".memory"] as const;
 
 /** Raiz dos workspaces VPS — sobrescrevível via CODINGPRO_WORKSPACE_ROOT. */
 export function raizWorkspace(): string {

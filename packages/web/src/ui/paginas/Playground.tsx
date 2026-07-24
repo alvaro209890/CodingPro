@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Usuario } from "../api.js";
+import { navegar } from "../rotas.js";
 import { ChatView } from "./ChatView.js";
 import { EditorPanel } from "./EditorPanel.js";
 import { FilesPanel } from "./FilesPanel.js";
 import { GitPanel } from "./GitPanel.js";
+import { ehNomePadrao, inferirNomeSessao, refinarNomeSessaoViaApi } from "./inferirNomeSessao.js";
 import { MemoryPanel } from "./MemoryPanel.js";
 import type { Mensagem, Session } from "./PlaygroundTypes.js";
 import { Sidebar } from "./Sidebar.js";
@@ -264,6 +266,10 @@ export function Playground({ usuario }: { usuario: Usuario }) {
       }, 100);
 
       setMsgs((prev) => [...prev, { role: "user", content: p, timestamp: Date.now() }]);
+      const sessaoId = activeSession?.id;
+      const podeAutoNomear = Boolean(
+        activeSession && !activeSession.nomeManual && ehNomePadrao(activeSession.nome),
+      );
       try {
         const toolsLog: { nome: string; result: string }[] = [];
         let r: Response;
@@ -325,15 +331,28 @@ export function Playground({ usuario }: { usuario: Usuario }) {
                 ),
               );
             } else if (d.type === "done") {
+              const textoFinal = content || d.content || "";
               setMsgs((prev) => [
                 ...prev,
                 {
                   role: "assistant",
-                  content: content || d.content || "",
+                  content: textoFinal,
                   tools: toolsLog,
                   timestamp: Date.now(),
                 },
               ]);
+              if (sessaoId && podeAutoNomear) {
+                const tituloLocal = inferirNomeSessao(p, textoFinal);
+                updateSession(sessaoId, (s) =>
+                  s.nomeManual ? s : { ...s, nome: tituloLocal },
+                );
+                void refinarNomeSessaoViaApi(POST, p, textoFinal).then((refinado) => {
+                  if (!refinado) return;
+                  updateSession(sessaoId, (s) =>
+                    s.nomeManual ? s : { ...s, nome: refinado },
+                  );
+                });
+              }
               setStream("");
               setStatus("");
             } else if (d.type === "error") {
@@ -385,7 +404,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         setStatus("");
       }
     },
-    [input, loading, setMsgs],
+    [input, loading, setMsgs, activeSession, updateSession, POST],
   );
 
   const handleSlash = useCallback(
@@ -468,7 +487,11 @@ export function Playground({ usuario }: { usuario: Usuario }) {
           if (fullInput && activeSession) {
             const novoNome = fullInput.slice("/rename ".length).trim();
             if (novoNome) {
-              updateSession(activeSession.id, (s) => ({ ...s, nome: novoNome.slice(0, 30) }));
+              updateSession(activeSession.id, (s) => ({
+                ...s,
+                nome: novoNome.slice(0, 30),
+                nomeManual: true,
+              }));
               setMsgs((prev) => [
                 ...prev,
                 {
@@ -744,19 +767,31 @@ export function Playground({ usuario }: { usuario: Usuario }) {
       setTab("git");
       if (action === "clone") {
         setCloning(true);
-        setGitOut("Clonando...");
+        setGitOut("Clonando em workspace/repositorios/ ...");
       } else {
         setGitOut("...");
       }
       try {
-        const d = await POST<{ output: string }>("/api/vps/git", {
+        const d = await POST<{ output: string; ok?: boolean; repoPath?: string }>("/api/vps/git", {
           action,
           cwd: "repositorios",
           url,
         });
-        setGitOut(d.output);
+        const saida = d.output?.trim() || "";
         if (action === "clone") {
-          setGitOut((prev) => prev || "✅ Repositório clonado em repositorios/");
+          const destino = d.repoPath || "repositorios/<nome-do-repo>";
+          setGitOut(
+            d.ok !== false
+              ? `✅ Clonado com sucesso.\n\nDestino: ${destino}\n\n${saida}`
+              : `❌ Falha no clone.\n\n${saida}`,
+          );
+          if (d.ok !== false) {
+            await refreshFiles();
+            setFilesCwd(d.repoPath || "repositorios");
+            setTab("files");
+          }
+        } else {
+          setGitOut(saida || "Concluído.");
         }
       } catch (e: any) {
         setGitOut(e.message || "Erro");
@@ -764,7 +799,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         setCloning(false);
       }
     },
-    [POST],
+    [POST, refreshFiles],
   );
 
   useEffect(() => {
@@ -884,7 +919,11 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         onDelete={deletarSessao}
         onCancelRename={() => {
           if (renameId && renameVal.trim()) {
-            updateSession(renameId, (s) => ({ ...s, nome: renameVal.trim().slice(0, 30) }));
+            updateSession(renameId, (s) => ({
+              ...s,
+              nome: renameVal.trim().slice(0, 30),
+              nomeManual: true,
+            }));
           }
           setRenameId(null);
           setRenameVal("");
@@ -899,6 +938,14 @@ export function Playground({ usuario }: { usuario: Usuario }) {
 
       <div className="playground__main">
         <div className="playground__topbar">
+          <button
+            type="button"
+            className="playground__topbarPainelBtn"
+            onClick={() => navegar("/painel")}
+            title="Voltar ao painel da conta"
+          >
+            ← Painel
+          </button>
           <button
             onClick={() => setSidebarOpen(true)}
             style={{ display: sidebarOpen ? "none" : "flex" }}

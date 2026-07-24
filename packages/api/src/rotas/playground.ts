@@ -133,11 +133,14 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
   app.post("/api/vps/write", async (req, resposta) => {
     const u = await exigirUsuario(ctx, req, resposta);
     if (!u) return;
-    const caminho = resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.path, 500));
+    const relativo = texto((req.body as any)?.path, 500);
+    if (relativo.includes("~")) return erro(resposta, 403, "acesso_negado", "Acesso negado.");
+    const caminho = destinoUploadSeguro(dirUsuario(u.id), relativo);
     if (!caminho) return erro(resposta, 403, "acesso_negado", "Acesso negado.");
     const conteudo =
       typeof (req.body as any)?.content === "string" ? (req.body as any).content : "";
     try {
+      mkdirSync(dirname(caminho), { recursive: true });
       writeFileSync(caminho, conteudo, "utf8");
       return resposta.send({ ok: true });
     } catch {
@@ -195,27 +198,52 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
     const u = await exigirUsuario(ctx, req, resposta);
     if (!u) return;
     const action = texto((req.body as any)?.action, 50);
-    const cwd =
-      resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.cwd, 500) || ".") ??
-      dirUsuario(u.id);
+    const raiz = dirUsuario(u.id);
+    const cwdRel = texto((req.body as any)?.cwd, 500) || "repositorios";
     try {
       let cmd = "";
+      let cwd = raiz;
+      let repoPath: string | undefined;
+
       if (action === "clone") {
         const url = texto((req.body as any)?.url, 500);
         if (!url) return erro(resposta, 400, "url_faltando", "URL do repositório necessária.");
-        // Garante que a pasta repositorios existe
-        const repoDir = join(cwd, "repositorios");
+        const repoDir = join(raiz, "repositorios");
         mkdirSync(repoDir, { recursive: true });
-        cmd = `cd repositorios && git clone "${url}"`;
-      } else if (action === "pull") cmd = "git pull";
-      else if (action === "status") cmd = "git status --short";
-      else if (action === "log") cmd = "git log --oneline -10";
-      else return erro(resposta, 400, "acao_invalida", "Ação git inválida.");
+        cwd = repoDir;
+        cmd = `git clone "${url}"`;
+        const nomeRepo =
+          url
+            .trim()
+            .replace(/\/$/, "")
+            .replace(/\.git$/i, "")
+            .split("/")
+            .pop() || "repo";
+        repoPath = `repositorios/${nomeRepo}`;
+      } else {
+        cwd =
+          resolverSeguro(raiz, cwdRel) ??
+          resolverSeguro(raiz, ".") ??
+          raiz;
+        if (action === "pull") cmd = "git pull";
+        else if (action === "status") cmd = "git status --short";
+        else if (action === "log") cmd = "git log --oneline -10";
+        else return erro(resposta, 400, "acao_invalida", "Ação git inválida.");
+      }
 
       const { stdout, stderr } = await exec(cmd, { cwd, timeout: 120_000, maxBuffer: MAX_OUTPUT });
-      return resposta.send({ ok: true, output: stdout || stderr, cwd });
+      return resposta.send({
+        cwd: cwd.slice(raiz.length + 1).replaceAll("\\", "/") || ".",
+        ok: true,
+        output: stdout || stderr,
+        ...(repoPath ? { repoPath } : {}),
+      });
     } catch (e: any) {
-      return resposta.send({ ok: false, output: e.stderr || e.message || "erro", cwd });
+      return resposta.send({
+        cwd: cwdRel,
+        ok: false,
+        output: e.stderr || e.message || "erro",
+      });
     }
   });
 
@@ -300,7 +328,7 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
     const arquivos = listarArquivos(raiz);
     return resposta.send({
       arquivos: arquivos.length,
-      pastas: ["Documents", "Downloads", "Projects", ".memory"],
+      pastas: ["Documents", "Downloads", "Projects", "repositorios", ".memory"],
       raiz,
       git: existsSync(join(raiz, ".git")),
     });

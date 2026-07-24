@@ -1,5 +1,44 @@
 # Diário de desenvolvimento
 
+## 2026-07-24 — Playground: files, chat markdown, git clone, auto-título e painel
+
+### Entregue (código + deploy VPS)
+
+- **Navegador de arquivos** (`FilesPanel`): breadcrumbs com contagem, botão rápido **Repos**, badges por pasta, ícones por extensão, dropzone recolhível, mensagens quando pasta vazia.
+- **Chat com markdown** (`MarkdownRenderer` + `ChatView`): respostas da IA com código, listas e negrito; streaming formatado; ferramentas do agente em `<details>` com saída completa.
+- **Git clone corrigido**: repositórios vão para `workspace/repositorios/<nome>/` (bug `repositorios/repositorios` após 1º clone); pasta `repositorios/` criada por padrão; após clone abre aba **Files** na pasta do repo.
+- **Editor/write corrigido**: `/api/vps/write` aceita arquivos novos (cria pastas-pai).
+- **Auto-título de chat**: após a 1ª resposta, sessões `chat-XX` ganham nome inferido da conversa (local + refinamento via `/api/vps/chat`); `/rename` marca título manual.
+- **Botão ← Painel** no workspace: volta para `/painel` (conta, tokens, consumo).
+
+### Arquivos principais
+
+| Área | Arquivo |
+| --- | --- |
+| API workspace/git/write | `packages/api/src/rotas/playground.ts`, `workspace.ts` |
+| Files | `packages/web/src/ui/paginas/FilesPanel.tsx` |
+| Chat | `packages/web/src/ui/MarkdownRenderer.tsx`, `ChatView.tsx` |
+| Título automático | `packages/web/src/ui/paginas/inferirNomeSessao.ts` |
+| Playground | `packages/web/src/ui/paginas/Playground.tsx` |
+| Estilos | `packages/web/src/ui/estilo.css` |
+
+### Operação no VPS
+
+```bash
+cd ~/Documentos/CodingPro && git pull origin master
+nvm use 24.18.0
+pnpm install --frozen-lockfile
+pnpm plataforma:build
+systemctl --user restart codingpro-api codingpro-web
+curl -fsS https://codingpro-api.cursar.space/saude
+```
+
+### Onde ficam os repositórios clonados
+
+`~/Documentos/vps-workspaces/<id-usuario>/repositorios/<nome-do-repo>/`
+
+---
+
 ## 2026-07-24 — Auditoria de lacunas Fases 1–3 + docs alinhadas
 
 ### Entregue

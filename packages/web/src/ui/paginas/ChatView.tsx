@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import { renderMarkdown } from "../MarkdownRenderer.js";
 import { Banner } from "./Banner.js";
 import type { Session } from "./PlaygroundTypes.js";
 import { SlashDropdown } from "./SlashDropdown.js";
@@ -41,6 +42,19 @@ const CMD_SLASH = [
   { cmd: "/memory", desc: "Salvar contexto em memory" },
   { cmd: "/help", desc: "Exibir todos os comandos" },
 ];
+
+function ConteudoMensagem({ role, content }: { role: string; content: string }) {
+  if (role === "assistant") {
+    return (
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: markdown da IA
+      <div
+        className="playground__msgContent playground__msgContent--md"
+        dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
+      />
+    );
+  }
+  return <div className="playground__msgContent">{content}</div>;
+}
 
 export function ChatView({
   session,
@@ -90,10 +104,10 @@ export function ChatView({
             <div className={`playground__msgHeader playground__msgHeader-${m.role}`}>
               <span className="playground__msgBadge">
                 {m.role === "user"
-                  ? "👤 Você"
+                  ? "Você"
                   : m.role === "system"
-                    ? "⚙️ Sistema"
-                    : "⚡ CodingPro AI"}
+                    ? "Sistema"
+                    : "CodingPro AI"}
               </span>
               <span className="playground__msgTime">
                 {new Date(m.timestamp ?? Date.now()).toLocaleTimeString("pt-BR", {
@@ -104,23 +118,25 @@ export function ChatView({
             </div>
 
             <div className="playground__msgBubble">
-              <div className="playground__msgContent">{m.content}</div>
+              <ConteudoMensagem role={m.role} content={m.content} />
 
               {m.tools && m.tools.length > 0 && (
                 <div className="playground__msgToolsContainer">
-                  <div className="playground__msgToolsHeader">🔧 Ferramentas executadas:</div>
-                  {m.tools.map((t) => (
-                    <div
-                      key={`${t.nome}-${t.result.slice(0, 48)}`}
-                      className="playground__msgToolTag"
+                  <div className="playground__msgToolsHeader">Ferramentas executadas</div>
+                  {m.tools.map((t, i) => (
+                    <details
+                      key={`${t.nome}-${i}`}
+                      className="playground__msgToolDetails"
+                      open={i === m.tools!.length - 1}
                     >
-                      <span className="playground__msgToolName">{t.nome}</span>
-                      {t.result && (
-                        <span className="playground__msgToolOutput">
-                          {t.result.slice(0, 140)}...
+                      <summary className="playground__msgToolSummary">
+                        <span className="playground__msgToolName">{t.nome}</span>
+                        <span className="playground__msgToolHint">
+                          {t.result ? `${t.result.length} chars` : "sem saída"}
                         </span>
-                      )}
-                    </div>
+                      </summary>
+                      {t.result && <pre className="playground__msgToolPre">{t.result}</pre>}
+                    </details>
                   ))}
                 </div>
               )}
@@ -128,7 +144,6 @@ export function ChatView({
           </div>
         ))}
 
-        {/* Dynamic Thinking Balloon */}
         {(loading || thinkingSteps.length > 0) && (
           <ThinkingBalloon
             loading={loading}
@@ -138,20 +153,22 @@ export function ChatView({
           />
         )}
 
-        {/* Dynamic Task Tracker Card */}
         {tasks.length > 0 && <TaskTrackerCard tasks={tasks} isRunning={loading} />}
 
         {isStreaming && (
           <div className="playground__msg playground__msg--assistant playground__streaming">
             <div className="playground__msgHeader playground__msgHeader-assistant">
-              <span className="playground__msgBadge">⚡ CodingPro AI</span>
-              <span className="playground__msgStreamingLabel">resposta contínua...</span>
+              <span className="playground__msgBadge">CodingPro AI</span>
+              <span className="playground__msgStreamingLabel">respondendo...</span>
             </div>
             <div className="playground__msgBubble">
-              <div className="playground__msgContent">
-                {stream}
-                <span className="playground__streamingCursor">▌</span>
-              </div>
+              <div
+                className="playground__msgContent playground__msgContent--md"
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: streaming parcial
+                dangerouslySetInnerHTML={{
+                  __html: `${renderMarkdown(stream)}<span class="playground__streamingCursor">▌</span>`,
+                }}
+              />
             </div>
           </div>
         )}
