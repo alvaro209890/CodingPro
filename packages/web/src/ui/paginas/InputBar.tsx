@@ -38,9 +38,13 @@ export function InputBar({
           t.style.height = `${Math.min(t.scrollHeight, 120)}px`;
         }}
       />
-      <button onClick={onSend} disabled={loading || !input.trim()} type="button">▶</button>
+      <button onClick={onSend} disabled={loading || !input.trim()} type="button">
+        ▶
+      </button>
       {showDropdown && (
-        <div className="playground__dropdown-anchor">{/* placeholder for dropdown positioning */}</div>
+        <div className="playground__dropdown-anchor">
+          {/* placeholder for dropdown positioning */}
+        </div>
       )}
     </div>
   );

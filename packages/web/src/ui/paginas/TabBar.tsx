@@ -41,7 +41,6 @@ export function TabBar({ tabs, activeTab, onSelect, isMobile }: TabBarProps) {
   return (
     <nav
       className={`playground__tabbar ${isMobile ? "playground__tabbar--mobile" : "playground__tabbar--desktop"}`}
-      role="tablist"
       aria-label="Abas do playground"
     >
       <div className="playground__tabbarInner">
@@ -58,7 +57,9 @@ export function TabBar({ tabs, activeTab, onSelect, isMobile }: TabBarProps) {
               onKeyDown={(e) => handleKeyDown(e, idx)}
               type="button"
             >
-              <span className="playground__tabIcon" aria-hidden="true">{t.ico}</span>
+              <span className="playground__tabIcon" aria-hidden="true">
+                {t.ico}
+              </span>
               <span className="playground__tabLabel">{t.lbl}</span>
               {isActive && <span className="playground__tabGlowDot" />}
             </button>

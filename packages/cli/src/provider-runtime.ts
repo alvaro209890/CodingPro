@@ -3,10 +3,10 @@ import {
   DeepSeekProvider,
   loadReplayProvider,
   type ModelRole,
+  type Provider,
+  ProviderError,
   parseModelRole,
   parseReplayProvider,
-  ProviderError,
-  type Provider,
 } from "@codingpro/llm";
 import { loadConfig, type ProviderOverrides, type RuntimeEnvironment } from "./config.js";
 import { lerCredenciais } from "./conta.js";

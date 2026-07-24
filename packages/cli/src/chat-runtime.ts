@@ -46,6 +46,8 @@ import { textoAjudaComandos } from "./commands.js";
 import { sanitizarTextoTerminal } from "./headless.js";
 import { criarAprovadorInterativo } from "./interactive.js";
 import { criarMemoriaSessao, type MemoriaSessao } from "./memory-runtime.js";
+import { type EstadoPet, formatarPet, ganharXp } from "./pet.js";
+import { arquivoPetPadrao, carregarEstadoPet, salvarEstadoPet } from "./pet-runtime.js";
 import {
   blocoPlanoAtivo,
   executarComandoPlan,
@@ -68,15 +70,13 @@ import {
   resolverOrcamentoContexto,
 } from "./status.js";
 import { carregarTiposCustom, criarSpawnerSubagentes } from "./subagent-runtime.js";
-import { arquivoPetPadrao, carregarEstadoPet, salvarEstadoPet } from "./pet-runtime.js";
-import { type EstadoPet, formatarPet, ganharXp } from "./pet.js";
 import {
   amostraTema,
   criarTema,
   DESCRICAO_TEMA,
   nomeTemaValido,
-  type Tema,
   TEMAS,
+  type Tema,
 } from "./tema.js";
 
 export interface ChatIo {

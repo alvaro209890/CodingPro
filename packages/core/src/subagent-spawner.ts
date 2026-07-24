@@ -7,9 +7,9 @@ import {
   TIPOS_AGENTE_PADRAO,
   type TipoAgente,
 } from "./agent-types.js";
-import { SUBAGENT_TOOL_POOL } from "./tool-groups.js";
 import { executarSubagente, type SubagenteRelatorio, type SubagenteSpawner } from "./subagent.js";
 import type { MemoryScope } from "./tool.js";
+import { SUBAGENT_TOOL_POOL } from "./tool-groups.js";
 import type { Workspace } from "./workspace.js";
 
 /** Timeout padrão de um subagente. */

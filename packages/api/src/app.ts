@@ -8,14 +8,14 @@ import type { ConfigApi } from "./config.js";
 import type { Contexto } from "./contexto.js";
 import type { Repositorio } from "./repositorio.js";
 import { criarMetricas, registrarRotasAdmin } from "./rotas/admin.js";
+import { registrarRotaAgente } from "./rotas/agente.js";
 import { registrarRotasAuth } from "./rotas/auth.js";
+import { registrarRotaCli } from "./rotas/cli.js";
 import { registrarRotasConsumo } from "./rotas/consumo.js";
 import { registrarRotasDevice } from "./rotas/device.js";
+import { registrarRotasPlayground } from "./rotas/playground.js";
 import { registrarRotasProxy } from "./rotas/proxy.js";
 import { registrarRotasTokens } from "./rotas/tokens.js";
-import { registrarRotasPlayground } from "./rotas/playground.js";
-import { registrarRotaAgente } from "./rotas/agente.js";
-import { registrarRotaCli } from "./rotas/cli.js";
 
 /** Momento em que o processo subiu — base do uptime reportado em /saude. */
 const INICIO = Date.now();
@@ -127,7 +127,7 @@ export async function criarApp(opcoes: OpcoesApp): Promise<FastifyInstance> {
           "",
           "Proxy compatível com OpenAI: POST /v1/chat/completions (Authorization: Bearer cp_...)",
           "Painel administrativo: /admin",
-          "Site: " + config.siteUrl,
+          `Site: ${config.siteUrl}`,
         ].join("\n"),
       );
   });

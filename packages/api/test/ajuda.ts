@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { criarApp } from "../src/app.js";
-import { carregarConfig, type ConfigApi } from "../src/config.js";
+import { type ConfigApi, carregarConfig } from "../src/config.js";
 import { conectar, migrar, type Sql } from "../src/db/index.js";
 import { criarRepositorio } from "../src/repositorio.js";
 

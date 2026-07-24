@@ -1,8 +1,8 @@
 import { mkdir, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { READ_FILE_MAX_BYTES, readFileTool } from "../src/tools/read-file.js";
 import { createReadTracker, type ToolContext } from "../src/tool.js";
+import { READ_FILE_MAX_BYTES, readFileTool } from "../src/tools/read-file.js";
 import { Workspace } from "../src/workspace.js";
 import { cleanup, makeTmpRoot } from "./tmp.js";
 

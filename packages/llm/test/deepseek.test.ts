@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  type ChatRequest,
   DEEPSEEK_BASE_URL,
   DEEPSEEK_MODEL,
   DEEPSEEK_MODEL_FLASH,
   DEEPSEEK_MODEL_PRO,
   DEEPSEEK_MODELS,
   DeepSeekProvider,
-  type ChatRequest,
   type DeepSeekProviderOptions,
   type ProviderError,
   type ProviderEvent,

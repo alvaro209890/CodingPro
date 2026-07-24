@@ -2,7 +2,7 @@ import type { JsonObject, Tool, ToolResult } from "@codingpro/llm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CoreError } from "../src/errors.js";
 import { ToolRegistry } from "../src/registry.js";
-import { type ExecutableTool, errorResult, textResult, type ToolContext } from "../src/tool.js";
+import { type ExecutableTool, errorResult, type ToolContext, textResult } from "../src/tool.js";
 import { Workspace } from "../src/workspace.js";
 import { cleanup, makeTmpRoot } from "./tmp.js";
 

@@ -1,7 +1,7 @@
 import type { JsonObject, Tool, ToolResult } from "@codingpro/llm";
 import { CoreError } from "../errors.js";
 import { readFileWithin, writeFileWithin } from "../fs-safe.js";
-import { type ExecutableTool, errorResult, textResult, type ToolContext } from "../tool.js";
+import { type ExecutableTool, errorResult, type ToolContext, textResult } from "../tool.js";
 
 /** Teto do arquivo resultante da edição: 1 MiB (igual ao write_file). */
 export const EDIT_FILE_MAX_BYTES = 1_048_576;

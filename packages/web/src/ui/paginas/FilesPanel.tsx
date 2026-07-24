@@ -126,13 +126,7 @@ export function FilesPanel({
           >
             📁 Enviar pasta
           </button>
-          <input
-            ref={fileInput}
-            type="file"
-            multiple
-            hidden
-            onChange={receber}
-          />
+          <input ref={fileInput} type="file" multiple hidden onChange={receber} />
           <input
             ref={folderInput}
             type="file"
@@ -144,6 +138,7 @@ export function FilesPanel({
         </div>
       </header>
 
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: zona de drag-and-drop de arquivos */}
       <div
         className={`playground__dropzone ${dragging ? "playground__dropzone-active" : ""} playground__card-rotating-border`}
         onDragEnter={(e) => {
@@ -185,7 +180,9 @@ export function FilesPanel({
               type="button"
               onClick={() => (entry.diretorio ? onNavigate(entry.path) : onOpenFile(entry.path))}
             >
-              <span className="playground__fileIcon">{getFileIcon(entry.nome, entry.diretorio)}</span>
+              <span className="playground__fileIcon">
+                {getFileIcon(entry.nome, entry.diretorio)}
+              </span>
               <span className="playground__fileName">{entry.nome}</span>
             </button>
             <button

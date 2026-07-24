@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, API_URL, type Usuario } from "./api.js";
+import { API_URL, api, type Usuario } from "./api.js";
 import { Carregando } from "./componentes.js";
 import { Cadastro } from "./paginas/Cadastro.js";
 import { Comecar } from "./paginas/Comecar.js";
@@ -34,8 +34,7 @@ export function App() {
   // Playground roda em tela cheia, sem header/footer
   if (caminho === "/playground") {
     if (carregando) return <Carregando />;
-    if (!usuario)
-      return <Entrar aoEntrar={setDepoisDeEntrar(recarregarUsuario)} />;
+    if (!usuario) return <Entrar aoEntrar={setDepoisDeEntrar(recarregarUsuario)} />;
     return <Playground usuario={usuario} />;
   }
 

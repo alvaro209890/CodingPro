@@ -3,9 +3,9 @@ import {
   aplicarTecla,
   completarSugestao,
   estadoInicialPrompt,
+  type PromptState,
   parseTeclas,
   renderizarPromptTexto,
-  type PromptState,
 } from "../src/prompt-input.js";
 
 function digitar(s: PromptState, texto: string): PromptState {

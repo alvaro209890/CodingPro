@@ -1,6 +1,6 @@
 import type React from "react";
 import type { TemaNome } from "../../shared/temas-paleta.js";
-import { TEMAS, DESCRICAO_TEMA } from "../../shared/temas-paleta.js";
+import { DESCRICAO_TEMA, TEMAS } from "../../shared/temas-paleta.js";
 
 interface SettingsPanelProps {
   autoApprove: boolean;
@@ -20,7 +20,7 @@ const ROTULOS_TEMA: Record<TemaNome, string> = {
   mono: "Mono",
 };
 
-const CORES_TEMA: Record<TemaNome, string> = {
+const _CORES_TEMA: Record<TemaNome, string> = {
   aurora: "var(--theme-primaria)",
   solar: "var(--theme-primaria)",
   neon: "var(--theme-primaria)",

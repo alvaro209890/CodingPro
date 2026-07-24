@@ -2,10 +2,10 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Workspace } from "../src/workspace.js";
 import { fragmentarCodigo } from "../src/vector/chunking.js";
 import { abrirStoreComIndice, indexarRepositorio } from "../src/vector/vector-index.js";
 import { sanitizarQueryFts, VectorStore } from "../src/vector/vector-store.js";
+import { Workspace } from "../src/workspace.js";
 
 describe("VectorStore + indexação", () => {
   let root: string;

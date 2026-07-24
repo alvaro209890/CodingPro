@@ -6,7 +6,7 @@ import Spinner from "ink-spinner";
 import TextInput from "ink-text-input";
 import { useCallback, useState } from "react";
 import { Bolha } from "./componentes.js";
-import { type Tema, TEMAS } from "./tema.js";
+import { TEMAS } from "./tema.js";
 
 export type TuiProps = {
   tema?: string;
@@ -25,7 +25,7 @@ export function App({
   const [mensagens, setMensagens] = useState<ChatMessage[]>(() => [...historicoInicial]);
   const [input, setInput] = useState("");
   const [enviando, setEnviando] = useState(false);
-  const [custo, setCusto] = useState<CostBreakdown>();
+  const [custo, _setCusto] = useState<CostBreakdown>();
   const [pendente, setPendente] = useState<PermissionRequest | null>(null);
 
   const enviar = useCallback(async () => {
@@ -79,8 +79,8 @@ export function App({
         </Text>
       )}
       <Box flexDirection="column" marginY={1} minHeight={20}>
-        {mensagens.slice(-30).map((msg, i) => (
-          <Bolha key={i} msg={msg} tema={tema} />
+        {mensagens.slice(-30).map((msg) => (
+          <Bolha key={`${msg.role}-${String(msg.content).slice(0, 60)}`} msg={msg} tema={tema} />
         ))}
       </Box>
       {pendente && (

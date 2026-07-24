@@ -1,20 +1,20 @@
 /** Lógica movida para `@codingpro/core` (compartilhada com o Desktop) — mantido como re-export. */
 export {
   blocoPlanoAtivo,
-  classificarRespostaArquiteto,
   type ClassificacaoArquiteto,
+  classificarRespostaArquiteto,
   executarComandoPlan,
   formatarPerguntaUi,
   interpretarResposta,
   mensagemHistoricoPlano,
   type OpcaoPergunta,
-  parsePerguntas,
   type PerguntaPlano,
   type PlanIo,
   type PlanoAtivo,
+  parsePerguntas,
   promptFasePerguntas,
   promptFasePlano,
-  type ResultadoPlan,
   type RespostaPergunta,
+  type ResultadoPlan,
   salvarPlanoEmDisco,
 } from "@codingpro/core";

@@ -4,7 +4,7 @@
  * Puro e sem IO.
  */
 
-import { linguagemDeArquivo, type Linguagem } from "../symbols.js";
+import { type Linguagem, linguagemDeArquivo } from "../symbols.js";
 
 export interface CodeChunk {
   readonly path: string;

@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import type { JsonObject, JsonValue, Tool, ToolResult } from "@codingpro/llm";
 import { CoreError } from "../errors.js";
-import { type ExecutableTool, textResult, type ToolContext } from "../tool.js";
+import { type ExecutableTool, type ToolContext, textResult } from "../tool.js";
 
 export const BASH_DEFAULT_TIMEOUT_MS = 30_000;
 export const BASH_MAX_TIMEOUT_MS = 120_000;

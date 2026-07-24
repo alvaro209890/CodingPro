@@ -71,7 +71,6 @@ export function TelaConta({ aoConectar }: { aoConectar: () => void }) {
             <label>
               E-mail
               <input
-                autoFocus
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com"
                 type="email"
@@ -96,7 +95,6 @@ export function TelaConta({ aoConectar }: { aoConectar: () => void }) {
             <label>
               Nome
               <input
-                autoFocus
                 onChange={(e) => setNome(e.target.value)}
                 placeholder="Seu nome"
                 value={nome}

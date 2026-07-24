@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  type AutoEffortState,
   atualizarAutoEffort,
   criarAutoEffortState,
   prepararAutoEffort,
   resolverAutoEffort,
-  type AutoEffortState,
 } from "../src/auto-effort.js";
 
 describe("auto-effort", () => {

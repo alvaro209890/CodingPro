@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { type TemaNome, TEMAS, nomeTemaValido } from "../shared/temas-paleta.js";
+import { nomeTemaValido, TEMAS, type TemaNome } from "../shared/temas-paleta.js";
 
 const STORAGE_KEY = "codingpro-theme";
 
@@ -16,7 +16,7 @@ function aplicarTemaHtml(nome: TemaNome): void {
   document.documentElement.setAttribute("data-theme", nome);
 }
 
-function detectarTemaWindows(): TemaNome | null {
+function _detectarTemaWindows(): TemaNome | null {
   try {
     if (typeof window === "undefined") return null;
     // matchMedia('(prefers-color-scheme: dark)') → se for claro, sugerimos solar

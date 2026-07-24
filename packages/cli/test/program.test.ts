@@ -1,10 +1,10 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Provider, type ProviderEvent, ProviderError, ReplayProvider } from "@codingpro/llm";
+import { type Provider, ProviderError, type ProviderEvent, ReplayProvider } from "@codingpro/llm";
 import { describe, expect, it } from "vitest";
 import { ConfigError } from "../src/config.js";
-import { criarPrograma, executarCli, executarPrograma, type CliIo } from "../src/program.js";
+import { type CliIo, criarPrograma, executarCli, executarPrograma } from "../src/program.js";
 
 function providerRoteirizado(turns: readonly (readonly ProviderEvent[])[]): Provider {
   let indice = 0;

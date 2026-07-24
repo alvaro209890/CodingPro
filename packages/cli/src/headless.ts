@@ -1,5 +1,5 @@
-import { ProviderError, type Provider } from "@codingpro/llm";
 import { stripVTControlCharacters } from "node:util";
+import { type Provider, ProviderError } from "@codingpro/llm";
 
 export function sanitizarTextoTerminal(texto: string): string {
   return Array.from(stripVTControlCharacters(texto))

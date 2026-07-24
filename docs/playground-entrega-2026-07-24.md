@@ -25,7 +25,9 @@ Este documento consolida a evolução entregue no Playground do site e os proced
 ### Backend e agente
 
 - A aba Files, o terminal e o agente usam a mesma raiz de workspace por usuário: `~/Documentos/vps-workspaces/<id>/`.
+- O módulo `packages/api/src/workspace.ts` centraliza `raizWorkspace()` e `dirUsuario()` para playground, agente, admin e CLI.
 - A variável opcional `CODINGPRO_WORKSPACE_ROOT` permite alterar essa raiz sem editar código.
+- `CODINGPRO_CLI_PATH` e `CODINGPRO_NODE_BIN` permitem sobrescrever o binário da CLI e do Node no endpoint `/api/vps/cli`.
 - A IA cria automaticamente diretórios-pai ao usar `write_file`.
 - A resolução de caminhos bloqueia travessia de diretórios e impede que links simbólicos levem a leituras fora do workspace.
 - O fluxo SSE do agente emite uma conclusão única por execução e devolve uma mensagem clara caso a tarefa ultrapasse o limite de cinco iterações.
@@ -34,6 +36,7 @@ Este documento consolida a evolução entregue no Playground do site e os proced
 
 | Área | Arquivo | Responsabilidade |
 | --- | --- | --- |
+| API | `packages/api/src/workspace.ts` | raiz compartilhada do workspace por usuário |
 | API | `packages/api/src/rotas/playground.ts` | arquivos, upload, editor, terminal, Git e memória |
 | API | `packages/api/src/rotas/agente.ts` | agente, tools e streaming SSE |
 | Web | `packages/web/src/ui/paginas/Playground.tsx` | orquestração de abas e estado |
@@ -46,11 +49,21 @@ Este documento consolida a evolução entregue no Playground do site e os proced
 
 | Verificação | Resultado |
 | --- | --- |
-| Typecheck da API | aprovado |
-| Typecheck do web | aprovado |
-| `pnpm plataforma:build` | aprovado (LLM, Admin, API e Web) |
-| `vitest run packages/api/test` | 42 testes aprovados; 40 testes dependentes de banco ignorados neste computador |
-| `git diff --check` | aprovado |
+| `pnpm format:check` | aprovado |
+| `pnpm lint` | aprovado (avisos `noExplicitAny` legados na API) |
+| Typecheck (workspace, web, admin) | aprovado |
+| `pnpm test:coverage` | 919 testes aprovados; 40 dependentes de banco ignorados |
+| `pnpm build` | aprovado |
+| `pnpm test:package` | aprovado |
+
+### Correções da sessão de validação (24/07)
+
+- **Workspace unificado:** módulo `workspace.ts` remove caminhos hardcoded (`/home/acer/...`) de `admin.ts` e `cli.ts`.
+- **SSE do agente:** parser no Playground passou a respeitar blocos `\n\n` do protocolo SSE, evitando JSON truncado.
+- **Auto-scroll:** chat rola ao receber mensagens e durante streaming.
+- **Acessibilidade:** sessões da sidebar viraram `<button>`, labels de formulário associados, semântica da landing corrigida.
+- **Lint:** supressões Biome ajustadas em modais do admin e zonas de drag-and-drop.
+- **Windows:** teste de permissão `0o600` em credenciais pula em `win32` (chmod não é confiável no NTFS).
 
 O teste visual local tentou usar o navegador automatizado. O servidor de desenvolvimento não permaneceu acessível nesta sessão Windows; o bundle de produção, porém, foi compilado com sucesso. A verificação visual final deve ser feita no endereço publicado após o reinício dos serviços.
 

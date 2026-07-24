@@ -20,8 +20,10 @@ export function CyberBackground() {
     if (!ctx) return;
 
     let animId: number;
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
+    canvas.width = window.innerWidth;
+    let width = canvas.width;
+    canvas.height = window.innerHeight;
+    let height = canvas.height;
 
     const handleResize = () => {
       if (!canvas) return;

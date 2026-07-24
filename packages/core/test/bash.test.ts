@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { BASH_MAX_COMMAND_LENGTH, bashTool } from "../src/tools/bash.js";
 import type { ToolContext } from "../src/tool.js";
+import { BASH_MAX_COMMAND_LENGTH, bashTool } from "../src/tools/bash.js";
 import { Workspace } from "../src/workspace.js";
 import { cleanup, makeTmpRoot } from "./tmp.js";
 

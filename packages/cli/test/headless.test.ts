@@ -1,4 +1,4 @@
-import { ProviderError, type Provider, type ProviderEvent } from "@codingpro/llm";
+import { type Provider, ProviderError, type ProviderEvent } from "@codingpro/llm";
 import { describe, expect, it } from "vitest";
 import { executarPromptHeadless } from "../src/headless.js";
 

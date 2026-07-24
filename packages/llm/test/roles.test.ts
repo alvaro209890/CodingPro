@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_MODEL_ROLE,
   DEEPSEEK_MODEL_FLASH,
   DEEPSEEK_MODEL_PRO,
+  DEFAULT_MODEL_ROLE,
   DeepSeekProvider,
   isModelRole,
   MODEL_ROLE_FAST,
   MODEL_ROLE_MAIN,
   MODEL_ROLES,
   parseModelRole,
-  resolveDeepSeekModelForRole,
-  resolveDeepSeekProviderModel,
   ROLE_MODEL_FLASH,
   ROLE_MODEL_PRO,
+  resolveDeepSeekModelForRole,
+  resolveDeepSeekProviderModel,
 } from "../src/index.js";
 
 describe("roteamento de papéis DeepSeek", () => {

@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Usuario } from "../api.js";
-import { Sidebar } from "./Sidebar.js";
-import { TabBar } from "./TabBar.js";
 import { ChatView } from "./ChatView.js";
-import { FilesPanel } from "./FilesPanel.js";
 import { EditorPanel } from "./EditorPanel.js";
-import { TerminalPanel } from "./TerminalPanel.js";
+import { FilesPanel } from "./FilesPanel.js";
 import { GitPanel } from "./GitPanel.js";
 import { MemoryPanel } from "./MemoryPanel.js";
-import type { TaskRow } from "./TaskTrackerCard.js";
 import type { Mensagem, Session } from "./PlaygroundTypes.js";
+import { Sidebar } from "./Sidebar.js";
+import { TabBar } from "./TabBar.js";
+import type { TaskRow } from "./TaskTrackerCard.js";
+import { TerminalPanel } from "./TerminalPanel.js";
 
 type Tab = "chat" | "files" | "editor" | "terminal" | "git" | "memory";
 
@@ -131,7 +131,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
     }
   }, [sessions, activeIdx]);
 
-  const msgs = activeSession?.mensagens ?? [];
+  const _msgs = activeSession?.mensagens ?? [];
 
   useEffect(() => {
     salvarSessions(sessions);
@@ -179,9 +179,10 @@ export function Playground({ usuario }: { usuario: Usuario }) {
   const inpRef = useRef<HTMLTextAreaElement>(null);
   const cmdRef = useRef<HTMLInputElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-rola ao receber mensagens ou streaming
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [msgs, stream]);
+  }, [_msgs, stream, loading]);
 
   const POST = useCallback(async <T,>(path: string, body?: unknown): Promise<T> => {
     const r = await fetch(path, {
@@ -250,7 +251,10 @@ export function Playground({ usuario }: { usuario: Usuario }) {
       setLoading(true);
       setStream("");
       setStatus("Pensando...");
-      setThinkingSteps(["Analisando prompt do usuário...", "Planejando resposta e seleção de ferramentas..."]);
+      setThinkingSteps([
+        "Analisando prompt do usuário...",
+        "Planejando resposta e seleção de ferramentas...",
+      ]);
       setTasks([]);
       setElapsedMs(0);
 
@@ -286,66 +290,94 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         const dec = new TextDecoder();
         let buf = "";
         let content = "";
+
+        const processarEvento = (payload: string) => {
+          try {
+            const d = JSON.parse(payload);
+            if (d.type === "text") {
+              content += d.content ?? "";
+              setStream(content);
+            } else if (d.type === "think") {
+              setThinkingSteps((prev) => [...prev, d.content || ""]);
+            } else if (d.type === "tool-start") {
+              const toolName = d.name || "ferramenta";
+              setStatus(`🔧 ${toolName}...`);
+              setThinkingSteps((prev) => [...prev, `Executando ${toolName}...`]);
+              setTasks((prev) => [
+                ...prev,
+                {
+                  id: `${toolName}-${Date.now()}`,
+                  name: toolName,
+                  target: d.target || toolName,
+                  status: "running",
+                },
+              ]);
+            } else if (d.type === "tool-end") {
+              const toolName = d.name || "ferramenta";
+              toolsLog.push({ nome: toolName, result: d.result || "" });
+              setStatus("");
+              setThinkingSteps((prev) => [...prev, `Concluído: ${toolName}`]);
+              setTasks((prev) =>
+                prev.map((t) =>
+                  t.status === "running" && t.name === toolName
+                    ? { ...t, status: "done", result: d.result }
+                    : t,
+                ),
+              );
+            } else if (d.type === "done") {
+              setMsgs((prev) => [
+                ...prev,
+                {
+                  role: "assistant",
+                  content: content || d.content || "",
+                  tools: toolsLog,
+                  timestamp: Date.now(),
+                },
+              ]);
+              setStream("");
+              setStatus("");
+            } else if (d.type === "error") {
+              setMsgs((prev) => [
+                ...prev,
+                {
+                  role: "assistant",
+                  content: `❌ ${d.message || "Erro no agente"}`,
+                  timestamp: Date.now(),
+                },
+              ]);
+              setStream("");
+              setStatus("");
+            }
+          } catch {
+            /* linha SSE inválida */
+          }
+        };
+
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           buf += dec.decode(value, { stream: true });
-          for (const line of buf.split("\n")) {
-            if (!line.startsWith("data: ")) continue;
-            try {
-              const d = JSON.parse(line.slice(6));
-              if (d.type === "text") {
-                content += d.content ?? "";
-                setStream(content);
-              } else if (d.type === "think") {
-                // Pensamento/reasoning do DeepSeek
-                setThinkingSteps((prev) => [...prev, d.content || ""]);
-              } else if (d.type === "tool-start") {
-                const toolName = d.name || "ferramenta";
-                setStatus(`🔧 ${toolName}...`);
-                setThinkingSteps((prev) => [...prev, `Executando ${toolName}...`]);
-                setTasks((prev) => [
-                  ...prev,
-                  {
-                    id: `${toolName}-${Date.now()}`,
-                    name: toolName,
-                    target: d.target || toolName,
-                    status: "running",
-                  },
-                ]);
-              } else if (d.type === "tool-end") {
-                const toolName = d.name || "ferramenta";
-                toolsLog.push({ nome: toolName, result: d.result || "" });
-                setStatus("");
-                setThinkingSteps((prev) => [...prev, `Concluído: ${toolName}`]);
-                setTasks((prev) =>
-                  prev.map((t) =>
-                    t.status === "running" && t.name === toolName
-                      ? { ...t, status: "done", result: d.result }
-                      : t,
-                  ),
-                );
-              } else if (d.type === "done") {
-                setMsgs((prev) => [
-                  ...prev,
-                  { role: "assistant", content: content || d.content || "", tools: toolsLog, timestamp: Date.now() },
-                ]);
-                setStream("");
-                setStatus("");
-              } else if (d.type === "error") {
-                setMsgs((prev) => [
-                  ...prev,
-                  { role: "assistant", content: `❌ ${d.message || "Erro no agente"}`, timestamp: Date.now() },
-                ]);
-                setStream("");
-                setStatus("");
-              }
-            } catch {}
+
+          let sepIdx = buf.indexOf("\n\n");
+          while (sepIdx !== -1) {
+            const bloco = buf.slice(0, sepIdx);
+            buf = buf.slice(sepIdx + 2);
+            for (const line of bloco.split("\n")) {
+              if (line.startsWith("data: ")) processarEvento(line.slice(6));
+            }
+            sepIdx = buf.indexOf("\n\n");
           }
-          buf = buf.includes("\n") ? buf.slice(buf.lastIndexOf("\n") + 1) : buf;
+        }
+        if (buf.trim()) {
+          for (const line of buf.split("\n")) {
+            if (line.startsWith("data: ")) processarEvento(line.slice(6));
+          }
         }
       } catch (e: any) {
-        setMsgs((prev) => [...prev, { role: "assistant", content: `❌ ${e.message}`, timestamp: Date.now() }]);
+        setMsgs((prev) => [
+          ...prev,
+          { role: "assistant", content: `❌ ${e.message}`, timestamp: Date.now() },
+        ]);
       } finally {
         if (timerRef.current) clearInterval(timerRef.current);
         setLoading(false);
@@ -414,12 +446,20 @@ export function Playground({ usuario }: { usuario: Usuario }) {
                 deletarSessao(found.id);
                 setMsgs((prev) => [
                   ...prev,
-                  { role: "system", content: `Chat '${found.nome}' deletado.`, timestamp: Date.now() },
+                  {
+                    role: "system",
+                    content: `Chat '${found.nome}' deletado.`,
+                    timestamp: Date.now(),
+                  },
                 ]);
               } else
                 setMsgs((prev) => [
                   ...prev,
-                  { role: "system", content: `Chat '${target}' não encontrado.`, timestamp: Date.now() },
+                  {
+                    role: "system",
+                    content: `Chat '${target}' não encontrado.`,
+                    timestamp: Date.now(),
+                  },
                 ]);
             }
           }
@@ -431,7 +471,11 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               updateSession(activeSession.id, (s) => ({ ...s, nome: novoNome.slice(0, 30) }));
               setMsgs((prev) => [
                 ...prev,
-                { role: "system", content: `Chat renomeado para '${novoNome.slice(0, 30)}'.`, timestamp: Date.now() },
+                {
+                  role: "system",
+                  content: `Chat renomeado para '${novoNome.slice(0, 30)}'.`,
+                  timestamp: Date.now(),
+                },
               ]);
             }
           }
@@ -508,7 +552,10 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             ]);
             setTab("files");
           } catch (e: any) {
-            setMsgs((prev) => [...prev, { role: "system", content: `❌ ${e.message}`, timestamp: Date.now() }]);
+            setMsgs((prev) => [
+              ...prev,
+              { role: "system", content: `❌ ${e.message}`, timestamp: Date.now() },
+            ]);
           }
           break;
         case "/agent":
@@ -548,7 +595,11 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         case "/help":
           setMsgs((prev) => [
             ...prev,
-            { role: "system", content: CMD_SLASH.map((c) => `${c.cmd} — ${c.desc}`).join("\n"), timestamp: Date.now() },
+            {
+              role: "system",
+              content: CMD_SLASH.map((c) => `${c.cmd} — ${c.desc}`).join("\n"),
+              timestamp: Date.now(),
+            },
           ]);
           break;
       }
@@ -564,9 +615,6 @@ export function Playground({ usuario }: { usuario: Usuario }) {
       POST,
       enviar,
       setMsgs,
-      setFiles,
-      setMemFiles,
-      setTab,
     ],
   );
 
@@ -701,7 +749,11 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         setGitOut("...");
       }
       try {
-        const d = await POST<{ output: string }>("/api/vps/git", { action, cwd: "repositorios", url });
+        const d = await POST<{ output: string }>("/api/vps/git", {
+          action,
+          cwd: "repositorios",
+          url,
+        });
         setGitOut(d.output);
         if (action === "clone") {
           setGitOut((prev) => prev || "✅ Repositório clonado em repositorios/");
@@ -794,6 +846,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
   };
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: zona de drag-and-drop global do playground
     <div
       className="playground"
       onDragEnter={handleDragEnter}
@@ -807,7 +860,9 @@ export function Playground({ usuario }: { usuario: Usuario }) {
           <div className="playground__globalDropCard playground__card-rotating-border">
             <span className="playground__globalDropIcon">📥</span>
             <h3>Solte os arquivos para fazer upload</h3>
-            <p>Os arquivos serão adicionados ao seu workspace <code>{filesCwd || "raiz"}</code></p>
+            <p>
+              Os arquivos serão adicionados ao seu workspace <code>{filesCwd || "raiz"}</code>
+            </p>
           </div>
         </div>
       )}

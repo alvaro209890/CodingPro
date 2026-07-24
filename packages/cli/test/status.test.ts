@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import type { CostBreakdown } from "@codingpro/llm";
+import { describe, expect, it } from "vitest";
 import {
   atualizarEstimativaContexto,
   atualizarStatsAposTurno,
@@ -7,8 +7,8 @@ import {
   COMPACT_TARGET_RATIO,
   contextoRestante,
   criarSessionStats,
-  DEFAULT_CONTEXT_BUDGET,
   DEEPSEEK_CONTEXT_WINDOW,
+  DEFAULT_CONTEXT_BUDGET,
   estimarTokensTranscrito,
   formatarStatusLinha,
   percentContexto,
@@ -44,8 +44,8 @@ describe("status — sessão e contexto", () => {
 
   it("estima tokens e atualiza stats após turno", () => {
     const msgs = [
-      { content: "system " + "x".repeat(40), role: "system" as const },
-      { content: "oi " + "y".repeat(40), role: "user" as const },
+      { content: `system ${"x".repeat(40)}`, role: "system" as const },
+      { content: `oi ${"y".repeat(40)}`, role: "user" as const },
     ];
     expect(estimarTokensTranscrito(msgs)).toBeGreaterThan(10);
 

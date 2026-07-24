@@ -1,8 +1,8 @@
 /**
  * Smoke de integração do desktop (sem GUI): sessão + comando local + 1 turno DeepSeek read-only.
  */
-import { existsSync, readFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir, homedir } from "node:os";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   ALL_TOOLS,

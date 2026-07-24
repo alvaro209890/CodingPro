@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { api, ErroApi } from "./api.js";
 import { Auditoria } from "./telas/Auditoria.js";
 import { ConsumoGeral } from "./telas/ConsumoGeral.js";
@@ -48,7 +48,6 @@ function TelaLogin({ erro }: { erro?: string }) {
           <label>
             E-mail
             <input
-              autoFocus
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@exemplo.com"
               type="email"

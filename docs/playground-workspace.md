@@ -25,6 +25,14 @@ O frontend chama o upload por `POST /api/vps/upload` usando `multipart/form-data
 
 Para mudar essa raiz de forma explícita, defina `CODINGPRO_WORKSPACE_ROOT` no arquivo de ambiente carregado pelos serviços systemd.
 
+Outras variáveis opcionais da API:
+
+| Variável | Padrão | Uso |
+| --- | --- | --- |
+| `CODINGPRO_WORKSPACE_ROOT` | `~/Documentos/vps-workspaces` | Raiz dos workspaces por usuário |
+| `CODINGPRO_CLI_PATH` | `~/Documentos/CodingPro/packages/cli/dist/index.mjs` | Binário da CLI no endpoint `/api/vps/cli` |
+| `CODINGPRO_NODE_BIN` | `process.execPath` | Node usado para spawn da CLI |
+
 Depois de atualizar o repositório no VPS, execute:
 
 ```bash

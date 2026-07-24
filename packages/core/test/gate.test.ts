@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ToolGate } from "../src/gate.js";
 import { PermissionController } from "../src/permissions.js";
 import { ToolRegistry } from "../src/registry.js";
-import { type ExecutableTool, textResult, type ToolContext } from "../src/tool.js";
+import { type ExecutableTool, type ToolContext, textResult } from "../src/tool.js";
 import { Workspace } from "../src/workspace.js";
 import { cleanup, makeTmpRoot } from "./tmp.js";
 

@@ -213,9 +213,7 @@ function PassosWindows() {
   return (
     <Cartao>
       <Passo numero={1} titulo="Baixe o aplicativo">
-        <p>
-          Aplicativo de desktop com a mesma engine da CLI: chat, diffs e terminal integrado.
-        </p>
+        <p>Aplicativo de desktop com a mesma engine da CLI: chat, diffs e terminal integrado.</p>
         <a className="botao primario" href={RELEASES}>
           Baixar para Windows (.zip — 115 MB)
         </a>
@@ -239,8 +237,8 @@ function PassosWindows() {
         </p>
         <Aviso tipo="atencao">
           <strong>Windows SmartScreen:</strong> por não ser um app assinado (certificado digital), o
-          Windows mostra "O Windows protegeu o seu PC". Clique em{" "}
-          <strong>Mais informações</strong> e depois em <strong>Executar assim mesmo</strong>.
+          Windows mostra "O Windows protegeu o seu PC". Clique em <strong>Mais informações</strong>{" "}
+          e depois em <strong>Executar assim mesmo</strong>.
         </Aviso>
         <Aviso tipo="atencao">
           <strong>Erro "Não foi possível executar este aplicativo"?</strong> Instale o{" "}
@@ -263,8 +261,8 @@ function PassosWindows() {
 
       <Passo numero={5} titulo="Escolha a pasta do projeto">
         <p>
-          Clique em <strong>Pasta</strong> (ou digite <code>/abrir</code>) e selecione o projeto.
-          A partir daí é só conversar com a IA.
+          Clique em <strong>Pasta</strong> (ou digite <code>/abrir</code>) e selecione o projeto. A
+          partir daí é só conversar com a IA.
         </p>
       </Passo>
     </Cartao>

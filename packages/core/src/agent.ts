@@ -8,9 +8,9 @@ import {
   type FinishReason,
   type Provider,
   ProviderError,
+  type TokenUsage,
   type Tool,
   type ToolCall,
-  type TokenUsage,
   type ToolResult,
 } from "@codingpro/llm";
 import { compactMessages } from "./compaction.js";

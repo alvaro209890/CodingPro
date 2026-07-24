@@ -12,24 +12,13 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import type { FastifyInstance } from "fastify";
 import { type Contexto, erro, exigirUsuario, texto } from "../contexto.js";
+import { dirUsuario } from "../workspace.js";
 
 const exec = promisify(execCb);
-const RAIZ =
-  process.env.CODINGPRO_WORKSPACE_ROOT || join(homedir(), "Documentos", "vps-workspaces");
-
-function dirUsuario(id: number): string {
-  const dir = join(RAIZ, String(id));
-  mkdirSync(dir, { recursive: true });
-  for (const pasta of ["Documents", "Downloads", "Projects", ".memory"]) {
-    mkdirSync(join(dir, pasta), { recursive: true });
-  }
-  return dir;
-}
 
 function caminhoDoWorkspace(workspace: string, relativo: string): string | null {
   if (!relativo || relativo.includes("\0")) return null;
@@ -105,7 +94,7 @@ async function executarTool(
           maxBuffer: 50_000,
           env: { ...process.env, HOME: workspace },
         });
-        return (stdout + (stderr ? "\n" + stderr : "")).slice(0, 10000) || "(sem saída)";
+        return (stdout + (stderr ? `\n${stderr}` : "")).slice(0, 10000) || "(sem saída)";
       }
       case "grep": {
         // Simples: busca nos arquivos do workspace

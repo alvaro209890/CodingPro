@@ -3,10 +3,26 @@ interface BannerProps {
 }
 
 const SUGESTOES = [
-  { title: "Explorar workspace", text: "Analise arquivos e estrutura do projeto", prompt: "/context" },
-  { title: "Criar código", text: "Gere API, componentes ou scripts", prompt: "Crie uma estrutura inicial para uma API REST em TypeScript" },
-  { title: "Debugar", text: "Encontre e corrija erros no código", prompt: "Analise os arquivos do workspace e encontre possíveis bugs" },
-  { title: "Executar tarefas", text: "Use o agente com tools reais", prompt: "/agent Liste os arquivos do workspace e sugira melhorias" },
+  {
+    title: "Explorar workspace",
+    text: "Analise arquivos e estrutura do projeto",
+    prompt: "/context",
+  },
+  {
+    title: "Criar código",
+    text: "Gere API, componentes ou scripts",
+    prompt: "Crie uma estrutura inicial para uma API REST em TypeScript",
+  },
+  {
+    title: "Debugar",
+    text: "Encontre e corrija erros no código",
+    prompt: "Analise os arquivos do workspace e encontre possíveis bugs",
+  },
+  {
+    title: "Executar tarefas",
+    text: "Use o agente com tools reais",
+    prompt: "/agent Liste os arquivos do workspace e sugira melhorias",
+  },
 ];
 
 export function Banner({ onSelectSuggestion }: BannerProps) {

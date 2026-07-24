@@ -10,10 +10,10 @@ import {
   formatarPerguntaUi,
   interpretarResposta,
   mensagemHistoricoPlano,
+  type PlanoAtivo,
   parsePerguntas,
   promptFasePerguntas,
   promptFasePlano,
-  type PlanoAtivo,
 } from "../src/plan-runtime.js";
 
 const PERGUNTAS_MD = `# PERGUNTAS

@@ -6,10 +6,10 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DeepSeekProvider, ProviderError, type Provider } from "@codingpro/llm";
+import { DeepSeekProvider, type Provider, ProviderError } from "@codingpro/llm";
 import { afterEach, describe, expect, it } from "vitest";
 import { rodarDoctor } from "../src/doctor.js";
-import { executarCli, type CliIo } from "../src/program.js";
+import { type CliIo, executarCli } from "../src/program.js";
 import { criarProviderRuntime, type ProviderRuntimeContext } from "../src/provider-runtime.js";
 
 function capturar(): { io: CliIo; stderr: string[]; stdout: string[] } {

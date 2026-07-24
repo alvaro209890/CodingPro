@@ -3,8 +3,8 @@ import {
   blobParaEmbedding,
   cosseno,
   EMBEDDING_DIM,
-  embedTexto,
   embeddingParaBlob,
+  embedTexto,
   hashToken,
   tokenizarCodigo,
 } from "../src/vector/embeddings.js";

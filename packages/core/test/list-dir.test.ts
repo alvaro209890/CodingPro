@@ -1,8 +1,8 @@
 import { mkdir, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { LIST_DIR_MAX_ENTRIES, listDirTool } from "../src/tools/list-dir.js";
 import type { ToolContext } from "../src/tool.js";
+import { LIST_DIR_MAX_ENTRIES, listDirTool } from "../src/tools/list-dir.js";
 import { Workspace } from "../src/workspace.js";
 import { cleanup, makeTmpRoot } from "./tmp.js";
 

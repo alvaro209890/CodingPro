@@ -1,14 +1,7 @@
 export { criarApp, type OpcoesApp, type RespostaSaude } from "./app.js";
-export { carregarConfig, type ConfigApi } from "./config.js";
+export { type ConfigApi, carregarConfig } from "./config.js";
 export { conectar, migrar, type Sql } from "./db/index.js";
 export { MIGRACOES } from "./db/migracoes.js";
-export {
-  competenciaAtual,
-  criarRepositorio,
-  type Repositorio,
-  type StatusUsuario,
-  type Usuario,
-} from "./repositorio.js";
 export {
   custoMicro,
   extrairUsoDeSse,
@@ -18,6 +11,13 @@ export {
   prepararCorpoUpstream,
   validarCorpo,
 } from "./proxy.js";
+export {
+  competenciaAtual,
+  criarRepositorio,
+  type Repositorio,
+  type StatusUsuario,
+  type Usuario,
+} from "./repositorio.js";
 export {
   assinarSessao,
   conferirSenha,

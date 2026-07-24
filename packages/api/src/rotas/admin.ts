@@ -1,23 +1,23 @@
-import { freemem, loadavg, totalmem } from "node:os";
 import { execSync } from "node:child_process";
 import { existsSync } from "node:fs";
+import { freemem, loadavg, totalmem } from "node:os";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { type Contexto, erro, exigirAdmin, ipDe, texto } from "../contexto.js";
 import { competenciaAtual, type StatusUsuario } from "../repositorio.js";
+import { raizWorkspace } from "../workspace.js";
 
 const STATUS_VALIDOS = new Set<StatusUsuario>(["pendente", "ativo", "bloqueado"]);
-const RAIZ_VPS = "/home/acer/Documentos/vps-workspaces";
 
 function tamanhoWorkspaceMb(userId: number): number {
-  const dir = join(RAIZ_VPS, String(userId));
+  const dir = join(raizWorkspace(), String(userId));
   if (!existsSync(dir)) return 0;
   try {
     const out = execSync(`du -sm "${dir}" 2>/dev/null || echo 0`, {
       timeout: 3000,
       encoding: "utf8",
     });
-    return Number.parseInt(out.split(/\s/)[0] ?? "0") || 0;
+    return Number.parseInt(out.split(/\s/)[0] ?? "0", 10) || 0;
   } catch {
     return 0;
   }

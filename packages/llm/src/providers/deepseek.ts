@@ -1,31 +1,31 @@
 import {
-  APICallError,
+  createOpenAICompatible,
+  type OpenAICompatibleProviderSettings,
+} from "@ai-sdk/openai-compatible";
+import {
   type FinishReason as AiFinishReason,
+  APICallError,
   jsonSchema,
   type LanguageModelUsage,
   type ModelMessage,
   streamText,
-  tool,
   type ToolSet,
+  tool,
 } from "ai";
-import {
-  createOpenAICompatible,
-  type OpenAICompatibleProviderSettings,
-} from "@ai-sdk/openai-compatible";
 import { ProviderError } from "../errors.js";
 import type {
   ChatMessage,
   ChatRequest,
+  Tool as CodingProTool,
   FinishReason,
   JsonObject,
   JsonValue,
   Provider,
   ProviderEvent,
   StreamOptions,
-  Tool as CodingProTool,
+  TokenUsage,
   ToolCall,
   ToolChoice,
-  TokenUsage,
 } from "../provider.js";
 import {
   DEFAULT_MODEL_ROLE,

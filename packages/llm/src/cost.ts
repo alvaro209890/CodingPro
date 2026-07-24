@@ -1,9 +1,9 @@
+import type { TokenUsage } from "./provider.js";
 import {
-  type DeepSeekModel,
   DEEPSEEK_MODEL_FLASH,
   DEEPSEEK_MODEL_PRO,
+  type DeepSeekModel,
 } from "./providers/deepseek.js";
-import type { TokenUsage } from "./provider.js";
 
 /** Preços em USD por 1M de tokens. */
 export interface ModelPricing {

@@ -84,7 +84,10 @@ export function TerminalPanel({
           <div className="playground__terminalWelcome">
             <span className="playground__terminalGlitchText">⚡ CodingPro Terminal v2.0</span>
             <p>Digite comandos Bash/Linux para interagir com o seu workspace isolado.</p>
-            <p className="playground__terminalWelcomeHint">Exemplos: <code>ls -la</code>, <code>pwd</code>, <code>git status</code>, <code>cat package.json</code></p>
+            <p className="playground__terminalWelcomeHint">
+              Exemplos: <code>ls -la</code>, <code>pwd</code>, <code>git status</code>,{" "}
+              <code>cat package.json</code>
+            </p>
           </div>
         )}
       </div>

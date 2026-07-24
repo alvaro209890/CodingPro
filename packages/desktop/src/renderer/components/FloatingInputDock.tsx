@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface ComandoChat {
   readonly nome: string;

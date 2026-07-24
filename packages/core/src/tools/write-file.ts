@@ -1,7 +1,7 @@
 import type { JsonObject, Tool, ToolResult } from "@codingpro/llm";
 import { CoreError } from "../errors.js";
 import { writeFileWithin } from "../fs-safe.js";
-import { type ExecutableTool, textResult, type ToolContext } from "../tool.js";
+import { type ExecutableTool, type ToolContext, textResult } from "../tool.js";
 
 /** Teto de escrita: 1 MiB. Arquivos maiores devem ser montados em partes (F2+). */
 export const WRITE_FILE_MAX_BYTES = 1_048_576;

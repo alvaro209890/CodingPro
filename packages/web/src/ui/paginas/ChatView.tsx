@@ -1,9 +1,9 @@
 import type { RefObject } from "react";
 import { Banner } from "./Banner.js";
-import { SlashDropdown } from "./SlashDropdown.js";
-import { ThinkingBalloon } from "./ThinkingBalloon.js";
-import { TaskTrackerCard, type TaskRow } from "./TaskTrackerCard.js";
 import type { Session } from "./PlaygroundTypes.js";
+import { SlashDropdown } from "./SlashDropdown.js";
+import { type TaskRow, TaskTrackerCard } from "./TaskTrackerCard.js";
+import { ThinkingBalloon } from "./ThinkingBalloon.js";
 
 interface ChatViewProps {
   session: Session | null;
@@ -82,14 +82,24 @@ export function ChatView({
           />
         )}
 
-        {msgs.map((m, i) => (
-          <div key={`${i}-${m.content.slice(0, 20)}`} className={`playground__msg playground__msg--${m.role}`}>
+        {msgs.map((m) => (
+          <div
+            key={`${m.role}-${m.timestamp ?? 0}-${m.content.slice(0, 48)}`}
+            className={`playground__msg playground__msg--${m.role}`}
+          >
             <div className={`playground__msgHeader playground__msgHeader-${m.role}`}>
               <span className="playground__msgBadge">
-                {m.role === "user" ? "👤 Você" : m.role === "system" ? "⚙️ Sistema" : "⚡ CodingPro AI"}
+                {m.role === "user"
+                  ? "👤 Você"
+                  : m.role === "system"
+                    ? "⚙️ Sistema"
+                    : "⚡ CodingPro AI"}
               </span>
               <span className="playground__msgTime">
-                {new Date(m.timestamp ?? Date.now()).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                {new Date(m.timestamp ?? Date.now()).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </span>
             </div>
 
@@ -99,10 +109,17 @@ export function ChatView({
               {m.tools && m.tools.length > 0 && (
                 <div className="playground__msgToolsContainer">
                   <div className="playground__msgToolsHeader">🔧 Ferramentas executadas:</div>
-                  {m.tools.map((t, j) => (
-                    <div key={`${t.nome}-${j}`} className="playground__msgToolTag">
+                  {m.tools.map((t) => (
+                    <div
+                      key={`${t.nome}-${t.result.slice(0, 48)}`}
+                      className="playground__msgToolTag"
+                    >
                       <span className="playground__msgToolName">{t.nome}</span>
-                      {t.result && <span className="playground__msgToolOutput">{t.result.slice(0, 140)}...</span>}
+                      {t.result && (
+                        <span className="playground__msgToolOutput">
+                          {t.result.slice(0, 140)}...
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -122,9 +139,7 @@ export function ChatView({
         )}
 
         {/* Dynamic Task Tracker Card */}
-        {(tasks.length > 0) && (
-          <TaskTrackerCard tasks={tasks} isRunning={loading} />
-        )}
+        {tasks.length > 0 && <TaskTrackerCard tasks={tasks} isRunning={loading} />}
 
         {isStreaming && (
           <div className="playground__msg playground__msg--assistant playground__streaming">

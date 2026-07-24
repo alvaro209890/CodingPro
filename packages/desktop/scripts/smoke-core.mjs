@@ -2,7 +2,7 @@
  * Smoke headless do main process (sem UI): valida sessão, comandos locais e terminal.
  * Roda sob ELECTRON_RUN_AS_NODE=1? Não — usa APIs do core diretamente espelhando o main.
  */
-import { existsSync, readFileSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {

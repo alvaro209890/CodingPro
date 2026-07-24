@@ -1,3 +1,11 @@
+export {
+  type CostBreakdown,
+  DEEPSEEK_PRICING,
+  estimateCost,
+  formatCost,
+  type ModelPricing,
+  somarCustos,
+} from "./cost.js";
 export { ProviderError, type ProviderErrorCode } from "./errors.js";
 export type {
   ChatMessage,
@@ -10,28 +18,13 @@ export type {
   ProviderCapabilities,
   ProviderEvent,
   StreamOptions,
+  TokenUsage,
   Tool,
   ToolCall,
   ToolChoice,
   ToolInputSchema,
   ToolResult,
-  TokenUsage,
 } from "./provider.js";
-export {
-  type CostBreakdown,
-  DEEPSEEK_PRICING,
-  estimateCost,
-  formatCost,
-  type ModelPricing,
-  somarCustos,
-} from "./cost.js";
-export {
-  copyChatMessage,
-  isChatMessage,
-  isTool,
-  isToolCall,
-  toolAcceptsInput,
-} from "./validation.js";
 export {
   DEEPSEEK_BASE_URL,
   DEEPSEEK_MODEL,
@@ -58,8 +51,15 @@ export {
   MODEL_ROLES,
   type ModelRole,
   parseModelRole,
-  resolveDeepSeekModelForRole,
+  type ResolvedDeepSeekModel,
   ROLE_MODEL_FLASH,
   ROLE_MODEL_PRO,
-  type ResolvedDeepSeekModel,
+  resolveDeepSeekModelForRole,
 } from "./roles.js";
+export {
+  copyChatMessage,
+  isChatMessage,
+  isTool,
+  isToolCall,
+  toolAcceptsInput,
+} from "./validation.js";

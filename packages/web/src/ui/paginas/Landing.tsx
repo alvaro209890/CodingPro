@@ -57,7 +57,7 @@ export function Landing() {
           </p>
         </div>
 
-        <div className="landing-console" aria-label="Prévia da CLI CodingPro">
+        <section className="landing-console" aria-label="Prévia da CLI CodingPro">
           <div className="landing-consoleBar">
             <span />
             <span />
@@ -81,7 +81,7 @@ export function Landing() {
             <span>● Conectado</span>
             <span>DeepSeek V4</span>
           </div>
-        </div>
+        </section>
       </section>
 
       <section className="landing-install">

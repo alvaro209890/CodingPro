@@ -31,7 +31,7 @@ export function ThinkingBalloon({
         <div className="playground__thinkingTitleGroup">
           <span className="playground__thinkingBrainIcon">🧠</span>
           <span className="playground__thinkingTitle">
-            {loading ? (statusText || "Pensando...") : "Pensamento concluído"}
+            {loading ? statusText || "Pensando..." : "Pensamento concluído"}
           </span>
           <span className="playground__thinkingTimerBadge">{formatTime(elapsedMs)}</span>
         </div>
@@ -53,8 +53,8 @@ export function ThinkingBalloon({
 
       {!collapsed && (thinkingSteps.length > 0 || loading) && (
         <div className="playground__thinkingBody">
-          {thinkingSteps.map((step, idx) => (
-            <div key={`${step}-${idx}`} className="playground__thinkingStepRow">
+          {thinkingSteps.map((step) => (
+            <div key={step} className="playground__thinkingStepRow">
               <span className="playground__thinkingStepDot">▸</span>
               <span>{step}</span>
             </div>

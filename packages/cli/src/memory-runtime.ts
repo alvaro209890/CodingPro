@@ -1,9 +1,9 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import {
+  MEMORY_RETRIEVAL_TOP_K,
   type MemoryScope,
   MemoryStore,
-  MEMORY_RETRIEVAL_TOP_K,
   montarBlocoMemoria,
 } from "@codingpro/core";
 

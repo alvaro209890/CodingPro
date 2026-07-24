@@ -44,7 +44,7 @@ describe("fragmentarCodigo", () => {
     );
     expect(sql.length).toBeGreaterThanOrEqual(1);
 
-    const huge = "export function z() {\n" + "  x();\n".repeat(500) + "}\n";
+    const huge = `export function z() {\n${"  x();\n".repeat(500)}}\n`;
     const chunks = fragmentarCodigo("huge.ts", huge);
     expect(chunks.length).toBeGreaterThan(0);
     expect(chunks.some((c) => c.content.length <= CHUNK_MAX_CHARS + 10)).toBe(true);

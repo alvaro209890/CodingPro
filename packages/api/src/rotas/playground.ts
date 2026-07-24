@@ -16,33 +16,18 @@ import {
   readFileSync,
   realpathSync,
   statSync,
-  symlinkSync,
   writeFileSync,
 } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import type { FastifyInstance } from "fastify";
 import { type Contexto, erro, exigirUsuario, texto } from "../contexto.js";
+import { dirUsuario } from "../workspace.js";
 
 const exec = promisify(execCb);
-const RAIZ = join(homedir(), "Documentos", "vps-workspaces");
 const TIMEOUT_CMD = 60_000;
 const MAX_OUTPUT = 100_000;
-
-// ─── Workspace ────────────────────────────────────────────────
-
-function dirUsuario(id: number): string {
-  const dir = join(RAIZ, String(id));
-  mkdirSync(dir, { recursive: true });
-  // Pastas padrão
-  for (const pasta of ["Documents", "Downloads", "Projects", ".memory"]) {
-    const p = join(dir, pasta);
-    if (!existsSync(p)) mkdirSync(p, { recursive: true });
-  }
-  return dir;
-}
 
 function listarArquivos(dir: string, base: string = dir, profundidade = 0): string[] {
   const resultado: string[] = [];
@@ -54,7 +39,7 @@ function listarArquivos(dir: string, base: string = dir, profundidade = 0): stri
     try {
       const st = statSync(caminho);
       if (st.isDirectory() || st.isSymbolicLink()) {
-        resultado.push(rel + "/");
+        resultado.push(`${rel}/`);
         if (profundidade < 5) resultado.push(...listarArquivos(caminho, base, profundidade + 1));
       } else {
         resultado.push(rel);

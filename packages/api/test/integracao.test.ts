@@ -258,7 +258,8 @@ describe.skipIf(!TEM_BANCO)("proxy LLM", () => {
     amb = await montar({
       config: { DEEPSEEK_API_KEY: "chave-do-servidor" },
       fetch: async (_url, init) => {
-        vistos.push(String((init!.headers as Record<string, string>).authorization));
+        const headers = init?.headers as Record<string, string> | undefined;
+        vistos.push(String(headers?.authorization ?? ""));
         return respostaSseFalsa({ completion_tokens: 1, prompt_tokens: 1 });
       },
     });

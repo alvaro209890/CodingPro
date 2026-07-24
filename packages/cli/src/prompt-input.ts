@@ -4,8 +4,8 @@
  */
 
 import {
-  type ComandoChat,
   COMANDOS_CHAT,
+  type ComandoChat,
   filtrarSugestoes,
   type SugestaoComando,
 } from "./commands.js";

@@ -211,8 +211,7 @@ function ModalLimite({
     // biome-ignore lint/a11y/noStaticElementInteractions: overlay de modal
     // biome-ignore lint/a11y/useKeyWithClickEvents: o botão Cancelar é o caminho acessível
     <div className="modal-fundo" onClick={onFechar}>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: barra a propagação do clique */}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: não é um controle */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: stopPropagation no painel do modal */}
       <div
         aria-modal="true"
         className="cartao modal"

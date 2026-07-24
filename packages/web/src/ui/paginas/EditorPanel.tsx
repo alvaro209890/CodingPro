@@ -32,7 +32,9 @@ export function EditorPanel({ code, fileName, onChange, onSave }: EditorPanelPro
         {!fileName ? (
           <div className="playground__editorPlaceholder">
             <span style={{ fontSize: "2rem", display: "block", marginBottom: "0.5rem" }}>✏️</span>
-            <p>Selecione um arquivo na aba <strong>Files</strong> para abrir e editar aqui.</p>
+            <p>
+              Selecione um arquivo na aba <strong>Files</strong> para abrir e editar aqui.
+            </p>
           </div>
         ) : (
           <textarea

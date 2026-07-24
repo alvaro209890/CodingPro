@@ -116,7 +116,7 @@ export function criarPrograma(
     .version(packageJson.version, "-v, --versao", mensagens.opcao.versao)
     .option("-p, --prompt <texto>", mensagens.opcao.prompt)
     .option("--chat", mensagens.opcao.chat)
-    .option("--tui", mensagens.opcao.chat + " (modo TUI com Ink)")
+    .option("--tui", `${mensagens.opcao.chat} (modo TUI com Ink)`)
     .option("--agente", mensagens.opcao.agente)
     .option("--doctor", mensagens.opcao.doctor)
     .option("--continuar", mensagens.opcao.continuar)

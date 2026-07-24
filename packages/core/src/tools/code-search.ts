@@ -1,6 +1,6 @@
 import type { JsonObject, Tool, ToolResult } from "@codingpro/llm";
-import { textResult } from "../tool.js";
 import type { ExecutableTool, ToolContext } from "../tool.js";
+import { textResult } from "../tool.js";
 import { abrirStoreComIndice } from "../vector/vector-index.js";
 import type { ChunkHit } from "../vector/vector-store.js";
 

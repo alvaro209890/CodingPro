@@ -4,12 +4,12 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { ChatIo } from "./chat-runtime.js";
 import { criarLeitorDeLinhas } from "./line-reader.js";
+import { arquivoPetPadrao, petHabilitado } from "./pet-runtime.js";
 import { executarCli } from "./program.js";
 import { criarPromptTty } from "./prompt-tty.js";
-import { arquivoPetPadrao, petHabilitado } from "./pet-runtime.js";
 import { criarProviderRuntime } from "./provider-runtime.js";
-import { carregarNomeTema } from "./tema-config.js";
 import { criarTema } from "./tema.js";
+import { carregarNomeTema } from "./tema-config.js";
 
 const controller = new AbortController();
 let sigintCount = 0;

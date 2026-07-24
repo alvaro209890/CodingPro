@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEEPSEEK_PRICING, estimateCost, formatCost, somarCustos } from "../src/cost.js";
-import { DEEPSEEK_MODEL_FLASH, DEEPSEEK_MODEL_PRO } from "../src/providers/deepseek.js";
 import type { TokenUsage } from "../src/provider.js";
+import { DEEPSEEK_MODEL_FLASH, DEEPSEEK_MODEL_PRO } from "../src/providers/deepseek.js";
 
 describe("estimateCost", () => {
   it("cobra cache-miss e cache-hit com preços distintos e output à parte", () => {

@@ -1,6 +1,6 @@
 import type { CostBreakdown, Provider, TokenUsage } from "@codingpro/llm";
-import type { TipoAgente } from "./agent-types.js";
 import { type AgentFinishReason, runAgent } from "./agent.js";
+import type { TipoAgente } from "./agent-types.js";
 import { ToolGate } from "./gate.js";
 import { PermissionController } from "./permissions.js";
 import { ToolRegistry } from "./registry.js";

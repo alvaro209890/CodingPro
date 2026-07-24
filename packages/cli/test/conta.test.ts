@@ -31,16 +31,19 @@ function respostaJson(corpo: unknown, status = 200): Response {
 }
 
 describe("armazenamento de credenciais", () => {
-  it("grava com permissão 600 — o token dá acesso à conta", async () => {
-    const caminho = await gravarCredenciais(home, {
-      apiUrl: "https://api.teste",
-      criadoEm: "2026-07-23T00:00:00.000Z",
-      token: "cp_abc",
-    });
-    const info = await stat(caminho);
-    expect(info.mode & 0o777).toBe(0o600);
-    expect(JSON.parse(await readFile(caminho, "utf8")).token).toBe("cp_abc");
-  });
+  it.skipIf(process.platform === "win32")(
+    "grava com permissão 600 — o token dá acesso à conta",
+    async () => {
+      const caminho = await gravarCredenciais(home, {
+        apiUrl: "https://api.teste",
+        criadoEm: "2026-07-23T00:00:00.000Z",
+        token: "cp_abc",
+      });
+      const info = await stat(caminho);
+      expect(info.mode & 0o777).toBe(0o600);
+      expect(JSON.parse(await readFile(caminho, "utf8")).token).toBe("cp_abc");
+    },
+  );
 
   it("lê de volta o que gravou", async () => {
     await gravarCredenciais(home, {

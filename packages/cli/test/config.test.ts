@@ -14,8 +14,8 @@ import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ConfigError,
-  loadConfig,
   type LoadConfigOptions,
+  loadConfig,
   type ProviderOverrides,
   type RuntimeEnvironment,
 } from "../src/config.js";

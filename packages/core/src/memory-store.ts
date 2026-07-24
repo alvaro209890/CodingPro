@@ -6,13 +6,13 @@ import {
   descricaoDe,
   gerarIndice,
   hojeIso,
-  type Memoria,
   MEMORY_MAX_BYTES,
-  parseMemoria,
+  type Memoria,
   pareceSegredo,
+  parseMemoria,
   type RetrievalOptions,
-  slugify,
   serializarMemoria,
+  slugify,
   type TipoMemoria,
 } from "./memory.js";
 

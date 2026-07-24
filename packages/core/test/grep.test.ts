@@ -1,8 +1,8 @@
 import { mkdir, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { GREP_MAX_FILE_BYTES, GREP_MAX_PATTERN, grepTool } from "../src/tools/grep.js";
 import type { ToolContext } from "../src/tool.js";
+import { GREP_MAX_FILE_BYTES, GREP_MAX_PATTERN, grepTool } from "../src/tools/grep.js";
 import { Workspace } from "../src/workspace.js";
 import { cleanup, makeTmpRoot } from "./tmp.js";
 

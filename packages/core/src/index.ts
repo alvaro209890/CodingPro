@@ -58,6 +58,20 @@ export {
   type LinhaDiff,
   type TipoLinha,
 } from "./diff.js";
+export {
+  coletarSondas,
+  type Diagnostico,
+  type DoctorIo,
+  formatarRelatorioDoctor,
+  montarDiagnosticos,
+  rodarDoctor,
+  type SondasDoctor,
+  verificarBinario,
+  verificarEscrita,
+  verificarGit,
+  verificarProvider,
+  verificarVersaoNode,
+} from "./doctor.js";
 export { CoreError, type CoreErrorCode } from "./errors.js";
 export {
   CORE_UI_EVENT_PROTOCOL_VERSION,
@@ -78,6 +92,7 @@ export {
   type HookRunner,
   rodarHooksStop,
 } from "./hooks.js";
+export { carregarHooks } from "./hooks-loader.js";
 export {
   MCP_DEFAULT_TIMEOUT_MS,
   MCP_PROTOCOL_VERSION,
@@ -86,6 +101,7 @@ export {
   nomeMcpTool,
   toolsDoServidorMcp,
 } from "./mcp.js";
+export { iniciarServidoresMcp, type ServidoresMcp } from "./mcp-loader.js";
 export {
   type BlocoMemoriaEntrada,
   buscarMemorias,
@@ -119,6 +135,25 @@ export {
   type PermissionPolicy,
   type PermissionRequest,
 } from "./permissions.js";
+export {
+  blocoPlanoAtivo,
+  type ClassificacaoArquiteto,
+  classificarRespostaArquiteto,
+  executarComandoPlan,
+  formatarPerguntaUi,
+  interpretarResposta,
+  mensagemHistoricoPlano,
+  type OpcaoPergunta,
+  type PerguntaPlano,
+  type PlanIo,
+  type PlanoAtivo,
+  parsePerguntas,
+  promptFasePerguntas,
+  promptFasePlano,
+  type RespostaPergunta,
+  type ResultadoPlan,
+  salvarPlanoEmDisco,
+} from "./plan.js";
 export { getGlobalConfigDir, getGlobalMemoryDir, normalizePlatformPath } from "./platform-paths.js";
 export {
   formatarPreviaDeEscrita,
@@ -140,6 +175,19 @@ export {
   type ProjetoInfo,
   resumoProjeto,
 } from "./project-detect.js";
+export {
+  contarProblemas,
+  corrigirQualidade,
+  lerOpcoesQualidadeEnv,
+  normalizarArquivos,
+  type OpcoesQualidade,
+  projetoUsaBiome,
+  promptReparoQualidade,
+  type QualidadeIo,
+  type ResultadoQualidade,
+  type RunnerBiome,
+  verificarQualidade,
+} from "./quality.js";
 export { ToolRegistry } from "./registry.js";
 export {
   construirRepoMap,
@@ -151,6 +199,7 @@ export {
   type RepoMapOptions,
 } from "./repo-map.js";
 export { RepoMapCache } from "./repo-map-cache.js";
+export { obterDiff, promptRevisao } from "./review.js";
 export { newSessionId, SessionStore } from "./session.js";
 export {
   blocoSkill,
@@ -159,6 +208,7 @@ export {
   type Skill,
   sugerirSkills,
 } from "./skills.js";
+export { carregarSkills, dirsSkills } from "./skills-loader.js";
 export {
   type ExecutarSubagenteOptions,
   executarSubagente,
@@ -169,6 +219,11 @@ export {
   type SubagenteSpawner,
   type TarefaSubagente,
 } from "./subagent.js";
+export {
+  carregarTiposCustom,
+  criarSpawnerSubagentes,
+  type SpawnerOptions,
+} from "./subagent-spawner.js";
 export {
   extrairSimbolos,
   type Linguagem,
@@ -190,6 +245,15 @@ export {
   type ToolSideEffect,
   textResult,
 } from "./tool.js";
+export {
+  ALL_TOOLS,
+  EFFECT_TOOLS,
+  MEMORY_TOOL_NAMES,
+  MEMORY_TOOLS,
+  ORCHESTRATION_TOOLS,
+  READ_ONLY_TOOLS,
+  SUBAGENT_TOOL_POOL,
+} from "./tool-groups.js";
 export {
   BASH_DEFAULT_TIMEOUT_MS,
   BASH_ENV_ALLOWLIST,
@@ -260,67 +324,3 @@ export {
   type VectorStoreStats,
 } from "./vector/vector-store.js";
 export { Workspace } from "./workspace.js";
-export {
-  ALL_TOOLS,
-  EFFECT_TOOLS,
-  MEMORY_TOOL_NAMES,
-  MEMORY_TOOLS,
-  ORCHESTRATION_TOOLS,
-  READ_ONLY_TOOLS,
-  SUBAGENT_TOOL_POOL,
-} from "./tool-groups.js";
-export { carregarHooks } from "./hooks-loader.js";
-export { iniciarServidoresMcp, type ServidoresMcp } from "./mcp-loader.js";
-export { carregarSkills, dirsSkills } from "./skills-loader.js";
-export {
-  carregarTiposCustom,
-  criarSpawnerSubagentes,
-  type SpawnerOptions,
-} from "./subagent-spawner.js";
-export {
-  contarProblemas,
-  corrigirQualidade,
-  lerOpcoesQualidadeEnv,
-  normalizarArquivos,
-  type OpcoesQualidade,
-  projetoUsaBiome,
-  promptReparoQualidade,
-  type QualidadeIo,
-  type ResultadoQualidade,
-  type RunnerBiome,
-  verificarQualidade,
-} from "./quality.js";
-export { obterDiff, promptRevisao } from "./review.js";
-export {
-  blocoPlanoAtivo,
-  classificarRespostaArquiteto,
-  type ClassificacaoArquiteto,
-  executarComandoPlan,
-  formatarPerguntaUi,
-  interpretarResposta,
-  mensagemHistoricoPlano,
-  type OpcaoPergunta,
-  parsePerguntas,
-  type PerguntaPlano,
-  type PlanIo,
-  type PlanoAtivo,
-  promptFasePerguntas,
-  promptFasePlano,
-  type ResultadoPlan,
-  type RespostaPergunta,
-  salvarPlanoEmDisco,
-} from "./plan.js";
-export {
-  coletarSondas,
-  type Diagnostico,
-  type DoctorIo,
-  formatarRelatorioDoctor,
-  montarDiagnosticos,
-  rodarDoctor,
-  type SondasDoctor,
-  verificarBinario,
-  verificarEscrita,
-  verificarGit,
-  verificarProvider,
-  verificarVersaoNode,
-} from "./doctor.js";

@@ -118,7 +118,7 @@ describe("prompt-tty", () => {
       const texto = chunks.join("");
       expect(escritas).toBeGreaterThan(10);
       // Regex montada em runtime (nao literal) para nao disparar noControlCharactersInRegex.
-      expect(texto).not.toMatch(new RegExp(String.fromCharCode(27) + "\\[\\d+A"));
+      expect(texto).not.toMatch(new RegExp(`${String.fromCharCode(27)}\\[\\d+A`));
       expect(texto).toContain("DeepSeek");
       expect(texto).toContain("╭");
       expect(texto).toContain("╰");

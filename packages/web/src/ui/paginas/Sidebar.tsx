@@ -76,16 +76,12 @@ export function Sidebar({
           sessions.map((s) => {
             const isActive = s.id === activeId;
             return (
-              <div
+              <button
+                type="button"
                 key={s.id}
                 className={`playground__session ${isActive ? "playground__session-ativo" : ""}`}
                 onClick={() => onSelect(s.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") onSelect(s.id);
-                }}
-                tabIndex={0}
-                role="button"
-                aria-selected={isActive}
+                aria-current={isActive ? "true" : undefined}
               >
                 <div className="playground__sessionIndicator" />
                 <div className="playground__sessionInfo">
@@ -100,7 +96,6 @@ export function Sidebar({
                       }}
                       onClick={(e) => e.stopPropagation()}
                       className="playground__renameInput"
-                      autoFocus
                     />
                   ) : (
                     <>
@@ -142,7 +137,7 @@ export function Sidebar({
                     ✕
                   </button>
                 </div>
-              </div>
+              </button>
             );
           })
         )}
@@ -161,8 +156,20 @@ export function Sidebar({
   if (mobile) {
     return (
       <>
-        {sidebarOpen && <div className="playground__overlay" onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }} role="presentation" />}
-        <div className={`playground__sidebar-mobile ${sidebarOpen ? "playground__sidebar-aberta" : ""}`}>
+        {sidebarOpen && (
+          // biome-ignore lint/a11y/noStaticElementInteractions: overlay para fechar sidebar mobile
+          <div
+            className="playground__overlay"
+            onClick={onClose}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") onClose();
+            }}
+            role="presentation"
+          />
+        )}
+        <div
+          className={`playground__sidebar-mobile ${sidebarOpen ? "playground__sidebar-aberta" : ""}`}
+        >
           {sidebarContent}
         </div>
       </>

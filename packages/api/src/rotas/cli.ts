@@ -4,19 +4,16 @@
  */
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, symlinkSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { type Contexto, erro, exigirUsuario, texto } from "../contexto.js";
+import { dirUsuario } from "../workspace.js";
 
-const RAIZ = "/home/acer/Documentos/vps-workspaces";
-const CLI = "/home/acer/Documentos/CodingPro/packages/cli/dist/index.mjs";
-const NODE = "/home/acer/.nvm/versions/node/v24.18.0/bin/node";
-
-function dirUsuario(id: number): string {
-  const d = join(RAIZ, String(id));
-  mkdirSync(d, { recursive: true });
-  return d;
-}
+const CLI =
+  process.env.CODINGPRO_CLI_PATH?.trim() ||
+  join(homedir(), "Documentos", "CodingPro", "packages", "cli", "dist", "index.mjs");
+const NODE = process.env.CODINGPRO_NODE_BIN?.trim() || process.execPath;
 
 export function registrarRotaCli(app: FastifyInstance, ctx: Contexto): void {
   // Executar CLI com prompt (-p mode) e streaming
@@ -42,7 +39,7 @@ export function registrarRotaCli(app: FastifyInstance, ctx: Contexto): void {
     const credDir = join(ws, ".codingpro");
     const credFile = join(credDir, "credenciais.json");
     mkdirSync(credDir, { recursive: true });
-    const homeCred = join("/home/acer", ".codingpro", "credenciais.json");
+    const homeCred = join(homedir(), ".codingpro", "credenciais.json");
     if (existsSync(homeCred) && !existsSync(credFile)) {
       try {
         const { copyFileSync } = await import("node:fs");

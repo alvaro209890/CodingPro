@@ -1,6 +1,6 @@
 import type { JsonObject, Tool, ToolResult } from "@codingpro/llm";
 import { readFileWithin } from "../fs-safe.js";
-import { type ExecutableTool, textResult, type ToolContext } from "../tool.js";
+import { type ExecutableTool, type ToolContext, textResult } from "../tool.js";
 
 /** Teto de leitura: 256 KiB. Arquivos maiores devem ser lidos por janela (offset/limit). */
 export const READ_FILE_MAX_BYTES = 262_144;

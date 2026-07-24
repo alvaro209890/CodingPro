@@ -18,6 +18,12 @@ export default defineConfig({
         "packages/desktop/**",
         "packages/web/**",
         "packages/admin/**",
+        // Rotas e persistência da API dependem de Postgres — cobertas por integracao.test.ts
+        // com TEM_BANCO, não pelo gate unitário local sem banco.
+        "packages/api/src/rotas/**",
+        "packages/api/src/repositorio.ts",
+        "packages/api/src/contexto.ts",
+        "packages/api/src/db/**",
       ],
       include: ["packages/*/src/**/*.ts"],
       provider: "v8",
