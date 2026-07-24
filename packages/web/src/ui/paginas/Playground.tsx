@@ -311,6 +311,13 @@ export function Playground({ usuario }: { usuario: Usuario }) {
                 ]);
                 setStream("");
                 setStatus("");
+              } else if (d.type === "error") {
+                setMsgs((prev) => [
+                  ...prev,
+                  { role: "assistant", content: `❌ ${d.message || "Erro no agente"}` },
+                ]);
+                setStream("");
+                setStatus("");
               }
             } catch {}
           }

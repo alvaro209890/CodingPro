@@ -257,14 +257,14 @@ Sempre responda em português. Seja direto e útil. Quando o usuário pedir para
         });
 
         if (!upstream.ok) {
-          send("error", { message: "Provedor indisponível" });
+          send("error", { type: "error", message: "Provedor indisponível" });
           break;
         }
 
         const corpo = (await upstream.json()) as any;
         const msg = corpo.choices?.[0]?.message;
         if (!msg) {
-          send("error", { message: "Resposta vazia" });
+          send("error", { type: "error", message: "Resposta vazia" });
           break;
         }
 
@@ -275,6 +275,7 @@ Sempre responda em português. Seja direto e útil. Quando o usuário pedir para
             const nome = tc.function?.name ?? "?";
             const args = JSON.parse(tc.function?.arguments ?? "{}");
             send("tool-start", {
+              type: "tool-start",
               id: tc.id,
               name: nome,
               args: JSON.stringify(args).slice(0, 200),
@@ -283,6 +284,7 @@ Sempre responda em português. Seja direto e útil. Quando o usuário pedir para
 
             const resultado = await executarTool(nome, args, workspace);
             send("tool-end", {
+              type: "tool-end",
               id: tc.id,
               name: nome,
               result: resultado.slice(0, 500),
@@ -294,15 +296,15 @@ Sempre responda em português. Seja direto e útil. Quando o usuário pedir para
         } else {
           // Resposta final
           const content = msg.content || "(sem resposta)";
-          send("text", { content });
-          send("done", { content });
+          send("text", { type: "text", content });
+          send("done", { type: "done", content });
           break;
         }
       }
 
-      send("done", { content: "" });
+      send("done", { type: "done", content: "" });
     } catch (e: any) {
-      send("error", { message: e.message || "Erro no agente" });
+      send("error", { type: "error", message: e.message || "Erro no agente" });
     } finally {
       resposta.raw.end();
     }
