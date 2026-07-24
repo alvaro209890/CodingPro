@@ -50,21 +50,24 @@ function proxyApi(req: IncomingMessage, res: ServerResponse): void {
         },
       },
       (proxyRes) => {
-        // Forward CORS + rewrite Set-Cookie domain
-        const headers: Record<string, string> = {};
+        const headers: Record<string, string | string[]> = {};
+        const setCookies: string[] = [];
         for (const [k, v] of Object.entries(proxyRes.headers)) {
           if (!v) continue;
-          let val = Array.isArray(v) ? v.join(", ") : v;
-          // Strip domain from Set-Cookie so it applies to codingpro.cursar.space
           if (k.toLowerCase() === "set-cookie") {
-            val = val.replace(/;\s*domain=[^;]+/gi, "");
-            val = val.replace(/;\s*secure/gi, ""); // proxy is HTTPS via CF, but internal is HTTP
+            // Nunca juntar Set-Cookie com vírgula — quebra cookies múltiplos.
+            const lista = Array.isArray(v) ? v : [v];
+            for (const bruto of lista) {
+              setCookies.push(bruto.replace(/;\s*domain=[^;]+/gi, ""));
+            }
+            continue;
           }
-          headers[k] = val;
+          headers[k] = Array.isArray(v) ? v.join(", ") : v;
         }
         headers["access-control-allow-origin"] =
           req.headers.origin || "https://codingpro.cursar.space";
         headers["access-control-allow-credentials"] = "true";
+        if (setCookies.length > 0) headers["set-cookie"] = setCookies;
         res.writeHead(proxyRes.statusCode ?? 200, headers);
         proxyRes.pipe(res);
       },

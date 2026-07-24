@@ -66,15 +66,21 @@ export function registrarRotasDevice(app: FastifyInstance, ctx: Contexto): void 
       (req.body as Record<string, unknown> | undefined)?.codigoUsuario,
       20,
     ).toUpperCase();
-    const registro = await ctx.repo.buscarCodigoPorUsuario(codigoUsuario);
-    if (!registro || registro.expira_em.getTime() <= Date.now()) {
+    const gerado = gerarTokenCli();
+    const resultado = await ctx.repo.aprovarDeviceComToken({
+      codigoUsuario,
+      hash: gerado.hash,
+      nome: `CLI (${codigoUsuario})`,
+      prefixo: gerado.prefixo,
+      tokenTexto: gerado.texto,
+      usuarioId: usuario.id,
+    });
+    if (resultado === "invalido") {
       return erro(resposta, 404, "codigo_invalido", "Código inválido ou expirado.");
     }
-
-    const gerado = gerarTokenCli();
-    await ctx.repo.criarToken(usuario.id, `CLI (${codigoUsuario})`, gerado.prefixo, gerado.hash);
-    const ok = await ctx.repo.aprovarCodigoDispositivo(codigoUsuario, usuario.id, gerado.texto);
-    if (!ok) return erro(resposta, 409, "codigo_ja_usado", "Este código já foi usado.");
+    if (resultado === "ja_usado") {
+      return erro(resposta, 409, "codigo_ja_usado", "Este código já foi usado.");
+    }
 
     await ctx.repo.registrarAuditoria({
       acao: "device_aprovado",

@@ -9,7 +9,7 @@ import {
   parseReplayProvider,
 } from "@codingpro/llm";
 import { loadConfig, type ProviderOverrides, type RuntimeEnvironment } from "./config.js";
-import { lerCredenciais } from "./conta.js";
+import { API_PADRAO, lerCredenciais } from "./conta.js";
 
 export type { RuntimeEnvironment } from "./config.js";
 
@@ -24,6 +24,13 @@ export interface ProviderRuntimeContext {
    * Caminhos mecânicos futuros passam `fast` explicitamente.
    */
   readonly role?: ModelRole;
+}
+
+function tokenCloudDoAmbiente(env: RuntimeEnvironment): { token: string; apiUrl: string } | null {
+  const token = env.CODINGPRO_TOKEN?.trim();
+  if (!token?.startsWith("cp_")) return null;
+  const apiUrl = (env.CODINGPRO_API_URL?.trim() || API_PADRAO).replace(/\/+$/u, "");
+  return { apiUrl, token };
 }
 
 export async function criarProviderRuntime(
@@ -45,7 +52,18 @@ export async function criarProviderRuntime(
   // empurrado para a cota da plataforma sem pedir. E quando o provider não foi escolhido em
   // lugar nenhum, ter uma conta conectada já é escolha suficiente — obrigar a mexer no
   // settings depois do `login` seria um segundo passo sem propósito.
+  //
+  // Precedência cloud: CODINGPRO_TOKEN (env) → ~/.codingpro/credenciais.json
   if (!temChavePropria && (config.provider === "deepseek" || config.provider === undefined)) {
+    const doEnv = tokenCloudDoAmbiente(context.environment);
+    if (doEnv) {
+      signal?.throwIfAborted();
+      return new DeepSeekProvider({
+        apiKey: doEnv.token,
+        baseUrl: `${doEnv.apiUrl}/v1`,
+        role: context.role === undefined ? DEFAULT_MODEL_ROLE : parseModelRole(context.role),
+      });
+    }
     const credenciais = await lerCredenciais(context.homeDirectory);
     if (credenciais) {
       signal?.throwIfAborted();

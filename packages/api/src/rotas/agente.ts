@@ -16,6 +16,7 @@ import { dirname, join, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import type { FastifyInstance } from "fastify";
 import { type Contexto, erro, exigirUsuario, texto } from "../contexto.js";
+import { checarAcessoLlm, registrarUsoDaResposta } from "../limites.js";
 import { dirUsuario } from "../workspace.js";
 
 const exec = promisify(execCb);
@@ -226,7 +227,12 @@ export function registrarRotaAgente(app: FastifyInstance, ctx: Contexto): void {
     const prompt = texto((req.body as any)?.prompt, 10000);
     if (!prompt) return erro(resposta, 400, "prompt_vazio", "Prompt vazio.");
 
+    const acesso = await checarAcessoLlm(ctx, u);
+    if (!acesso.ok) return erro(resposta, acesso.status, acesso.codigo, acesso.mensagem);
+
     const workspace = dirUsuario(u.id);
+    const modelo = "deepseek-v4-pro" as const;
+    let competencia = acesso.competencia;
 
     resposta.raw.writeHead(200, {
       "content-type": "text/event-stream",
@@ -263,6 +269,17 @@ Sempre responda em português. Seja direto e útil. Quando o usuário pedir para
 
       // Agent loop — até 5 iterações
       for (let iter = 0; iter < 5; iter++) {
+        // Revalida o limite a cada volta: um loop longo não pode estourar a cota sem corte.
+        if (iter > 0) {
+          const deNovo = await checarAcessoLlm(ctx, u);
+          if (!deNovo.ok) {
+            send("error", { type: "error", message: deNovo.mensagem });
+            break;
+          }
+          competencia = deNovo.competencia;
+        }
+
+        const inicioChamada = Date.now();
         const upstream = await ctx.fetch(`${ctx.config.deepseekBaseUrl}/chat/completions`, {
           method: "POST",
           headers: {
@@ -270,7 +287,7 @@ Sempre responda em português. Seja direto e útil. Quando o usuário pedir para
             "content-type": "application/json",
           },
           body: JSON.stringify({
-            model: "deepseek-v4-pro",
+            model: modelo,
             messages,
             tools: TOOLS,
             max_tokens: 16384,
@@ -280,11 +297,32 @@ Sempre responda em português. Seja direto e útil. Quando o usuário pedir para
         });
 
         if (!upstream.ok) {
+          await registrarUsoDaResposta(ctx, {
+            competencia,
+            duracaoMs: Date.now() - inicioChamada,
+            erro: `upstream_${upstream.status}`,
+            modelo,
+            tokenId: null,
+            usage: null,
+            usuarioId: u.id,
+          }).catch(() => {});
           send("error", { type: "error", message: "Provedor indisponível" });
           break;
         }
 
         const corpo = (await upstream.json()) as any;
+        await registrarUsoDaResposta(ctx, {
+          competencia,
+          duracaoMs: Date.now() - inicioChamada,
+          erro: null,
+          modelo,
+          tokenId: null,
+          usage: corpo.usage,
+          usuarioId: u.id,
+        }).catch((causa: unknown) => {
+          req.log.error({ causa }, "falha ao gravar consumo do agente");
+        });
+
         const msg = corpo.choices?.[0]?.message;
         if (!msg) {
           send("error", { type: "error", message: "Resposta vazia" });

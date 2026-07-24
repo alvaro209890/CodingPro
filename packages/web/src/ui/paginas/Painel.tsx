@@ -199,8 +199,9 @@ function AbaTokens({ usuario }: { usuario: Usuario }) {
           criado sozinho.
         </p>
         <p style={{ margin: 0 }}>
-          Se preferir colar o token manualmente, gere um abaixo e exporte como{" "}
-          <code>CODINGPRO_TOKEN</code>.
+          Se preferir colar o token manualmente, gere um abaixo e grave em{" "}
+          <code>~/.codingpro/credenciais.json</code> (campo <code>token</code>) ou exporte{" "}
+          <code>CODINGPRO_TOKEN</code> no ambiente.
         </p>
       </Cartao>
 

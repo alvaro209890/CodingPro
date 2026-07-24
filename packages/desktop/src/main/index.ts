@@ -1265,7 +1265,7 @@ app.whenReady().then(() => {
       throw new Error(err.mensagem || "E-mail ou senha incorretos.");
     }
     const cookies = login.headers.getSetCookie?.() ?? [];
-    const sessao = cookies.find((c) => c.startsWith("sessao_codingpro="));
+    const sessao = cookies.find((c) => c.startsWith("cp_sessao="));
     if (!sessao) throw new Error("Sessão não estabelecida. Tente de novo.");
     const cookieHeader = sessao.split(";")[0] ?? "";
 
@@ -1285,11 +1285,15 @@ app.whenReady().then(() => {
     const headers = new Headers();
     headers.set("content-type", "application/json");
     headers.set("cookie", cookieHeader);
-    await fetch(`${API}/api/device/aprovar`, {
+    const aprovacao = await fetch(`${API}/api/device/aprovar`, {
       body: JSON.stringify({ codigoUsuario: dev.codigoUsuario }),
       headers,
       method: "POST",
     });
+    if (!aprovacao.ok) {
+      const err = (await aprovacao.json().catch(() => ({}))) as { mensagem?: string };
+      throw new Error(err.mensagem || "Não consegui autorizar este dispositivo.");
+    }
 
     // Passo 4: resgatar o token
     const tokenRes = await fetch(`${API}/api/device/token`, {

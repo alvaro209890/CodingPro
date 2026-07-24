@@ -158,14 +158,19 @@ export function registrarRotasAdmin(app: FastifyInstance, ctx: Contexto, metrica
     if (!admin) return resposta;
 
     const competencia = competenciaAtual();
-    const [diario, top] = await Promise.all([
+    const [diario, top, total] = await Promise.all([
       ctx.repo.consumoDiario(null, 30),
       ctx.repo.topUsuarios(competencia, 5),
+      ctx.repo.consumoTotalDoMes(competencia),
     ]);
-    const totalMicro = top.reduce((soma, u) => soma + u.custoMicro, 0);
-    const totalRequisicoes = diario.reduce((soma, d) => soma + d.requisicoes, 0);
 
-    return resposta.send({ competencia, diario, top, totalMicro, totalRequisicoes });
+    return resposta.send({
+      competencia,
+      diario,
+      top,
+      totalMicro: total.custoMicro,
+      totalRequisicoes: total.requisicoes,
+    });
   });
 
   app.get("/api/admin/saude", async (req, resposta) => {

@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
  * para isso custaria mais em bundle do que estas 30 linhas.
  */
 export function navegar(caminho: string): void {
-  if (window.location.pathname === caminho) return;
+  const atual = `${window.location.pathname}${window.location.search}`;
+  if (atual === caminho) return;
   window.history.pushState({}, "", caminho);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }

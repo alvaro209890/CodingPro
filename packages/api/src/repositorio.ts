@@ -332,6 +332,59 @@ export function criarRepositorio(sql: Sql) {
       return linhas.length > 0;
     },
 
+    /**
+     * Aprova o device flow e cria o token numa transação só.
+     * Evita tokens órfãos quando duas abas aprovam o mesmo código ao mesmo tempo.
+     */
+    async aprovarDeviceComToken(dados: {
+      codigoUsuario: string;
+      usuarioId: number;
+      nome: string;
+      prefixo: string;
+      hash: string;
+      tokenTexto: string;
+    }): Promise<"ok" | "invalido" | "ja_usado"> {
+      return await sql.begin(async (tx) => {
+        const [linha] = await tx<
+          { codigo_dispositivo: string; token_texto: string | null; expira_em: Date }[]
+        >`
+          SELECT codigo_dispositivo, token_texto, expira_em
+          FROM codigos_dispositivo
+          WHERE codigo_usuario = ${dados.codigoUsuario}
+          FOR UPDATE
+        `;
+        if (!linha || linha.expira_em.getTime() <= Date.now()) return "invalido";
+        if (linha.token_texto !== null) return "ja_usado";
+
+        await tx`
+          INSERT INTO tokens_cli (usuario_id, nome, prefixo, hash)
+          VALUES (${dados.usuarioId}, ${dados.nome}, ${dados.prefixo}, ${dados.hash})
+        `;
+        await tx`
+          UPDATE codigos_dispositivo
+          SET usuario_id = ${dados.usuarioId}, token_texto = ${dados.tokenTexto}
+          WHERE codigo_usuario = ${dados.codigoUsuario} AND token_texto IS NULL
+        `;
+        return "ok";
+      });
+    },
+
+    /** Soma real do mês (não só o top N) — usado no painel admin. */
+    async consumoTotalDoMes(
+      competencia: string,
+    ): Promise<{ custoMicro: number; requisicoes: number }> {
+      const [linha] = await sql<{ custo: number; requisicoes: number }[]>`
+        SELECT COALESCE(sum(custo_micro), 0)::bigint AS custo,
+               COALESCE(sum(requisicoes), 0)::bigint AS requisicoes
+        FROM uso_mensal
+        WHERE competencia = ${competencia}
+      `;
+      return {
+        custoMicro: Number(linha?.custo ?? 0),
+        requisicoes: Number(linha?.requisicoes ?? 0),
+      };
+    },
+
     /** Consome o código: devolve o token uma vez só e apaga a linha. */
     async resgatarCodigoDispositivo(
       codigoDispositivo: string,

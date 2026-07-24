@@ -611,4 +611,99 @@ describe.skipIf(!TEM_BANCO)("device flow do codingpro login", () => {
     });
     expect(resposta.statusCode).toBe(404);
   });
+
+  it("aprovação duplicada não deixa token órfão", async () => {
+    amb = await montar();
+    const { cookie, id } = await cadastrar(amb.app, "chefe@teste.com");
+    const inicio = await amb.app.inject({ method: "POST", url: "/api/device/iniciar" });
+    const { codigoUsuario } = inicio.json();
+
+    const primeira = await amb.app.inject({
+      headers: { cookie },
+      method: "POST",
+      payload: { codigoUsuario },
+      url: "/api/device/aprovar",
+    });
+    expect(primeira.statusCode).toBe(200);
+
+    const segunda = await amb.app.inject({
+      headers: { cookie },
+      method: "POST",
+      payload: { codigoUsuario },
+      url: "/api/device/aprovar",
+    });
+    expect(segunda.statusCode).toBe(409);
+
+    const tokens = await amb.sql`
+      SELECT id FROM tokens_cli WHERE usuario_id = ${id} AND revogado_em IS NULL
+    `;
+    expect(tokens).toHaveLength(1);
+  });
+});
+
+describe.skipIf(!TEM_BANCO)("agente do playground e limites", () => {
+  it("recusa o agente com 402 quando o limite mensal acabou", async () => {
+    amb = await montar({
+      config: { DEEPSEEK_API_KEY: "k" },
+      fetch: async () =>
+        new Response(JSON.stringify({ choices: [{ message: { content: "oi" } }] }), {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        }),
+    });
+    const { cookie, id } = await cadastrar(amb.app, "chefe@teste.com");
+    await amb.repo.registrarUso({
+      competencia: new Date().toISOString().slice(0, 7),
+      custoMicro: 5_000_000,
+      duracaoMs: 1,
+      erro: null,
+      modelo: "deepseek-v4-pro",
+      tokenId: null,
+      tokensCache: 0,
+      tokensEntrada: 1,
+      tokensRaciocinio: 0,
+      tokensSaida: 1,
+      usuarioId: id,
+    });
+
+    const resposta = await amb.app.inject({
+      headers: { cookie },
+      method: "POST",
+      payload: { prompt: "liste os arquivos" },
+      url: "/api/vps/agent",
+    });
+    expect(resposta.statusCode).toBe(402);
+    expect(resposta.json().erro).toBe("limite_atingido");
+  });
+
+  it("grava o consumo do playground no mesmo agregado mensal da CLI", async () => {
+    amb = await montar({
+      config: { DEEPSEEK_API_KEY: "k" },
+      fetch: async () =>
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "pronto" } }],
+            usage: { completion_tokens: 20, prompt_tokens: 100 },
+          }),
+          { headers: { "content-type": "application/json" }, status: 200 },
+        ),
+    });
+    const { cookie } = await cadastrar(amb.app, "chefe@teste.com");
+    const resposta = await amb.app.inject({
+      headers: { cookie },
+      method: "POST",
+      payload: { prompt: "olá" },
+      url: "/api/vps/agent",
+    });
+    expect(resposta.statusCode).toBe(200);
+    expect(resposta.body).toContain("pronto");
+
+    const consumo = await amb.app.inject({
+      headers: { cookie },
+      method: "GET",
+      url: "/api/consumo",
+    });
+    expect(consumo.json().requisicoes).toBe(1);
+    expect(consumo.json().custoMicro).toBeGreaterThan(0);
+  });
 });

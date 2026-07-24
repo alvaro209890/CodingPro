@@ -3,7 +3,14 @@ import { api, ErroApi, type Usuario } from "../api.js";
 import { Aviso, Cartao } from "../componentes.js";
 import { navegar, propsLink } from "../rotas.js";
 
-export function Entrar({ aoEntrar }: { aoEntrar: (usuario: Usuario) => void }) {
+export function Entrar({
+  aoEntrar,
+  destino = "/painel",
+}: {
+  aoEntrar: (usuario: Usuario) => void;
+  /** Para onde ir depois do login (ex.: /playground ou /entrar-dispositivo). */
+  destino?: string;
+}) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
@@ -16,7 +23,7 @@ export function Entrar({ aoEntrar }: { aoEntrar: (usuario: Usuario) => void }) {
     try {
       const dados = await api.post<{ usuario: Usuario }>("/api/login", { email, senha });
       aoEntrar(dados.usuario);
-      navegar("/painel");
+      navegar(destinoSeguro(destino));
     } catch (causa) {
       setErro(causa instanceof ErroApi ? causa.message : "Não consegui entrar.");
     } finally {
@@ -63,4 +70,11 @@ export function Entrar({ aoEntrar }: { aoEntrar: (usuario: Usuario) => void }) {
       </Cartao>
     </div>
   );
+}
+
+/** Só aceita caminhos internos relativos — evita open redirect. */
+export function destinoSeguro(bruto: string | null | undefined, padrao = "/painel"): string {
+  if (!bruto) return padrao;
+  if (!bruto.startsWith("/") || bruto.startsWith("//") || bruto.includes("://")) return padrao;
+  return bruto;
 }
