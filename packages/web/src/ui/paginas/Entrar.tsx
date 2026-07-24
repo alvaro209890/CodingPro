@@ -25,10 +25,12 @@ export function Entrar({ aoEntrar }: { aoEntrar: (usuario: Usuario) => void }) {
   }
 
   return (
-    <div className="estreito" style={{ margin: "2rem auto" }}>
-      <Cartao>
-        <h2>Entrar</h2>
-        <p>Acesse sua conta do CodingPro.</p>
+    <div className="auth-page estreito">
+      <Cartao className="auth-card">
+        <span className="auth-symbol">✦</span>
+        <p className="landing-eyebrow">BEM-VINDO DE VOLTA</p>
+        <h2>Entre no seu workspace.</h2>
+        <p>Acesse a sua conta para usar o painel, a CLI e o Playground.</p>
         {erro && <Aviso tipo="erro">{erro}</Aviso>}
         <form onSubmit={enviar}>
           <label>
@@ -51,7 +53,7 @@ export function Entrar({ aoEntrar }: { aoEntrar: (usuario: Usuario) => void }) {
               value={senha}
             />
           </label>
-          <button className="primario" disabled={enviando} style={{ width: "100%" }} type="submit">
+          <button className="primario auth-submit" disabled={enviando} type="submit">
             {enviando ? "Entrando…" : "Entrar"}
           </button>
         </form>

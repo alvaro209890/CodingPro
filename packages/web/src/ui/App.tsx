@@ -35,18 +35,18 @@ export function App() {
     <div className="casca">
       <header className="topo">
         <a className="marca gradiente" {...propsLink("/")}>
-          CodingPro
+          <span className="marca-sinal">✦</span> CodingPro
         </a>
         <nav>
-          <a className="botao pequeno" {...propsLink("/comecar")}>
+          <a className="botao pequeno topo-link" {...propsLink("/comecar")}>
             Como começar
           </a>
           {usuario ? (
             <>
-              <a className="botao pequeno" {...propsLink("/playground")}>
-                Playground
+              <a className="botao pequeno topo-link" {...propsLink("/playground")}>
+                Workspace
               </a>
-              <a className="botao pequeno" {...propsLink("/painel")}>
+              <a className="botao pequeno topo-link" {...propsLink("/painel")}>
                 Painel
               </a>
               {usuario.admin && (
@@ -54,13 +54,13 @@ export function App() {
                   Admin
                 </a>
               )}
-              <button className="pequeno" onClick={sair} type="button">
+              <button className="pequeno topo-sair" onClick={sair} type="button">
                 Sair
               </button>
             </>
           ) : (
             <>
-              <a className="botao pequeno" {...propsLink("/entrar")}>
+              <a className="botao pequeno topo-link" {...propsLink("/entrar")}>
                 Entrar
               </a>
               <a className="botao pequeno primario" {...propsLink("/cadastro")}>
@@ -79,7 +79,10 @@ export function App() {
         )}
       </main>
 
-      <footer className="rodape">CodingPro — desenvolvimento assistido por IA em português</footer>
+      <footer className="rodape">
+        <span>© {new Date().getFullYear()} CodingPro</span>
+        <span>Desenvolvimento assistido por IA, em português.</span>
+      </footer>
     </div>
   );
 }

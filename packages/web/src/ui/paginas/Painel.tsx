@@ -28,13 +28,21 @@ export function Painel({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar
 
   return (
     <>
-      <div className="linha" style={{ marginBottom: "1.5rem" }}>
+      <div className="painel-cabecalho">
         <div>
-          <h1 style={{ fontSize: "1.8rem", marginBottom: "0.2rem" }}>Olá, {usuario.nome}</h1>
-          <p className="fraco" style={{ margin: 0 }}>
-            {usuario.email}
-          </p>
+          <p className="landing-eyebrow">CENTRO DA CONTA</p>
+          <h1>Olá, {usuario.nome}</h1>
+          <p className="fraco">{usuario.email}</p>
         </div>
+        <span
+          className={`selo ${usuario.status === "ativo" ? "ok" : usuario.status === "pendente" ? "espera" : "ruim"}`}
+        >
+          {usuario.status === "ativo"
+            ? "Conta ativa"
+            : usuario.status === "pendente"
+              ? "Aguardando aprovação"
+              : "Conta bloqueada"}
+        </span>
       </div>
 
       {usuario.status === "pendente" && (
@@ -102,19 +110,19 @@ function AbaConsumo() {
   return (
     <div className="pilha">
       <div className="grade tres">
-        <Cartao>
+        <Cartao className="painel-metrica">
           <Metrica rotulo="Consumo do mês" valor={formatarUsd(consumo.custoMicro)} />
           <p className="fraco" style={{ margin: "0.5rem 0 0" }}>
             de {formatarUsd(consumo.limiteMicro)} disponíveis
           </p>
         </Cartao>
-        <Cartao>
+        <Cartao className="painel-metrica">
           <Metrica rotulo="Do limite" valor={`${consumo.percentual.toFixed(1)}%`} />
           <div style={{ marginTop: "0.75rem" }}>
             <Barra percentual={consumo.percentual} />
           </div>
         </Cartao>
-        <Cartao>
+        <Cartao className="painel-metrica">
           <Metrica rotulo="Renova em" valor={`${consumo.diasAteRenovar}d`} />
           <p className="fraco" style={{ margin: "0.5rem 0 0" }}>
             {consumo.requisicoes} requisições este mês

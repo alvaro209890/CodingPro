@@ -26,9 +26,11 @@ export function Cadastro({ aoEntrar }: { aoEntrar: (usuario: Usuario) => void })
   }
 
   return (
-    <div className="estreito" style={{ margin: "2rem auto" }}>
-      <Cartao>
-        <h2>Criar conta</h2>
+    <div className="auth-page estreito">
+      <Cartao className="auth-card">
+        <span className="auth-symbol">✦</span>
+        <p className="landing-eyebrow">BETA FECHADO</p>
+        <h2>Crie seu espaço de trabalho.</h2>
         <p>
           Durante o beta, cada conta é aprovada manualmente. Você já entra no painel e recebe acesso
           assim que for liberada.
@@ -67,7 +69,7 @@ export function Cadastro({ aoEntrar }: { aoEntrar: (usuario: Usuario) => void })
             />
             <small className="fraco">Mínimo de 8 caracteres, com letras e números.</small>
           </label>
-          <button className="primario" disabled={enviando} style={{ width: "100%" }} type="submit">
+          <button className="primario auth-submit" disabled={enviando} type="submit">
             {enviando ? "Criando…" : "Criar conta"}
           </button>
         </form>
