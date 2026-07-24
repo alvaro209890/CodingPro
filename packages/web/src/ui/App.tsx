@@ -43,6 +43,9 @@ export function App() {
           </a>
           {usuario ? (
             <>
+              <a className="botao pequeno" {...propsLink("/playground")}>
+                Playground
+              </a>
               <a className="botao pequeno" {...propsLink("/painel")}>
                 Painel
               </a>
