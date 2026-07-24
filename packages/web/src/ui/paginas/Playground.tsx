@@ -1,40 +1,34 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, ErroApi, type Usuario } from "../api.js";
-import { Aviso, Cartao } from "../componentes.js";
 
-type Arquivo = string;
+type Aba = "arquivos" | "editor" | "terminal" | "chat";
 
 export function Playground({ usuario }: { usuario: Usuario }) {
-  const [files, setFiles] = useState<Arquivo[]>([]);
-  const [activeFile, setActiveFile] = useState<string>("index.js");
-  const [code, setCode] = useState<string>("");
-  const [output, setOutput] = useState<string>("");
+  const [aba, setAba] = useState<Aba>("editor");
+  const [files, setFiles] = useState<string[]>([]);
+  const [activeFile, setActiveFile] = useState("index.js");
+  const [code, setCode] = useState("");
+  const [output, setOutput] = useState("");
   const [chatInput, setChatInput] = useState("");
   const [chatHistory, setChatHistory] = useState<{ role: string; content: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
   const [erro, setErro] = useState("");
-  const editorRef = useRef<HTMLTextAreaElement>(null);
 
-  // Carregar arquivos
   const carregarArquivos = useCallback(async () => {
     try {
       const dados = await api.post<{ files: string[] }>("/api/playground/files", {});
       setFiles(dados.files);
-    } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : "Erro ao carregar.");
-    }
+    } catch { /* offline */ }
   }, []);
 
-  // Abrir arquivo
   const abrirArquivo = useCallback(async (path: string) => {
     setActiveFile(path);
+    setAba("editor");
     try {
       const dados = await api.post<{ content: string }>("/api/playground/read", { path });
       setCode(dados.content);
-    } catch {
-      setCode("// Erro ao carregar arquivo");
-    }
+    } catch { setCode("// erro ao carregar"); }
   }, []);
 
   useEffect(() => { carregarArquivos(); }, [carregarArquivos]);
@@ -42,74 +36,51 @@ export function Playground({ usuario }: { usuario: Usuario }) {
     if (files.length > 0 && !code) abrirArquivo(activeFile);
   }, [files, activeFile, code, abrirArquivo]);
 
-  // Salvar
   const salvar = useCallback(async () => {
-    setErro("");
     try {
       await api.post("/api/playground/write", { path: activeFile, content: code });
-      setOutput("Arquivo salvo ✓");
+      setOutput("✓ salvo");
       carregarArquivos();
-    } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : "Erro ao salvar.");
-    }
+    } catch (e) { setErro(e instanceof ErroApi ? e.message : "erro"); }
   }, [activeFile, code, carregarArquivos]);
 
-  // Ctrl+S
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-        e.preventDefault();
-        salvar();
-      }
+    const h = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); salvar(); }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
   }, [salvar]);
 
-  // Executar
   const executar = useCallback(async () => {
+    setAba("terminal");
     setRunning(true);
-    setOutput("Executando...");
+    setOutput("$ node " + activeFile + "\n");
     try {
       const dados = await api.post<{ stdout: string; stderr: string; code: number }>(
-        "/api/playground/run",
-        { path: activeFile },
-      );
-      setOutput(
-        (dados.stdout ? dados.stdout + "\n" : "") +
-        (dados.stderr ? "[stderr]\n" + dados.stderr + "\n" : "") +
-        `Processo finalizado com código ${dados.code}`,
-      );
+        "/api/playground/run", { path: activeFile });
+      setOutput((p) => p + dados.stdout + (dados.stderr ? "\n" + dados.stderr : "") + `\nProcesso finalizado [${dados.code}]`);
     } catch (e) {
-      setOutput("Erro: " + (e instanceof ErroApi ? e.message : "falha"));
-    } finally {
-      setRunning(false);
-    }
+      setOutput((p) => p + "Erro: " + (e instanceof ErroApi ? e.message : "falha"));
+    } finally { setRunning(false); }
   }, [activeFile]);
 
-  // Chat IA
   const enviarChat = useCallback(async () => {
     const prompt = chatInput.trim();
     if (!prompt || loading) return;
     setChatInput("");
     setLoading(true);
-    setChatHistory((prev) => [...prev, { role: "user", content: prompt }]);
+    setChatHistory((p) => [...p, { role: "user", content: prompt }]);
     try {
       const dados = await api.post<{ reply: string }>("/api/playground/chat", { prompt });
-      setChatHistory((prev) => [...prev, { role: "assistant", content: dados.reply }]);
+      setChatHistory((p) => [...p, { role: "assistant", content: dados.reply }]);
     } catch (e) {
-      setChatHistory((prev) => [
-        ...prev,
-        { role: "assistant", content: "Erro: " + (e instanceof ErroApi ? e.message : "falha") },
-      ]);
-    } finally {
-      setLoading(false);
-    }
+      setChatHistory((p) => [...p, { role: "assistant", content: "Erro: " + (e instanceof ErroApi ? e.message : "") }]);
+    } finally { setLoading(false); }
   }, [chatInput, loading]);
 
-  // Novo arquivo
   const novoArquivo = useCallback(() => {
-    const nome = prompt("Nome do arquivo:", "novo.js");
+    const nome = prompt("Nome:", "novo.js");
     if (!nome) return;
     setActiveFile(nome);
     setCode("// " + nome);
@@ -117,125 +88,112 @@ export function Playground({ usuario }: { usuario: Usuario }) {
   }, [salvar]);
 
   return (
-    <div style={{ display: "flex", height: "calc(100vh - 100px)", gap: "0.5rem" }}>
-      {/* Sidebar: arquivos */}
-      <div style={{ width: "200px", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-        <Cartao style={{ flex: 1, overflow: "auto", padding: "0.5rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
-            <strong>Arquivos</strong>
-            <button className="pequeno" onClick={novoArquivo} type="button" title="Novo arquivo">+</button>
-          </div>
-          {files.map((f) => (
-            <div
-              key={f}
-              onClick={() => abrirArquivo(f)}
-              style={{
-                cursor: "pointer",
-                padding: "0.2rem 0.4rem",
-                borderRadius: "4px",
-                background: f === activeFile ? "var(--borda)" : "transparent",
-                fontSize: "0.85rem",
-                fontFamily: "monospace",
-              }}
-            >
-              {f.endsWith("/") ? "📁 " : "📄 "}{f}
-            </div>
-          ))}
-        </Cartao>
+    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 56px)", background: "#0c0c0c", color: "#c0c0c0", fontFamily: '"Consolas", "Courier New", monospace' }}>
+      {/* Barra superior estilo terminal */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.4rem 0.6rem", background: "#1a1a1a", borderBottom: "1px solid #333", fontSize: "0.75rem", flexWrap: "wrap" }}>
+        <span style={{ color: "#10b981", fontWeight: 700 }}>codingpro@playground</span>
+        <span style={{ color: "#666" }}>:</span>
+        <span style={{ color: "#06b6d4" }}>~/{activeFile}</span>
+        <span style={{ flex: 1 }} />
+        <button onClick={salvar} style={btnStyle}>💾</button>
+        <button onClick={executar} disabled={running} style={{ ...btnStyle, color: running ? "#666" : "#10b981" }}>▶</button>
       </div>
 
-      {/* Editor + Output */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-        <Cartao style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0" }}>
-          <div style={{ display: "flex", gap: "0.5rem", padding: "0.5rem", borderBottom: "1px solid var(--borda)" }}>
-            <span className="mono" style={{ fontSize: "0.8rem" }}>{activeFile}</span>
-            <span style={{ flex: 1 }} />
-            <button className="pequeno" onClick={salvar} type="button">Salvar</button>
-            <button className="pequeno primario" disabled={running} onClick={executar} type="button">
-              {running ? "Rodando..." : "▶ Executar"}
-            </button>
+      {/* Conteudo principal */}
+      <div style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
+        {aba === "arquivos" && (
+          <div style={{ padding: "0.5rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+              <span style={{ color: "#f5bf47" }}>$ ls</span>
+              <button onClick={novoArquivo} style={{ ...btnStyle, color: "#10b981" }}>+ novo</button>
+            </div>
+            {files.map((f) => (
+              <div key={f} onClick={() => abrirArquivo(f)} style={{ cursor: "pointer", padding: "0.2rem 0.4rem", borderBottom: "1px solid #1a1a1a", fontSize: "0.85rem" }}>
+                <span style={{ color: f.endsWith("/") ? "#06b6d4" : "#888" }}>{f.endsWith("/") ? "📁" : "📄"}</span> {f}
+              </div>
+            ))}
           </div>
+        )}
+
+        {aba === "editor" && (
           <textarea
-            ref={editorRef}
             onChange={(e) => setCode(e.target.value)}
             spellCheck={false}
             style={{
-              flex: 1,
-              background: "var(--fundo)",
-              border: "none",
-              color: "var(--texto)",
-              fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-              fontSize: "13px",
-              lineHeight: "1.6",
-              outline: "none",
-              padding: "0.75rem",
-              resize: "none",
-              tabSize: 2,
+              flex: 1, background: "#0c0c0c", border: "none", color: "#e0e0e0",
+              fontFamily: '"Consolas", "Courier New", monospace', fontSize: "14px",
+              lineHeight: "1.7", outline: "none", padding: "0.75rem", resize: "none",
+              width: "100%", minHeight: "300px",
             }}
             value={code}
           />
-        </Cartao>
-        <Cartao style={{ maxHeight: "180px", overflow: "auto", padding: "0.5rem" }}>
-          <pre style={{ margin: 0, fontFamily: "monospace", fontSize: "0.8rem", whiteSpace: "pre-wrap" }}>
-            {output || "Saída do terminal aparecerá aqui..."}
-          </pre>
-        </Cartao>
-      </div>
+        )}
 
-      {/* Chat IA */}
-      <div style={{ width: "320px", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-        <Cartao style={{ flex: 1, overflow: "auto", padding: "0.5rem" }}>
-          <strong style={{ marginBottom: "0.5rem", display: "block" }}>💬 Chat IA</strong>
-          {chatHistory.map((msg, i) => (
-            <div
-              key={i}
-              style={{
-                marginBottom: "0.5rem",
-                padding: "0.4rem 0.5rem",
-                borderRadius: "8px",
-                background: msg.role === "user" ? "var(--borda)" : "var(--fundo-cartao)",
-                fontSize: "0.82rem",
-              }}
-            >
-              <strong style={{ color: msg.role === "user" ? "var(--secundario, #06b6d4)" : "var(--esmeralda)" }}>
-                {msg.role === "user" ? "Você" : "IA"}:{" "}
-              </strong>
-              {msg.content}
+        {aba === "terminal" && (
+          <div style={{ flex: 1, padding: "0.5rem", overflow: "auto", whiteSpace: "pre-wrap", fontSize: "0.85rem", lineHeight: "1.6" }}>
+            <span style={{ color: "#10b981" }}>{output || "$ _"}</span>
+          </div>
+        )}
+
+        {aba === "chat" && (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0.5rem" }}>
+            <div style={{ flex: 1, overflow: "auto", marginBottom: "0.5rem" }}>
+              {chatHistory.map((msg, i) => (
+                <div key={i} style={{ marginBottom: "0.6rem", fontSize: "0.85rem" }}>
+                  <div style={{ color: msg.role === "user" ? "#06b6d4" : "#10b981", fontWeight: 600 }}>
+                    {msg.role === "user" ? "> você" : "< codingpro"}:
+                  </div>
+                  <div style={{ color: msg.role === "user" ? "#ccc" : "#ddd", paddingLeft: "0.5rem" }}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {loading && <div style={{ color: "#666", fontSize: "0.8rem" }}>pensando...</div>}
             </div>
-          ))}
-          {loading && <div style={{ fontSize: "0.8rem", color: "var(--texto-suave)" }}>Pensando...</div>}
-        </Cartao>
-        <div style={{ display: "flex", gap: "0.25rem" }}>
-          <textarea
-            onChange={(e) => setChatInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                enviarChat();
-              }
-            }}
-            placeholder="Pergunte sobre o código..."
-            rows={2}
-            style={{
-              flex: 1,
-              background: "var(--fundo)",
-              border: "1px solid var(--borda)",
-              borderRadius: "8px",
-              color: "var(--texto)",
-              fontFamily: "inherit",
-              fontSize: "0.82rem",
-              padding: "0.4rem",
-              resize: "none",
-            }}
-            value={chatInput}
-          />
-          <button className="primario pequeno" disabled={loading} onClick={enviarChat} type="button" style={{ alignSelf: "flex-end" }}>
-            ▶
-          </button>
-        </div>
+            <div style={{ display: "flex", gap: "0.25rem" }}>
+              <textarea
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarChat(); } }}
+                placeholder="$ pergunte algo..."
+                rows={2}
+                style={{
+                  flex: 1, background: "#1a1a1a", border: "1px solid #333", borderRadius: "4px",
+                  color: "#e0e0e0", fontFamily: "inherit", fontSize: "0.85rem", padding: "0.4rem", resize: "none",
+                }}
+                value={chatInput}
+              />
+              <button onClick={enviarChat} disabled={loading} style={{ ...btnStyle, color: "#10b981", alignSelf: "flex-end" }}>
+                ▶
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {erro && <Aviso tipo="erro">{erro}</Aviso>}
+      {/* Barra inferior de abas estilo mobile */}
+      <div style={{ display: "flex", background: "#1a1a1a", borderTop: "1px solid #333" }}>
+        {(["arquivos", "editor", "terminal", "chat"] as Aba[]).map((a) => (
+          <button
+            key={a}
+            onClick={() => setAba(a)}
+            style={{
+              flex: 1, padding: "0.6rem 0.3rem", background: aba === a ? "#252525" : "transparent",
+              border: "none", borderTop: aba === a ? "2px solid #10b981" : "2px solid transparent",
+              color: aba === a ? "#10b981" : "#888", fontFamily: "inherit", fontSize: "0.7rem",
+              fontWeight: aba === a ? 700 : 400, cursor: "pointer",
+            }}
+            type="button"
+          >
+            {a === "arquivos" ? "📁 Files" : a === "editor" ? "✏️ Editor" : a === "terminal" ? "▶️ Run" : "💬 Chat"}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
+
+const btnStyle: React.CSSProperties = {
+  background: "transparent", border: "1px solid #333", borderRadius: "4px",
+  color: "#aaa", cursor: "pointer", fontFamily: "inherit", fontSize: "0.8rem",
+  padding: "0.2rem 0.5rem",
+};

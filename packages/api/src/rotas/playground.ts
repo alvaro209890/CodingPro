@@ -1,5 +1,5 @@
 import { exec } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { homedir } from "node:os";
 import type { FastifyInstance } from "fastify";
@@ -11,26 +11,42 @@ const TIMEOUT_MS = 30_000;
 function dirUsuario(id: number): string {
   const dir = join(RAIZ, String(id));
   mkdirSync(dir, { recursive: true });
+  // Monta a pasta Documentos do PC como symlink
+  const docsLink = join(dir, "Documentos");
+  if (!existsSync(docsLink)) {
+    try { symlinkSync(join(homedir(), "Documentos"), docsLink, "dir"); } catch { /* já existe ou sem permissão */ }
+  }
   return dir;
 }
 
-/** Lista arquivos do workspace (em árvore plana com paths relativos). */
-function listarArquivos(dir: string, base: string = dir): string[] {
+/** Lista arquivos do workspace (em árvore plana com paths relativos). Segue symlinks. */
+function listarArquivos(dir: string, base: string = dir, profundidade = 0): string[] {
   const resultado: string[] = [];
-  if (!existsSync(dir)) return resultado;
+  if (!existsSync(dir) || profundidade > 4) return resultado;
   for (const nome of readdirSync(dir)) {
+    if (nome.startsWith(".") || nome === "node_modules") continue;
     const caminho = join(dir, nome);
     const rel = caminho.slice(base.length + 1);
     try {
-      if (statSync(caminho).isDirectory()) {
+      const st = statSync(caminho);
+      if (st.isDirectory() || st.isSymbolicLink()) {
         resultado.push(rel + "/");
-        resultado.push(...listarArquivos(caminho, base));
+        if (profundidade < 4) resultado.push(...listarArquivos(caminho, base, profundidade + 1));
       } else {
         resultado.push(rel);
       }
     } catch { /* permissão ou arquivo movido */ }
   }
   return resultado.sort();
+}
+
+function resolverSeguro(dirUsuario: string, caminhoRelativo: string): string | null {
+  if (!caminhoRelativo || caminhoRelativo.includes("..")) return null;
+  const alvo = resolve(join(dirUsuario, caminhoRelativo));
+  try { return realpathSync(alvo); } catch { return null; }
+  const real = realpathSync(alvo);
+  const realBase = realpathSync(dirUsuario);
+  return real.startsWith(realBase) ? real : null;
 }
 
 export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): void {
