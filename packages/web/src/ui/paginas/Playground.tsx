@@ -1,86 +1,91 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ErroApi, type Usuario } from "../api.js";
 
-type Aba = "arquivos" | "editor" | "terminal" | "git" | "chat" | "memoria";
-
-type ToolLog = { id: string; nome: string; args: string; resultado: string; inicio: number; fim?: number; ativo: boolean };
-type Subagente = { id: string; goal: string; status: "running" | "done"; inicio: number };
-type ChatMsg = { role: string; content: string };
+type Aba = "files" | "editor" | "terminal" | "git" | "chat" | "memory" | "cli";
 
 const COMANDOS = [
   { cmd: "/clear", desc: "Limpar conversa" },
-  { cmd: "/files", desc: "Listar arquivos do workspace" },
-  { cmd: "/memory", desc: "Salvar conversa na memória" },
-  { cmd: "/load", desc: "Carregar memória salva" },
-  { cmd: "/help", desc: "Mostrar comandos" },
+  { cmd: "/files", desc: "Listar arquivos" },
+  { cmd: "/memory", desc: "Salvar na memória" },
+  { cmd: "/help", desc: "Ajuda" },
 ];
+
+const CLR = {
+  bg: "#0d1117",
+  bg2: "#161b22",
+  border: "#30363d",
+  green: "#3fb950",
+  blue: "#58a6ff",
+  yellow: "#d29922",
+  red: "#f85149",
+  text: "#c9d1d9",
+  muted: "#8b949e",
+  white: "#f0f6fc",
+};
+
+const css = (extra?: React.CSSProperties): React.CSSProperties => ({
+  background: CLR.bg, color: CLR.text, fontFamily: 'SF Mono,Consolas,monospace', ...extra,
+});
 
 export function Playground({ usuario }: { usuario: Usuario }) {
   const [aba, setAba] = useState<Aba>("chat");
   const [files, setFiles] = useState<string[]>([]);
   const [activeFile, setActiveFile] = useState("");
   const [code, setCode] = useState("");
-  const [output, setOutput] = useState("$ pronto\n");
-  const [cwd, setCwd] = useState(".");
+  const [output, setOutput] = useState("");
   const [cmdInput, setCmdInput] = useState("");
-  const [gitOutput, setGitOutput] = useState("");
   const [gitUrl, setGitUrl] = useState("");
+  const [gitOutput, setGitOutput] = useState("");
   const [chatInput, setChatInput] = useState("");
-  const [chatHistory, setChatHistory] = useState<ChatMsg[]>([]);
-  const [streamingContent, setStreamingContent] = useState("");
-  const [tools, setTools] = useState<ToolLog[]>([]);
-  const [subagentes, setSubagentes] = useState<Subagente[]>([]);
-  const [status, setStatus] = useState("");
+  const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
+  const [streaming, setStreaming] = useState("");
+  const [thinking, setThinking] = useState(false);
   const [memoryFiles, setMemoryFiles] = useState<string[]>([]);
   const [memoryContent, setMemoryContent] = useState("");
   const [memoryName, setMemoryName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [erro, setErro] = useState("");
+  const [cliOut, setCliOut] = useState("");
+  const [cliRunning, setCliRunning] = useState(false);
   const [showCmds, setShowCmds] = useState(false);
-  const chatRef = useRef<HTMLDivElement>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
-  // ─── API helpers ───
-  const call = useCallback(async <T,>(path: string, body?: unknown): Promise<T> => {
-    const res = await fetch(`https://codingpro-api.cursar.space${path}`, {
+  const chatRef = useRef<HTMLDivElement>(null);
+
+  const post = useCallback(async <T,>(path: string, body?: unknown): Promise<T> => {
+    const r = await fetch(`https://codingpro-api.cursar.space${path}`, {
       method: "POST", headers: { "content-type": "application/json" },
       body: body ? JSON.stringify(body) : "{}", credentials: "include",
     });
-    if (!res.ok) { const e = await res.json().catch(() => ({})) as any; throw new Error(e.mensagem || "Erro"); }
-    return res.json() as T;
+    if (!r.ok) throw new Error(((await r.json().catch(() => ({}))) as any).mensagem || "Erro");
+    return r.json() as T;
   }, []);
 
-  // ─── Files ───
+  // Files
   const loadFiles = useCallback(async () => {
-    try { const d = await call<{ files: string[] }>("/api/vps/files"); setFiles(d.files); } catch { /* offline */ }
-  }, [call]);
+    try { const d = await post<{ files: string[] }>("/api/vps/files"); setFiles(d.files); } catch {}
+  }, [post]);
+  useEffect(() => { loadFiles(); }, [loadFiles]);
+
   const openFile = useCallback(async (path: string) => {
     setActiveFile(path); setAba("editor");
-    try { const d = await call<{ content: string }>("/api/vps/read", { path }); setCode(d.content); } catch { setCode("// erro"); }
-  }, [call]);
-  useEffect(() => { loadFiles(); }, [loadFiles]);
+    try { const d = await post<{ content: string }>("/api/vps/read", { path }); setCode(d.content); } catch {}
+  }, [post]);
+
   const saveFile = useCallback(async () => {
     if (!activeFile) return;
-    try { await call("/api/vps/write", { path: activeFile, content: code }); setOutput((p) => p + `✓ salvo\n`); loadFiles(); } catch (e: any) { setErro(e.message); }
-  }, [activeFile, code, call, loadFiles]);
-  const deleteFile = useCallback(async (path: string) => {
-    try { await call("/api/vps/delete", { path }); loadFiles(); if (activeFile === path) { setActiveFile(""); setCode(""); } } catch (e: any) { setErro(e.message); }
-  }, [activeFile, call, loadFiles]);
-  useEffect(() => { const h = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); saveFile(); } }; window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h); }, [saveFile]);
+    try { await post("/api/vps/write", { path: activeFile, content: code }); loadFiles(); } catch {}
+  }, [activeFile, code, post, loadFiles]);
 
-  // ─── Agent SSE ───
-  const sendAgent = useCallback(async (prompt: string) => {
-    setLoading(true); setStreamingContent(""); setTools([]); setSubagentes([]); setStatus("pensando...");
-    setChatHistory((p) => [...p, { role: "user", content: prompt }]);
-    const ctrl = new AbortController(); abortRef.current = ctrl;
+  // Agent chat
+  const sendChat = useCallback(async (prompt: string) => {
+    if (!prompt.trim() || thinking) return;
+    setChatInput(""); setThinking(true); setStreaming("");
+    setMessages((p) => [...p, { role: "user", content: prompt }]);
     try {
-      const res = await fetch("https://codingpro-api.cursar.space/api/vps/agent", {
+      const r = await fetch("https://codingpro-api.cursar.space/api/vps/agent", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt }), credentials: "include", signal: ctrl.signal,
+        body: JSON.stringify({ prompt }), credentials: "include",
       });
-      if (!res.ok) throw new Error("Erro no agente");
-      const reader = res.body!.getReader();
-      const dec = new TextDecoder(); let buf = "";
+      const reader = r.body!.getReader();
+      const dec = new TextDecoder(); let buf = ""; let content = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -88,123 +93,187 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         for (const line of buf.split("\n")) {
           if (!line.startsWith("data: ")) continue;
           try {
-            const evt = JSON.parse(line.slice(6));
-            if (evt.type === "text") setStreamingContent((p) => p + (evt.content ?? ""));
-            else if (evt.type === "tool-start") setTools((p) => [...p, { id: evt.id ?? "", nome: evt.name ?? "", args: "", resultado: "", inicio: Date.now(), ativo: true }]);
-            else if (evt.type === "tool-end") setTools((p) => p.map((t) => t.id === evt.id ? { ...t, args: evt.args ?? "", resultado: evt.result ?? "", fim: Date.now(), ativo: false } : t));
-            else if (evt.type === "done") {
-              const final = streamingContent || evt.content || "";
-              setChatHistory((p) => [...p, { role: "assistant", content: final }]);
-              setStreamingContent(""); setStatus("");
-            } else if (evt.type === "status") setStatus(evt.message ?? "");
-          } catch { /* partial */ }
+            const d = JSON.parse(line.slice(6));
+            if (d.type === "text") { content += d.content ?? ""; setStreaming(content); }
+            else if (d.type === "done") { setMessages((p) => [...p, { role: "assistant", content: content || d.content || "" }]); setStreaming(""); }
+          } catch {}
         }
-        buf = buf.includes("\n") ? buf.slice(buf.lastIndexOf("\n") + 1) : buf;
       }
-    } catch (e: any) { if (e.name !== "AbortError") setChatHistory((p) => [...p, { role: "assistant", content: "❌ " + e.message }]); }
-    finally { setLoading(false); setStreamingContent(""); setStatus(""); abortRef.current = null; }
-  }, [loading, streamingContent]);
+    } catch (e: any) {
+      setMessages((p) => [...p, { role: "assistant", content: "❌ " + e.message }]);
+    } finally { setThinking(false); setStreaming(""); }
+  }, [thinking]);
 
-  // ─── Slash commands ───
-  const handleSlash = useCallback(async (cmd: string) => {
-    setShowCmds(false);
-    if (cmd === "/clear") { setChatHistory([]); setTools([]); setSubagentes([]); setOutput("$ chat limpo\n"); }
-    else if (cmd === "/files") { setAba("arquivos"); loadFiles(); setOutput("$ arquivos carregados\n"); }
-    else if (cmd === "/memory") { saveMemory("chat-" + Date.now(), JSON.stringify(chatHistory.slice(-20))); setOutput("$ memória salva\n"); }
-    else if (cmd === "/load") { setAba("memoria"); }
-    else if (cmd === "/help") {
-      setChatHistory((p) => [...p, { role: "system", content: COMANDOS.map((c) => `${c.cmd} — ${c.desc}`).join("\n") }]);
-    }
-  }, [chatHistory, loadFiles]);
-
-  const handleInput = useCallback((val: string) => {
-    setChatInput(val);
-    setShowCmds(val.startsWith("/") && val.length <= 8);
-  }, []);
-
-  const handleSubmit = useCallback(() => {
-    const val = chatInput.trim();
-    if (!val || loading) return;
-    if (val.startsWith("/")) { handleSlash(val.split(" ")[0] ?? ""); setChatInput(""); return; }
-    setChatInput("");
-    sendAgent(val);
-  }, [chatInput, loading, handleSlash, sendAgent]);
-
-  // ─── Terminal ───
+  // Terminal
   const runCmd = useCallback(async (cmd?: string) => {
     const c = cmd ?? cmdInput; if (!c.trim()) return;
-    setAba("terminal"); setOutput((p) => p + `$ ${c}\n`); setCmdInput(""); setLoading(true);
+    setCmdInput(""); setAba("terminal"); setOutput((p) => p + `$ ${c}\n`); setThinking(true);
     try {
-      const d = await call<{ stdout: string; stderr: string; code?: number }>("/api/vps/terminal", { command: c, cwd });
-      setOutput((p) => p + (d.stdout || "") + (d.stderr || "") + (d.code !== undefined ? `\n[exit ${d.code}]` : ""));
+      const d = await post<{ stdout: string; stderr: string; code?: number }>("/api/vps/terminal", { command: c, cwd: "." });
+      setOutput((p) => p + (d.stdout || "") + (d.stderr || ""));
     } catch (e: any) { setOutput((p) => p + `Erro: ${e.message}\n`); }
-    finally { setLoading(false); }
-  }, [cmdInput, cwd, call]);
+    finally { setThinking(false); }
+  }, [cmdInput, post]);
 
-  // ─── Git ───
-  const gitAction = useCallback(async (action: string, url?: string) => {
-    setGitOutput("...");
-    try { const d = await call<{ ok: boolean; output: string }>("/api/vps/git", { action, cwd: "Projects", url }); setGitOutput(d.output); loadFiles(); } catch (e: any) { setGitOutput(e.message); }
-  }, [call, loadFiles]);
+  // Git
+  const git = useCallback(async (action: string, url?: string) => {
+    setGitOutput("..."); setAba("git");
+    try { const d = await post<{ output: string }>("/api/vps/git", { action, cwd: "Projects", url }); setGitOutput(d.output); loadFiles(); } catch (e: any) { setGitOutput(e.message); }
+  }, [post, loadFiles]);
 
-  // ─── Memory ───
-  const loadMemories = useCallback(async () => {
-    try { const d = await call<{ files: string[] }>("/api/vps/memory", { action: "list" }); setMemoryFiles(d.files); } catch { /* */ }
-  }, [call]);
-  const saveMemory = useCallback(async (name: string, content: string) => {
-    try { await call("/api/vps/memory", { action: "save", name, content }); loadMemories(); } catch { /* */ }
-  }, [call, loadMemories]);
-  const loadMemory = useCallback(async (name: string) => {
-    try { const d = await call<{ content: string }>("/api/vps/memory", { action: "load", name: name.replace(".md", "") }); setMemoryName(name.replace(".md", "")); setMemoryContent(d.content); setAba("memoria"); } catch { /* */ }
-  }, [call]);
-  useEffect(() => { loadMemories(); }, [loadMemories]);
+  // Memory
+  const loadMems = useCallback(async () => {
+    try { const d = await post<{ files: string[] }>("/api/vps/memory", { action: "list" }); setMemoryFiles(d.files); } catch {}
+  }, [post]);
+  useEffect(() => { loadMems(); }, [loadMems]);
+  const saveMem = useCallback(async () => {
+    if (!memoryName) return;
+    try { await post("/api/vps/memory", { action: "save", name: memoryName, content: memoryContent }); loadMems(); } catch {}
+  }, [memoryName, memoryContent, post, loadMems]);
 
-  // ─── Auto memory consolidation ───
-  useEffect(() => {
-    if (chatHistory.length > 10) {
-      const interval = setInterval(() => {
-        saveMemory("auto-" + new Date().toISOString().slice(0, 10), JSON.stringify(chatHistory.slice(-30)));
-      }, 60000);
-      return () => clearInterval(interval);
-    }
-  }, [chatHistory.length, saveMemory]);
+  // CLI
+  const runCli = useCallback(async (prompt: string) => {
+    if (!prompt.trim() || cliRunning) return;
+    setCliRunning(true); setCliOut((p) => p + `\n▸ ${prompt}\n`); setAba("cli");
+    try {
+      const r = await fetch("https://codingpro-api.cursar.space/api/vps/cli/exec", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt }), credentials: "include",
+      });
+      const reader = r.body!.getReader();
+      const dec = new TextDecoder(); let buf = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        for (const line of buf.split("\n")) {
+          if (!line.startsWith("data: ")) continue;
+          try { const d = JSON.parse(line.slice(6)); if (typeof d === "string") setCliOut((p) => p + d); } catch {}
+        }
+      }
+    } catch (e: any) { setCliOut((p) => p + `\n[${e.message}]`); }
+    finally { setCliRunning(false); }
+  }, [cliRunning]);
 
-  // ─── Styles ───
-  const cs = (extra?: React.CSSProperties): React.CSSProperties => ({
-    background: "#0c0c0c", color: "#c0c0c0", fontFamily: '"Consolas","Courier New",monospace', ...extra,
-  });
-  const btn = (cor = "#aaa"): React.CSSProperties => ({
-    background: "transparent", border: "1px solid #333", borderRadius: "4px", color: cor,
-    cursor: "pointer", fontFamily: "inherit", fontSize: "0.7rem", padding: "0.2rem 0.5rem",
-  });
+  // Slash
+  const handleSlash = useCallback((cmd: string) => {
+    setShowCmds(false);
+    if (cmd === "/clear") { setMessages([]); setStreaming(""); }
+    else if (cmd === "/files") { setAba("files"); loadFiles(); }
+    else if (cmd === "/memory") { setAba("memory"); }
+    else if (cmd === "/help") { setMessages((p) => [...p, { role: "system", content: COMANDOS.map((c) => `${c.cmd} — ${c.desc}`).join("\n") }]); }
+  }, [loadFiles]);
+
+  const tabs: { id: Aba; label: string; icon: string }[] = [
+    { id: "chat", label: "Chat", icon: "💬" },
+    { id: "cli", label: "CLI", icon: "⚡" },
+    { id: "files", label: "Files", icon: "📁" },
+    { id: "editor", label: "Editor", icon: "✏️" },
+    { id: "terminal", label: "Terminal", icon: ">_" },
+    { id: "git", label: "Git", icon: "🔀" },
+    { id: "memory", label: "Memory", icon: "🧠" },
+  ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 56px)", ...cs() }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.35rem 0.5rem", background: "#1a1a1a", borderBottom: "1px solid #333", fontSize: "0.7rem", flexWrap: "wrap" }}>
-        <span style={{ color: "#10b981", fontWeight: 700 }}>codingpro@vps</span>
-        <span style={{ color: "#666" }}>:</span>
-        <span style={{ color: "#06b6d4" }}>~/{activeFile || cwd}</span>
+    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 52px)", ...css() }}>
+      {/* Header bar */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0.75rem", background: CLR.bg2, borderBottom: `1px solid ${CLR.border}`, fontSize: "0.75rem" }}>
+        <span style={{ color: CLR.green, fontWeight: 700 }}>⚡ CodingPro</span>
+        <span style={{ color: CLR.muted }}>VPS</span>
         <span style={{ flex: 1 }} />
-        {status && <span style={{ color: "#f5bf47", fontSize: "0.65rem" }}>{status}</span>}
-        {tools.filter((t) => t.ativo).map((t) => (
-          <span key={t.id} style={{ color: "#10b981", fontSize: "0.6rem" }}>⏳ {t.nome}</span>
-        ))}
-        <span style={{ color: "#555", fontSize: "0.6rem" }}>{usuario.email}</span>
+        <span style={{ color: CLR.muted, fontSize: "0.65rem" }}>{usuario.email}</span>
+        <button onClick={() => { setMessages([]); setStreaming(""); }} style={{ ...css(), border: `1px solid ${CLR.border}`, borderRadius: "4px", padding: "0.15rem 0.4rem", cursor: "pointer", fontSize: "0.7rem", color: CLR.muted }}>+ Novo</button>
       </div>
 
-      {/* Main */}
+      {/* Content */}
       <div style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
+        {/* Chat */}
+        {aba === "chat" && (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <div ref={chatRef} style={{ flex: 1, overflow: "auto", padding: "0.75rem" }}>
+              {messages.length === 0 && !streaming && (
+                <div style={{ textAlign: "center", padding: "2rem", color: CLR.muted, fontSize: "0.85rem" }}>
+                  <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>⚡</div>
+                  <div>CodingPro VPS — IA no seu workspace</div>
+                  <div style={{ fontSize: "0.7rem", marginTop: "0.5rem" }}>Digite / para comandos</div>
+                </div>
+              )}
+              {messages.map((m, i) => (
+                <div key={i} style={{ marginBottom: "0.75rem" }}>
+                  <div style={{ color: m.role === "user" ? CLR.blue : CLR.green, fontWeight: 600, fontSize: "0.8rem", marginBottom: "0.2rem" }}>
+                    {m.role === "user" ? "▸ Você" : "◂ CodingPro"}
+                  </div>
+                  <div style={{ color: CLR.text, whiteSpace: "pre-wrap", fontSize: "0.82rem", lineHeight: "1.6" }}>{m.content}</div>
+                </div>
+              ))}
+              {streaming && (
+                <div style={{ marginBottom: "0.75rem" }}>
+                  <div style={{ color: CLR.green, fontWeight: 600, fontSize: "0.8rem", marginBottom: "0.2rem" }}>◂ CodingPro</div>
+                  <div style={{ color: CLR.text, whiteSpace: "pre-wrap", fontSize: "0.82rem", lineHeight: "1.6" }}>{streaming}<span className="blink">▌</span></div>
+                </div>
+              )}
+              {thinking && !streaming && <div style={{ color: CLR.muted, fontSize: "0.8rem" }}>Pensando...</div>}
+            </div>
+
+            {/* Slash dropdown */}
+            {showCmds && chatInput.startsWith("/") && (
+              <div style={{ margin: "0 0.75rem", background: CLR.bg2, border: `1px solid ${CLR.border}`, borderRadius: "6px", padding: "0.3rem" }}>
+                {COMANDOS.filter((c) => c.cmd.startsWith(chatInput)).map((c) => (
+                  <div key={c.cmd} onClick={() => { setChatInput(c.cmd + " "); setShowCmds(false); }}
+                    style={{ padding: "0.25rem 0.5rem", cursor: "pointer", fontSize: "0.8rem", borderRadius: "3px" }}>
+                    <span style={{ color: CLR.green }}>{c.cmd}</span> <span style={{ color: CLR.muted }}>— {c.desc}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Input */}
+            <div style={{ display: "flex", gap: "0.3rem", padding: "0.5rem 0.75rem", borderTop: `1px solid ${CLR.border}` }}>
+              <textarea
+                value={chatInput}
+                onChange={(e) => { setChatInput(e.target.value); setShowCmds(e.target.value.startsWith("/")); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (chatInput.startsWith("/")) handleSlash(chatInput.split(" ")[0]);
+                    else sendChat(chatInput);
+                  }
+                }}
+                placeholder="Mensagem (Enter envia, / para comandos)..."
+                rows={2}
+                style={{ flex: 1, ...css(), background: CLR.bg2, border: `1px solid ${CLR.border}`, borderRadius: "6px", color: CLR.text, fontSize: "0.82rem", padding: "0.4rem 0.5rem", resize: "none", outline: "none" }}
+              />
+              <button onClick={() => { if (chatInput.startsWith("/")) handleSlash(chatInput.split(" ")[0]); else sendChat(chatInput); }}
+                disabled={thinking} style={{ ...css(), background: CLR.green, color: "#000", border: "none", borderRadius: "6px", padding: "0.3rem 0.6rem", cursor: "pointer", fontWeight: 700, fontSize: "0.8rem", alignSelf: "flex-end" }}>
+                ▶
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* CLI */}
+        {aba === "cli" && (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <div style={{ flex: 1, overflow: "auto", padding: "0.5rem", whiteSpace: "pre-wrap", fontSize: "0.8rem", color: CLR.green }}>
+              {cliOut || "CodingPro CLI — digite um prompt e veja a resposta em tempo real."}
+              {cliRunning && <span className="blink">▌</span>}
+            </div>
+            <div style={{ display: "flex", gap: "0.3rem", padding: "0.5rem", borderTop: `1px solid ${CLR.border}` }}>
+              <input id="cli-in" onKeyDown={(e) => { if (e.key === "Enter") { runCli((e.target as HTMLInputElement).value); (e.target as HTMLInputElement).value = ""; } }}
+                placeholder="codingpro -p seu prompt..." disabled={cliRunning}
+                style={{ flex: 1, ...css(), background: CLR.bg2, border: `1px solid ${CLR.border}`, borderRadius: "6px", color: CLR.green, fontSize: "0.82rem", padding: "0.4rem", outline: "none" }} />
+            </div>
+          </div>
+        )}
+
         {/* Files */}
-        {aba === "arquivos" && (
-          <div style={{ padding: "0.5rem" }}>
-            <div style={{ color: "#f5bf47", marginBottom: "0.3rem", fontSize: "0.75rem" }}>$ ls</div>
-            {files.length === 0 && <div style={{ color: "#666", fontSize: "0.8rem" }}>Carregando...</div>}
+        {aba === "files" && (
+          <div style={{ padding: "0.5rem", overflow: "auto" }}>
+            {files.length === 0 && <div style={{ color: CLR.muted }}>Carregando...</div>}
             {files.map((f) => (
-              <div key={f} style={{ display: "flex", justifyContent: "space-between", cursor: "pointer", padding: "0.12rem 0.3rem", borderBottom: "1px solid #1a1a1a", fontSize: "0.78rem" }}
-                onClick={() => f.endsWith("/") ? setCwd(f) : openFile(f)}>
-                <span><span style={{ color: f.endsWith("/") ? "#06b6d4" : "#888" }}>{f.endsWith("/") ? "📁" : "📄"}</span> {f}</span>
-                {!f.endsWith("/") && <button onClick={(e) => { e.stopPropagation(); deleteFile(f); }} style={{ ...btn("#f55"), fontSize: "0.55rem", padding: "0 0.25rem" }}>✕</button>}
+              <div key={f} onClick={() => f.endsWith("/") ? null : openFile(f)}
+                style={{ display: "flex", justifyContent: "space-between", cursor: f.endsWith("/") ? "default" : "pointer", padding: "0.25rem 0.4rem", borderBottom: `1px solid ${CLR.border}`, fontSize: "0.82rem" }}>
+                <span><span style={{ color: f.endsWith("/") ? CLR.blue : CLR.muted }}>{f.endsWith("/") ? "📁" : "📄"}</span> {f}</span>
               </div>
             ))}
           </div>
@@ -212,136 +281,81 @@ export function Playground({ usuario }: { usuario: Usuario }) {
 
         {/* Editor */}
         {aba === "editor" && (
-          <textarea onChange={(e) => setCode(e.target.value)} spellCheck={false}
-            style={{ flex: 1, ...cs(), border: "none", color: "#e0e0e0", fontSize: "13px", lineHeight: "1.7", outline: "none", padding: "0.75rem", resize: "none", width: "100%" }} value={code} />
+          <textarea value={code} onChange={(e) => setCode(e.target.value)} spellCheck={false}
+            style={{ flex: 1, ...css(), border: "none", color: CLR.text, fontSize: "13px", lineHeight: "1.7", padding: "0.75rem", resize: "none", outline: "none" }} />
         )}
 
         {/* Terminal */}
         {aba === "terminal" && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-            <div style={{ flex: 1, overflow: "auto", padding: "0.5rem", whiteSpace: "pre-wrap", fontSize: "0.8rem", lineHeight: "1.6" }}>
-              <span style={{ color: "#10b981" }}>{output}</span>
-            </div>
-            <div style={{ display: "flex", padding: "0.3rem", borderTop: "1px solid #333" }}>
-              <span style={{ color: "#10b981", padding: "0.3rem" }}>$</span>
+            <div style={{ flex: 1, overflow: "auto", padding: "0.5rem", whiteSpace: "pre-wrap", fontSize: "0.82rem", color: CLR.green }}>{output || "$ _"}</div>
+            <div style={{ display: "flex", padding: "0.4rem", borderTop: `1px solid ${CLR.border}` }}>
+              <span style={{ color: CLR.green, padding: "0.3rem" }}>$</span>
               <input value={cmdInput} onChange={(e) => setCmdInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") runCmd(); }}
-                placeholder="comando..." style={{ flex: 1, ...cs(), border: "none", color: "#e0e0e0", fontSize: "0.8rem", outline: "none" }} />
+                placeholder="comando..." style={{ flex: 1, ...css(), border: "none", color: CLR.green, fontSize: "0.82rem", outline: "none" }} />
             </div>
           </div>
         )}
 
         {/* Git */}
         {aba === "git" && (
-          <div style={{ padding: "0.5rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
+          <div style={{ padding: "0.5rem", display: "flex", flexDirection: "column", gap: "0.5rem", overflow: "auto" }}>
+            <div style={{ display: "flex", gap: "0.3rem" }}>
               <input value={gitUrl} onChange={(e) => setGitUrl(e.target.value)} placeholder="https://github.com/user/repo.git"
-                style={{ flex: 1, ...cs(), border: "1px solid #333", borderRadius: "4px", color: "#e0e0e0", fontSize: "0.8rem", padding: "0.3rem", minWidth: "150px" }} />
-              <button onClick={() => gitAction("clone", gitUrl)} style={btn("#10b981")}>Clone</button>
+                style={{ flex: 1, ...css(), background: CLR.bg2, border: `1px solid ${CLR.border}`, borderRadius: "6px", color: CLR.text, fontSize: "0.82rem", padding: "0.35rem" }} />
+              <button onClick={() => git("clone", gitUrl)} style={{ ...css(), background: CLR.green, color: "#000", border: "none", borderRadius: "6px", padding: "0.3rem 0.6rem", cursor: "pointer", fontWeight: 600, fontSize: "0.8rem" }}>Clone</button>
             </div>
-            <div style={{ display: "flex", gap: "0.25rem" }}>
-              <button onClick={() => gitAction("status")} style={btn("#06b6d4")}>Status</button>
-              <button onClick={() => gitAction("pull")} style={btn("#f5bf47")}>Pull</button>
-              <button onClick={() => gitAction("log")} style={btn("#888")}>Log</button>
+            <div style={{ display: "flex", gap: "0.3rem" }}>
+              <button onClick={() => git("status")} style={btn2(CLR.blue)}>Status</button>
+              <button onClick={() => git("pull")} style={btn2(CLR.yellow)}>Pull</button>
+              <button onClick={() => git("log")} style={btn2(CLR.muted)}>Log</button>
             </div>
-            <pre style={{ flex: 1, overflow: "auto", whiteSpace: "pre-wrap", fontSize: "0.8rem", color: "#aaa", background: "#0f0f0f", padding: "0.5rem", borderRadius: "4px", margin: 0 }}>{gitOutput || "output do git..."}</pre>
-          </div>
-        )}
-
-        {/* Chat with slash commands */}
-        {aba === "chat" && (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-            <div ref={chatRef} style={{ flex: 1, overflow: "auto", padding: "0.5rem" }}>
-              {chatHistory.length === 0 && !streamingContent && (
-                <div style={{ color: "#555", fontSize: "0.8rem", textAlign: "center", padding: "2rem" }}>
-                  💬 Digite / para ver comandos<br />
-                  <span style={{ fontSize: "0.65rem" }}>/clear /files /memory /load /help</span>
-                </div>
-              )}
-              {chatHistory.map((msg, i) => (
-                <div key={i} style={{ marginBottom: "0.5rem", fontSize: "0.8rem" }}>
-                  <div style={{ color: msg.role === "user" ? "#06b6d4" : "#10b981", fontWeight: 600 }}>
-                    {msg.role === "user" ? "▸ você" : "◂ codingpro"}:
-                  </div>
-                  <div style={{ color: "#ddd", paddingLeft: "0.5rem", whiteSpace: "pre-wrap" }}>{msg.content}</div>
-                </div>
-              ))}
-              {/* Tools */}
-              {tools.map((t) => (
-                <div key={t.id} style={{ margin: "0.2rem 0", padding: "0.25rem 0.4rem", background: "#0f1a0f", border: "1px solid #1a3a1a", borderRadius: "4px", fontSize: "0.7rem", opacity: t.ativo ? 1 : 0.6 }}>
-                  <span style={{ color: t.ativo ? "#10b981" : "#666" }}>{t.ativo ? "⏳" : "✓"}</span> <span style={{ color: "#10b981", fontWeight: 600 }}>{t.nome}</span>
-                  {t.resultado && !t.ativo && <div style={{ color: "#888", fontSize: "0.65rem", marginTop: "0.1rem" }}>{t.resultado.slice(0, 200)}</div>}
-                </div>
-              ))}
-              {/* Streaming */}
-              {streamingContent && (
-                <div style={{ margin: "0.2rem 0", fontSize: "0.8rem" }}>
-                  <div style={{ color: "#10b981", fontWeight: 600 }}>◂ codingpro:</div>
-                  <div style={{ color: "#ddd", paddingLeft: "0.5rem", whiteSpace: "pre-wrap" }}>{streamingContent}<span className="blink">▌</span></div>
-                </div>
-              )}
-            </div>
-
-            {/* Slash command dropdown */}
-            {showCmds && (
-              <div style={{ position: "absolute", bottom: "120px", left: "10px", background: "#1a1a1a", border: "1px solid #333", borderRadius: "6px", padding: "0.3rem", zIndex: 10, minWidth: "200px" }}>
-                {COMANDOS.filter((c) => c.cmd.startsWith(chatInput)).map((c) => (
-                  <div key={c.cmd} onClick={() => { setChatInput(c.cmd + " "); setShowCmds(false); }}
-                    style={{ padding: "0.2rem 0.4rem", cursor: "pointer", fontSize: "0.75rem", borderRadius: "3px" }}>
-                    <span style={{ color: "#10b981" }}>{c.cmd}</span> <span style={{ color: "#888" }}>{c.desc}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Input + buttons */}
-            <div style={{ display: "flex", gap: "0.2rem", padding: "0.3rem", borderTop: "1px solid #333" }}>
-              <button onClick={() => { setChatHistory([]); setTools([]); setOutput("$ novo chat\n"); }} title="Novo chat" style={btn("#888")}>+</button>
-              <textarea onChange={(e) => handleInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-                placeholder="Digite / para comandos..." rows={2}
-                style={{ flex: 1, ...cs(), border: "1px solid #333", borderRadius: "4px", color: "#e0e0e0", fontSize: "0.8rem", padding: "0.3rem", resize: "none" }}
-                value={chatInput} />
-              <button onClick={handleSubmit} disabled={loading} style={{ ...btn("#10b981"), alignSelf: "flex-end" }}>▶</button>
-              {loading && <button onClick={() => abortRef.current?.abort()} style={{ ...btn("#f55"), alignSelf: "flex-end" }}>■</button>}
-            </div>
+            <pre style={{ color: CLR.muted, whiteSpace: "pre-wrap", fontSize: "0.8rem", background: CLR.bg2, padding: "0.5rem", borderRadius: "6px" }}>{gitOutput || "Output do git..."}</pre>
           </div>
         )}
 
         {/* Memory */}
-        {aba === "memoria" && (
-          <div style={{ flex: 1, display: "flex", padding: "0.5rem", gap: "0.5rem" }}>
-            <div style={{ width: "140px", borderRight: "1px solid #333", paddingRight: "0.5rem", overflow: "auto" }}>
-              <div style={{ color: "#f5bf47", fontSize: "0.7rem", marginBottom: "0.3rem" }}>.memory/</div>
+        {aba === "memory" && (
+          <div style={{ flex: 1, display: "flex", padding: "0.5rem", gap: "0.5rem", overflow: "auto" }}>
+            <div style={{ width: "120px", borderRight: `1px solid ${CLR.border}`, paddingRight: "0.5rem" }}>
+              <div style={{ color: CLR.yellow, fontSize: "0.75rem", marginBottom: "0.3rem" }}>.memory/</div>
               {memoryFiles.map((f) => (
-                <div key={f} onClick={() => loadMemory(f)} style={{ cursor: "pointer", padding: "0.1rem 0", fontSize: "0.7rem", color: "#888" }}>📝 {f}</div>
+                <div key={f} onClick={async () => { try { const d = await post<{ content: string }>("/api/vps/memory", { action: "load", name: f.replace(".md", "") }); setMemoryName(f.replace(".md", "")); setMemoryContent(d.content); setAba("memory"); } catch {} }}
+                  style={{ cursor: "pointer", padding: "0.1rem 0", fontSize: "0.75rem", color: CLR.muted }}>📝 {f}</div>
               ))}
             </div>
             <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.3rem" }}>
               <div style={{ display: "flex", gap: "0.25rem" }}>
-                <input value={memoryName} onChange={(e) => setMemoryName(e.target.value)} placeholder="nome" style={{ width: "100px", ...cs(), border: "1px solid #333", borderRadius: "4px", color: "#e0e0e0", fontSize: "0.75rem", padding: "0.2rem" }} />
-                <button onClick={() => saveMemory(memoryName, memoryContent)} style={btn("#10b981")}>Salvar</button>
+                <input value={memoryName} onChange={(e) => setMemoryName(e.target.value)} placeholder="nome"
+                  style={{ width: "100px", ...css(), background: CLR.bg2, border: `1px solid ${CLR.border}`, borderRadius: "4px", color: CLR.text, fontSize: "0.8rem", padding: "0.2rem" }} />
+                <button onClick={saveMem} style={btn2(CLR.green)}>Salvar</button>
               </div>
-              <textarea onChange={(e) => setMemoryContent(e.target.value)} placeholder="Anotações..."
-                style={{ flex: 1, ...cs(), border: "1px solid #333", borderRadius: "4px", color: "#e0e0e0", fontSize: "0.8rem", padding: "0.5rem", resize: "none" }} value={memoryContent} />
+              <textarea value={memoryContent} onChange={(e) => setMemoryContent(e.target.value)} placeholder="Anotações..."
+                style={{ flex: 1, ...css(), background: CLR.bg2, border: `1px solid ${CLR.border}`, borderRadius: "6px", color: CLR.text, fontSize: "0.82rem", padding: "0.5rem", resize: "none" }} />
             </div>
           </div>
         )}
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: "flex", background: "#1a1a1a", borderTop: "1px solid #333" }}>
-        {(["arquivos", "editor", "terminal", "git", "chat", "memoria"] as Aba[]).map((a) => {
-          const labels: Record<Aba, string> = { arquivos: "📁", editor: "✏️", terminal: ">_", git: "🔀", chat: "💬", memoria: "🧠" };
-          return <button key={a} onClick={() => setAba(a)} style={{
-            flex: 1, padding: "0.4rem 0", background: aba === a ? "#252525" : "transparent",
-            border: "none", borderTop: aba === a ? "2px solid #10b981" : "2px solid transparent",
-            color: aba === a ? "#10b981" : "#666", fontFamily: "inherit", fontSize: "0.7rem", cursor: "pointer",
-          }} type="button">{labels[a]}</button>;
-        })}
+      <div style={{ display: "flex", background: CLR.bg2, borderTop: `1px solid ${CLR.border}` }}>
+        {tabs.map((t) => (
+          <button key={t.id} onClick={() => setAba(t.id)} style={{
+            flex: 1, padding: "0.45rem 0.2rem", background: aba === t.id ? CLR.bg : "transparent",
+            border: "none", borderTop: aba === t.id ? `2px solid ${CLR.green}` : "2px solid transparent",
+            color: aba === t.id ? CLR.green : CLR.muted, fontFamily: "inherit", fontSize: "0.65rem",
+            fontWeight: aba === t.id ? 700 : 400, cursor: "pointer",
+          }} type="button">
+            <span style={{ fontSize: "0.8rem" }}>{t.icon}</span> <span style={{ display: "block", fontSize: "0.55rem" }}>{t.label}</span>
+          </button>
+        ))}
       </div>
 
       <style>{`.blink{animation:blink 1s infinite}@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
-      {erro && <div style={{ padding: "0.2rem 0.4rem", background: "#300", color: "#f55", fontSize: "0.65rem" }}>{erro}</div>}
     </div>
   );
+}
+
+function btn2(color: string): React.CSSProperties {
+  return { background: "transparent", border: `1px solid ${color}`, borderRadius: "6px", color, cursor: "pointer", fontFamily: "inherit", fontSize: "0.75rem", padding: "0.25rem 0.5rem" };
 }
