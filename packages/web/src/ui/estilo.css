@@ -497,7 +497,9 @@ tbody tr:hover {
   background: var(--fundo-elevado);
   border-right: 1px solid var(--borda);
   flex-shrink: 0;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
   z-index: 20;
 }
 
@@ -507,7 +509,9 @@ tbody tr:hover {
   transform: translateX(-100%);
   opacity: 0;
   pointer-events: none;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
   z-index: 20;
 }
 
@@ -700,7 +704,9 @@ tbody tr:hover {
   flex-direction: column;
   align-items: center;
   gap: 0.1rem;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .playground__tab:hover {
@@ -755,27 +761,52 @@ tbody tr:hover {
 }
 
 .playground__banner {
-  padding: 1.5rem 0;
-  text-align: center;
-}
-
-.playground__banner pre {
-  color: var(--esmeralda);
-  font-size: 0.5rem;
-  line-height: 1.3;
-  margin: 0 0 0.75rem;
-  white-space: pre;
+  width: min(100%, 760px);
+  margin: auto;
+  padding: clamp(2rem, 8vh, 5rem) 1rem 2rem;
+  animation: playgroundMsgIn 420ms ease both;
 }
 
 .playground__bannerTitle {
+  color: var(--texto);
+  font-size: clamp(1.45rem, 3vw, 2.4rem);
+  letter-spacing: -0.05em;
+  line-height: 1.04;
+  margin: 0.45rem 0 0.75rem;
+}
+.playground__bannerTitle span {
   color: var(--esmeralda);
-  font-size: 0.85rem;
-  margin-bottom: 0.3rem;
+}
+.playground__brandMark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  color: #04140f;
+  background: var(--esmeralda);
+  box-shadow: 0 0 32px rgba(16, 185, 129, 0.3);
+  animation: playgroundPulse 2.6s ease-in-out infinite;
+}
+.playground__eyebrow {
+  margin: 1rem 0 0;
+  color: var(--ciano);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+@keyframes playgroundPulse {
+  50% {
+    transform: translateY(-2px);
+    box-shadow: 0 0 42px rgba(16, 185, 129, 0.48);
+  }
 }
 
 .playground__bannerHint {
   color: var(--texto-fraco);
-  font-size: 0.7rem;
+  max-width: 480px;
+  font-size: 0.82rem;
+  line-height: 1.6;
 }
 
 .playground__bannerHint kbd {
@@ -793,8 +824,14 @@ tbody tr:hover {
 }
 
 @keyframes playgroundMsgIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .playground__msgLabel {
@@ -803,9 +840,15 @@ tbody tr:hover {
   margin-bottom: 0.15rem;
 }
 
-.playground__msgLabel-user { color: var(--ciano); }
-.playground__msgLabel-system { color: var(--ambar); }
-.playground__msgLabel-assistant { color: var(--esmeralda); }
+.playground__msgLabel-user {
+  color: var(--ciano);
+}
+.playground__msgLabel-system {
+  color: var(--ambar);
+}
+.playground__msgLabel-assistant {
+  color: var(--esmeralda);
+}
 
 .playground__msgContent {
   color: var(--texto);
@@ -845,8 +888,13 @@ tbody tr:hover {
 }
 
 @keyframes playgroundBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 
 .playground__typing {
@@ -956,6 +1004,177 @@ tbody tr:hover {
 }
 
 /* ---------- Sidebar tabs (files, editor, etc.) ---------- */
+.playground__files {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(16, 185, 129, 0.09), transparent 28%), var(--fundo);
+}
+.playground__suggestions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+.playground__suggestion {
+  display: flex;
+  gap: 0.5rem;
+  min-height: 80px;
+  padding: 0.65rem;
+  border: 1px solid var(--borda);
+  border-radius: 9px;
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.04), transparent);
+  opacity: 0;
+  animation: playgroundMsgIn 0.4s ease forwards;
+}
+.playground__suggestion > span {
+  color: var(--esmeralda);
+}
+.playground__suggestion strong,
+.playground__suggestion small {
+  display: block;
+}
+.playground__suggestion strong {
+  color: var(--texto);
+  font-size: 0.72rem;
+}
+.playground__suggestion small {
+  margin-top: 0.2rem;
+  color: var(--texto-fraco);
+  font-size: 0.63rem;
+  line-height: 1.35;
+}
+
+.playground__filesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--borda);
+}
+
+.playground__breadcrumbs,
+.playground__filesActions {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  min-width: 0;
+}
+.playground__breadcrumbs {
+  overflow-x: auto;
+}
+.playground__breadcrumbs button,
+.playground__filesActions button,
+.playground__editorHeader button {
+  border: 1px solid var(--borda);
+  background: var(--fundo-elevado);
+  color: var(--texto-fraco);
+  border-radius: 5px;
+  padding: 0.28rem 0.45rem;
+  cursor: pointer;
+  font: 600 0.7rem inherit;
+  white-space: nowrap;
+}
+.playground__filesActions button:last-of-type,
+.playground__editorHeader button {
+  color: #04140f;
+  background: var(--esmeralda);
+  border-color: var(--esmeralda);
+}
+.playground__breadcrumbs button:hover,
+.playground__filesActions button:hover,
+.playground__editorHeader button:hover {
+  border-color: var(--esmeralda);
+  color: var(--texto);
+}
+.playground__editorHeader button:hover {
+  color: #04140f;
+  filter: brightness(1.07);
+}
+
+.playground__dropzone {
+  margin: 0.8rem;
+  padding: 1.25rem;
+  display: grid;
+  place-items: center;
+  gap: 0.35rem;
+  text-align: center;
+  color: var(--texto-fraco);
+  border: 1px dashed color-mix(in srgb, var(--esmeralda) 50%, var(--borda));
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.035);
+  transition: 160ms ease;
+}
+.playground__dropzone strong {
+  color: var(--texto);
+  font-size: 0.82rem;
+}
+.playground__dropzone span {
+  font-size: 0.68rem;
+}
+.playground__dropzone-active {
+  border-color: var(--esmeralda);
+  background: rgba(16, 185, 129, 0.14);
+  transform: scale(0.995);
+}
+
+.playground__fileList {
+  flex: 1;
+  overflow: auto;
+  padding: 0 0.45rem 0.75rem;
+}
+.playground__fileRow {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  border-bottom: 1px solid color-mix(in srgb, var(--borda) 68%, transparent);
+}
+.playground__fileOpen,
+.playground__fileUp {
+  display: flex;
+  flex: 1;
+  gap: 0.55rem;
+  align-items: center;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  color: var(--texto);
+  padding: 0.4rem;
+  text-align: left;
+  cursor: pointer;
+  font: 0.78rem inherit;
+}
+.playground__fileOpen:hover,
+.playground__fileUp:hover {
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--esmeralda);
+}
+.playground__fileOpen span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.playground__fileDelete {
+  color: var(--texto-fraco);
+  background: transparent;
+  border: 0;
+  font: 1.1rem inherit;
+  cursor: pointer;
+  padding: 0.2rem 0.45rem;
+}
+.playground__fileDelete:hover {
+  color: var(--vermelho);
+}
+.playground__filesEmpty {
+  color: var(--texto-fraco);
+  font-size: 0.76rem;
+  padding: 1rem;
+  text-align: center;
+}
+
 .playground__fileItem {
   display: flex;
   padding: 0.2rem 0.3rem;
@@ -978,6 +1197,35 @@ tbody tr:hover {
 }
 
 /* ---------- Editor ---------- */
+.playground__editorShell {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.playground__editorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  color: var(--texto-fraco);
+  border-bottom: 1px solid var(--borda);
+  font-size: 0.72rem;
+}
+.playground__editorHeader span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.playground__editorHeader kbd {
+  font-size: 0.58rem;
+  opacity: 0.7;
+}
+.playground__editorHeader button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .playground__editor {
   flex: 1;
   background: var(--fundo);
@@ -1072,7 +1320,9 @@ tbody tr:hover {
   color: var(--texto-fraco);
   font-size: 0.75rem;
   font-family: inherit;
-  transition: border-color 0.15s, color 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
 }
 
 .playground__gitButtons button:hover {
@@ -1185,8 +1435,12 @@ tbody tr:hover {
 }
 
 @keyframes playgroundFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ---------- Responsive ---------- */
@@ -1203,6 +1457,9 @@ tbody tr:hover {
 }
 
 @media (max-width: 768px) {
+  .playground__suggestions {
+    grid-template-columns: 1fr;
+  }
   .playground__sidebar {
     position: absolute;
     inset: 0;

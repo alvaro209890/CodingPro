@@ -9,6 +9,7 @@
  */
 import { exec as execCb } from "node:child_process";
 import {
+  createWriteStream,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -19,7 +20,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
+import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import type { FastifyInstance } from "fastify";
 import { type Contexto, erro, exigirUsuario, texto } from "../contexto.js";
@@ -76,6 +78,13 @@ function resolverSeguro(dirBase: string, relativo: string): string | null {
   }
 }
 
+function destinoUploadSeguro(dirBase: string, relativo: string): string | null {
+  const normalizado = relativo.replaceAll("\\", "/").replace(/^\/+/, "");
+  if (!normalizado || normalizado.includes("..") || normalizado.includes("\0")) return null;
+  const destino = resolve(dirBase, normalizado);
+  return destino === dirBase || destino.startsWith(`${dirBase}${sep}`) ? destino : null;
+}
+
 // ─── Rotas ────────────────────────────────────────────────────
 
 export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): void {
@@ -85,6 +94,40 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
     if (!u) return;
     const raiz = dirUsuario(u.id);
     return resposta.send({ files: listarArquivos(raiz), raiz });
+  });
+
+  app.post("/api/vps/upload", async (req, resposta) => {
+    const u = await exigirUsuario(ctx, req, resposta);
+    if (!u) return;
+
+    const raiz = dirUsuario(u.id);
+    const enviados: string[] = [];
+    try {
+      for await (const parte of req.parts()) {
+        if (parte.type !== "file") continue;
+        const campoPath = parte.fields.path;
+        const ultimaPartePath = Array.isArray(campoPath) ? campoPath.at(-1) : campoPath;
+        const caminhoSolicitado =
+          ultimaPartePath && "value" in ultimaPartePath
+            ? String(ultimaPartePath.value)
+            : parte.filename;
+        const destino = destinoUploadSeguro(raiz, caminhoSolicitado);
+        if (!destino) {
+          parte.file.resume();
+          return erro(resposta, 400, "caminho_invalido", "O caminho do arquivo não é válido.");
+        }
+        mkdirSync(dirname(destino), { recursive: true });
+        await pipeline(parte.file, createWriteStream(destino, { flags: "w" }));
+        if (parte.file.truncated)
+          return erro(resposta, 413, "arquivo_grande", "Cada arquivo pode ter até 512 MB.");
+        enviados.push(destino.slice(raiz.length + 1).replaceAll("\\", "/"));
+      }
+      if (enviados.length === 0)
+        return erro(resposta, 400, "arquivo_ausente", "Selecione ao menos um arquivo para enviar.");
+      return resposta.status(201).send({ files: enviados, total: enviados.length });
+    } catch (e: any) {
+      return erro(resposta, 500, "erro_upload", e.message || "Falha ao receber o arquivo.");
+    }
   });
 
   app.post("/api/vps/read", async (req, resposta) => {

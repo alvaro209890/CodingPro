@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import cookie from "@fastify/cookie";
+import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import estatico from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
@@ -42,7 +43,7 @@ export type OpcoesApp = {
 export async function criarApp(opcoes: OpcoesApp): Promise<FastifyInstance> {
   const { config } = opcoes;
   const app = Fastify({
-    bodyLimit: 8 * 1024 * 1024,
+    bodyLimit: 512 * 1024 * 1024,
     disableRequestLogging: config.ambiente === "producao",
     logger: config.ambiente === "producao" ? { level: "warn" } : { level: "info" },
     // O tunnel do Cloudflare é o único caminho de entrada; confiar nos headers dele
@@ -78,6 +79,12 @@ export async function criarApp(opcoes: OpcoesApp): Promise<FastifyInstance> {
   });
 
   await app.register(cookie, { secret: config.sessionSecret });
+  await app.register(multipart, {
+    limits: {
+      fileSize: 512 * 1024 * 1024,
+      files: 1_000,
+    },
+  });
 
   await app.register(rateLimit, {
     // Teto global por IP. O proxy tem o seu próprio limite, mais apertado.

@@ -1,6 +1,7 @@
 import type { RefObject } from "react";
 import { Banner } from "./Banner.js";
 import { SlashDropdown } from "./SlashDropdown.js";
+import type { Session } from "./PlaygroundTypes.js";
 
 interface ChatViewProps {
   session: Session | null;
@@ -8,6 +9,9 @@ interface ChatViewProps {
   loading: boolean;
   input: string;
   showCmds: boolean;
+  cmdHistory?: string[];
+  histIdx?: number;
+  pendingInput?: string;
   scrollRef: RefObject<HTMLDivElement | null>;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   onInput: (val: string) => void;
@@ -58,20 +62,13 @@ export function ChatView({
 
         {msgs.map((m, i) => (
           <div key={`${i}-${m.content.slice(0, 20)}`} className="playground__msg">
-            <div
-              className={`playground__msgLabel playground__msgLabel-${m.role}`}
-            >
-              {m.role === "user"
-                ? "▸ você"
-                : m.role === "system"
-                  ? "⚙ sistema"
-                  : "◂ codingpro"}
+            <div className={`playground__msgLabel playground__msgLabel-${m.role}`}>
+              {m.role === "user" ? "▸ você" : m.role === "system" ? "⚙ sistema" : "◂ codingpro"}
             </div>
             <div className="playground__msgContent">{m.content}</div>
-            {m.tools?.map((t) => (
-              <div key={j} className="playground__msgTools">
-                <span className="playground__msgTool">🔧 {t.nome}</span> —{" "}
-                {t.result?.slice(0, 150)}
+            {m.tools?.map((t, j) => (
+              <div key={`${t.nome}-${j}`} className="playground__msgTools">
+                <span className="playground__msgTool">🔧 {t.nome}</span> — {t.result?.slice(0, 150)}
               </div>
             ))}
           </div>
@@ -79,9 +76,7 @@ export function ChatView({
 
         {isStreaming && (
           <div className="playground__streaming">
-            <div className="playground__msgLabel playground__msgLabel-assistant">
-              ◂ codingpro
-            </div>
+            <div className="playground__msgLabel playground__msgLabel-assistant">◂ codingpro</div>
             <div className="playground__msgContent">
               {stream}
               <span className="playground__streamingCursor">▌</span>
@@ -89,9 +84,7 @@ export function ChatView({
           </div>
         )}
 
-        {loading && !stream && (
-          <div className="playground__typing">...</div>
-        )}
+        {loading && !stream && <div className="playground__typing">...</div>}
       </div>
 
       {showCmds && input.startsWith("/") && (
@@ -122,7 +115,9 @@ export function ChatView({
             t.style.height = `${Math.min(t.scrollHeight, 120)}px`;
           }}
         />
-        <button onClick={onSend} disabled={loading || !input.trim()} type="button">▶</button>
+        <button onClick={onSend} disabled={loading || !input.trim()} type="button">
+          ▶
+        </button>
       </div>
     </div>
   );

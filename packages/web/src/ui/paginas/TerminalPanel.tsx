@@ -1,3 +1,5 @@
+import type { RefObject } from "react";
+
 interface TerminalPanelProps {
   output: string;
   cmd: string;
@@ -6,13 +8,7 @@ interface TerminalPanelProps {
   cmdRef: RefObject<HTMLInputElement | null>;
 }
 
-export function TerminalPanel({
-  output,
-  cmd,
-  onCmdChange,
-  onRun,
-  cmdRef,
-}: TerminalPanelProps) {
+export function TerminalPanel({ output, cmd, onCmdChange, onRun, cmdRef }: TerminalPanelProps) {
   return (
     <div className="playground__terminal">
       <div className="playground__terminalOutput">{output || "▸ _"}</div>
@@ -22,7 +18,9 @@ export function TerminalPanel({
           ref={cmdRef}
           value={cmd}
           onChange={(e) => onCmdChange(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") onRun(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onRun();
+          }}
           placeholder="comando..."
           className="playground__terminalInputField"
           aria-label="Terminal command input"

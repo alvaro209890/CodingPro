@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Usuario } from "../api.js";
-import { Banner } from "./Banner.js";
 import { Sidebar } from "./Sidebar.js";
 import { TabBar } from "./TabBar.js";
 import { ChatView } from "./ChatView.js";
@@ -94,7 +93,12 @@ export function Playground({ usuario }: { usuario: Usuario }) {
 
   useEffect(() => {
     if (sessions.length === 0) {
-      const s: Session = { id: gerarId(), nome: nomeAutomatico(0), mensagens: [], criadaEm: Date.now() };
+      const s: Session = {
+        id: gerarId(),
+        nome: nomeAutomatico(0),
+        mensagens: [],
+        criadaEm: Date.now(),
+      };
       setSessions([s]);
       setActiveId(s.id);
     } else if (activeIdx < 0) {
@@ -105,8 +109,12 @@ export function Playground({ usuario }: { usuario: Usuario }) {
 
   const msgs = activeSession?.mensagens ?? [];
 
-  useEffect(() => { salvarSessions(sessions); }, [sessions]);
-  useEffect(() => { salvarActiveId(activeId); }, [activeId]);
+  useEffect(() => {
+    salvarSessions(sessions);
+  }, [sessions]);
+  useEffect(() => {
+    salvarActiveId(activeId);
+  }, [activeId]);
 
   const updateSession = useCallback((id: string, fn: (s: Session) => Session) => {
     setSessions((prev) => prev.map((s) => (s.id === id ? fn(s) : s)));
@@ -130,6 +138,8 @@ export function Playground({ usuario }: { usuario: Usuario }) {
   const [histIdx, setHistIdx] = useState(-1);
   const [pendingInput, setPendingInput] = useState("");
   const [files, setFiles] = useState<string[]>([]);
+  const [filesCwd, setFilesCwd] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [code, setCode] = useState("");
   const [activeFile, setActiveFile] = useState("");
   const [out, setOut] = useState("");
@@ -161,7 +171,12 @@ export function Playground({ usuario }: { usuario: Usuario }) {
 
   const novaSessao = useCallback(() => {
     const idx = sessions.length;
-    const s: Session = { id: gerarId(), nome: nomeAutomatico(idx), mensagens: [], criadaEm: Date.now() };
+    const s: Session = {
+      id: gerarId(),
+      nome: nomeAutomatico(idx),
+      mensagens: [],
+      criadaEm: Date.now(),
+    };
     setSessions((prev) => [...prev, s]);
     setActiveId(s.id);
     setSidebarOpen(false);
@@ -179,7 +194,12 @@ export function Playground({ usuario }: { usuario: Usuario }) {
       setSessions((prev) => {
         const rest = prev.filter((s) => s.id !== id);
         if (rest.length === 0) {
-          const s: Session = { id: gerarId(), nome: nomeAutomatico(0), mensagens: [], criadaEm: Date.now() };
+          const s: Session = {
+            id: gerarId(),
+            nome: nomeAutomatico(0),
+            mensagens: [],
+            criadaEm: Date.now(),
+          };
           return [s];
         }
         return rest;
@@ -197,7 +217,8 @@ export function Playground({ usuario }: { usuario: Usuario }) {
 
   const confirmarRename = useCallback(
     (id: string) => {
-      if (renameVal.trim()) updateSession(id, (s) => ({ ...s, nome: renameVal.trim().slice(0, 30) }));
+      if (renameVal.trim())
+        updateSession(id, (s) => ({ ...s, nome: renameVal.trim().slice(0, 30) }));
       setRenameId(null);
       setRenameVal("");
     },
@@ -230,7 +251,10 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         }
         if (!r.ok) {
           let msg = `Erro ${r.status}`;
-          try { const e = await r.json(); msg = e.mensagem || e.erro || msg; } catch {}
+          try {
+            const e = await r.json();
+            msg = e.mensagem || e.erro || msg;
+          } catch {}
           throw new Error(msg);
         }
         if (!r.body) throw new Error("Resposta vazia do servidor");
@@ -246,11 +270,28 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             if (!line.startsWith("data: ")) continue;
             try {
               const d = JSON.parse(line.slice(6));
-              if (d.type === "text") { content += d.content ?? ""; setStream(content); }
-              else if (d.type === "tool-start") setStatus(`🔧 ${d.name || ""}...`);
-              else if (d.type === "tool-end") { toolsLog.push({ nome: d.name || "", result: d.result || "" }); setStatus(""); }
-              else if (d.type === "done") { setMsgs((prev) => [...prev, { role: "assistant", content: content || d.content || "", tools: toolsLog }]); setStream(""); setStatus(""); }
-              else if (d.type === "error") { setMsgs((prev) => [...prev, { role: "assistant", content: `❌ ${d.message || "Erro no agente"}` }]); setStream(""); setStatus(""); }
+              if (d.type === "text") {
+                content += d.content ?? "";
+                setStream(content);
+              } else if (d.type === "tool-start") setStatus(`🔧 ${d.name || ""}...`);
+              else if (d.type === "tool-end") {
+                toolsLog.push({ nome: d.name || "", result: d.result || "" });
+                setStatus("");
+              } else if (d.type === "done") {
+                setMsgs((prev) => [
+                  ...prev,
+                  { role: "assistant", content: content || d.content || "", tools: toolsLog },
+                ]);
+                setStream("");
+                setStatus("");
+              } else if (d.type === "error") {
+                setMsgs((prev) => [
+                  ...prev,
+                  { role: "assistant", content: `❌ ${d.message || "Erro no agente"}` },
+                ]);
+                setStream("");
+                setStatus("");
+              }
             } catch {}
           }
           buf = buf.includes("\n") ? buf.slice(buf.lastIndexOf("\n") + 1) : buf;
@@ -270,10 +311,29 @@ export function Playground({ usuario }: { usuario: Usuario }) {
     async (cmdName: string, fullInput?: string) => {
       setShowCmds(false);
       switch (cmdName) {
-        case "/clear": setMsgs(() => []); setStream(""); setStatus(""); break;
-        case "/new": novaSessao(); break;
+        case "/clear":
+          setMsgs(() => []);
+          setStream("");
+          setStatus("");
+          break;
+        case "/new":
+          novaSessao();
+          break;
         case "/list":
-          setMsgs((prev) => [...prev, { role: "system", content: sessions.filter((s) => s.mensagens.length > 0).map((s, i) => `  ${s.id.slice(-6)}  ${s.nome}  ${s.mensagens.length} msgs  ${new Date(s.criadaEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`).join("\n") || "  Nenhum chat salvo." }]);
+          setMsgs((prev) => [
+            ...prev,
+            {
+              role: "system",
+              content:
+                sessions
+                  .filter((s) => s.mensagens.length > 0)
+                  .map(
+                    (s, i) =>
+                      `  ${s.id.slice(-6)}  ${s.nome}  ${s.mensagens.length} msgs  ${new Date(s.criadaEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`,
+                  )
+                  .join("\n") || "  Nenhum chat salvo.",
+            },
+          ]);
           break;
         case "/switch":
           if (fullInput) {
@@ -281,7 +341,14 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             if (target) {
               const found = sessions.find((s) => s.id.endsWith(target));
               if (found) trocarSessao(found.id);
-              else setMsgs((prev) => [...prev, { role: "system", content: `Chat '${target}' nao encontrado. Use /list para ver os chats.` }]);
+              else
+                setMsgs((prev) => [
+                  ...prev,
+                  {
+                    role: "system",
+                    content: `Chat '${target}' nao encontrado. Use /list para ver os chats.`,
+                  },
+                ]);
             }
           }
           break;
@@ -290,73 +357,344 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             const target = fullInput.split(" ")[1];
             if (target) {
               const found = sessions.find((s) => s.id.endsWith(target));
-              if (found) { deletarSessao(found.id); setMsgs((prev) => [...prev, { role: "system", content: `Chat '${found.nome}' deletado.` }]); }
-              else setMsgs((prev) => [...prev, { role: "system", content: `Chat '${target}' nao encontrado.` }]);
+              if (found) {
+                deletarSessao(found.id);
+                setMsgs((prev) => [
+                  ...prev,
+                  { role: "system", content: `Chat '${found.nome}' deletado.` },
+                ]);
+              } else
+                setMsgs((prev) => [
+                  ...prev,
+                  { role: "system", content: `Chat '${target}' nao encontrado.` },
+                ]);
             }
           }
           break;
         case "/rename":
           if (fullInput && activeSession) {
             const novoNome = fullInput.slice("/rename ".length).trim();
-            if (novoNome) { updateSession(activeSession.id, (s) => ({ ...s, nome: novoNome.slice(0, 30) })); setMsgs((prev) => [...prev, { role: "system", content: `Chat renomeado para '${novoNome.slice(0, 30)}'.` }]); }
+            if (novoNome) {
+              updateSession(activeSession.id, (s) => ({ ...s, nome: novoNome.slice(0, 30) }));
+              setMsgs((prev) => [
+                ...prev,
+                { role: "system", content: `Chat renomeado para '${novoNome.slice(0, 30)}'.` },
+              ]);
+            }
           }
           break;
         case "/export": {
           if (!activeSession) break;
-          const md = [`# ${activeSession.nome}`, `> Exportado em ${new Date().toLocaleString("pt-BR")}`, "", ...activeSession.mensagens.map((m) => { const who = m.role === "user" ? "**Você**" : m.role === "system" ? "**Sistema**" : "**CodingPro**"; let txt = `${who}:\n${m.content}`; if (m.tools?.length) txt += `\n\n> Tools: ${m.tools.map((t) => t.nome).join(", ")}`; return txt; }).join("\n\n")];
-          try { await navigator.clipboard.writeText(md.join("\n")); setMsgs((prev) => [...prev, { role: "system", content: "📋 Chat exportado para a area de transferencia como Markdown." }]); } catch { const joined = md.join("\n"); const blob = new Blob([joined], { type: "text/markdown" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${activeSession.nome.replace(/\s+/g, "_")}.md`; a.click(); URL.revokeObjectURL(url); }
+          const md = [
+            `# ${activeSession.nome}`,
+            `> Exportado em ${new Date().toLocaleString("pt-BR")}`,
+            "",
+            ...activeSession.mensagens
+              .map((m) => {
+                const who =
+                  m.role === "user"
+                    ? "**Você**"
+                    : m.role === "system"
+                      ? "**Sistema**"
+                      : "**CodingPro**";
+                let txt = `${who}:\n${m.content}`;
+                if (m.tools?.length) txt += `\n\n> Tools: ${m.tools.map((t) => t.nome).join(", ")}`;
+                return txt;
+              })
+              .join("\n\n"),
+          ];
+          try {
+            await navigator.clipboard.writeText(md.join("\n"));
+            setMsgs((prev) => [
+              ...prev,
+              {
+                role: "system",
+                content: "📋 Chat exportado para a area de transferencia como Markdown.",
+              },
+            ]);
+          } catch {
+            const joined = md.join("\n");
+            const blob = new Blob([joined], { type: "text/markdown" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${activeSession.nome.replace(/\s+/g, "_")}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }
           break;
         }
         case "/history":
-          setMsgs((prev) => [...prev, { role: "system", content: cmdHistory.length > 0 ? cmdHistory.slice(0, 20).map((c, i) => `  ${String(i + 1).padStart(2)}. ${c}`).join("\n") : "  Nenhum comando no historico." }]);
+          setMsgs((prev) => [
+            ...prev,
+            {
+              role: "system",
+              content:
+                cmdHistory.length > 0
+                  ? cmdHistory
+                      .slice(0, 20)
+                      .map((c, i) => `  ${String(i + 1).padStart(2)}. ${c}`)
+                      .join("\n")
+                  : "  Nenhum comando no historico.",
+            },
+          ]);
           break;
         case "/context":
-          try { const d = await POST<{ files: string[] }>("/api/vps/files"); setFiles(d.files); setMsgs((prev) => [...prev, { role: "system", content: `📁 Workspace: ${d.files.length} arquivos/diretorios. Veja a aba Files.` }]); setTab("files"); } catch (e: any) { setMsgs((prev) => [...prev, { role: "system", content: `❌ ${e.message}` }]); }
+          try {
+            const d = await POST<{ files: string[] }>("/api/vps/files");
+            setFiles(d.files);
+            setMsgs((prev) => [
+              ...prev,
+              {
+                role: "system",
+                content: `📁 Workspace: ${d.files.length} arquivos/diretorios. Veja a aba Files.`,
+              },
+            ]);
+            setTab("files");
+          } catch (e: any) {
+            setMsgs((prev) => [...prev, { role: "system", content: `❌ ${e.message}` }]);
+          }
           break;
         case "/agent":
-          if (fullInput) { const promptAgente = fullInput.slice("/agent ".length).trim(); if (promptAgente) { setTab("chat"); enviar(promptAgente); } } else { setTab("chat"); setMsgs((prev) => [...prev, { role: "system", content: "Modo agente ativado. Digite seu prompt para usar tools reais (list_dir, read_file, write_file, bash, grep)." }]); }
+          if (fullInput) {
+            const promptAgente = fullInput.slice("/agent ".length).trim();
+            if (promptAgente) {
+              setTab("chat");
+              enviar(promptAgente);
+            }
+          } else {
+            setTab("chat");
+            setMsgs((prev) => [
+              ...prev,
+              {
+                role: "system",
+                content:
+                  "Modo agente ativado. Digite seu prompt para usar tools reais (list_dir, read_file, write_file, bash, grep).",
+              },
+            ]);
+          }
           break;
-        case "/files": try { const d = await POST<{ files: string[] }>("/api/vps/files"); setFiles(d.files); setTab("files"); } catch {} break;
-        case "/memory": try { const d = await POST<{ files: string[] }>("/api/vps/memory", { action: "list" }); setMemFiles(d.files); setTab("memory"); } catch {} break;
+        case "/files":
+          try {
+            const d = await POST<{ files: string[] }>("/api/vps/files");
+            setFiles(d.files);
+            setTab("files");
+          } catch {}
+          break;
+        case "/memory":
+          try {
+            const d = await POST<{ files: string[] }>("/api/vps/memory", { action: "list" });
+            setMemFiles(d.files);
+            setTab("memory");
+          } catch {}
+          break;
         case "/help":
-          setMsgs((prev) => [...prev, { role: "system", content: CMD_SLASH.map((c) => `${c.cmd} — ${c.desc}`).join("\n") }]);
+          setMsgs((prev) => [
+            ...prev,
+            { role: "system", content: CMD_SLASH.map((c) => `${c.cmd} — ${c.desc}`).join("\n") },
+          ]);
           break;
       }
     },
-    [sessions, activeSession, novaSessao, trocarSessao, deletarSessao, updateSession, cmdHistory, POST, enviar, setMsgs, setFiles, setMemFiles, setTab],
+    [
+      sessions,
+      activeSession,
+      novaSessao,
+      trocarSessao,
+      deletarSessao,
+      updateSession,
+      cmdHistory,
+      POST,
+      enviar,
+      setMsgs,
+      setFiles,
+      setMemFiles,
+      setTab,
+    ],
   );
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       const ctrl = e.ctrlKey || e.metaKey;
-      if (ctrl && e.key === "l") { e.preventDefault(); handleSlash("/clear"); }
-      if (ctrl && e.key === "n") { e.preventDefault(); novaSessao(); }
-      if (ctrl && e.key === "k") { e.preventDefault(); setSidebarOpen((p) => !p); }
-      if (e.key === "Escape") { setShowCmds(false); setSidebarOpen(false); }
+      if (ctrl && e.key === "l") {
+        e.preventDefault();
+        handleSlash("/clear");
+      }
+      if (ctrl && e.key === "n") {
+        e.preventDefault();
+        novaSessao();
+      }
+      if (ctrl && e.key === "k") {
+        e.preventDefault();
+        setSidebarOpen((p) => !p);
+      }
+      if (e.key === "Escape") {
+        setShowCmds(false);
+        setSidebarOpen(false);
+      }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   }, [handleSlash, novaSessao]);
 
-  useEffect(() => { POST<{ files: string[] }>("/api/vps/files").then((d) => setFiles(d.files)).catch(() => {}); }, [POST]);
+  const refreshFiles = useCallback(async () => {
+    const d = await POST<{ files: string[] }>("/api/vps/files");
+    setFiles(d.files);
+  }, [POST]);
 
-  const openFile = useCallback(async (path: string) => { setActiveFile(path); setTab("editor"); try { const d = await POST<{ content: string }>("/api/vps/read", { path }); setCode(d.content); } catch {} }, [POST]);
+  useEffect(() => {
+    refreshFiles().catch(() => {});
+  }, [refreshFiles]);
 
-  const runCmd = useCallback(async (c?: string) => { const cc = c ?? cmd; if (!cc.trim()) return; setCmd(""); setTab("terminal"); setOut((p) => `${p}\n$ ${cc}\n`); try { const d = await POST<{ stdout: string; stderr: string }>("/api/vps/terminal", { command: cc, cwd: "." }); setOut((p) => p + (d.stdout || "") + (d.stderr || "")); } catch (e: any) { setOut((p) => `${p}Erro: ${e.message}`); } }, [cmd, POST]);
+  const openFile = useCallback(
+    async (path: string) => {
+      setActiveFile(path);
+      setTab("editor");
+      try {
+        const d = await POST<{ content: string }>("/api/vps/read", { path });
+        setCode(d.content);
+      } catch {}
+    },
+    [POST],
+  );
 
-  const git = useCallback(async (action: string, url?: string) => { setTab("git"); setGitOut("..."); try { const d = await POST<{ output: string }>("/api/vps/git", { action, cwd: "Projects", url }); setGitOut(d.output); } catch (e: any) { setGitOut(e.message); } }, [POST]);
+  const uploadFiles = useCallback(
+    async (lista: FileList | File[]) => {
+      const itens = Array.from(lista);
+      if (itens.length === 0 || uploading) return;
+      setUploading(true);
+      try {
+        const dados = new FormData();
+        for (const file of itens) {
+          const relativo = file.webkitRelativePath || file.name;
+          const destino = filesCwd ? `${filesCwd}/${relativo}` : relativo;
+          dados.append("path", destino.replaceAll("\\", "/"));
+          dados.append("file", file, file.name);
+        }
+        const resposta = await fetch("/api/vps/upload", {
+          method: "POST",
+          body: dados,
+          credentials: "include",
+        });
+        if (!resposta.ok) {
+          const erroUpload = await resposta.json().catch(() => ({}));
+          throw new Error(erroUpload.mensagem || "Não foi possível enviar os arquivos.");
+        }
+        await refreshFiles();
+        setStatus(`${itens.length} arquivo(s) enviado(s)`);
+      } catch (e: any) {
+        setStatus(`Upload: ${e.message}`);
+      } finally {
+        setUploading(false);
+      }
+    },
+    [filesCwd, refreshFiles, uploading],
+  );
 
-  useEffect(() => { POST<{ files: string[] }>("/api/vps/memory", { action: "list" }).then((d) => setMemFiles(d.files)).catch(() => {}); }, [POST]);
+  const deleteFile = useCallback(
+    async (path: string) => {
+      if (!window.confirm(`Excluir '${path}' do seu workspace?`)) return;
+      try {
+        await POST("/api/vps/delete", { path });
+        await refreshFiles();
+      } catch (e: any) {
+        setStatus(`Excluir: ${e.message}`);
+      }
+    },
+    [POST, refreshFiles],
+  );
 
-  const saveMem = useCallback(async () => { if (!memName) return; try { await POST("/api/vps/memory", { action: "save", name: memName, content: memContent }); } catch {} }, [memName, memContent, POST]);
+  const saveFile = useCallback(async () => {
+    if (!activeFile) return;
+    try {
+      await POST("/api/vps/write", { path: activeFile, content: code });
+      setStatus("Arquivo salvo");
+    } catch (e: any) {
+      setStatus(`Salvar: ${e.message}`);
+    }
+  }, [POST, activeFile, code]);
+
+  const runCmd = useCallback(
+    async (c?: string) => {
+      const cc = c ?? cmd;
+      if (!cc.trim()) return;
+      setCmd("");
+      setTab("terminal");
+      setOut((p) => `${p}\n$ ${cc}\n`);
+      try {
+        const d = await POST<{ stdout: string; stderr: string }>("/api/vps/terminal", {
+          command: cc,
+          cwd: ".",
+        });
+        setOut((p) => p + (d.stdout || "") + (d.stderr || ""));
+      } catch (e: any) {
+        setOut((p) => `${p}Erro: ${e.message}`);
+      }
+    },
+    [cmd, POST],
+  );
+
+  const git = useCallback(
+    async (action: string, url?: string) => {
+      setTab("git");
+      setGitOut("...");
+      try {
+        const d = await POST<{ output: string }>("/api/vps/git", { action, cwd: "Projects", url });
+        setGitOut(d.output);
+      } catch (e: any) {
+        setGitOut(e.message);
+      }
+    },
+    [POST],
+  );
+
+  useEffect(() => {
+    POST<{ files: string[] }>("/api/vps/memory", { action: "list" })
+      .then((d) => setMemFiles(d.files))
+      .catch(() => {});
+  }, [POST]);
+
+  const saveMem = useCallback(async () => {
+    if (!memName) return;
+    try {
+      await POST("/api/vps/memory", { action: "save", name: memName, content: memContent });
+    } catch {}
+  }, [memName, memContent, POST]);
 
   const isCliChat = tab === "cli" || tab === "chat";
 
-  const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (input.startsWith("/")) { const parts = input.split(" "); handleSlash(parts[0] ?? "", input); } else enviar(); }
-    if (e.key === "ArrowUp") { e.preventDefault(); if (histIdx === -1) setPendingInput(input); const next = histIdx + 1; if (next < cmdHistory.length) { setHistIdx(next); setInput(cmdHistory[next] ?? ""); } }
-    if (e.key === "ArrowDown") { e.preventDefault(); if (histIdx > 0) { const next = histIdx - 1; setHistIdx(next); setInput(cmdHistory[next] ?? ""); } else if (histIdx === 0) { setHistIdx(-1); setInput(pendingInput); } }
-  }, [input, histIdx, cmdHistory, pendingInput, handleSlash, enviar]);
+  const handleInputKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (input.startsWith("/")) {
+          const parts = input.split(" ");
+          handleSlash(parts[0] ?? "", input);
+        } else enviar();
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (histIdx === -1) setPendingInput(input);
+        const next = histIdx + 1;
+        if (next < cmdHistory.length) {
+          setHistIdx(next);
+          setInput(cmdHistory[next] ?? "");
+        }
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (histIdx > 0) {
+          const next = histIdx - 1;
+          setHistIdx(next);
+          setInput(cmdHistory[next] ?? "");
+        } else if (histIdx === 0) {
+          setHistIdx(-1);
+          setInput(pendingInput);
+        }
+      }
+    },
+    [input, histIdx, cmdHistory, pendingInput, handleSlash, enviar],
+  );
 
   return (
     <div className="playground">
@@ -370,22 +708,42 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         onClose={() => setSidebarOpen(false)}
         onSelect={trocarSessao}
         onNew={novaSessao}
-        onRename={(id, val) => { setRenameId(id); setRenameVal(val); }}
+        onRename={(id, val) => {
+          setRenameId(id);
+          setRenameVal(val);
+        }}
         onDelete={deletarSessao}
-        onCancelRename={() => { setRenameId(null); setRenameVal(""); }}
-        onStartRename={(id, name) => { setRenameId(id); setRenameVal(name); }}
+        onCancelRename={() => {
+          setRenameId(null);
+          setRenameVal("");
+        }}
+        onStartRename={(id, name) => {
+          setRenameId(id);
+          setRenameVal(name);
+        }}
         userEmail={usuario.email}
         mobile={typeof window !== "undefined" && window.innerWidth < 768}
       />
       <div className="playground__main">
         <div className="playground__topbar">
-          <button onClick={() => setSidebarOpen(true)} style={{ display: sidebarOpen ? "none" : "block" }} type="button" aria-label="Abrir sidebar">☰</button>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            style={{ display: sidebarOpen ? "none" : "block" }}
+            type="button"
+            aria-label="Abrir sidebar"
+          >
+            ☰
+          </button>
           <span className="playground__topbarLogo">⚡ CodingPro</span>
-          {activeSession && <span className="playground__topbarSession">· {activeSession.nome}</span>}
+          {activeSession && (
+            <span className="playground__topbarSession">· {activeSession.nome}</span>
+          )}
           <span className="playground__topbarSpacer" />
           {status && <span className="playground__topbarStatus">{status}</span>}
           <span className="playground__topbarUser">{usuario.email}</span>
-          <button onClick={novaSessao} type="button" aria-label="Novo chat">+</button>
+          <button onClick={novaSessao} type="button" aria-label="Novo chat">
+            +
+          </button>
         </div>
         <TabBar tabs={TABS} activeTab={tab} onSelect={(id: string) => setTab(id as Tab)} />
         <div className="playground__content">
@@ -408,11 +766,62 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               onSelectCmd={handleSlash}
             />
           )}
-          {tab === "files" && <FilesPanel files={files} onOpenFile={openFile} />}
-          {tab === "editor" && <EditorPanel code={code} onChange={setCode} />}
-          {tab === "terminal" && <TerminalPanel output={out} cmd={cmd} onCmdChange={setCmd} onRun={() => runCmd()} cmdRef={cmdRef} />}
-          {tab === "git" && <GitPanel gitUrl={gitUrl} gitOut={gitOut} onUrlChange={setGitUrl} onClone={() => git("clone", gitUrl)} onAction={git} />}
-          {tab === "memory" && <MemoryPanel memFiles={memFiles} memName={memName} memContent={memContent} onNameChange={setMemName} onContentChange={setMemContent} onSave={saveMem} onFileClick={async (f) => { try { const d = await POST<{ content: string }>("/api/vps/memory", { action: "load", name: f.replace(".md", "") }); setMemName(f.replace(".md", "")); setMemContent(d.content); setTab("memory"); } catch {} }} />}
+          {tab === "files" && (
+            <FilesPanel
+              files={files}
+              cwd={filesCwd}
+              uploading={uploading}
+              onNavigate={setFilesCwd}
+              onOpenFile={openFile}
+              onUpload={uploadFiles}
+              onRefresh={() => {
+                refreshFiles().catch(() => {});
+              }}
+              onDelete={deleteFile}
+            />
+          )}
+          {tab === "editor" && (
+            <EditorPanel code={code} fileName={activeFile} onChange={setCode} onSave={saveFile} />
+          )}
+          {tab === "terminal" && (
+            <TerminalPanel
+              output={out}
+              cmd={cmd}
+              onCmdChange={setCmd}
+              onRun={() => runCmd()}
+              cmdRef={cmdRef}
+            />
+          )}
+          {tab === "git" && (
+            <GitPanel
+              gitUrl={gitUrl}
+              gitOut={gitOut}
+              onUrlChange={setGitUrl}
+              onClone={() => git("clone", gitUrl)}
+              onAction={git}
+            />
+          )}
+          {tab === "memory" && (
+            <MemoryPanel
+              memFiles={memFiles}
+              memName={memName}
+              memContent={memContent}
+              onNameChange={setMemName}
+              onContentChange={setMemContent}
+              onSave={saveMem}
+              onFileClick={async (f) => {
+                try {
+                  const d = await POST<{ content: string }>("/api/vps/memory", {
+                    action: "load",
+                    name: f.replace(".md", ""),
+                  });
+                  setMemName(f.replace(".md", ""));
+                  setMemContent(d.content);
+                  setTab("memory");
+                } catch {}
+              }}
+            />
+          )}
         </div>
       </div>
     </div>
