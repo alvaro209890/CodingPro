@@ -31,6 +31,14 @@ export function App() {
     navegar("/");
   }
 
+  // Playground roda em tela cheia, sem header/footer
+  if (caminho === "/playground") {
+    if (carregando) return <Carregando />;
+    if (!usuario)
+      return <Entrar aoEntrar={setDepoisDeEntrar(recarregarUsuario)} />;
+    return <Playground usuario={usuario} />;
+  }
+
   return (
     <div className="casca">
       <header className="topo">
@@ -123,11 +131,6 @@ function Conteudo({
   if (caminho === "/painel") {
     if (!usuario) return <Entrar aoEntrar={setDepoisDeEntrar(recarregar)} />;
     return <Painel aoAtualizar={recarregar} usuario={usuario} />;
-  }
-
-  if (caminho === "/playground") {
-    if (!usuario) return <Entrar aoEntrar={setDepoisDeEntrar(recarregar)} />;
-    return <Playground usuario={usuario} />;
   }
 
   return <Landing />;
