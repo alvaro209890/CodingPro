@@ -27,8 +27,9 @@ Detalhes: [INVENTARIO_PC.md](INVENTARIO_PC.md) · [SETUP_P0.md](SETUP_P0.md)
 - [x] Rate limit global / por rota proxy (IP/Authorization)
 - [x] Kill switch + allowlist Pro/Flash + chave do servidor (nunca o `cp_`)
 - [x] Playground `/api/vps/agent` também mede e respeita limite (fix 2026-07-24)
-- [ ] Concorrência e `rate_rpm` **por usuário**
-- [ ] Limite diário opcional + override temporário
+- [x] `rate_rpm` por usuário
+- [x] Limite diário opcional
+- [ ] Concorrência por usuário + override temporário
 - [ ] Reconciliação com painel DeepSeek / teste de carga formal
 - [x] **Marco funcional:** CLI via proxy com consumo gravado (testes de integração cobrem o fluxo)
 
@@ -39,7 +40,7 @@ Detalhes: [INVENTARIO_PC.md](INVENTARIO_PC.md) · [SETUP_P0.md](SETUP_P0.md)
 - [x] Também `CODINGPRO_TOKEN` / `CODINGPRO_API_URL` no ambiente
 - [x] Tokens `cp_` (emissão, hash, revogação, último uso); device flow atômico
 - [x] Cadastro/login no site + status `pendente`/`ativo`/`bloqueado` + aprovação admin
-- [x] Verificação de e-mail **manual** (código; SMTP ainda não)
+- [x] Verificação de e-mail por código; envio SMTP opcional quando `SMTP_*` estiver configurado
 - [x] **Marco:** conta → aprovação → `codingpro login` → uso sem chave própria
 
 ## P3a — Landing + cadastro — 🟢 (Vite, não Next.js)
@@ -49,8 +50,9 @@ Detalhes: [INVENTARIO_PC.md](INVENTARIO_PC.md) · [SETUP_P0.md](SETUP_P0.md)
 - [x] Cadastro + login
 - [x] Aviso de conta pendente no painel
 - [x] `/entrar-dispositivo` para device flow
-- [ ] Turnstile no cadastro
-- [ ] Verificação de e-mail automática (SMTP)
+- [ ] Turnstile no cadastro — 🔶 código opcional entregue; falta configurar site key/secret pelo Álvaro
+- [ ] Verificação de e-mail automática (SMTP) — 🔶 módulo entregue; envio real depende de `SMTP_*`
+- [x] Termos e Privacidade LGPD pt-BR
 - [ ] GIF/asciinema real + tabela de preços/planos
 - [x] **Marco funcional:** visitante cadastra e aguarda aprovação
 
@@ -58,7 +60,8 @@ Detalhes: [INVENTARIO_PC.md](INVENTARIO_PC.md) · [SETUP_P0.md](SETUP_P0.md)
 
 - [x] Área logada `/painel`: consumo, %, renovação, gráfico diário, tokens, perfil, senha
 - [x] Gerar/listar/revogar tokens + instruções `codingpro login`
-- [ ] 2FA TOTP no perfil
+- [x] 2FA TOTP no perfil
+- [x] Exportar dados e apagar conta (LGPD)
 - [ ] Recharts (há gráfico próprio)
 - [x] **Marco funcional:** usuário aprovado vê consumo e gera token
 
@@ -79,17 +82,22 @@ Detalhes: [INVENTARIO_PC.md](INVENTARIO_PC.md) · [SETUP_P0.md](SETUP_P0.md)
 - [ ] Sort de usuários; filtros de auditoria por ator/período; JSON expandível
 - [ ] Disco livre; projeção linear; % cache-hit; custo DeepSeek real
 - [ ] Kill switch com rate limit extra + confirmação na reabertura
-- [ ] 2FA admin obrigatório
+- [x] 2FA admin obrigatório em produção
 - [x] **Marco MVP:** Álvaro administra limites pelo painel sem SSH
 
-## P4 — Endurecimento e beta — 🔴 aberto
+## P4 — Endurecimento e beta — 🟡 parcialmente code-complete
 
-- [ ] 2FA TOTP (obrigatório admin, opcional user), Turnstile, CSP
+- [x] 2FA TOTP (obrigatório admin em produção, opcional user)
+- [ ] Turnstile — 🔶 código entregue; falta configurar `TURNSTILE_SITE_KEY`/secret pelo Álvaro
+- [x] Header CSP
 - [ ] Teste de carga: 10 usuários simultâneos
 - [ ] Simulação de estouro de limite (requisição grande perto de 100%)
-- [ ] Backup diário `pg_dump` + Tailscale + teste de restore
-- [ ] Chave DeepSeek de produção dedicada com teto
-- [ ] Termos + privacidade LGPD pt-BR
+- [ ] Backup diário `pg_dump` + Tailscale + teste de restore — 🔶 script e timer systemd entregues; falta validar agenda/restore no host
+- [ ] Chave DeepSeek de produção dedicada com teto — validar em produção
+- [x] Termos + privacidade LGPD pt-BR
+- [x] Exportar/apagar conta (LGPD)
+- [x] Limite diário + `rate_rpm`
+- [ ] SMTP transacional — 🔶 módulo entregue; falta configurar segredos `SMTP_*`
 - [ ] Alertas proativos (e-mail/WhatsApp)
 - [ ] Beta fechado 3–5 usuários, monitoramento diário
 - [ ] **Marco:** mês fechado sem incidente e custo ≤ previsto
@@ -99,10 +107,10 @@ Detalhes: [INVENTARIO_PC.md](INVENTARIO_PC.md) · [SETUP_P0.md](SETUP_P0.md)
 | Fase | Status |
 |---|---|
 | P0 | 🟢 quase completo — validar DB no acer |
-| P1 | 🟢 núcleo; faltam limites avançados / carga |
+| P1 | 🟢 núcleo; `rate_rpm` e limite diário entregues; faltam concorrência/override/carga |
 | P2 | 🟢 |
 | P3a/P3b/P3c | 🟢 MVP funcional; acabamento do plano original aberto |
-| P4 | 🔴 |
+| P4 | 🟡 code-complete em 2FA/LGPD/CSP/limites/backup; segredos/ops/beta abertos |
 
 ## Riscos (inalterados)
 

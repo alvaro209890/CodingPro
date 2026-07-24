@@ -45,11 +45,13 @@ const CMD_SLASH = [
 
 function ConteudoMensagem({ role, content }: { role: string; content: string }) {
   if (role === "assistant") {
+    const html = renderMarkdown(content);
     return (
-      // biome-ignore lint/security/noDangerouslySetInnerHtml: markdown da IA
       <div
         className="playground__msgContent playground__msgContent--md"
-        dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
+        // Markdown renderizado da resposta do assistente (sanitizado no renderer).
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: markdown da IA
+        dangerouslySetInnerHTML={{ __html: html }}
       />
     );
   }
@@ -103,11 +105,7 @@ export function ChatView({
           >
             <div className={`playground__msgHeader playground__msgHeader-${m.role}`}>
               <span className="playground__msgBadge">
-                {m.role === "user"
-                  ? "Você"
-                  : m.role === "system"
-                    ? "Sistema"
-                    : "CodingPro AI"}
+                {m.role === "user" ? "Você" : m.role === "system" ? "Sistema" : "CodingPro AI"}
               </span>
               <span className="playground__msgTime">
                 {new Date(m.timestamp ?? Date.now()).toLocaleTimeString("pt-BR", {
@@ -125,9 +123,9 @@ export function ChatView({
                   <div className="playground__msgToolsHeader">Ferramentas executadas</div>
                   {m.tools.map((t, i) => (
                     <details
-                      key={`${t.nome}-${i}`}
+                      key={`${t.nome}-${t.result?.slice(0, 24) ?? "vazio"}-${i === (m.tools?.length ?? 0) - 1 ? "last" : "mid"}`}
                       className="playground__msgToolDetails"
-                      open={i === m.tools!.length - 1}
+                      open={i === (m.tools?.length ?? 0) - 1}
                     >
                       <summary className="playground__msgToolSummary">
                         <span className="playground__msgToolName">{t.nome}</span>

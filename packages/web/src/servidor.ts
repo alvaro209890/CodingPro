@@ -57,7 +57,9 @@ async function servirDownload(
   const info = await stat(arquivo).catch(() => null);
   if (!info?.isFile()) {
     resposta.writeHead(404, { "content-type": "application/json; charset=utf-8" });
-    resposta.end(JSON.stringify({ erro: "arquivo_nao_encontrado", mensagem: "Download não encontrado." }));
+    resposta.end(
+      JSON.stringify({ erro: "arquivo_nao_encontrado", mensagem: "Download não encontrado." }),
+    );
     return true;
   }
   const extensao = extname(arquivo);

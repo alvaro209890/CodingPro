@@ -21,7 +21,7 @@ export async function executarPromptHeadless(
   provider: Provider,
   escrever: (texto: string) => void,
   signal?: AbortSignal,
-): Promise<void> {
+): Promise<string> {
   signal?.throwIfAborted();
   let resposta = "";
   let finalizou = false;
@@ -64,4 +64,5 @@ export async function executarPromptHeadless(
   if (!resposta.endsWith("\n")) {
     escrever("\n");
   }
+  return resposta;
 }

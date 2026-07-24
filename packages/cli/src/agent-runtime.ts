@@ -1,3 +1,4 @@
+import { homedir } from "node:os";
 import { join } from "node:path";
 import {
   type AgentResult,
@@ -27,6 +28,7 @@ import { type ChatMessage, formatCost, type Provider } from "@codingpro/llm";
 import { carregarAtribuicao } from "./attribution-runtime.js";
 import { sanitizarTextoTerminal } from "./headless.js";
 import { criarMemoriaSessao } from "./memory-runtime.js";
+import { lerAllowlist } from "./permissions-config.js";
 import { carregarTiposCustom, criarSpawnerSubagentes } from "./subagent-runtime.js";
 
 export interface AgenteHeadlessOptions {
@@ -37,6 +39,8 @@ export interface AgenteHeadlessOptions {
   readonly maxContexto?: number;
   /** Diretório da memória global; ausente usa `~/.codingpro/memory`. */
   readonly memoriaGlobalDir?: string;
+  /** Diretório pessoal para ler configurações globais; ausente usa `os.homedir()`. */
+  readonly homeDir?: string;
   readonly prompt: string;
   readonly provider: Provider;
   readonly skills?: readonly Skill[];
@@ -56,6 +60,7 @@ export interface AgenteHeadlessIo {
 export interface AgenteHeadlessResultado {
   readonly resultado: AgentResult;
   readonly sessaoId?: string;
+  readonly texto: string;
 }
 
 /**
@@ -75,9 +80,13 @@ export async function executarAgenteHeadless(
   }
   // Efeitos no projeto exigem aprovação (ausente aqui → negados); memória é pré-autorizada.
   const hooks = options.hooks ?? [];
+  const allowlistPersistida = lerAllowlist(workspace.root, options.homeDir ?? homedir());
   const gate = new ToolGate(
     registry,
-    new PermissionController({ alwaysAllow: MEMORY_TOOL_NAMES, mode: "ask" }),
+    new PermissionController({
+      alwaysAllow: [...MEMORY_TOOL_NAMES, ...allowlistPersistida],
+      mode: "ask",
+    }),
     hooks.length > 0 ? criarHookRunner(hooks) : undefined,
   );
   const memoria = criarMemoriaSessao(workspace.root, options.memoriaGlobalDir);
@@ -162,5 +171,9 @@ export async function executarAgenteHeadless(
   if (hooks.length > 0) {
     await rodarHooksStop(hooks);
   }
-  return { resultado: result, ...(sessaoId === undefined ? {} : { sessaoId }) };
+  return {
+    resultado: result,
+    texto: respostaCrua,
+    ...(sessaoId === undefined ? {} : { sessaoId }),
+  };
 }

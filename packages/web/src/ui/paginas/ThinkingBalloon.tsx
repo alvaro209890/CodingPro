@@ -89,7 +89,7 @@ export function ThinkingBalloon({
               const concluido = !ativo && (!loading || !ultimo);
               return (
                 <li
-                  key={`${i}-${step.slice(0, 32)}`}
+                  key={`${step}-${ultimo ? "u" : "p"}-${ativo ? "a" : "i"}`}
                   className={`playground__thinkingStep ${ativo ? "playground__thinkingStep--active" : ""} ${concluido ? "playground__thinkingStep--done" : ""}`}
                 >
                   <span className="playground__thinkingStepIcon" aria-hidden="true">

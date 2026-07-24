@@ -92,10 +92,12 @@ Sintomas: `A DeepSeek retornou uma chamada de ferramenta inválida` e em sequên
 - [ ] Wizard de onboarding visual no primeiro start (chave + git)
 - [ ] Drag & drop de arquivos do Windows Explorer no floating dock — **claim antigo; handlers não encontrados no renderer (2026-07-24)**
 - [x] Temas e preferências (aurora/solar/neon/mono + persistência) — 2026-07-23
-- [ ] Empacotador `electron-builder`: instalador NSIS + Portable — config no `package.json` existe; **dependência `electron-builder` ausente; build `.exe` não verificável no repo**
+- [x] Dependência `electron-builder` adicionada e config NSIS/Portable mantida no `package.json` — 2026-07-24
+- [ ] Empacotador `electron-builder`: gerar/validar instalador NSIS + Portable em ambiente Windows limpo — artefato `.exe` ainda não verificado em máquina limpa
 - [ ] Auto-updater integrado com GitHub Releases
-- [ ] Workflow CI Windows + release GitHub
-- [ ] Validar preload gerado (`scripts/build-preload.mjs`) inclui APIs de conta do source
+- [x] Workflow CI Windows (`.github/workflows/desktop-windows.yml`) para build `.exe`/portable e upload de artefatos — 2026-07-24
+- [x] Preload gerado (`scripts/build-preload.mjs`) inclui APIs de conta do source — 2026-07-24
+- [x] Landing/guia com botões de download Windows para portable `.zip` e instalador `.exe` — 2026-07-24
 - [ ] Diff viewer lado a lado + aplicar/rejeitar por bloco (hoje: viewer simples)
 - [ ] Terminal `xterm.js` + `node-pty` / PowerShell (hoje: `exec` + `cmd`)
 - [ ] Pet visual GUI

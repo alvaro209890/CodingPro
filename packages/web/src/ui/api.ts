@@ -50,7 +50,11 @@ async function pedir<T>(caminho: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  del: <T>(caminho: string) => pedir<T>(caminho, { method: "DELETE" }),
+  del: <T>(caminho: string, corpo?: unknown) =>
+    pedir<T>(caminho, {
+      method: "DELETE",
+      ...(corpo === undefined ? {} : { body: JSON.stringify(corpo) }),
+    }),
   get: <T>(caminho: string) => pedir<T>(caminho),
   patch: <T>(caminho: string, corpo: unknown) =>
     pedir<T>(caminho, { body: JSON.stringify(corpo), method: "PATCH" }),
@@ -68,7 +72,11 @@ export type Usuario = {
   readonly status: "pendente" | "ativo" | "bloqueado";
   readonly admin: boolean;
   readonly emailVerificado: boolean;
+  readonly limiteDiarioMicro?: number;
   readonly limiteMicro: number;
+  readonly rateRpm?: number;
+  readonly totpAtivado?: boolean;
+  readonly totpAtivo?: boolean;
 };
 
 /** Micro-dólares → texto em dólar. A API guarda inteiros para não acumular erro de float. */

@@ -343,9 +343,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               ]);
               if (sessaoId && podeAutoNomear) {
                 const tituloLocal = inferirNomeSessao(p, textoFinal);
-                updateSession(sessaoId, (s) =>
-                  s.nomeManual ? s : { ...s, nome: tituloLocal },
-                );
+                updateSession(sessaoId, (s) => (s.nomeManual ? s : { ...s, nome: tituloLocal }));
                 // Título local basta — evita chamada extra à IA (auto-título não deve gastar cota).
               }
               setStream("");
@@ -399,7 +397,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         setStatus("");
       }
     },
-    [input, loading, setMsgs, activeSession, updateSession, POST],
+    [input, loading, setMsgs, activeSession, updateSession],
   );
 
   const handleSlash = useCallback(

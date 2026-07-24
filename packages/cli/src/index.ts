@@ -117,6 +117,7 @@ async function main(): Promise<number> {
           ),
         petArquivo: arquivoPetPadrao(homedir()),
         petHabilitado: petLigado,
+        homeDirectory: homedir(),
         raizMemoriaGlobal: join(homedir(), ".codingpro", "memory"),
         raizProjeto: process.cwd(),
         raizSessoes: join(homedir(), ".codingpro", "sessions"),

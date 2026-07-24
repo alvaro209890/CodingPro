@@ -171,6 +171,28 @@ describe("executarChat", () => {
     expect(captura.progresso()).toContain("Escrevendo novo.txt");
   });
 
+  it("persiste approve-always na allowlist do projeto", async () => {
+    const call: ToolCall = {
+      id: "w1",
+      input: { content: "ok", path: "persistido.txt" },
+      name: "write_file",
+    };
+    const { provider } = scripted([
+      [{ call, type: "tool-call" }, finish({ content: "", role: "assistant", toolCalls: [call] })],
+      [{ text: "feito", type: "text-delta" }, finish({ content: "feito", role: "assistant" })],
+    ]);
+    const captura = fakeIo(["crie persistido.txt", undefined], ["a"]);
+
+    await executarChat({ cwd, homeDir: join(cwd, "home"), provider }, captura.io);
+
+    const settings = JSON.parse(
+      await readFile(join(cwd, ".codingpro", "settings.json"), "utf8"),
+    ) as {
+      permissions: { allowlist: string[] };
+    };
+    expect(settings.permissions.allowlist).toContain("write_file");
+  });
+
   it("nega o efeito quando o usuário recusa", async () => {
     const call: ToolCall = {
       id: "w1",

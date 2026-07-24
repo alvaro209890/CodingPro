@@ -12,9 +12,9 @@ Legenda: ✅ feito · 🔶 parcial / simplificado · ❌ não feito · 📌 pós
 
 | Fase | Núcleo do produto | Status real |
 |------|-------------------|-------------|
-| **1 — CLI** | Loop agêntico, DeepSeek, Aurora ANSI, empacotamento npm | 🟢 Completa no **plano de engenharia v1**; vários itens do plano original ficaram 🔶 ou 📌 |
-| **2 — App Windows** | Electron + chat + permissões + sessões | 🟡 W0–W2 usáveis; **W3 (instalador/auto-update) incompleto** |
-| **3 — Plataforma web** | Contas, proxy medido, limites, `codingpro login`, admin | 🟢 Núcleo P0–P3 **funcional** (stack diferente do plano); **P4 / hardening ainda aberto** |
+| **1 — CLI** | Loop agêntico, DeepSeek, Aurora ANSI, empacotamento npm | 🟢 Completa no **plano de engenharia v1**; `glob`, JSON headless e persistência de approve-always entregues; pós-1.0 ainda aberto |
+| **2 — App Windows** | Electron + chat + permissões + sessões | 🟡 W0–W2 usáveis; W3 avançou (preload, builder, CI, downloads), mas **auto-update/build limpo** ainda abertos |
+| **3 — Plataforma web** | Contas, proxy medido, limites, `codingpro login`, admin | 🟢 Núcleo P0–P3 funcional; P4 com itens code-complete, mas **segredos/ops/beta** ainda pendentes |
 
 Documento irmão: [ESTADO_PROJETO.md](ESTADO_PROJETO.md) (Fase 1), roadmaps em `fase2-app-windows/04` e `fase3-plataforma-web/04`.
 
@@ -26,10 +26,11 @@ Documento irmão: [ESTADO_PROJETO.md](ESTADO_PROJETO.md) (Fase 1), roadmaps em `
 
 - Pacotes `llm` / `core` / `cli`; bins `codingpro` / `cpro`
 - DeepSeek V4 Pro/Flash + replay de teste; streaming; custo/cache
-- Tools: `read_file`, `list_dir`, `grep`, `write_file`, `edit_file`, `bash`, `repo_map`, `code_search`, `remember`, `task`
-- Sessões, checkpoints `/undo`/`/redo`, permissões, MCP stdio, skills, hooks
+- Tools: `read_file`, `list_dir`, `grep`, `glob`, `write_file`, `edit_file`, `bash`, `repo_map`, `code_search`, `remember`, `task`
+- Sessões, checkpoints `/undo`/`/redo`, permissões, persistência de approve-always no `settings`, MCP stdio, skills, hooks
 - Chat Aurora ANSI: 4 temas, pet/XP, autocomplete `/`, quality Biome com auto-correção
 - Busca vetorial local (SQLite); `doctor`; `install.sh`; hardening offline no CI
+- Headless com `--output-format json` para automação/scripts
 
 ### Lacunas / parcialidades relevantes
 
@@ -43,13 +44,13 @@ Documento irmão: [ESTADO_PROJETO.md](ESTADO_PROJETO.md) (Fase 1), roadmaps em `
 | Quality loop com testes + reviewer automático | 🔶 | Biome pós-edição; sem suite automática |
 | Repo map tree-sitter + PageRank | 🔶 | Heurística/regex + cache JSON |
 | Memória FTS5 + consolidador LLM | 🔶 | Markdown + retrieval léxico |
-| Tool `glob`, edit fuzzy, parse check pós-edit | ❌ | |
-| Allowlist “esperta” persistente no settings | 🔶 | Padrão runtime é `ask`; approve-always não grava settings |
+| Tool `glob`, edit fuzzy, parse check pós-edit | 🔶 | `glob` entregue; edit fuzzy e parse check pós-edit seguem abertos |
+| Allowlist “esperta” persistente no settings | ✅ | Approve-always grava allowlist em `settings` |
 | `/plan` com aprovação formal + checklist vivo | 🔶 | Gera/salva plano; sem editor/`$EDITOR` formal |
 | Compactação por resumo semântico | 🔶 | Truncamento estruturado, não resumo LLM |
 | Onboarding wizard primeira execução | ❌ | Há `doctor` / login |
 | Undercover completo (commits + estilo) | 🔶 | Diretriz no prompt; sem fluxo de commit |
-| `codingpro -p --output-format json` | ❌ | |
+| `codingpro -p --output-format json` | ✅ | Saída JSON única para sucesso/erro seguro |
 | Voz local (whisper/Piper) | 📌 | Explicitamente pós-1.0 |
 | `npm publish` + QA visual humano (6 terminais) | 📌 | Manual do Álvaro |
 
@@ -66,7 +67,8 @@ Docs dizem “TUI finalizada”. A experiência completa está no **chat ANSI da
 - `packages/desktop`: Electron + React + Vite; core no main; IPC; chat streaming
 - Permissões com modal; sessões; paleta; cancel; workspace `/abrir`
 - Temas Aurora no desktop; conta cloud (device flow / login direto após fix do cookie `cp_sessao`)
-- Paths Windows + `taskkill`; CI ainda **não** valida Windows
+- Paths Windows + `taskkill`; workflow CI `desktop-windows.yml` adicionado para build Windows
+- Preload gerado inclui APIs de conta; `electron-builder` está nas deps; landing/guia têm botões de download Windows
 
 ### Lacunas / parcialidades relevantes
 
@@ -80,9 +82,9 @@ Docs dizem “TUI finalizada”. A experiência completa está no **chat ANSI da
 | Wizard onboarding (chave + git) | 🔶 | Tela de conta; sem wizard completo |
 | `code_search` / `/index` no Electron | ❌ | Omitido (sem `node:sqlite` no Electron) |
 | Árvore rica de subagentes na UI | 🔶 | Painel simples |
-| **electron-builder / NSIS / portable testado** | 🔶 | Config no `package.json`; **`electron-builder` não está nas deps**; artefato `.exe` não verificável neste repo |
-| Auto-updater + workflow Windows + Releases | ❌ | |
-| Preload gerado (`build-preload.mjs`) vs source | 🔶 | Risco de APIs de conta ficarem fora do preload gerado — validar no build |
+| **electron-builder / NSIS / portable testado** | 🔶 | Config e dependência `electron-builder` entregues; artefato `.exe`/portable ainda precisa validação em máquina Windows limpa |
+| Auto-updater + workflow Windows + Releases | 🔶 | Workflow `desktop-windows.yml` adicionado; auto-updater live e release operacional seguem abertos |
+| Preload gerado (`build-preload.mjs`) vs source | ✅ | APIs de conta foram incluídas no preload gerado |
 
 ### Correção de narrativa (W3)
 
@@ -102,6 +104,7 @@ O marco “v1.0.0 .exe entregue” no roadmap antigo estava **adiante do código
 | CLI cloud | `codingpro login`/`logout`/`conta`; `credenciais.json`; `CODINGPRO_TOKEN` |
 | Site | Vite + React (`packages/web`): landing, cadastro, login, painel, device flow, playground |
 | Admin | Vite SPA (`packages/admin`) em `/admin`: usuários, consumo, saúde, auditoria, kill switch |
+| Segurança/conta P4 | 2FA TOTP, exportar/apagar conta, páginas LGPD, CSP, limites diário/`rate_rpm`, SMTP/Turnstile opcionais por env |
 
 ### Desvios intencionais (não são “falta”, são stack diferente)
 
@@ -118,18 +121,18 @@ O marco “v1.0.0 .exe entregue” no roadmap antigo estava **adiante do código
 
 | Item | Situação |
 |---|---|
-| 2FA TOTP (user + admin obrigatório) | ❌ |
-| Turnstile no cadastro | ❌ |
-| CSP / WAF rules documentadas | ❌ / parcial (HSTS em prod na API) |
-| SMTP + verificação de e-mail automática | ❌ (código manual / visível ao admin) |
-| Termos + privacidade LGPD | ❌ |
-| Exportar/apagar conta (LGPD) | ❌ |
-| Limite diário, `rate_rpm` / concorrência **por usuário** | ❌ |
+| 2FA TOTP (user + admin obrigatório) | ✅ | Usuário ativa/desativa no painel; admin é exigido em produção |
+| Turnstile no cadastro | 🔶 | Código opcional entregue; precisa `TURNSTILE_SITE_KEY`/secret configurados pelo Álvaro |
+| CSP / WAF rules documentadas | 🔶 | Header CSP entregue na API/web; WAF operacional ainda fora do repo |
+| SMTP + verificação de e-mail automática | 🔶 | Módulo SMTP opcional entregue; envio real depende de `SMTP_*` configurado pelo Álvaro |
+| Termos + privacidade LGPD | ✅ | Páginas públicas adicionadas |
+| Exportar/apagar conta (LGPD) | ✅ | Endpoints e ações no painel do usuário |
+| Limite diário, `rate_rpm` / concorrência **por usuário** | 🔶 | Limite diário e `rate_rpm` entregues; concorrência por usuário ainda aberta |
 | Override temporário de limite | ❌ |
 | Cache-hit % e projeção no admin | ❌ |
 | Alertas e-mail/WhatsApp | ❌ |
-| Backup diário `pg_dump` + restore | ❌ |
-| Chave DeepSeek de produção dedicada + teto | ❌ (docs pedem; validar no PC) |
+| Backup diário `pg_dump` + restore | 🔶 | Script e timer systemd entregues; restore/agenda no host precisam validação operacional |
+| Chave DeepSeek de produção dedicada + teto | 🔶 | Configuração/verificação da chave dedicada de produção ainda depende do ambiente |
 | Teste de carga 10 usuários | ❌ |
 | Beta fechado monitorado | ❌ |
 | Preços/planos + asciinema real na landing | 🔶 |
@@ -147,9 +150,9 @@ O marco “v1.0.0 .exe entregue” no roadmap antigo estava **adiante do código
 
 ## Prioridades sugeridas
 
-1. **Fase 3 P4** — e-mail/2FA/Turnstile/backup/chave produção (se for abrir beta).  
-2. **Fase 2 W3** — dependência `electron-builder`, build `.exe` verificável, CI Windows, corrigir preload gerado.  
-3. **Fase 1 pós-1.0** — voz, tree-sitter, background tasks, Ink real (não bloqueia plataforma).
+1. **Ops Fase 3 P4** — configurar segredos SMTP/Turnstile, validar chave DeepSeek dedicada, backup/restore e beta/load test.  
+2. **Fase 2 W3** — validar `.exe`/portable em Windows limpo e concluir auto-updater live.  
+3. **Fase 1 pós-1.0** — Ink real, subprocess subagents, `/tasks` em background, voz e `npm publish`.
 
 ---
 

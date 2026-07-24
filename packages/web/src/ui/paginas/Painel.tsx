@@ -1,7 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { api, ErroApi, formatarData, formatarUsd, type Usuario } from "../api.js";
 import { Aviso, Barra, Carregando, Cartao, GraficoDiario, Metrica } from "../componentes.js";
-import { propsLink } from "../rotas.js";
+import { navegar, propsLink } from "../rotas.js";
 
 type Consumo = {
   custoMicro: number;
@@ -19,6 +19,11 @@ type Token = {
   criadoEm: string;
   ultimoUso: string | null;
   revogadoEm: string | null;
+};
+
+type InicioTotp = {
+  segredo: string;
+  otpauth: string;
 };
 
 type Aba = "consumo" | "tokens" | "perfil";
@@ -294,11 +299,16 @@ function AbaTokens({ usuario }: { usuario: Usuario }) {
 }
 
 function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: () => void }) {
+  const totpAtivo = usuario.totpAtivo ?? usuario.totpAtivado ?? false;
   const [atual, setAtual] = useState("");
   const [nova, setNova] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
   const [codigo, setCodigo] = useState("");
+  const [totpInicio, setTotpInicio] = useState<InicioTotp | null>(null);
+  const [totpCodigo, setTotpCodigo] = useState("");
+  const [senhaExclusao, setSenhaExclusao] = useState("");
+  const [processandoDados, setProcessandoDados] = useState(false);
 
   async function trocarSenha(evento: FormEvent) {
     evento.preventDefault();
@@ -325,6 +335,91 @@ function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: ()
       aoAtualizar();
     } catch (causa) {
       setErro(causa instanceof ErroApi ? causa.message : "Código incorreto.");
+    }
+  }
+
+  async function iniciarTotp() {
+    setErro("");
+    setMensagem("");
+    try {
+      const dados = await api.post<InicioTotp>("/api/conta/totp/iniciar");
+      setTotpInicio(dados);
+      setTotpCodigo("");
+    } catch (causa) {
+      setErro(causa instanceof ErroApi ? causa.message : "Falha ao iniciar o 2FA.");
+    }
+  }
+
+  async function ativarTotp(evento: FormEvent) {
+    evento.preventDefault();
+    if (!totpInicio) return;
+    setErro("");
+    setMensagem("");
+    try {
+      await api.post("/api/conta/totp/ativar", {
+        codigo: totpCodigo,
+        segredo: totpInicio.segredo,
+      });
+      setTotpInicio(null);
+      setTotpCodigo("");
+      setMensagem("Autenticação em dois fatores ativada.");
+      aoAtualizar();
+    } catch (causa) {
+      setErro(causa instanceof ErroApi ? causa.message : "Falha ao ativar o 2FA.");
+    }
+  }
+
+  async function desativarTotp() {
+    if (!window.confirm("Desativar a autenticação em dois fatores desta conta?")) return;
+    setErro("");
+    setMensagem("");
+    try {
+      await api.del("/api/conta/totp");
+      setMensagem("Autenticação em dois fatores desativada.");
+      aoAtualizar();
+    } catch (causa) {
+      setErro(causa instanceof ErroApi ? causa.message : "Falha ao desativar o 2FA.");
+    }
+  }
+
+  async function exportarDados() {
+    setErro("");
+    setMensagem("");
+    setProcessandoDados(true);
+    try {
+      const dados = await api.get<Record<string, unknown>>("/api/conta/exportar");
+      const blob = new Blob([JSON.stringify(dados, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `codingpro-dados-${usuario.id}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setMensagem("Exportação gerada.");
+    } catch (causa) {
+      setErro(causa instanceof ErroApi ? causa.message : "Falha ao exportar dados.");
+    } finally {
+      setProcessandoDados(false);
+    }
+  }
+
+  async function excluirConta(evento: FormEvent) {
+    evento.preventDefault();
+    if (!window.confirm("Excluir definitivamente sua conta e dados associados?")) return;
+    setErro("");
+    setMensagem("");
+    setProcessandoDados(true);
+    try {
+      await api.del("/api/conta", { senha: senhaExclusao });
+      setSenhaExclusao("");
+      aoAtualizar();
+      navegar("/");
+    } catch (causa) {
+      setErro(causa instanceof ErroApi ? causa.message : "Falha ao excluir a conta.");
+    } finally {
+      setProcessandoDados(false);
     }
   }
 
@@ -382,6 +477,88 @@ function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: ()
           </form>
         </Cartao>
       )}
+
+      <Cartao>
+        <h3>Autenticação em dois fatores</h3>
+        <p className="fraco">
+          Proteja o login com um código temporário do seu aplicativo autenticador.
+        </p>
+        <div className="linha" style={{ marginBottom: totpInicio ? "1rem" : 0 }}>
+          <span className={`selo ${totpAtivo ? "ok" : "espera"}`}>
+            {totpAtivo ? "2FA ativo" : "2FA desativado"}
+          </span>
+          {!totpAtivo && (
+            <button onClick={iniciarTotp} type="button">
+              Iniciar
+            </button>
+          )}
+          {totpAtivo && (
+            <button className="perigo" onClick={desativarTotp} type="button">
+              Desativar
+            </button>
+          )}
+        </div>
+        {totpInicio && (
+          <form onSubmit={ativarTotp}>
+            <p>
+              Escaneie este URI no autenticador ou cadastre o segredo manualmente. Depois informe o
+              código de 6 dígitos para ativar.
+            </p>
+            <code className="token-revelado">{totpInicio.otpauth}</code>
+            <p className="fraco">
+              Segredo: <code>{totpInicio.segredo}</code>
+            </p>
+            <label>
+              <span>Código 2FA</span>
+              <input
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                maxLength={6}
+                onChange={(e) => setTotpCodigo(e.target.value)}
+                placeholder="000000"
+                required
+                style={{ maxWidth: "180px" }}
+                value={totpCodigo}
+              />
+            </label>
+            <div className="linha">
+              <button className="primario" type="submit">
+                Ativar 2FA
+              </button>
+              <button onClick={() => setTotpInicio(null)} type="button">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        )}
+      </Cartao>
+
+      <Cartao>
+        <h3>Seus dados</h3>
+        <p className="fraco">
+          Baixe uma cópia dos dados da conta ou solicite a exclusão definitiva.
+        </p>
+        <div className="linha" style={{ marginBottom: "1rem" }}>
+          <button disabled={processandoDados} onClick={exportarDados} type="button">
+            Exportar JSON
+          </button>
+        </div>
+        <form onSubmit={excluirConta}>
+          <label>
+            <span>Confirmar senha para excluir conta</span>
+            <input
+              autoComplete="current-password"
+              onChange={(e) => setSenhaExclusao(e.target.value)}
+              required
+              type="password"
+              value={senhaExclusao}
+            />
+          </label>
+          <button className="perigo" disabled={processandoDados} type="submit">
+            Excluir conta
+          </button>
+        </form>
+      </Cartao>
 
       <Cartao>
         <h3>Trocar senha</h3>

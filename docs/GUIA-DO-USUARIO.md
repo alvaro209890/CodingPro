@@ -27,6 +27,15 @@ Depois de instalar, confira o ambiente:
 codingpro --doctor
 ```
 
+### App Windows (desktop)
+
+A página **Como começar** do site traz links para o app Windows em dois formatos:
+
+- portable `.zip` — baixar, extrair e executar;
+- instalador `.exe` — sujeito ao aviso do Windows SmartScreen enquanto não houver assinatura.
+
+Os links usam `/downloads/...` no site e dependem dos artefatos publicados em `packages/desktop/release/`.
+
 ## Configuração
 
 A configuração é empilhada (JSONC), do menor para o maior peso:
@@ -64,11 +73,26 @@ Se a chave faltar ou for inválida, a CLI **falha fechado** (mensagem clara em s
 obter resposta da DeepSeek” / similar) — nunca imprime o valor da chave nem detalhes brutos do
 transporte.
 
+### Conta CodingPro (`codingpro login`)
+
+No beta fechado, você também pode usar a conta CodingPro em vez de uma chave própria:
+
+```bash
+codingpro login
+codingpro conta
+codingpro logout
+```
+
+O login salva um token `cp_...` em `~/.codingpro/credenciais.json` com permissão `0600` e usa o proxy
+`/v1/chat/completions` da plataforma. Em automações, também dá para usar `CODINGPRO_TOKEN` e
+`CODINGPRO_API_URL`.
+
 ## Uso básico
 
 ```bash
 # 1. Pergunta rápida, sem ferramentas (headless)
 codingpro -p "explique o padrão Repository"
+codingpro -p "resuma este erro" --output-format json
 
 # 2. Agente com ferramentas de leitura (headless): lê o projeto e responde
 codingpro --agente -p "onde o pagamento é tratado?"
@@ -77,7 +101,8 @@ codingpro --agente -p "onde o pagamento é tratado?"
 codingpro --chat
 ```
 
-Sessões do agente são salvas; retome com `--resume <id>` ou `--continuar` (a mais recente).
+Sessões do agente são salvas; retome com `--resume <id>` ou `--continuar` (a mais recente). Use
+`--output-format json` quando precisar de uma única saída estruturada para scripts/CI.
 
 ### Chat interativo (TTY) — visual, status e autocomplete
 
@@ -135,8 +160,8 @@ CODINGPRO_TEMA=neon codingpro --chat          # por variável de ambiente
 ```
 
 No chat, **`/tema`** mostra as amostras de todos os temas e o atual; **`/tema <nome>`** troca a
-paleta da sessão na hora (o banner/prompt aplicam por completo no próximo início). Todos os temas
-degradam para 256/16 cores e para ASCII automaticamente.
+paleta da sessão. Para persistir entre sessões, grave `"theme"` no `settings.json` global ou do
+projeto. Todos os temas degradam para 256/16 cores e para ASCII automaticamente.
 
 #### Companheiro / XP (pet)
 
@@ -192,6 +217,12 @@ Segurança: caminhos vão como argumentos do processo (sem shell). Biome ausente
 | `/pet` | mostra o companheiro/XP da sessão (desligável) |
 
 
+### Aprovações e allowlist persistente
+
+Ferramentas com efeito (ex.: `write_file`, `edit_file`, `bash`) pedem confirmação. Ao escolher a
+opção de sempre permitir/approve-always para uma ferramenta, o CodingPro grava essa allowlist no
+`settings.json` para reaproveitar a preferência em sessões futuras.
+
 
 ### Busca vetorial local (`code_search` + `/index`)
 
@@ -210,6 +241,18 @@ No chat:
 
 O agente usa a tool **`code_search`** quando o `repo_map` não basta (ex.: “onde o pagamento é validado?”).
 A 1ª chamada pode indexar sozinha se o índice estiver vazio.
+
+### Busca por arquivos (`glob`)
+
+O agente também tem a tool **`glob`** para localizar caminhos por padrões como `**/*.ts`,
+`src/**/*.tsx` ou `docs/*.md`. Ela é útil antes de leituras/edições quando o nome exato do arquivo
+não está claro.
+
+## Painel web da conta
+
+Após entrar no site, o **Painel** mostra consumo, tokens e ações da conta. Na seção de segurança é
+possível ativar/desativar **2FA TOTP** com um aplicativo autenticador. O painel também oferece
+exportação dos dados e exclusão da conta.
 
 ## Memória
 

@@ -218,14 +218,25 @@ function PassosWindows() {
           Aplicativo de desktop com a mesma engine da CLI: chat, diffs e terminal integrado. Versão{" "}
           <strong>{DESKTOP_VERSAO}</strong>.
         </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "0.5rem" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.75rem",
+            marginBottom: "0.5rem",
+          }}
+        >
           <a className="botao primario" href={urlDownload(portable.arquivo)}>
             Baixar {portable.rotulo} — {portable.tamanho}
           </a>
           <p className="fraco" style={{ margin: 0 }}>
             {portable.descricao}
           </p>
-          <a className="botao" href={urlDownload(setup.arquivo)} style={{ alignSelf: "flex-start" }}>
+          <a
+            className="botao"
+            href={urlDownload(setup.arquivo)}
+            style={{ alignSelf: "flex-start" }}
+          >
             Alternativa: {setup.rotulo}
           </a>
           <p className="fraco" style={{ margin: 0 }}>

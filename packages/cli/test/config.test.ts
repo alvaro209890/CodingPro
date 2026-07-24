@@ -200,11 +200,11 @@ describe("loadConfig", () => {
     });
   });
 
-  it("tolera as chaves de UI (theme/pet/attribution) junto do provider", async () => {
+  it("tolera as chaves de UI e permissões junto do provider", async () => {
     cwd = homeDirectory;
     await writeSettings(
       "global",
-      '{ "provider": "deepseek", "theme": "neon", "pet": false, "attribution": "none" }',
+      '{ "provider": "deepseek", "theme": "neon", "pet": false, "attribution": "none", "permissions": { "allowlist": ["bash"] } }',
     );
 
     await expect(loadConfig(options())).resolves.toEqual({ provider: "deepseek" });
@@ -222,6 +222,9 @@ describe("loadConfig", () => {
     ["replay não objeto", '{ "replay": "arquivo" }'],
     ["replay sem file", '{ "replay": {} }'],
     ["replay file inválido", '{ "replay": { "file": null } }'],
+    ["permissions não objeto", '{ "permissions": [] }'],
+    ["permissions campo desconhecido", '{ "permissions": { "deny": ["bash"] } }'],
+    ["permissions allowlist inválida", '{ "permissions": { "allowlist": ["bash", 1] } }'],
   ])("rejeita schema inválido: %s", async (_name, content) => {
     await writeSettings("global", content);
 

@@ -272,6 +272,11 @@ export {
   parseEditBlocks,
 } from "./tools/edit-file.js";
 export {
+  GLOB_MAX_RESULTS,
+  globParaRegex,
+  globTool,
+} from "./tools/glob.js";
+export {
   GREP_DEADLINE_MS,
   GREP_DEFAULT_MAX_RESULTS,
   GREP_MAX_FILE_BYTES,

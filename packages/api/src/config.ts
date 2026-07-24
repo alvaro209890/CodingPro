@@ -20,6 +20,15 @@ export type ConfigApi = {
   readonly limitePadraoMicro: number;
   /** E-mail que recebe `admin: true` automaticamente no cadastro. */
   readonly emailAdmin: string;
+  /** SMTP opcional para e-mails transacionais. Vazio = envio desativado. */
+  readonly smtpHost: string;
+  readonly smtpPort: number;
+  readonly smtpUser: string;
+  readonly smtpPass: string;
+  readonly smtpFrom: string;
+  /** Cloudflare Turnstile. Segredo vazio mantém bypass local/desenvolvimento. */
+  readonly turnstileSecret: string;
+  readonly turnstileSiteKey: string;
 };
 
 const PORTA_PADRAO = 8700;
@@ -32,6 +41,15 @@ function lerPorta(bruto: string | undefined): number {
   const valor = Number.parseInt(bruto, 10);
   if (!Number.isInteger(valor) || valor < 1 || valor > 65535) {
     throw new Error(`CODINGPRO_API_PORTA inválida: ${bruto}`);
+  }
+  return valor;
+}
+
+function lerPortaSmtp(bruto: string | undefined): number {
+  if (bruto === undefined || bruto.trim() === "") return 587;
+  const valor = Number.parseInt(bruto, 10);
+  if (!Number.isInteger(valor) || valor < 1 || valor > 65535) {
+    throw new Error(`SMTP_PORT inválida: ${bruto}`);
   }
   return valor;
 }
@@ -64,5 +82,16 @@ export function carregarConfig(env: NodeJS.ProcessEnv = process.env): ConfigApi 
     porta: lerPorta(env.CODINGPRO_API_PORTA),
     sessionSecret: sessionSecret || "segredo-de-desenvolvimento-nao-usar-em-producao",
     siteUrl: env.CODINGPRO_SITE_URL?.trim() || "https://codingpro.cursar.space",
+    smtpFrom: env.SMTP_FROM?.trim() ?? "",
+    smtpHost: env.SMTP_HOST?.trim() ?? "",
+    smtpPass: env.SMTP_PASS?.trim() ?? "",
+    smtpPort: lerPortaSmtp(env.SMTP_PORT),
+    smtpUser: env.SMTP_USER?.trim() ?? "",
+    turnstileSecret: env.TURNSTILE_SECRET?.trim() || env.CLOUDFLARE_TURNSTILE_SECRET?.trim() || "",
+    turnstileSiteKey:
+      env.TURNSTILE_SITE_KEY?.trim() ||
+      env.CODINGPRO_TURNSTILE_SITE_KEY?.trim() ||
+      env.CLOUDFLARE_TURNSTILE_SITE_KEY?.trim() ||
+      "",
   };
 }

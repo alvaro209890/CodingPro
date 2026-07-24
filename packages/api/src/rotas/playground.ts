@@ -222,10 +222,7 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
             .pop() || "repo";
         repoPath = `repositorios/${nomeRepo}`;
       } else {
-        cwd =
-          resolverSeguro(raiz, cwdRel) ??
-          resolverSeguro(raiz, ".") ??
-          raiz;
+        cwd = resolverSeguro(raiz, cwdRel) ?? resolverSeguro(raiz, ".") ?? raiz;
         if (action === "pull") cmd = "git pull";
         else if (action === "status") cmd = "git status --short";
         else if (action === "log") cmd = "git log --oneline -10";

@@ -61,7 +61,9 @@ export type UsuarioAdmin = {
   admin: boolean;
   emailVerificado: boolean;
   codigoVerificacao: string | null;
+  limiteDiarioMicro?: number;
   limiteMicro: number;
+  rateRpm?: number;
   custoMicro: number;
   requisicoes: number;
   workspaceMb?: number;

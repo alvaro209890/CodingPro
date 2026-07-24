@@ -117,7 +117,18 @@ export function Usuarios() {
                     </td>
                     <td>{formatarUsd(usuario.custoMicro)}</td>
                     <td>
-                      {usuario.limiteMicro === 0 ? "sem limite" : formatarUsd(usuario.limiteMicro)}
+                      <div>
+                        {usuario.limiteMicro === 0
+                          ? "sem limite mensal"
+                          : formatarUsd(usuario.limiteMicro)}
+                      </div>
+                      <div className="fraco">
+                        dia:{" "}
+                        {usuario.limiteDiarioMicro === 0
+                          ? "sem limite"
+                          : formatarUsd(usuario.limiteDiarioMicro ?? 0)}{" "}
+                        · {usuario.rateRpm ?? 60} rpm
+                      </div>
                     </td>
                     <td>{usuario.requisicoes}</td>
                     <td className="fraco">{usuario.workspaceMb ?? 0} MB</td>
@@ -178,8 +189,8 @@ export function Usuarios() {
       {editando && (
         <ModalLimite
           onFechar={() => setEditando(null)}
-          onSalvar={async (micro) => {
-            await alterar(editando, { limiteMicro: micro });
+          onSalvar={async (campos) => {
+            await alterar(editando, campos);
             setEditando(null);
           }}
           usuario={editando}
@@ -196,15 +207,31 @@ function ModalLimite({
 }: {
   usuario: UsuarioAdmin;
   onFechar: () => void;
-  onSalvar: (micro: number) => Promise<void>;
+  onSalvar: (campos: {
+    limiteDiarioMicro: number;
+    limiteMicro: number;
+    rateRpm: number;
+  }) => Promise<void>;
 }) {
   const [valor, setValor] = useState((usuario.limiteMicro / 1_000_000).toFixed(2));
+  const [valorDiario, setValorDiario] = useState(
+    ((usuario.limiteDiarioMicro ?? 0) / 1_000_000).toFixed(2),
+  );
+  const [rateRpm, setRateRpm] = useState(String(usuario.rateRpm ?? 60));
 
   async function enviar(evento: FormEvent) {
     evento.preventDefault();
     const dolares = Number.parseFloat(valor.replace(",", "."));
+    const dolaresDia = Number.parseFloat(valorDiario.replace(",", "."));
+    const rpm = Number.parseInt(rateRpm, 10);
     if (!Number.isFinite(dolares) || dolares < 0) return;
-    await onSalvar(Math.round(dolares * 1_000_000));
+    if (!Number.isFinite(dolaresDia) || dolaresDia < 0) return;
+    if (!Number.isSafeInteger(rpm) || rpm < 0) return;
+    await onSalvar({
+      limiteDiarioMicro: Math.round(dolaresDia * 1_000_000),
+      limiteMicro: Math.round(dolares * 1_000_000),
+      rateRpm: rpm,
+    });
   }
 
   return (
@@ -242,6 +269,26 @@ function ModalLimite({
               onChange={(e) => setValor(e.target.value)}
               required
               value={valor}
+            />
+          </label>
+          <label>
+            <span>Limite diário (US$/dia)</span>
+            <input
+              inputMode="decimal"
+              onChange={(e) => setValorDiario(e.target.value)}
+              required
+              value={valorDiario}
+            />
+          </label>
+          <label>
+            <span>Rate limit (RPM)</span>
+            <input
+              inputMode="numeric"
+              min={0}
+              onChange={(e) => setRateRpm(e.target.value)}
+              required
+              type="number"
+              value={rateRpm}
             />
           </label>
           <div className="linha">

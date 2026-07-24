@@ -42,9 +42,7 @@ function entradasDaPasta(files: string[], cwd: string): Entrada[] {
   const lista = [...unicas.values()].sort(
     (a, b) => Number(b.diretorio) - Number(a.diretorio) || a.nome.localeCompare(b.nome),
   );
-  return lista.map((e) =>
-    e.diretorio ? { ...e, filhos: contarFilhos(files, e.path) } : e,
-  );
+  return lista.map((e) => (e.diretorio ? { ...e, filhos: contarFilhos(files, e.path) } : e));
 }
 
 function getFileIcon(filename: string, isDir: boolean): string {

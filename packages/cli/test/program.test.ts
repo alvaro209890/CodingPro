@@ -104,6 +104,53 @@ describe("CLI", () => {
     expect(captura.stderr).toEqual([]);
   });
 
+  it("emite JSON único para prompt headless com --output-format json", async () => {
+    const captura = capturarSaida();
+    const provider = new ReplayProvider([
+      {
+        events: [
+          { text: "Olá!", type: "text-delta" },
+          {
+            message: { content: "Olá!", role: "assistant" },
+            reason: "stop",
+            type: "finish",
+          },
+        ],
+        request: { messages: [{ content: "olá", role: "user" }] },
+      },
+    ]);
+
+    await expect(
+      executarCli(["--output-format", "json", "-p", "olá"], captura.io, {
+        criarProvider: () => provider,
+      }),
+    ).resolves.toBe(0);
+    expect(captura.stderr).toEqual([]);
+    expect(JSON.parse(captura.stdout.join(""))).toEqual({
+      cost: null,
+      ok: true,
+      sessionId: null,
+      text: "Olá!",
+    });
+  });
+
+  it("emite JSON de erro seguro em --output-format json", async () => {
+    const captura = capturarSaida();
+
+    await expect(
+      executarCli(["--output-format", "json", "-p", "olá"], captura.io, {
+        criarProvider: () => {
+          throw new ProviderError("not-configured", "provider indisponível");
+        },
+      }),
+    ).resolves.toBe(2);
+    expect(captura.stderr).toEqual([]);
+    expect(JSON.parse(captura.stdout.join(""))).toEqual({
+      error: "provider indisponível",
+      ok: false,
+    });
+  });
+
   it("repassa flags de provider e replay ao composition root", async () => {
     const captura = capturarSaida();
     const overrides: unknown[] = [];
@@ -307,6 +354,47 @@ describe("CLI", () => {
       ).resolves.toBe(0);
       expect(captura.stdout.join("")).toContain("o arquivo tem conteúdo do projeto");
       expect(captura.stderr.join("")).toContain("· Lendo a.txt");
+    } finally {
+      await rm(raiz, { force: true, recursive: true });
+    }
+  });
+
+  it("emite JSON único para --agente com sessão e texto final", async () => {
+    const captura = capturarSaida();
+    const raiz = await mkdtemp(join(tmpdir(), "codingpro-agente-json-"));
+    try {
+      const provider = providerRoteirizado([
+        [
+          { text: "resposta agêntica", type: "text-delta" },
+          {
+            message: { content: "resposta agêntica", role: "assistant" },
+            reason: "stop",
+            type: "finish",
+          },
+        ],
+      ]);
+
+      await expect(
+        executarCli(["--agente", "--output-format", "json", "-p", "oi"], captura.io, {
+          criarProvider: () => provider,
+          homeDirectory: raiz,
+          raizProjeto: raiz,
+          raizSessoes: join(raiz, "sessoes"),
+        }),
+      ).resolves.toBe(0);
+      const payload = JSON.parse(captura.stdout.join("")) as {
+        cost: unknown;
+        ok: boolean;
+        sessionId: string | null;
+        text: string;
+      };
+      expect(payload).toMatchObject({
+        cost: null,
+        ok: true,
+        text: "resposta agêntica",
+      });
+      expect(payload.sessionId).toEqual(expect.any(String));
+      expect(captura.stdout.join("")).not.toContain("resposta agêntica\n{");
     } finally {
       await rm(raiz, { force: true, recursive: true });
     }

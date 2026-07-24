@@ -13,7 +13,12 @@ describe.skipIf(!TEM_BANCO)("cadastro e login", () => {
     amb = await montar();
     const resposta = await amb.app.inject({
       method: "POST",
-      payload: { email: "chefe@teste.com", nome: "Chefe", senha: "senhaBoa123" },
+      payload: {
+        email: "chefe@teste.com",
+        nome: "Chefe",
+        senha: "senhaBoa123",
+        termosAceitos: true,
+      },
       url: "/api/cadastro",
     });
     expect(resposta.statusCode).toBe(201);
@@ -25,7 +30,12 @@ describe.skipIf(!TEM_BANCO)("cadastro e login", () => {
     await cadastrar(amb.app, "chefe@teste.com");
     const resposta = await amb.app.inject({
       method: "POST",
-      payload: { email: "novato@teste.com", nome: "Novato", senha: "senhaBoa123" },
+      payload: {
+        email: "novato@teste.com",
+        nome: "Novato",
+        senha: "senhaBoa123",
+        termosAceitos: true,
+      },
       url: "/api/cadastro",
     });
     expect(resposta.json().usuario).toMatchObject({ admin: false, status: "pendente" });
@@ -36,7 +46,12 @@ describe.skipIf(!TEM_BANCO)("cadastro e login", () => {
     await cadastrar(amb.app, "alguem@teste.com");
     const resposta = await amb.app.inject({
       method: "POST",
-      payload: { email: "alguem@teste.com", nome: "Outro", senha: "senhaBoa123" },
+      payload: {
+        email: "alguem@teste.com",
+        nome: "Outro",
+        senha: "senhaBoa123",
+        termosAceitos: true,
+      },
       url: "/api/cadastro",
     });
     expect(resposta.statusCode).toBe(409);
@@ -47,7 +62,7 @@ describe.skipIf(!TEM_BANCO)("cadastro e login", () => {
     amb = await montar();
     const fraca = await amb.app.inject({
       method: "POST",
-      payload: { email: "a@b.com", nome: "Ana", senha: "123" },
+      payload: { email: "a@b.com", nome: "Ana", senha: "123", termosAceitos: true },
       url: "/api/cadastro",
     });
     expect(fraca.statusCode).toBe(400);
@@ -55,7 +70,12 @@ describe.skipIf(!TEM_BANCO)("cadastro e login", () => {
 
     const email = await amb.app.inject({
       method: "POST",
-      payload: { email: "nao-e-email", nome: "Ana", senha: "senhaBoa123" },
+      payload: {
+        email: "nao-e-email",
+        nome: "Ana",
+        senha: "senhaBoa123",
+        termosAceitos: true,
+      },
       url: "/api/cadastro",
     });
     expect(email.json().erro).toBe("email_invalido");

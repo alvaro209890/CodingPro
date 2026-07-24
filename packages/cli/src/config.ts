@@ -116,6 +116,24 @@ function stringValue(
   return node.value;
 }
 
+function stringArrayValue(node: JsonNode | undefined, layer: LayerName, field: string): void {
+  if (node === undefined) {
+    return;
+  }
+  if (node.type !== "array") {
+    throw invalidConfig(layer, `o campo ${field} deve ser uma lista de strings.`);
+  }
+  for (const child of node.children ?? []) {
+    if (
+      child.type !== "string" ||
+      typeof child.value !== "string" ||
+      child.value.trim().length === 0
+    ) {
+      throw invalidConfig(layer, `o campo ${field} deve conter apenas strings não vazias.`);
+    }
+  }
+}
+
 function providerValue(value: string | undefined, label: string): ProviderName | undefined {
   if (value === undefined) {
     return undefined;
@@ -147,7 +165,7 @@ function parseConfig(
   const root = propertiesOf(
     tree,
     layer,
-    new Set(["attribution", "pet", "provider", "replay", "theme", "version"]),
+    new Set(["attribution", "permissions", "pet", "provider", "replay", "theme", "version"]),
   );
   const versionNode = root.get("version");
   if (versionNode !== undefined && (versionNode.type !== "number" || versionNode.value !== 1)) {
@@ -179,6 +197,12 @@ function parseConfig(
       path: resolvedPath,
       ...(projectRoot === undefined ? {} : { restrictedRoot: projectRoot }),
     };
+  }
+
+  const permissionsNode = root.get("permissions");
+  if (permissionsNode !== undefined) {
+    const permissions = propertiesOf(permissionsNode, layer, new Set(["allowlist"]));
+    stringArrayValue(permissions.get("allowlist"), layer, "permissions.allowlist");
   }
 
   return {

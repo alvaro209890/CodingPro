@@ -8,6 +8,8 @@ import { EntrarDispositivo } from "./paginas/EntrarDispositivo.js";
 import { Landing } from "./paginas/Landing.js";
 import { Painel } from "./paginas/Painel.js";
 import { Playground } from "./paginas/Playground.js";
+import { Privacidade } from "./paginas/Privacidade.js";
+import { Termos } from "./paginas/Termos.js";
 import { navegar, propsLink, useCaminho } from "./rotas.js";
 
 function destinoDaQuery(): string {
@@ -98,7 +100,11 @@ export function App() {
 
       <footer className="rodape">
         <span>© {new Date().getFullYear()} CodingPro</span>
-        <span>Desenvolvimento assistido por IA, em português.</span>
+        <span className="rodape-links">
+          <a {...propsLink("/termos")}>Termos</a>
+          <a {...propsLink("/privacidade")}>Privacidade</a>
+          <span>Desenvolvimento assistido por IA, em português.</span>
+        </span>
       </footer>
     </div>
   );
@@ -131,6 +137,14 @@ function Conteudo({
 
   if (caminho === "/comecar") {
     return <Comecar usuario={usuario} />;
+  }
+
+  if (caminho === "/termos") {
+    return <Termos />;
+  }
+
+  if (caminho === "/privacidade") {
+    return <Privacidade />;
   }
 
   if (caminho === "/entrar-dispositivo") {

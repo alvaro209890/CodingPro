@@ -13,6 +13,7 @@
     "desktop": "pnpm --filter @codingpro/desktop start",
     "desktop:dev": "pnpm --filter @codingpro/desktop dev",
     "desktop:build": "pnpm --filter @codingpro/llm build && pnpm --filter @codingpro/core build && pnpm --filter @codingpro/desktop build",
+    "desktop:dist": "pnpm desktop:build && pnpm --filter @codingpro/desktop dist",
     "plataforma:build": "pnpm --filter @codingpro/llm build && pnpm --filter @codingpro/admin build && pnpm --filter @codingpro/api build && pnpm --filter @codingpro/web build",
     "plataforma:restart": "systemctl --user restart codingpro-api codingpro-web",
     "format": "biome format --write .",

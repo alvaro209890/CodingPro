@@ -2,6 +2,8 @@
  * Gera dist/preload/index.cjs (CommonJS).
  * Electron 34 + package "type":"module" não carrega preload ESM
  * (ERR_UNSUPPORTED_ESM_URL_SCHEME protocol 'electron:').
+ *
+ * Fonte canônica das APIs: src/preload/index.ts — manter em sincronia.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -34,6 +36,24 @@ const api = {
   getWorkspaceInfo: () => {
     return ipcRenderer.invoke("codingpro:get-workspace-info");
   },
+  estadoAcesso: () => {
+    return ipcRenderer.invoke("codingpro:estado-acesso");
+  },
+  contaLogin: (apiUrl) => {
+    return ipcRenderer.invoke("codingpro:conta-login", apiUrl);
+  },
+  contaLoginDireto: (email, senha) => {
+    return ipcRenderer.invoke("codingpro:conta-login-direto", email, senha);
+  },
+  contaCadastrar: (email, nome, senha) => {
+    return ipcRenderer.invoke("codingpro:conta-cadastrar", email, nome, senha);
+  },
+  contaConsultar: (apiUrl, codigoDispositivo) => {
+    return ipcRenderer.invoke("codingpro:conta-consultar", apiUrl, codigoDispositivo);
+  },
+  contaLogout: () => {
+    return ipcRenderer.invoke("codingpro:conta-logout");
+  },
   chooseWorkspaceFolder: () => {
     return ipcRenderer.invoke("codingpro:choose-workspace-folder");
   },
@@ -62,15 +82,15 @@ const api = {
     return ipcRenderer.invoke("codingpro:get-session-cost");
   },
   getSlashCommands: () => {
-      return ipcRenderer.invoke("codingpro:list-slash-commands");
-    },
-    setAutoApprove: (enabled) => {
-      return ipcRenderer.invoke("codingpro:set-auto-approve", enabled);
-    },
-    getAutoApprove: () => {
-      return ipcRenderer.invoke("codingpro:get-auto-approve");
-    },
-  };
+    return ipcRenderer.invoke("codingpro:list-slash-commands");
+  },
+  setAutoApprove: (enabled) => {
+    return ipcRenderer.invoke("codingpro:set-auto-approve", enabled);
+  },
+  getAutoApprove: () => {
+    return ipcRenderer.invoke("codingpro:get-auto-approve");
+  },
+};
 
 contextBridge.exposeInMainWorld("codingproAPI", api);
 `;

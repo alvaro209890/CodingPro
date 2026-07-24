@@ -1,6 +1,7 @@
 import { bashTool } from "./tools/bash.js";
 import { codeSearchTool } from "./tools/code-search.js";
 import { editFileTool } from "./tools/edit-file.js";
+import { globTool } from "./tools/glob.js";
 import { grepTool } from "./tools/grep.js";
 import { listDirTool } from "./tools/list-dir.js";
 import { readFileTool } from "./tools/read-file.js";
@@ -14,6 +15,7 @@ import { writeFileTool } from "./tools/write-file.js";
 export const READ_ONLY_TOOLS = Object.freeze([
   readFileTool,
   listDirTool,
+  globTool,
   grepTool,
   repoMapTool,
   codeSearchTool,

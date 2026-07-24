@@ -11,9 +11,9 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento / parcial
 
 | Fase | Status |
 |------|--------|
-| 1 CLI | 🟢 Engenharia v1 completa; pós-1.0 e itens simplificados listados em LACUNAS |
-| 2 Windows | 🟡 App usável (W0–W2); W3 distribuição incompleta |
-| 3 Plataforma | 🟢 Núcleo P0–P3; P4 hardening/beta aberto |
+| 1 CLI | 🟢 Engenharia v1 completa; `glob`, JSON headless e approve-always persistente entregues; `npm publish` e pós-1.0 abertos |
+| 2 Windows | 🟡 App usável; preload/builder/CI/downloads entregues; auto-updater e validação em Windows limpo abertos |
+| 3 Plataforma | 🟢 Núcleo + P4 code-complete em 2FA/LGPD/CSP/limites/backup; SMTP/Turnstile/chave prod/beta dependem de ops |
 
 ## Planejamento
 

@@ -15,6 +15,7 @@ describe("describeToolCall", () => {
     expect(describeToolCall(call("read_file", { path: "a.txt" }))).toBe("Lendo a.txt");
     expect(describeToolCall(call("list_dir", {}))).toBe("Listando o projeto");
     expect(describeToolCall(call("list_dir", { path: "src" }))).toBe("Listando src");
+    expect(describeToolCall(call("glob", { pattern: "**/*.ts" }))).toBe("Buscando arquivos…");
     expect(describeToolCall(call("grep", { pattern: "TODO" }))).toBe('Buscando "TODO"');
     expect(describeToolCall(call("write_file", { path: "n.txt" }))).toBe("Escrevendo n.txt");
     expect(describeToolCall(call("edit_file", { path: "e.ts" }))).toBe("Editando e.ts");
