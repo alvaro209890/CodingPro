@@ -518,13 +518,10 @@ tbody tr:hover {
 
 .playground {
   display: flex;
-  height: 100dvh;
-  width: 100vw;
+  height: 100%;
   background: var(--fundo);
   color: var(--texto);
   font-family: ui-monospace, "JetBrains Mono", "Fira Code", monospace;
-  position: fixed;
-  inset: 0;
   overflow: hidden;
 }
 
