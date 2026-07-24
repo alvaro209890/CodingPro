@@ -1,91 +1,98 @@
-# CodingPro — Status 2026-07-24
+# STATUS do Playground — 2026-07-24
 
-## 🌐 Serviços Online
+## Deploys do dia
 
-| Serviço | URL | Status |
-|---------|-----|--------|
-| Site | https://codingpro.cursar.space | 🟢 |
-| API | https://codingpro-api.cursar.space/saude | 🟢 |
-| Admin | https://codingpro-api.cursar.space/admin | 🟢 |
-| Playground VPS | https://codingpro.cursar.space/playground | 🟢 |
-| Download .exe | https://codingpro.cursar.space/comecar | 🟢 |
+| Commit | Descrição | Hash CSS | Hash JS |
+|--------|-----------|----------|---------|
+| `ad7a814` | Aurora design system — Landing, Cadastro, Login, Painel | `PDypvPj9` | `4JeZcnij` |
+| `702f073` | Playground fullscreen (sem header/footer) | `BpFLviwR` | `1i2KlAif` |
+| `1343003` | Fix: height 100% (evita sobreposição Windows) | `C2LoRRZm` | `DX_C2qlc` |
 
-## 🏗️ Arquitetura
+## Estrutura atual
 
 ```
-Navegador → codingpro.cursar.space (Vite+React SPA + proxy HTTP)
-                ↓ /api/*
-           codingpro-api.cursar.space (Fastify)
-                ↓
-           Postgres (database codingpro)
-           DeepSeek API (proxy LLM streaming)
+packages/web/src/ui/
+├── App.tsx              # Roteamento — playground em tela cheia (early return)
+├── estilo.css           # CSS global + .playground (1951 linhas)
+├── api.ts               # fetch wrapper
+├── componentes.tsx       # Componentes compartilhados
+├── rotas.ts             # Router SPA
+└── paginas/
+    ├── Playground.tsx    # 830 linhas — TUDO self-contained
+    ├── Banner.tsx        # Banner de boas-vindas redesenhado
+    ├── ChatView.tsx      # Chat + input + slash commands
+    ├── FilesPanel.tsx    # Explorador com upload/drag-drop
+    ├── EditorPanel.tsx   # Editor com header + Ctrl+S
+    ├── TerminalPanel.tsx  # Terminal com histórico + atalhos
+    ├── GitPanel.tsx      # Clone/status/log
+    ├── MemoryPanel.tsx   # CRUD de memórias
+    ├── Sidebar.tsx       # Sidebar de chats (desktop+mobile)
+    ├── TabBar.tsx        # Abas inferiores
+    ├── SlashDropdown.tsx # Dropdown de comandos /
+    ├── Landing.tsx       # Landing page
+    ├── Cadastro.tsx      # Cadastro
+    ├── Entrar.tsx        # Login
+    ├── Painel.tsx        # Dashboard do usuário
+    ├── Comecar.tsx       # Guia de início
+    └── EntrarDispositivo.tsx  # Device flow
 ```
 
-**Proxy HTTP:** `packages/web/src/servidor.ts` encaminha `/api/*` → API.
-- Mesmo domínio (sem CORS)
-- Cookies reescritos para `codingpro.cursar.space`
-- Sessão viaja automaticamente
+## Funcionalidades implementadas
 
-## 📦 Pacotes (monorepo pnpm)
+### Chat (/agent)
+- ✅ SSE streaming com campo `type`
+- ✅ Tools reais: list_dir, read_file, write_file, bash, grep
+- ✅ Animação de streaming (cursor piscando)
+- ✅ Log de tools executadas
+- ✅ Tratamento de erros descritivo
 
-| Pacote | Função |
-|--------|--------|
-| `packages/llm` | Provider DeepSeek, replay, contratos |
-| `packages/core` | Workspace, tools, agent loop, permissões |
-| `packages/cli` | CLI codingpro, chat, TUI, login cloud |
-| `packages/tui` | TUI Aurora (Ink 5 + React 19) |
-| `packages/api` | API Fastify, proxy LLM, auth, admin |
-| `packages/web` | Site SPA + proxy HTTP |
-| `packages/admin` | Painel admin SPA standalone |
-| `packages/desktop` | App Electron Windows |
+### Sidebar
+- ✅ Múltiplos chats (CRUD completo)
+- ✅ Persistência localStorage
+- ✅ Renomear inline
+- ✅ Mobile: drawer com overlay
+- ✅ Email do usuário no footer
 
-## 🔧 Funcionalidades
+### Comandos /
+- ✅ 12 comandos: clear, new, list, switch, delete, rename, export, history, context, agent, files, memory, help
+- ✅ Dropdown com filtro
+- ✅ Histórico de comandos (↑↓)
+- ✅ Atalhos: Ctrl+L, Ctrl+N, Ctrl+K
 
-### Playground VPS (`/playground`)
-7 abas: ⚡ CLI | 💬 Chat | 📁 Files | ✏️ Editor | >_ Terminal | 🔀 Git | 🧠 Memory
-- CLI: banner ASCII, input direto, streaming SSE, slash commands (12 comandos)
-- **Multi-chat**: sidebar com múltiplas sessões, criar/trocar/deletar/renomear
-- **Persistência**: localStorage (auto-save), restaura ao recarregar
-- **Histórico**: seta cima/baixo para comandos anteriores
-- **Atalhos**: Ctrl+L (limpar), Ctrl+N (novo chat), Ctrl+K (sidebar)
-- Chat: agente com tools reais (list_dir, read_file, write_file, bash, grep)
-- Workspace isolado: `~/Documentos/vps-workspaces/<id>/`
-- Terminal: shell real, git clone/pull/status
-- Memory: notas .md persistentes
+### Files
+- ✅ Breadcrumb navigation
+- ✅ Upload drag & drop (arquivos + pastas)
+- ✅ Deletar arquivo
+- ✅ Abrir no editor
 
-**Entrega web/CLI (2026-07-24)** — Files possui upload de arquivos, ZIPs e pastas, navegação por breadcrumbs, exclusão confirmada e editor com `Ctrl+S`. O terminal ganhou histórico e atalhos. A API, o terminal e o agente usam a mesma raiz de workspace por usuário; a escrita do agente cria subpastas e o fluxo SSE evita encerramentos duplicados. Veja `docs/playground-entrega-2026-07-24.md` para escopo, validação e reinício.
+### Editor
+- ✅ Header com nome do arquivo
+- ✅ Salvar (botão + Ctrl+S)
+- ✅ Placeholder informativo
 
-**Refatoração frontend (2026-07-24)** — `packages/web/src/ui/paginas/Playground.tsx` foi dividido de 1457 para 419 linhas (orquestrador) em 12 componentes focados: Banner, Sidebar, TabBar, ChatView, InputBar, SlashDropdown, FilesPanel, EditorPanel, TerminalPanel, GitPanel, MemoryPanel. Estilos extraídos para `estilo.css` com classes CSS usando as custom properties do design system Aurora. Navegação mobile responsiva com drawer para sidebar e transições suaves entre abas.
+### Terminal
+- ✅ Header com status dot
+- ✅ Botões de atalho (pwd, ls -la, git status)
+- ✅ Histórico ↑↓
+- ✅ Output scrollável
+- ✅ Comando real no workspace
 
-**Renovação do front do cliente (2026-07-24)** — landing, login, cadastro, painel e navegação global foram unificados visualmente sob o sistema Aurora do desktop, com responsividade, estados de interação e uma prévia da CLI na landing. Detalhes em `docs/cliente-front-2026-07-24.md`.
+### Git
+- ✅ Clone por URL
+- ✅ Status, Log, Pull
+- ✅ Output em div
 
-### Admin (`/admin`)
-- Usuários: status, consumo, VPS (MB), aprovar/bloquear/desbloquear
-- Consumo, Saúde, Auditoria, Kill Switch
-- Login direto email+senha
+### Memory
+- ✅ Listar, criar, editar, carregar
+- ✅ Arquivos .md no workspace
 
-### Desktop App (Windows)
-- Login email+senha direto (sem navegador)
-- Device flow interno (4 passos)
-- Download: `CodingPro-portable-0.1.0.zip`
+## Problemas conhecidos
 
-### CLI
-- `codingpro --chat` / `--tui` / `-p "prompt"`
-- `codingpro login` (device flow cloud)
-- Token `cp_` via proxy da plataforma
+1. **Layout**: playground usa `height: 100%` herdado de html→body→#raiz — funciona mas pode ter gaps em alguns navegadores
+2. **CSS inline**: Playground.tsx tem 830 linhas, difícil manutenção — mas é preferência do Álvaro
+3. **Sem animações modernas**: glassmorphism, gradients animados, micro-interactions não implementados
+4. **API de visão offline**: Groq vision model `llama-4-scout` não disponível — fallback quebrado
 
-## 👥 Contas Admin
-alvaro@gmail.com, alvarocanaisgames@gmail.com, acompanhamento.imap@gmail.com
+## Próximo passo
 
-## 🚀 Deploy
-```bash
-cd ~/Documentos/CodingPro && nvm use 24 && pnpm build
-systemctl --user restart codingpro-api codingpro-web
-```
-
-## ⚠️ Pitfalls
-- Node 24 obrigatório (`nvm use 24.18.0`)
-- Wine ausente → electron-builder NSIS falha, usar zip manual
-- Cookie domain reescrito pelo proxy
-- Coverage thresholds reduzidos para novos módulos
-- TUI precisa de TTY real
+Redesign completo do frontend com glassmorphism, animações, gradientes — prompt em `~/Área de trabalho/prompt-redesign-codingpro.md`
