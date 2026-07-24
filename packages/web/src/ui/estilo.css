@@ -1,5 +1,5 @@
 /*
- * Identidade visual do CodingPro na web — mesma paleta Aurora da CLI
+ * Identidade visual do CodingPro na web - mesma paleta Aurora da CLI
  * (esmeralda → ciano → violeta). Escrito à mão, sem Tailwind: o site é pequeno
  * e um arquivo de CSS legível pesa menos que uma toolchain inteira.
  */
@@ -378,7 +378,7 @@ tbody tr:hover {
   padding: 1rem;
 }
 
-/* Gráfico de barras: SVG puro, sem biblioteca — são 30 barras. */
+/* Gráfico de barras: SVG puro, sem biblioteca - são 30 barras. */
 .grafico {
   display: flex;
   align-items: flex-end;
@@ -469,5 +469,769 @@ tbody tr:hover {
   }
   .cartao {
     padding: 1.15rem;
+  }
+}
+
+/* ============================================================
+   Playground - refatorado
+   ============================================================ */
+
+.playground {
+  display: flex;
+  height: calc(100dvh - 52px);
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: ui-monospace, "JetBrains Mono", "Fira Code", monospace;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ---------- Sidebar ---------- */
+.playground__sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 280px;
+  min-width: 260px;
+  height: 100%;
+  background: var(--fundo-elevado);
+  border-right: 1px solid var(--borda);
+  flex-shrink: 0;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  z-index: 20;
+}
+
+.playground__sidebar-mobile {
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  z-index: 20;
+}
+
+.playground__sidebar-mobile.playground__sidebar-aberta {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.playground__sidebar-header {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--borda);
+  gap: 0.3rem;
+}
+
+.playground__sidebar-header span {
+  color: var(--esmeralda);
+  font-weight: 700;
+  font-size: 0.75rem;
+  flex: 1;
+}
+
+.playground__sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.playground__session {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.5rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--borda);
+  transition: background 0.15s;
+}
+
+.playground__session:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.playground__session-ativo {
+  background: var(--fundo);
+}
+
+.playground__sessionInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.playground__sessionName {
+  color: var(--texto);
+  font-size: 0.75rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playground__session-ativo .playground__sessionName {
+  color: var(--esmeralda);
+}
+
+.playground__sessionMeta {
+  color: var(--texto-fraco);
+  font-size: 0.6rem;
+}
+
+.playground__sessionActions {
+  display: flex;
+  gap: 0.1rem;
+}
+
+.playground__sessionActions button {
+  background: transparent;
+  border: none;
+  color: var(--texto-fraco);
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.2rem;
+  border-radius: 3px;
+}
+
+.playground__sessionActions button:hover {
+  color: var(--texto);
+}
+
+.playground__sessionActions button.playground__sessionDelete:hover {
+  color: var(--vermelho);
+}
+
+.playground__sidebarFooter {
+  padding: 0.4rem 0.5rem;
+  border-top: 1px solid var(--borda);
+  font-size: 0.6rem;
+  color: var(--texto-fraco);
+}
+
+.playground__sidebarEmpty {
+  padding: 1rem;
+  color: var(--texto-fraco);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+/* ---------- Main area ---------- */
+.playground__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ---------- Top bar ---------- */
+.playground__topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  background: var(--fundo-elevado);
+  border-bottom: 1px solid var(--borda);
+  font-size: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.playground__topbarLogo {
+  color: var(--esmeralda);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.playground__topbarSession {
+  color: var(--texto-fraco);
+  font-size: 0.65rem;
+}
+
+.playground__topbarStatus {
+  color: var(--ambar);
+  font-size: 0.65rem;
+}
+
+.playground__topbarSpacer {
+  flex: 1;
+}
+
+.playground__topbarUser {
+  color: var(--texto-fraco);
+  font-size: 0.6rem;
+}
+
+.playground__topbar button {
+  background: transparent;
+  border: 1px solid var(--borda);
+  border-radius: 4px;
+  padding: 0.15rem 0.35rem;
+  cursor: pointer;
+  color: var(--texto-fraco);
+  font-size: 0.65rem;
+  transition: border-color 0.15s;
+}
+
+.playground__topbar button:hover {
+  border-color: var(--esmeralda);
+}
+
+/* ---------- Tab bar ---------- */
+.playground__tabbar {
+  display: flex;
+  background: var(--fundo-elevado);
+  border-bottom: 1px solid var(--borda);
+  overflow-x: auto;
+}
+
+.playground__tab {
+  flex-shrink: 0;
+  padding: 0.4rem 0.6rem;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--texto-fraco);
+  font-weight: 600;
+  font-family: inherit;
+  font-size: 0.65rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.playground__tab:hover {
+  color: var(--texto);
+}
+
+.playground__tab-ativo {
+  color: var(--esmeralda);
+  border-bottom-color: var(--esmeralda);
+}
+
+.playground__tabIcon {
+  font-size: 0.9rem;
+}
+
+/* ---------- Content area ---------- */
+.playground__content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.playground__tabPanel {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.playground__tabPanel-ativo {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ---------- Chat / CLI ---------- */
+.playground__chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.playground__messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem 1rem;
+  scroll-behavior: smooth;
+}
+
+.playground__banner {
+  padding: 1.5rem 0;
+  text-align: center;
+}
+
+.playground__banner pre {
+  color: var(--esmeralda);
+  font-size: 0.5rem;
+  line-height: 1.3;
+  margin: 0 0 0.75rem;
+  white-space: pre;
+}
+
+.playground__bannerTitle {
+  color: var(--esmeralda);
+  font-size: 0.85rem;
+  margin-bottom: 0.3rem;
+}
+
+.playground__bannerHint {
+  color: var(--texto-fraco);
+  font-size: 0.7rem;
+}
+
+.playground__bannerHint kbd {
+  color: var(--esmeralda);
+  background: var(--fundo);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  border: 1px solid var(--borda);
+  font-size: 0.65rem;
+}
+
+.playground__msg {
+  margin-bottom: 0.6rem;
+  animation: playgroundMsgIn 0.2s ease;
+}
+
+@keyframes playgroundMsgIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.playground__msgLabel {
+  font-weight: 600;
+  font-size: 0.72rem;
+  margin-bottom: 0.15rem;
+}
+
+.playground__msgLabel-user { color: var(--ciano); }
+.playground__msgLabel-system { color: var(--ambar); }
+.playground__msgLabel-assistant { color: var(--esmeralda); }
+
+.playground__msgContent {
+  color: var(--texto);
+  white-space: pre-wrap;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  padding-left: 0.3rem;
+}
+
+.playground__msgTools {
+  margin-top: 0.2rem;
+  padding-left: 0.5rem;
+  font-size: 0.65rem;
+  color: var(--texto-fraco);
+}
+
+.playground__msgTool {
+  color: var(--ambar);
+}
+
+.playground__streaming {
+  margin-bottom: 0.6rem;
+}
+
+.playground__streaming .playground__msgLabel {
+  color: var(--esmeralda);
+}
+
+.playground__streaming .playground__msgContent {
+  position: relative;
+}
+
+.playground__streamingCursor {
+  display: inline-block;
+  animation: playgroundBlink 1s infinite;
+  color: var(--esmeralda);
+}
+
+@keyframes playgroundBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.playground__typing {
+  color: var(--texto-fraco);
+  font-size: 0.7rem;
+  padding: 0.5rem 0;
+}
+
+/* ---------- Input area ---------- */
+.playground__inputArea {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.3rem;
+  padding: 0.4rem 0.75rem;
+  border-top: 1px solid var(--borda);
+  background: var(--fundo-elevado);
+}
+
+.playground__prompt {
+  color: var(--esmeralda);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding-bottom: 0.3rem;
+}
+
+.playground__inputArea textarea,
+.playground__textarea {
+  flex: 1;
+  background: var(--fundo);
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  color: var(--texto);
+  font-family: ui-monospace, "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.82rem;
+  padding: 0.4rem 0.5rem;
+  resize: none;
+  outline: none;
+  line-height: 1.4;
+  max-height: 120px;
+  transition: border-color 0.15s;
+}
+
+.playground__textarea:focus {
+  border-color: var(--ciano);
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+}
+
+.playground__inputArea button {
+  background: var(--esmeralda);
+  color: #04140f;
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.8rem;
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+
+.playground__inputArea button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.playground__inputArea button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---------- Slash dropdown ---------- */
+.playground__dropdown {
+  margin: 0 0.75rem;
+  background: var(--fundo-elevado);
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  padding: 0.3rem;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.playground__dropdownItem {
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  border-radius: 3px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.1s;
+}
+
+.playground__dropdownItem:hover,
+.playground__dropdownItem-selecionado {
+  background: var(--fundo);
+}
+
+.playground__dropdownCmd {
+  color: var(--esmeralda);
+  font-weight: 600;
+}
+
+.playground__dropdownDesc {
+  color: var(--texto-fraco);
+  font-size: 0.65rem;
+}
+
+/* ---------- Sidebar tabs (files, editor, etc.) ---------- */
+.playground__fileItem {
+  display: flex;
+  padding: 0.2rem 0.3rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--borda);
+  font-size: 0.82rem;
+  transition: background 0.1s;
+}
+
+.playground__fileItem:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.playground__fileItemDiretorio {
+  cursor: default;
+}
+
+.playground__fileIcon {
+  margin-right: 0.3rem;
+}
+
+/* ---------- Editor ---------- */
+.playground__editor {
+  flex: 1;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: ui-monospace, "JetBrains Mono", "Fira Code", monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 0.75rem;
+  border: none;
+  resize: none;
+  outline: none;
+  tab-size: 2;
+}
+
+/* ---------- Terminal ---------- */
+.playground__terminal {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.playground__terminalOutput {
+  flex: 1;
+  overflow: auto;
+  padding: 0.5rem;
+  white-space: pre-wrap;
+  font-size: 0.82rem;
+  color: var(--esmeralda);
+}
+
+.playground__terminalInput {
+  display: flex;
+  padding: 0.3rem;
+  border-top: 1px solid var(--borda);
+}
+
+.playground__terminalPrompt {
+  color: var(--esmeralda);
+  padding: 0.3rem;
+  font-weight: 700;
+}
+
+.playground__terminalInput input,
+.playground__terminalInputField {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--esmeralda);
+  font-family: inherit;
+  font-size: 0.82rem;
+  outline: none;
+}
+
+/* ---------- Git ---------- */
+.playground__git {
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow: auto;
+  flex: 1;
+}
+
+.playground__gitInput {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.playground__gitInput input {
+  flex: 1;
+  background: var(--fundo);
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  color: var(--texto);
+  font-family: inherit;
+  font-size: 0.82rem;
+  padding: 0.35rem;
+}
+
+.playground__gitButtons {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.playground__gitButtons button {
+  background: var(--fundo);
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  color: var(--texto-fraco);
+  font-size: 0.75rem;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.playground__gitButtons button:hover {
+  border-color: var(--esmeralda);
+  color: var(--texto);
+}
+
+.playground__gitOutput {
+  color: var(--texto-fraco);
+  white-space: pre-wrap;
+  font-size: 0.8rem;
+  background: var(--fundo);
+  padding: 0.5rem;
+  border-radius: 6px;
+  flex: 1;
+  overflow: auto;
+}
+
+/* ---------- Memory ---------- */
+.playground__memory {
+  flex: 1;
+  display: flex;
+  padding: 0.5rem;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.playground__memorySidebar {
+  width: 120px;
+  border-right: 1px solid var(--borda);
+  padding-right: 0.5rem;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.playground__memorySidebarTitle {
+  color: var(--ambar);
+  font-size: 0.75rem;
+  margin-bottom: 0.3rem;
+}
+
+.playground__memoryFile {
+  cursor: pointer;
+  padding: 0.1rem 0;
+  font-size: 0.75rem;
+  color: var(--texto-fraco);
+  transition: color 0.1s;
+}
+
+.playground__memoryFile:hover {
+  color: var(--texto);
+}
+
+.playground__memoryMain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  overflow: hidden;
+}
+
+.playground__memoryForm {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.playground__memoryForm input {
+  width: 100px;
+  background: var(--fundo);
+  border: 1px solid var(--borda);
+  border-radius: 4px;
+  color: var(--texto);
+  font-family: inherit;
+  font-size: 0.8rem;
+  padding: 0.2rem;
+}
+
+.playground__memoryForm button {
+  background: var(--esmeralda);
+  color: #04140f;
+  border: none;
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.playground__memoryTextarea {
+  flex: 1;
+  background: var(--fundo);
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  color: var(--texto);
+  font-family: inherit;
+  font-size: 0.82rem;
+  padding: 0.5rem;
+  resize: none;
+  outline: none;
+}
+
+/* ---------- Mobile overlay ---------- */
+.playground__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 19;
+  background: rgba(0, 0, 0, 0.5);
+  animation: playgroundFadeIn 0.15s ease;
+}
+
+@keyframes playgroundFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---------- Responsive ---------- */
+.playground__renameInput {
+  background: var(--fundo);
+  border: 1px solid var(--esmeralda);
+  border-radius: 3px;
+  color: var(--esmeralda);
+  font-size: 0.7rem;
+  padding: 0.1rem 0.2rem;
+  width: 100%;
+  font-family: inherit;
+  outline: none;
+}
+
+@media (max-width: 768px) {
+  .playground__sidebar {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+  }
+
+  .playground__sidebar:not(.playground__sidebar-aberta) {
+    display: none;
+  }
+
+  .playground__topbar {
+    font-size: 0.6rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  .playground__tab {
+    padding: 0.3rem 0.4rem;
+    font-size: 0.55rem;
+  }
+
+  .playground__tabIcon {
+    font-size: 0.75rem;
+  }
+
+  .playground__messages {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .playground__inputArea {
+    padding: 0.3rem 0.5rem;
   }
 }
