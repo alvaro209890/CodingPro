@@ -1,9 +1,22 @@
 import { freemem, loadavg, totalmem } from "node:os";
+import { execSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { type Contexto, erro, exigirAdmin, ipDe, texto } from "../contexto.js";
 import { competenciaAtual, type StatusUsuario } from "../repositorio.js";
 
 const STATUS_VALIDOS = new Set<StatusUsuario>(["pendente", "ativo", "bloqueado"]);
+const RAIZ_VPS = "/home/acer/Documentos/vps-workspaces";
+
+function tamanhoWorkspaceMb(userId: number): number {
+  const dir = join(RAIZ_VPS, String(userId));
+  if (!existsSync(dir)) return 0;
+  try {
+    const out = execSync(`du -sm "${dir}" 2>/dev/null || echo 0`, { timeout: 3000, encoding: "utf8" });
+    return Number.parseInt(out.split(/\s/)[0] ?? "0") || 0;
+  } catch { return 0; }
+}
 
 /** Métricas do processo alimentadas pelo hook de request do app. */
 export type Metricas = {
@@ -55,6 +68,7 @@ export function registrarRotasAdmin(app: FastifyInstance, ctx: Contexto, metrica
           requisicoes: consumo.requisicoes,
           status: u.status,
           ultimoLogin: u.ultimo_login,
+          workspaceMb: tamanhoWorkspaceMb(u.id),
         };
       }),
     );

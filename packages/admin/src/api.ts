@@ -64,6 +64,7 @@ export type UsuarioAdmin = {
   limiteMicro: number;
   custoMicro: number;
   requisicoes: number;
+  workspaceMb?: number;
   criadoEm: string;
   ultimoLogin: string | null;
 };

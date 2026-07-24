@@ -1,9 +1,113 @@
 /**
- * Agente VPS — streaming SSE com tools, subagentes e animações.
- * O frontend consome este endpoint para mostrar o CodingPro "ao vivo".
+ * Agente VPS — streaming SSE com loop real de tools no workspace do usuário.
+ * A IA pode listar diretórios, ler/escrever arquivos, executar comandos.
  */
-import { type Contexto, erro, exigirUsuario, texto } from "../contexto.js";
+import { exec as execCb } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { promisify } from "node:util";
 import type { FastifyInstance } from "fastify";
+import { type Contexto, erro, exigirUsuario, texto } from "../contexto.js";
+
+const exec = promisify(execCb);
+const RAIZ = "/home/acer/Documentos/vps-workspaces";
+
+function dirUsuario(id: number): string {
+  const dir = join(RAIZ, String(id));
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function listarArquivos(dir: string, base: string = dir, prof = 0): string {
+  if (!existsSync(dir) || prof > 3) return "";
+  let out = "";
+  for (const nome of readdirSync(dir).slice(0, 100)) {
+    if (nome.startsWith(".")) continue;
+    const p = join(dir, nome);
+    try {
+      const st = statSync(p);
+      out += `${st.isDirectory() ? "d" : "-"} ${nome}${st.isDirectory() ? "/" : ""} (${st.size} bytes)\n`;
+      if (st.isDirectory() && prof < 2) out += listarArquivos(p, base, prof + 1);
+    } catch { /* skip */ }
+  }
+  return out;
+}
+
+async function executarTool(nome: string, args: Record<string, unknown>, workspace: string): Promise<string> {
+  try {
+    switch (nome) {
+      case "read_file": {
+        const path = String(args.path ?? "");
+        const alvo = resolve(join(workspace, path));
+        if (!alvo.startsWith(workspace)) return "Erro: acesso negado.";
+        if (!existsSync(alvo)) return `Erro: arquivo '${path}' não encontrado.`;
+        const content = readFileSync(alvo, "utf8");
+        return content.slice(0, 10000);
+      }
+      case "write_file": {
+        const path = String(args.path ?? "");
+        const content = String(args.content ?? "");
+        const alvo = resolve(join(workspace, path));
+        if (!alvo.startsWith(workspace)) return "Erro: acesso negado.";
+        writeFileSync(alvo, content, "utf8");
+        return `✓ Arquivo '${path}' salvo (${content.length} bytes).`;
+      }
+      case "list_dir": {
+        const path = String(args.path ?? ".");
+        const alvo = resolve(join(workspace, path));
+        if (!alvo.startsWith(workspace)) return "Erro: acesso negado.";
+        const lista = listarArquivos(alvo);
+        return lista || "(diretório vazio)";
+      }
+      case "bash": {
+        const command = String(args.command ?? "");
+        if (command.length > 2000) return "Erro: comando muito longo.";
+        const { stdout, stderr } = await exec(command, {
+          cwd: workspace,
+          timeout: 30_000,
+          maxBuffer: 50_000,
+        });
+        return (stdout + (stderr ? "\n" + stderr : "")).slice(0, 10000) || "(sem saída)";
+      }
+      case "grep": {
+        // Simples: busca nos arquivos do workspace
+        const pattern = String(args.pattern ?? "");
+        if (!pattern) return "Erro: padrão vazio.";
+        const files = readdirSync(workspace).filter((f) => f.endsWith(".js") || f.endsWith(".ts") || f.endsWith(".json") || f.endsWith(".md") || f.endsWith(".txt"));
+        let result = "";
+        for (const f of files.slice(0, 10)) {
+          try {
+            const content = readFileSync(join(workspace, f), "utf8");
+            for (const [i, line] of content.split("\n").entries()) {
+              if (line.includes(pattern)) result += `${f}:${i + 1}: ${line.trim().slice(0, 200)}\n`;
+            }
+          } catch { /* skip */ }
+        }
+        return result || `Nenhuma ocorrência de '${pattern}' encontrada.`;
+      }
+      case "web_search": {
+        return `[Web search desabilitada no VPS. Use a aba Git para clonar repositórios ou o terminal para comandos.]`;
+      }
+      case "task": {
+        return `[Subagentes não disponíveis no VPS. Use as tools diretamente: leia, escreva e execute comandos você mesmo.]`;
+      }
+      default:
+        return `Tool '${nome}' não implementada.`;
+    }
+  } catch (e: any) {
+    return `Erro: ${e.message}`;
+  }
+}
+
+const TOOLS = [
+  { type: "function" as const, function: { name: "read_file", description: "Lê um arquivo do workspace. Use para analisar código.", parameters: { type: "object", properties: { path: { type: "string", description: "Caminho relativo do arquivo" } }, required: ["path"] } } },
+  { type: "function" as const, function: { name: "write_file", description: "Cria ou edita um arquivo no workspace.", parameters: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] } } },
+  { type: "function" as const, function: { name: "list_dir", description: "Lista arquivos e pastas. Use para explorar o workspace.", parameters: { type: "object", properties: { path: { type: "string", description: "Caminho (ex: '.' ou 'Documents')" } } } } },
+  { type: "function" as const, function: { name: "bash", description: "Executa comando no terminal Linux do VPS.", parameters: { type: "object", properties: { command: { type: "string" } }, required: ["command"] } } },
+  { type: "function" as const, function: { name: "grep", description: "Busca texto nos arquivos do workspace.", parameters: { type: "object", properties: { pattern: { type: "string" } }, required: ["pattern"] } } },
+  { type: "function" as const, function: { name: "web_search", description: "Pesquisa na web (desabilitado).", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } } },
+  { type: "function" as const, function: { name: "task", description: "Subagente (desabilitado no VPS).", parameters: { type: "object", properties: { goal: { type: "string" } }, required: ["goal"] } } },
+];
 
 export function registrarRotaAgente(app: FastifyInstance, ctx: Contexto): void {
   app.post("/api/vps/agent", async (req, resposta) => {
@@ -13,6 +117,8 @@ export function registrarRotaAgente(app: FastifyInstance, ctx: Contexto): void {
 
     const prompt = texto((req.body as any)?.prompt, 10000);
     if (!prompt) return erro(resposta, 400, "prompt_vazio", "Prompt vazio.");
+
+    const workspace = dirUsuario(u.id);
 
     resposta.raw.writeHead(200, {
       "content-type": "text/event-stream",
@@ -25,245 +131,65 @@ export function registrarRotaAgente(app: FastifyInstance, ctx: Contexto): void {
     };
 
     try {
-      // Streaming chat with tool calls
-      const body = JSON.stringify({
-        model: "deepseek-v4-pro",
-        messages: [
-          { role: "system", content: systemPrompt() },
-          { role: "user", content: prompt },
-        ],
-        tools: ALL_TOOLS,
-        max_tokens: 8192,
-        stream: true,
-        stream_options: { include_usage: true },
-      });
+      const messages: any[] = [
+        { role: "system", content: `Você é o CodingPro, um assistente de IA rodando num VPS Linux. Você tem acesso REAL ao sistema de arquivos do workspace do usuário.
 
-      const upstream = await ctx.fetch(`${ctx.config.deepseekBaseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${ctx.config.deepseekApiKey}`,
-          "content-type": "application/json",
-        },
-        body,
-      });
+Workspace: ${workspace}
 
-      if (!upstream.ok || !upstream.body) {
-        send("error", { message: "Provedor indisponível" });
-        resposta.raw.end();
-        return;
-      }
+Use as tools disponíveis para:
+- list_dir: explorar pastas (sempre comece por aqui para entender o que existe)
+- read_file: ler arquivos (passe o caminho relativo)
+- write_file: criar/editar arquivos
+- bash: executar comandos no terminal
+- grep: buscar texto nos arquivos
 
-      send("status", { type: "thinking", message: "CodingPro está pensando..." });
+Sempre responda em português. Seja direto e útil. Quando o usuário pedir para analisar algo, USE AS TOOLS para explorar os arquivos reais antes de responder.` },
+        { role: "user", content: prompt },
+      ];
 
-      const reader = (upstream.body as any).getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let currentTool: { name: string; args: string } | null = null;
-      let contentBuffer = "";
+      send("status", { type: "thinking", message: "Analisando..." });
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      // Agent loop — até 5 iterações
+      for (let iter = 0; iter < 5; iter++) {
+        const upstream = await ctx.fetch(`${ctx.config.deepseekBaseUrl}/chat/completions`, {
+          method: "POST",
+          headers: { authorization: `Bearer ${ctx.config.deepseekApiKey}`, "content-type": "application/json" },
+          body: JSON.stringify({ model: "deepseek-v4-pro", messages, tools: TOOLS, max_tokens: 4096, stream: false }),
+        });
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
+        if (!upstream.ok) { send("error", { message: "Provedor indisponível" }); break; }
 
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6).trim();
-          if (data === "[DONE]") continue;
-          try {
-            const chunk = JSON.parse(data);
-            const delta = chunk.choices?.[0]?.delta;
-            if (!delta) continue;
+        const corpo = await upstream.json() as any;
+        const msg = corpo.choices?.[0]?.message;
+        if (!msg) { send("error", { message: "Resposta vazia" }); break; }
 
-            // Tool calls
-            if (delta.tool_calls) {
-              for (const tc of delta.tool_calls) {
-                if (tc.id) {
-                  currentTool = { name: tc.function?.name ?? "", args: "" };
-                  send("tool-start", {
-                    id: tc.id,
-                    name: currentTool.name,
-                    timestamp: Date.now(),
-                  });
-                }
-                if (tc.function?.arguments && currentTool) {
-                  currentTool.args += tc.function.arguments;
-                }
-              }
-            }
+        // Tool calls?
+        if (msg.tool_calls?.length > 0) {
+          messages.push(msg);
+          for (const tc of msg.tool_calls) {
+            const nome = tc.function?.name ?? "?";
+            const args = JSON.parse(tc.function?.arguments ?? "{}");
+            send("tool-start", { id: tc.id, name: nome, args: JSON.stringify(args).slice(0, 200), timestamp: Date.now() });
 
-            // Content
-            if (delta.content) {
-              contentBuffer += delta.content;
-              send("text", { content: delta.content });
-            }
+            const resultado = await executarTool(nome, args, workspace);
+            send("tool-end", { id: tc.id, name: nome, result: resultado.slice(0, 500), timestamp: Date.now() });
 
-            // Reasoning
-            if (delta.reasoning_content) {
-              send("reasoning", { content: delta.reasoning_content });
-            }
-          } catch {
-            // chunk parcial, ignora
+            messages.push({ role: "tool", tool_call_id: tc.id, content: resultado });
           }
+        } else {
+          // Resposta final
+          const content = msg.content || "(sem resposta)";
+          send("text", { content });
+          send("done", { content });
+          break;
         }
       }
 
-      // Se teve tools, simula resultado
-      if (currentTool && currentTool.name) {
-        const toolResult = simulateToolResult(currentTool.name, currentTool.args);
-        send("tool-end", {
-          name: currentTool.name,
-          args: currentTool.args.slice(0, 500),
-          result: toolResult.slice(0, 500),
-          timestamp: Date.now(),
-        });
-      }
-
-      send("done", { content: contentBuffer || "(sem resposta)" });
+      send("done", { content: "" });
     } catch (e: any) {
       send("error", { message: e.message || "Erro no agente" });
     } finally {
       resposta.raw.end();
     }
   });
-}
-
-function systemPrompt(): string {
-  return `Você é o CodingPro, um assistente de código que roda num VPS Linux.
-Você tem acesso a tools: read_file, write_file, list_dir, bash, grep, web_search, task (subagentes).
-
-Sempre que usar uma tool, explique brevemente o que está fazendo.
-Use subagentes (task) para tarefas paralelas.
-Mostre o resultado das tools de forma clara.
-
-Formato: sempre responda em português, de forma direta e útil.`;
-}
-
-const ALL_TOOLS = [
-  {
-    type: "function" as const,
-    function: {
-      name: "read_file",
-      description: "Lê um arquivo do workspace",
-      parameters: {
-        type: "object",
-        properties: {
-          path: { type: "string", description: "Caminho do arquivo" },
-        },
-        required: ["path"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "write_file",
-      description: "Cria ou sobrescreve um arquivo",
-      parameters: {
-        type: "object",
-        properties: {
-          path: { type: "string" },
-          content: { type: "string" },
-        },
-        required: ["path", "content"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "list_dir",
-      description: "Lista arquivos de um diretório",
-      parameters: {
-        type: "object",
-        properties: { path: { type: "string" } },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "bash",
-      description: "Executa um comando no terminal",
-      parameters: {
-        type: "object",
-        properties: { command: { type: "string" } },
-        required: ["command"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "grep",
-      description: "Busca texto em arquivos",
-      parameters: {
-        type: "object",
-        properties: {
-          pattern: { type: "string" },
-          path: { type: "string" },
-        },
-        required: ["pattern"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "web_search",
-      description: "Pesquisa na web",
-      parameters: {
-        type: "object",
-        properties: { query: { type: "string" } },
-        required: ["query"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "task",
-      description: "Dispara um subagente para tarefa paralela",
-      parameters: {
-        type: "object",
-        properties: {
-          goal: { type: "string", description: "Objetivo do subagente" },
-          agent_type: {
-            type: "string",
-            enum: ["explorer", "worker", "reviewer"],
-          },
-        },
-        required: ["goal"],
-      },
-    },
-  },
-];
-
-function simulateToolResult(name: string, args: string): string {
-  try {
-    const parsed = JSON.parse(args);
-    switch (name) {
-      case "read_file":
-        return `[conteúdo de ${parsed.path}]`;
-      case "write_file":
-        return `✓ Arquivo ${parsed.path} salvo`;
-      case "list_dir":
-        return `[lista de arquivos em ${parsed.path || "."}]`;
-      case "bash":
-        return `$ ${parsed.command}\n[output do comando]`;
-      case "grep":
-        return `[resultados da busca por "${parsed.pattern}"]`;
-      case "web_search":
-        return `[resultados da pesquisa: ${parsed.query}]`;
-      case "task":
-        return `🤖 Subagente ${parsed.agent_type || "worker"} iniciado: "${parsed.goal}"`;
-      default:
-        return "[ok]";
-    }
-  } catch {
-    return "[ok]";
-  }
 }

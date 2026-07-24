@@ -82,6 +82,7 @@ export function Usuarios() {
                   <th>Consumo/mês</th>
                   <th>Limite</th>
                   <th>Reqs</th>
+                  <th>VPS</th>
                   <th>Último login</th>
                   <th>Ações</th>
                 </tr>
@@ -119,6 +120,7 @@ export function Usuarios() {
                       {usuario.limiteMicro === 0 ? "sem limite" : formatarUsd(usuario.limiteMicro)}
                     </td>
                     <td>{usuario.requisicoes}</td>
+                    <td className="fraco">{usuario.workspaceMb ?? 0} MB</td>
                     <td className="fraco">{formatarData(usuario.ultimoLogin)}</td>
                     <td>
                       <div className="linha" style={{ gap: "0.35rem" }}>
