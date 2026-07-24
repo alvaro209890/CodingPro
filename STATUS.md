@@ -53,6 +53,8 @@ Navegador → codingpro.cursar.space (Vite+React SPA + proxy HTTP)
 - Terminal: shell real, git clone/pull/status
 - Memory: notas .md persistentes
 
+**Entrega web/CLI (2026-07-24)** — Files possui upload de arquivos, ZIPs e pastas, navegação por breadcrumbs, exclusão confirmada e editor com `Ctrl+S`. O terminal ganhou histórico e atalhos. A API, o terminal e o agente usam a mesma raiz de workspace por usuário; a escrita do agente cria subpastas e o fluxo SSE evita encerramentos duplicados. Veja `docs/playground-entrega-2026-07-24.md` para escopo, validação e reinício.
+
 **Refatoração frontend (2026-07-24)** — `packages/web/src/ui/paginas/Playground.tsx` foi dividido de 1457 para 419 linhas (orquestrador) em 12 componentes focados: Banner, Sidebar, TabBar, ChatView, InputBar, SlashDropdown, FilesPanel, EditorPanel, TerminalPanel, GitPanel, MemoryPanel. Estilos extraídos para `estilo.css` com classes CSS usando as custom properties do design system Aurora. Navegação mobile responsiva com drawer para sidebar e transições suaves entre abas.
 
 ### Admin (`/admin`)
