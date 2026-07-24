@@ -13,6 +13,7 @@ import { registrarRotasDevice } from "./rotas/device.js";
 import { registrarRotasProxy } from "./rotas/proxy.js";
 import { registrarRotasTokens } from "./rotas/tokens.js";
 import { registrarRotasPlayground } from "./rotas/playground.js";
+import { registrarRotaAgente } from "./rotas/agente.js";
 
 /** Momento em que o processo subiu — base do uptime reportado em /saude. */
 const INICIO = Date.now();
@@ -136,6 +137,7 @@ export async function criarApp(opcoes: OpcoesApp): Promise<FastifyInstance> {
     registrarRotasDevice(app, ctx);
     registrarRotasAdmin(app, ctx, metricas);
     registrarRotasPlayground(app, ctx);
+    registrarRotaAgente(app, ctx);
 
     // O proxy vive num escopo próprio para ter rate limit independente do resto:
     // uma rajada de chamadas de IA não pode derrubar o login de ninguém.
