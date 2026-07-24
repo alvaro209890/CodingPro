@@ -23,12 +23,14 @@ export function TerminalPanel({
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [crtEnabled, setCrtEnabled] = useState(true);
+  const [pendingCmd, setPendingCmd] = useState("");
 
   const executar = () => {
     const comando = cmd.trim();
     if (!comando) return;
     setHistory((prev) => [comando, ...prev.filter((item) => item !== comando)].slice(0, 30));
     setHistoryIndex(-1);
+    setPendingCmd("");
     onRun();
   };
 
@@ -52,7 +54,10 @@ export function TerminalPanel({
             <button
               type="button"
               key={atalho}
-              onClick={() => onCmdChange(atalho)}
+              onClick={() => {
+                onCmdChange(atalho);
+                cmdRef.current?.focus();
+              }}
               className="playground__terminalQuickBtn"
             >
               {atalho}
@@ -95,17 +100,23 @@ export function TerminalPanel({
               if (e.key === "Enter") executar();
               if (e.key === "ArrowUp") {
                 e.preventDefault();
+                if (historyIndex === -1) setPendingCmd(cmd);
                 const next = Math.min(historyIndex + 1, history.length - 1);
-                if (next >= 0) {
+                if (next >= 0 && history.length > 0) {
                   setHistoryIndex(next);
                   onCmdChange(history[next] ?? "");
                 }
               }
               if (e.key === "ArrowDown") {
                 e.preventDefault();
-                const next = historyIndex - 1;
-                setHistoryIndex(next);
-                onCmdChange(next >= 0 ? (history[next] ?? "") : "");
+                if (historyIndex > 0) {
+                  const next = historyIndex - 1;
+                  setHistoryIndex(next);
+                  onCmdChange(history[next] ?? "");
+                } else if (historyIndex === 0) {
+                  setHistoryIndex(-1);
+                  onCmdChange(pendingCmd);
+                }
               }
             }}
             placeholder="Digite um comando e pressione Enter..."

@@ -89,7 +89,7 @@ export function ChatView({
                 {m.role === "user" ? "👤 Você" : m.role === "system" ? "⚙️ Sistema" : "⚡ CodingPro AI"}
               </span>
               <span className="playground__msgTime">
-                {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                {new Date(m.timestamp ?? Date.now()).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
               </span>
             </div>
 
@@ -122,7 +122,7 @@ export function ChatView({
         )}
 
         {/* Dynamic Task Tracker Card */}
-        {(tasks.length > 0 || (loading && tasks.length > 0)) && (
+        {(tasks.length > 0) && (
           <TaskTrackerCard tasks={tasks} isRunning={loading} />
         )}
 
@@ -159,16 +159,14 @@ export function ChatView({
           onChange={(e) => {
             onInput(e.target.value);
             onShowCmds(e.target.value.startsWith("/") && e.target.value.length <= 16);
+            const t = e.target;
+            t.style.height = "auto";
+            t.style.height = `${Math.min(t.scrollHeight, 140)}px`;
           }}
           onKeyDown={onKeyDown}
           placeholder="Digite sua mensagem ou um comando com '/' (ex: /agent, /context, /help)..."
           rows={1}
           className="playground__textarea"
-          onInput={(e) => {
-            const t = e.target as HTMLTextAreaElement;
-            t.style.height = "auto";
-            t.style.height = `${Math.min(t.scrollHeight, 140)}px`;
-          }}
         />
         <button
           onClick={onSend}

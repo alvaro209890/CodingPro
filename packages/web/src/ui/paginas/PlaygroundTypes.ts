@@ -2,6 +2,7 @@ export interface Mensagem {
   role: string;
   content: string;
   tools?: { nome: string; result: string }[];
+  timestamp?: number;
 }
 
 export interface Session {

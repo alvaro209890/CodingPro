@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
-import { dirname, extname, join, normalize, resolve } from "node:path";
+import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HOST = process.env.CODINGPRO_WEB_HOST?.trim() || "127.0.0.1";
@@ -27,7 +27,7 @@ const TIPOS: Readonly<Record<string, string>> = {
 function resolverArquivo(url: string): string | null {
   const caminho = decodeURIComponent(url.split("?")[0] ?? "/");
   const alvo = resolve(join(RAIZ, normalize(caminho)));
-  return alvo === RAIZ || alvo.startsWith(RAIZ + "/") ? alvo : null;
+  return alvo === RAIZ || alvo.startsWith(RAIZ + sep) ? alvo : null;
 }
 
 /** Proxy: encaminha requisições /api/* para a API, repassando cookies e corpo. */

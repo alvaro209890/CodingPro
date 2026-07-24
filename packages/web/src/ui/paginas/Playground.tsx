@@ -108,6 +108,12 @@ export function Playground({ usuario }: { usuario: Usuario }) {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
   const activeIdx = sessions.findIndex((s) => s.id === activeId);
   const activeSession = activeIdx >= 0 ? sessions[activeIdx] : (sessions[0] ?? null);
 
@@ -227,14 +233,12 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         return rest;
       });
       if (activeId === id) {
-        setSessions((prev) => {
-          const first = prev[0];
-          if (first) setActiveId(first.id);
-          return prev;
-        });
+        const remaining = sessions.filter((s) => s.id !== id);
+        const first = remaining[0];
+        if (first) setActiveId(first.id);
       }
     },
-    [activeId],
+    [activeId, sessions],
   );
 
   const enviar = useCallback(
@@ -256,7 +260,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         setElapsedMs(Date.now() - startTime);
       }, 100);
 
-      setMsgs((prev) => [...prev, { role: "user", content: p }]);
+      setMsgs((prev) => [...prev, { role: "user", content: p, timestamp: Date.now() }]);
       try {
         const toolsLog: { nome: string; result: string }[] = [];
         let r: Response;
@@ -322,14 +326,14 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               } else if (d.type === "done") {
                 setMsgs((prev) => [
                   ...prev,
-                  { role: "assistant", content: content || d.content || "", tools: toolsLog },
+                  { role: "assistant", content: content || d.content || "", tools: toolsLog, timestamp: Date.now() },
                 ]);
                 setStream("");
                 setStatus("");
               } else if (d.type === "error") {
                 setMsgs((prev) => [
                   ...prev,
-                  { role: "assistant", content: `❌ ${d.message || "Erro no agente"}` },
+                  { role: "assistant", content: `❌ ${d.message || "Erro no agente"}`, timestamp: Date.now() },
                 ]);
                 setStream("");
                 setStatus("");
@@ -339,7 +343,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
           buf = buf.includes("\n") ? buf.slice(buf.lastIndexOf("\n") + 1) : buf;
         }
       } catch (e: any) {
-        setMsgs((prev) => [...prev, { role: "assistant", content: `❌ ${e.message}` }]);
+        setMsgs((prev) => [...prev, { role: "assistant", content: `❌ ${e.message}`, timestamp: Date.now() }]);
       } finally {
         if (timerRef.current) clearInterval(timerRef.current);
         setLoading(false);
@@ -377,6 +381,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
                       `  ${s.id.slice(-6)}  ${s.nome}  ${s.mensagens.length} msgs  ${new Date(s.criadaEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`,
                   )
                   .join("\n") || "  Nenhum chat salvo.",
+              timestamp: Date.now(),
             },
           ]);
           break;
@@ -392,6 +397,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
                   {
                     role: "system",
                     content: `Chat '${target}' não encontrado. Use /list para ver os chats.`,
+                    timestamp: Date.now(),
                   },
                 ]);
             }
@@ -406,12 +412,12 @@ export function Playground({ usuario }: { usuario: Usuario }) {
                 deletarSessao(found.id);
                 setMsgs((prev) => [
                   ...prev,
-                  { role: "system", content: `Chat '${found.nome}' deletado.` },
+                  { role: "system", content: `Chat '${found.nome}' deletado.`, timestamp: Date.now() },
                 ]);
               } else
                 setMsgs((prev) => [
                   ...prev,
-                  { role: "system", content: `Chat '${target}' não encontrado.` },
+                  { role: "system", content: `Chat '${target}' não encontrado.`, timestamp: Date.now() },
                 ]);
             }
           }
@@ -423,7 +429,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               updateSession(activeSession.id, (s) => ({ ...s, nome: novoNome.slice(0, 30) }));
               setMsgs((prev) => [
                 ...prev,
-                { role: "system", content: `Chat renomeado para '${novoNome.slice(0, 30)}'.` },
+                { role: "system", content: `Chat renomeado para '${novoNome.slice(0, 30)}'.`, timestamp: Date.now() },
               ]);
             }
           }
@@ -455,6 +461,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               {
                 role: "system",
                 content: "📋 Chat exportado para a área de transferência como Markdown.",
+                timestamp: Date.now(),
               },
             ]);
           } catch {
@@ -481,6 +488,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
                       .map((c, i) => `  ${String(i + 1).padStart(2)}. ${c}`)
                       .join("\n")
                   : "  Nenhum comando no histórico.",
+              timestamp: Date.now(),
             },
           ]);
           break;
@@ -493,11 +501,12 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               {
                 role: "system",
                 content: `📁 Workspace: ${d.files.length} arquivos/diretórios. Veja a aba Files.`,
+                timestamp: Date.now(),
               },
             ]);
             setTab("files");
           } catch (e: any) {
-            setMsgs((prev) => [...prev, { role: "system", content: `❌ ${e.message}` }]);
+            setMsgs((prev) => [...prev, { role: "system", content: `❌ ${e.message}`, timestamp: Date.now() }]);
           }
           break;
         case "/agent":
@@ -515,6 +524,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
                 role: "system",
                 content:
                   "Modo agente ativado. Digite seu prompt para usar ferramentas reais (list_dir, read_file, write_file, bash, grep).",
+                timestamp: Date.now(),
               },
             ]);
           }
@@ -536,7 +546,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         case "/help":
           setMsgs((prev) => [
             ...prev,
-            { role: "system", content: CMD_SLASH.map((c) => `${c.cmd} — ${c.desc}`).join("\n") },
+            { role: "system", content: CMD_SLASH.map((c) => `${c.cmd} — ${c.desc}`).join("\n"), timestamp: Date.now() },
           ]);
           break;
       }
@@ -811,6 +821,9 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         }}
         onDelete={deletarSessao}
         onCancelRename={() => {
+          if (renameId && renameVal.trim()) {
+            updateSession(renameId, (s) => ({ ...s, nome: renameVal.trim().slice(0, 30) }));
+          }
           setRenameId(null);
           setRenameVal("");
         }}

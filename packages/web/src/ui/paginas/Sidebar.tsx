@@ -161,7 +161,7 @@ export function Sidebar({
   if (mobile) {
     return (
       <>
-        {sidebarOpen && <div className="playground__overlay" onClick={onClose} />}
+        {sidebarOpen && <div className="playground__overlay" onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }} role="presentation" />}
         <div className={`playground__sidebar-mobile ${sidebarOpen ? "playground__sidebar-aberta" : ""}`}>
           {sidebarContent}
         </div>

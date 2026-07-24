@@ -73,8 +73,9 @@ export function FilesPanel({
   const entries = useMemo(() => entradasDaPasta(files, cwd), [files, cwd]);
   const crumbs = cwd ? cwd.split("/") : [];
 
-  const receber = (lista: FileList | null) => {
-    if (lista?.length) onUpload(lista);
+  const receber = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) onUpload(e.target.files);
+    e.target.value = "";
   };
 
   return (
@@ -130,7 +131,7 @@ export function FilesPanel({
             type="file"
             multiple
             hidden
-            onChange={(e) => receber(e.target.files)}
+            onChange={receber}
           />
           <input
             ref={folderInput}
@@ -138,7 +139,7 @@ export function FilesPanel({
             multiple
             hidden
             {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
-            onChange={(e) => receber(e.target.files)}
+            onChange={receber}
           />
         </div>
       </header>
@@ -156,7 +157,7 @@ export function FilesPanel({
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
-          receber(e.dataTransfer.files);
+          onUpload(e.dataTransfer.files);
         }}
       >
         <div className="playground__dropzoneIcon">📥</div>
