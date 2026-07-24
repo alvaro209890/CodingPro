@@ -8,11 +8,10 @@ import { EditorPanel } from "./EditorPanel.js";
 import { TerminalPanel } from "./TerminalPanel.js";
 import { GitPanel } from "./GitPanel.js";
 import { MemoryPanel } from "./MemoryPanel.js";
-import { CyberBackground } from "./CyberBackground.js";
 import type { TaskRow } from "./TaskTrackerCard.js";
 import type { Mensagem, Session } from "./PlaygroundTypes.js";
 
-type Tab = "cli" | "chat" | "files" | "editor" | "terminal" | "git" | "memory";
+type Tab = "chat" | "files" | "editor" | "terminal" | "git" | "memory";
 
 const SESSIONS_KEY = "cp_playground_sessions";
 const ACTIVE_KEY = "cp_playground_active";
@@ -34,13 +33,12 @@ const CMD_SLASH = [
 ];
 
 const TABS: { id: Tab; ico: string; lbl: string }[] = [
-  { id: "cli", ico: "⚡", lbl: "CLI" },
   { id: "chat", ico: "💬", lbl: "Chat" },
   { id: "files", ico: "📁", lbl: "Files" },
-  { id: "editor", ico: "✏️", lbl: "Editor" },
-  { id: "terminal", ico: ">_", lbl: "Term" },
-  { id: "git", ico: "🔀", lbl: "Git" },
-  { id: "memory", ico: "🧠", lbl: "Mem" },
+  { id: "editor", ico: "📝", lbl: "Editor" },
+  { id: "terminal", ico: "›", lbl: "Terminal" },
+  { id: "git", ico: "⑂", lbl: "Git" },
+  { id: "memory", ico: "📋", lbl: "Memory" },
 ];
 
 function gerarId(): string {
@@ -154,7 +152,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
     [activeSession, updateSession],
   );
 
-  const [tab, setTab] = useState<Tab>("cli");
+  const [tab, setTab] = useState<Tab>("chat");
   const [stream, setStream] = useState("");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -724,8 +722,6 @@ export function Playground({ usuario }: { usuario: Usuario }) {
     }
   }, [memName, memContent, POST]);
 
-  const isCliChat = tab === "cli" || tab === "chat";
-
   const handleInputKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -794,9 +790,6 @@ export function Playground({ usuario }: { usuario: Usuario }) {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Canvas particle animated background */}
-      <CyberBackground />
-
       {/* Global Drag and Drop Overlay */}
       {globalDragging && (
         <div className="playground__globalDropOverlay">
@@ -882,7 +875,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         )}
 
         <div className="playground__content">
-          {isCliChat && (
+          {tab === "chat" && (
             <ChatView
               session={activeSession ?? null}
               stream={stream}

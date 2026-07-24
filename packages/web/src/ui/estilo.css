@@ -1289,98 +1289,65 @@ tbody tr:hover {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 2.5rem 1rem 1.5rem;
-  max-width: 760px;
+  padding: 3rem 1rem 1.5rem;
+  max-width: 600px;
   margin: 0 auto;
-  gap: 1.5rem;
-  animation: playgroundFadeIn 0.4s ease;
-}
-
-.playground__brandMark {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #10b981, #06b6d4);
-  color: #04140f;
-  font-size: 1.8rem;
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-  box-shadow: 0 0 25px rgba(16, 185, 129, 0.5);
-  margin-bottom: 0.5rem;
-}
-
-.playground__eyebrow {
-  color: #10b981;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  gap: 1.25rem;
+  animation: playgroundFadeIn 0.3s ease;
 }
 
 .playground__bannerTitle {
-  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
-  font-weight: 800;
-  line-height: 1.2;
-  color: #e6e6ec;
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: #a1a1b0;
+  margin: 0;
 }
 
 .playground__bannerHint {
-  color: #a1a1b0;
-  font-size: 0.85rem;
-}
-
-.playground__bannerHint kbd {
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  color: #10b981;
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  font-weight: 700;
+  color: #6b6b78;
+  font-size: 0.8rem;
 }
 
 .playground__suggestions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.8rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
   width: 100%;
+  max-width: 440px;
 }
 
 .playground__suggestion {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  gap: 0.75rem;
-  padding: 1rem;
+  gap: 0.2rem;
+  padding: 0.65rem 0.85rem;
   text-align: left;
-  background: rgba(18, 18, 26, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background 0.15s ease, border-color 0.15s ease;
   font-family: inherit;
+  color: inherit;
+  width: 100%;
 }
 
 .playground__suggestion:hover {
-  transform: translateY(-3px) scale(1.02);
-  border-color: rgba(16, 185, 129, 0.4);
-  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.15);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
-.playground__suggestionIcon {
-  font-size: 1.2rem;
-  color: #10b981;
-}
-
-.playground__suggestionText strong {
-  display: block;
-  font-size: 0.8rem;
+.playground__suggestion strong {
+  font-size: 0.78rem;
+  font-weight: 600;
   color: #e6e6ec;
 }
 
-.playground__suggestionText small {
-  display: block;
-  font-size: 0.68rem;
+.playground__suggestion small {
+  font-size: 0.7rem;
   color: #6b6b78;
-  margin-top: 0.2rem;
+  line-height: 1.3;
 }
 
 /* ---------- Chat Input Area ---------- */
