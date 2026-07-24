@@ -18,38 +18,51 @@ export function MemoryPanel({
   onFileClick,
 }: MemoryPanelProps) {
   return (
-    <div className="playground__memory">
+    <section className="playground__memory" aria-label="Memória do Workspace">
       <div className="playground__memorySidebar">
-        <div className="playground__memorySidebarTitle">.memory/</div>
-        {memFiles.map((f) => (
-          <button
-            key={f}
-            className="playground__memoryFile"
-            onClick={() => onFileClick(f)}
-            type="button"
-          >
-            📝 {f}
-          </button>
-        ))}
+        <div className="playground__memorySidebarHeader">
+          <span>🧠</span>
+          <span className="playground__memorySidebarTitle">.memory/</span>
+        </div>
+        <div className="playground__memoryFileList">
+          {memFiles.length === 0 ? (
+            <div className="playground__memoryEmpty">Nenhum arquivo de memória salvo.</div>
+          ) : (
+            memFiles.map((f) => (
+              <button
+                key={f}
+                className={`playground__memoryFile ${memName === f.replace(".md", "") ? "playground__memoryFile-active" : ""}`}
+                onClick={() => onFileClick(f)}
+                type="button"
+              >
+                📝 {f}
+              </button>
+            ))
+          )}
+        </div>
       </div>
+
       <div className="playground__memoryMain">
         <div className="playground__memoryForm">
           <input
             value={memName}
             onChange={(e) => onNameChange(e.target.value)}
-            placeholder="nome"
-            aria-label="Memory name"
+            placeholder="Nome do arquivo (ex: notas_projeto)"
+            aria-label="Nome da memória"
+            className="playground__memoryNameInput"
           />
-          <button onClick={onSave} type="button">Salvar</button>
+          <button onClick={onSave} type="button" className="playground__memorySaveBtn">
+            💾 Salvar Memória
+          </button>
         </div>
         <textarea
           className="playground__memoryTextarea"
           value={memContent}
           onChange={(e) => onContentChange(e.target.value)}
-          placeholder="Anotações..."
-          aria-label="Memory content"
+          placeholder="Escreva anotações de contexto, regras de negócio ou instruções persistentes para a IA..."
+          aria-label="Conteúdo da memória"
         />
       </div>
-    </div>
+    </section>
   );
 }

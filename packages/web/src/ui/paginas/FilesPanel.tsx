@@ -31,6 +31,32 @@ function entradasDaPasta(files: string[], cwd: string): Entrada[] {
   );
 }
 
+function getFileIcon(filename: string, isDir: boolean): string {
+  if (isDir) return "📁";
+  const ext = filename.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "ts":
+    case "tsx":
+      return "🟦";
+    case "js":
+    case "jsx":
+      return "🟨";
+    case "json":
+      return "⚙️";
+    case "md":
+      return "📝";
+    case "css":
+    case "html":
+      return "🎨";
+    case "py":
+      return "🐍";
+    case "sh":
+      return "⚡";
+    default:
+      return "📄";
+  }
+}
+
 export function FilesPanel({
   files,
   cwd,
@@ -55,27 +81,49 @@ export function FilesPanel({
     <section className="playground__files" aria-label="Arquivos do workspace">
       <header className="playground__filesHeader">
         <div className="playground__breadcrumbs">
-          <button type="button" onClick={() => onNavigate("")}>
-            workspace
+          <button
+            type="button"
+            className="playground__breadcrumbBtn"
+            onClick={() => onNavigate("")}
+          >
+            <span className="playground__breadcrumbIcon">🏠</span> workspace
           </button>
           {crumbs.map((crumb, index) => {
             const path = crumbs.slice(0, index + 1).join("/");
             return (
-              <button key={path} type="button" onClick={() => onNavigate(path)}>
+              <button
+                key={path}
+                type="button"
+                className="playground__breadcrumbBtn"
+                onClick={() => onNavigate(path)}
+              >
                 / {crumb}
               </button>
             );
           })}
         </div>
         <div className="playground__filesActions">
-          <button type="button" onClick={onRefresh} title="Atualizar arquivos">
-            ↻
+          <button
+            type="button"
+            onClick={onRefresh}
+            title="Atualizar lista de arquivos"
+            className="playground__filesActionBtn"
+          >
+            ↻ Atualizar
           </button>
-          <button type="button" onClick={() => fileInput.current?.click()}>
-            Enviar arquivos
+          <button
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            className="playground__filesActionBtn"
+          >
+            ⬆ Enviar arquivo
           </button>
-          <button type="button" onClick={() => folderInput.current?.click()}>
-            Enviar pasta
+          <button
+            type="button"
+            onClick={() => folderInput.current?.click()}
+            className="playground__filesActionBtn playground__filesActionBtnPrimary"
+          >
+            📁 Enviar pasta
           </button>
           <input
             ref={fileInput}
@@ -96,7 +144,7 @@ export function FilesPanel({
       </header>
 
       <div
-        className={`playground__dropzone${dragging ? " playground__dropzone-active" : ""}`}
+        className={`playground__dropzone ${dragging ? "playground__dropzone-active" : ""} playground__card-rotating-border`}
         onDragEnter={(e) => {
           e.preventDefault();
           setDragging(true);
@@ -111,10 +159,11 @@ export function FilesPanel({
           receber(e.dataTransfer.files);
         }}
       >
+        <div className="playground__dropzoneIcon">📥</div>
         <strong>
-          {uploading ? "Enviando para seu espaço..." : "Arraste arquivos, ZIPs ou uma pasta aqui"}
+          {uploading ? "Enviando arquivos..." : "Arraste arquivos ou uma pasta inteira aqui"}
         </strong>
-        <span>Os arquivos ficam no seu workspace isolado. Limite: 512 MB por arquivo.</span>
+        <span>Upload instantâneo para o workspace. Limite: 512 MB por arquivo.</span>
       </div>
 
       <div className="playground__fileList">
@@ -124,7 +173,8 @@ export function FilesPanel({
             type="button"
             onClick={() => onNavigate(crumbs.slice(0, -1).join("/"))}
           >
-            ↩ ..
+            <span className="playground__fileIcon">↩</span>
+            <span>.. (Voltar para pasta anterior)</span>
           </button>
         )}
         {entries.map((entry) => (
@@ -134,8 +184,8 @@ export function FilesPanel({
               type="button"
               onClick={() => (entry.diretorio ? onNavigate(entry.path) : onOpenFile(entry.path))}
             >
-              <span>{entry.diretorio ? "📁" : "📄"}</span>
-              <span>{entry.nome}</span>
+              <span className="playground__fileIcon">{getFileIcon(entry.nome, entry.diretorio)}</span>
+              <span className="playground__fileName">{entry.nome}</span>
             </button>
             <button
               className="playground__fileDelete"
@@ -143,11 +193,16 @@ export function FilesPanel({
               title={`Excluir ${entry.nome}`}
               onClick={() => onDelete(entry.path)}
             >
-              ×
+              ✕
             </button>
           </div>
         ))}
-        {entries.length === 0 && <p className="playground__filesEmpty">Esta pasta está vazia.</p>}
+        {entries.length === 0 && (
+          <div className="playground__filesEmpty">
+            <span>📭</span>
+            <p>Esta pasta está vazia.</p>
+          </div>
+        )}
       </div>
     </section>
   );

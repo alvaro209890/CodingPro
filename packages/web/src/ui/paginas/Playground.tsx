@@ -8,6 +8,8 @@ import { EditorPanel } from "./EditorPanel.js";
 import { TerminalPanel } from "./TerminalPanel.js";
 import { GitPanel } from "./GitPanel.js";
 import { MemoryPanel } from "./MemoryPanel.js";
+import { CyberBackground } from "./CyberBackground.js";
+import type { TaskRow } from "./TaskTrackerCard.js";
 import type { Mensagem, Session } from "./PlaygroundTypes.js";
 
 type Tab = "cli" | "chat" | "files" | "editor" | "terminal" | "git" | "memory";
@@ -24,7 +26,7 @@ const CMD_SLASH = [
   { cmd: "/delete <id>", desc: "Deletar chat" },
   { cmd: "/rename <nome>", desc: "Renomear chat" },
   { cmd: "/export", desc: "Exportar como .md" },
-  { cmd: "/history", desc: "Histrico de comandos" },
+  { cmd: "/history", desc: "Histórico de comandos" },
   { cmd: "/context", desc: "Arquivos no workspace" },
   { cmd: "/agent <prompt>", desc: "Modo agente (Chat)" },
   { cmd: "/memory", desc: "Salvar contexto" },
@@ -86,7 +88,25 @@ export function Playground({ usuario }: { usuario: Usuario }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState("");
-  const autoSaveRef = useRef(0);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 768 : false,
+  );
+  const [globalDragging, setGlobalDragging] = useState(false);
+  const dragCounterRef = useRef(0);
+
+  // Runtime / Thinking / Task Tracker States
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [thinkingSteps, setThinkingSteps] = useState<string[]>([]);
+  const [tasks, setTasks] = useState<TaskRow[]>([]);
+  const timerRef = useRef<any>(null);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const activeIdx = sessions.findIndex((s) => s.id === activeId);
   const activeSession = activeIdx >= 0 ? sessions[activeIdx] : (sessions[0] ?? null);
@@ -187,6 +207,8 @@ export function Playground({ usuario }: { usuario: Usuario }) {
     setSidebarOpen(false);
     setStream("");
     setStatus("");
+    setTasks([]);
+    setThinkingSteps([]);
   }, []);
 
   const deletarSessao = useCallback(
@@ -215,16 +237,6 @@ export function Playground({ usuario }: { usuario: Usuario }) {
     [activeId],
   );
 
-  const confirmarRename = useCallback(
-    (id: string) => {
-      if (renameVal.trim())
-        updateSession(id, (s) => ({ ...s, nome: renameVal.trim().slice(0, 30) }));
-      setRenameId(null);
-      setRenameVal("");
-    },
-    [renameVal, updateSession],
-  );
-
   const enviar = useCallback(
     async (prompt?: string) => {
       const p = (prompt ?? input).trim();
@@ -235,6 +247,15 @@ export function Playground({ usuario }: { usuario: Usuario }) {
       setLoading(true);
       setStream("");
       setStatus("Pensando...");
+      setThinkingSteps(["Analisando prompt do usuário...", "Planejando resposta e seleção de ferramentas..."]);
+      setTasks([]);
+      setElapsedMs(0);
+
+      const startTime = Date.now();
+      timerRef.current = setInterval(() => {
+        setElapsedMs(Date.now() - startTime);
+      }, 100);
+
       setMsgs((prev) => [...prev, { role: "user", content: p }]);
       try {
         const toolsLog: { nome: string; result: string }[] = [];
@@ -247,7 +268,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             credentials: "include",
           });
         } catch (netErr: any) {
-          throw new Error(`Rede: ${netErr.message || "sem conexao"}`);
+          throw new Error(`Rede: ${netErr.message || "sem conexão"}`);
         }
         if (!r.ok) {
           let msg = `Erro ${r.status}`;
@@ -273,10 +294,31 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               if (d.type === "text") {
                 content += d.content ?? "";
                 setStream(content);
-              } else if (d.type === "tool-start") setStatus(`🔧 ${d.name || ""}...`);
-              else if (d.type === "tool-end") {
-                toolsLog.push({ nome: d.name || "", result: d.result || "" });
+              } else if (d.type === "tool-start") {
+                const toolName = d.name || "ferramenta";
+                setStatus(`🔧 ${toolName}...`);
+                setThinkingSteps((prev) => [...prev, `Executando ${toolName}...`]);
+                setTasks((prev) => [
+                  ...prev,
+                  {
+                    id: `${toolName}-${Date.now()}`,
+                    name: toolName,
+                    target: d.target || toolName,
+                    status: "running",
+                  },
+                ]);
+              } else if (d.type === "tool-end") {
+                const toolName = d.name || "ferramenta";
+                toolsLog.push({ nome: toolName, result: d.result || "" });
                 setStatus("");
+                setThinkingSteps((prev) => [...prev, `Concluído: ${toolName}`]);
+                setTasks((prev) =>
+                  prev.map((t) =>
+                    t.status === "running" && t.name === toolName
+                      ? { ...t, status: "done", result: d.result }
+                      : t,
+                  ),
+                );
               } else if (d.type === "done") {
                 setMsgs((prev) => [
                   ...prev,
@@ -299,6 +341,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
       } catch (e: any) {
         setMsgs((prev) => [...prev, { role: "assistant", content: `❌ ${e.message}` }]);
       } finally {
+        if (timerRef.current) clearInterval(timerRef.current);
         setLoading(false);
         setStream("");
         setStatus("");
@@ -315,6 +358,8 @@ export function Playground({ usuario }: { usuario: Usuario }) {
           setMsgs(() => []);
           setStream("");
           setStatus("");
+          setTasks([]);
+          setThinkingSteps([]);
           break;
         case "/new":
           novaSessao();
@@ -328,7 +373,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
                 sessions
                   .filter((s) => s.mensagens.length > 0)
                   .map(
-                    (s, i) =>
+                    (s) =>
                       `  ${s.id.slice(-6)}  ${s.nome}  ${s.mensagens.length} msgs  ${new Date(s.criadaEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`,
                   )
                   .join("\n") || "  Nenhum chat salvo.",
@@ -346,7 +391,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
                   ...prev,
                   {
                     role: "system",
-                    content: `Chat '${target}' nao encontrado. Use /list para ver os chats.`,
+                    content: `Chat '${target}' não encontrado. Use /list para ver os chats.`,
                   },
                 ]);
             }
@@ -366,7 +411,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               } else
                 setMsgs((prev) => [
                   ...prev,
-                  { role: "system", content: `Chat '${target}' nao encontrado.` },
+                  { role: "system", content: `Chat '${target}' não encontrado.` },
                 ]);
             }
           }
@@ -409,7 +454,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               ...prev,
               {
                 role: "system",
-                content: "📋 Chat exportado para a area de transferencia como Markdown.",
+                content: "📋 Chat exportado para a área de transferência como Markdown.",
               },
             ]);
           } catch {
@@ -435,7 +480,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
                       .slice(0, 20)
                       .map((c, i) => `  ${String(i + 1).padStart(2)}. ${c}`)
                       .join("\n")
-                  : "  Nenhum comando no historico.",
+                  : "  Nenhum comando no histórico.",
             },
           ]);
           break;
@@ -447,7 +492,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               ...prev,
               {
                 role: "system",
-                content: `📁 Workspace: ${d.files.length} arquivos/diretorios. Veja a aba Files.`,
+                content: `📁 Workspace: ${d.files.length} arquivos/diretórios. Veja a aba Files.`,
               },
             ]);
             setTab("files");
@@ -469,7 +514,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               {
                 role: "system",
                 content:
-                  "Modo agente ativado. Digite seu prompt para usar tools reais (list_dir, read_file, write_file, bash, grep).",
+                  "Modo agente ativado. Digite seu prompt para usar ferramentas reais (list_dir, read_file, write_file, bash, grep).",
               },
             ]);
           }
@@ -658,7 +703,12 @@ export function Playground({ usuario }: { usuario: Usuario }) {
     if (!memName) return;
     try {
       await POST("/api/vps/memory", { action: "save", name: memName, content: memContent });
-    } catch {}
+      const d = await POST<{ files: string[] }>("/api/vps/memory", { action: "list" });
+      setMemFiles(d.files);
+      setStatus("Memória salva com sucesso");
+    } catch (e: any) {
+      setStatus(`Erro memória: ${e.message}`);
+    }
   }, [memName, memContent, POST]);
 
   const isCliChat = tab === "cli" || tab === "chat";
@@ -696,8 +746,55 @@ export function Playground({ usuario }: { usuario: Usuario }) {
     [input, histIdx, cmdHistory, pendingInput, handleSlash, enviar],
   );
 
+  // Global Drag and Drop Handler
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current += 1;
+    if (e.dataTransfer.types.includes("Files")) {
+      setGlobalDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current === 0) {
+      setGlobalDragging(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current = 0;
+    setGlobalDragging(false);
+    if (e.dataTransfer.files?.length) {
+      setTab("files");
+      uploadFiles(e.dataTransfer.files);
+    }
+  };
+
   return (
-    <div className="playground">
+    <div
+      className="playground"
+      onDragEnter={handleDragEnter}
+      onDragOver={(e) => e.preventDefault()}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Canvas particle animated background */}
+      <CyberBackground />
+
+      {/* Global Drag and Drop Overlay */}
+      {globalDragging && (
+        <div className="playground__globalDropOverlay">
+          <div className="playground__globalDropCard playground__card-rotating-border">
+            <span className="playground__globalDropIcon">📥</span>
+            <h3>Solte os arquivos para fazer upload</h3>
+            <p>Os arquivos serão adicionados ao seu workspace <code>{filesCwd || "raiz"}</code></p>
+          </div>
+        </div>
+      )}
+
       <Sidebar
         sessions={sessions}
         activeId={activeId}
@@ -722,30 +819,52 @@ export function Playground({ usuario }: { usuario: Usuario }) {
           setRenameVal(name);
         }}
         userEmail={usuario.email}
-        mobile={typeof window !== "undefined" && window.innerWidth < 768}
+        mobile={isMobile}
       />
+
       <div className="playground__main">
         <div className="playground__topbar">
           <button
             onClick={() => setSidebarOpen(true)}
-            style={{ display: sidebarOpen ? "none" : "block" }}
+            style={{ display: sidebarOpen ? "none" : "flex" }}
             type="button"
             aria-label="Abrir sidebar"
+            className="playground__menuBtn"
           >
             ☰
           </button>
-          <span className="playground__topbarLogo">⚡ CodingPro</span>
+          <div className="playground__brandGroup">
+            <span className="playground__topbarLogo">⚡ CodingPro</span>
+            <span className="playground__topbarBadge">v2.0</span>
+          </div>
+
           {activeSession && (
             <span className="playground__topbarSession">· {activeSession.nome}</span>
           )}
           <span className="playground__topbarSpacer" />
           {status && <span className="playground__topbarStatus">{status}</span>}
           <span className="playground__topbarUser">{usuario.email}</span>
-          <button onClick={novaSessao} type="button" aria-label="Novo chat">
+          <button
+            onClick={novaSessao}
+            type="button"
+            aria-label="Novo chat"
+            className="playground__topbarAddBtn"
+            title="Novo Chat"
+          >
             +
           </button>
         </div>
-        <TabBar tabs={TABS} activeTab={tab} onSelect={(id: string) => setTab(id as Tab)} />
+
+        {/* Desktop Tab Bar */}
+        {!isMobile && (
+          <TabBar
+            tabs={TABS}
+            activeTab={tab}
+            onSelect={(id: string) => setTab(id as Tab)}
+            isMobile={false}
+          />
+        )}
+
         <div className="playground__content">
           {isCliChat && (
             <ChatView
@@ -754,6 +873,10 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               loading={loading}
               input={input}
               showCmds={showCmds}
+              statusText={status}
+              elapsedMs={elapsedMs}
+              thinkingSteps={thinkingSteps}
+              tasks={tasks}
               cmdHistory={cmdHistory}
               histIdx={histIdx}
               pendingInput={pendingInput}
@@ -824,6 +947,16 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             />
           )}
         </div>
+
+        {/* Mobile Bottom Tab Bar (abas inferiores com ícone + label) */}
+        {isMobile && (
+          <TabBar
+            tabs={TABS}
+            activeTab={tab}
+            onSelect={(id: string) => setTab(id as Tab)}
+            isMobile={true}
+          />
+        )}
       </div>
     </div>
   );

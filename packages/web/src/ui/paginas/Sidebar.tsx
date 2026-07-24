@@ -1,4 +1,3 @@
-import type { CSSProperties, ReactNode } from "react";
 import type { Session } from "./PlaygroundTypes.js";
 
 interface SidebarProps {
@@ -39,65 +38,123 @@ export function Sidebar({
   const sidebarContent = (
     <div className="playground__sidebar">
       <div className="playground__sidebar-header">
-        <span>💬 Chats</span>
-        <button onClick={onNew} type="button" aria-label="Novo chat">+</button>
-        <button onClick={onClose} type="button" aria-label="Fechar sidebar">✕</button>
-      </div>
-      <div className="playground__sidebar-list">
-        {sessions.length === 0 && (
-          <div className="playground__sidebarEmpty">Nenhum chat ainda. Use o botão "+ Novo" para criar.</div>
-        )}
-        {sessions.map((s) => (
-            <div
-              key={s.id}
-              className={`playground__session${s.id === activeId ? " playground__session-ativo" : ""}`}
-              onClick={() => onSelect(s.id)}
-              onKeyDown={(e) => { if (e.key === "Enter") onSelect(s.id); }}
-              tabIndex={0}
-              role="button"
+        <div className="playground__sidebarTitle">
+          <span className="playground__sidebarIcon">💬</span>
+          <span>Sessões AI</span>
+          <span className="playground__sessionBadge">{sessions.length}</span>
+        </div>
+        <div className="playground__sidebarHeaderBtnGroup">
+          <button
+            onClick={onNew}
+            type="button"
+            className="playground__btnNewSession"
+            title="Novo Chat"
+            aria-label="Novo chat"
+          >
+            <span>+</span> Novo
+          </button>
+          {mobile && (
+            <button
+              onClick={onClose}
+              type="button"
+              className="playground__btnCloseSidebar"
+              aria-label="Fechar sidebar"
             >
-            <div className="playground__sessionInfo">
-              {renameId === s.id ? (
-                  <input
-                    value={renameVal}
-                    onChange={(e) => onRename(s.id, e.target.value)}
-                    onBlur={() => onCancelRename()}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") onCancelRename();
-                      if (e.key === "Escape") onCancelRename();
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="playground__renameInput"
-                  style={{
-                    background: "var(--fundo)",
-                    border: "1px solid var(--esmeralda)",
-                    borderRadius: "3px",
-                    color: "var(--esmeralda)",
-                    fontSize: "0.7rem",
-                    padding: "0.1rem 0.2rem",
-                    width: "100%",
-                    fontFamily: "inherit",
-                    outline: "none",
-                  }}
-                />
-              ) : (
-                <>
-                  <div className="playground__sessionName">{s.nome}</div>
-                  <div className="playground__sessionMeta">
-                    {s.mensagens.length} msgs ·{" "}
-                    {new Date(s.criadaEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="playground__sessionActions">
-              <button onClick={(e) => { e.stopPropagation(); onStartRename(s.id, s.nome); }} title="Renomear" type="button">✎</button>
-              <button onClick={(e) => { e.stopPropagation(); if (confirm(`Deletar '${s.nome}'?`)) onDelete(s.id); }} title="Deletar" type="button" className="playground__sessionDelete">✕</button>
-            </div>
-          </div>
-        ))}
+              ✕
+            </button>
+          )}
+        </div>
       </div>
-      <div className="playground__sidebarFooter">{userEmail}</div>
+
+      <div className="playground__sidebar-list">
+        {sessions.length === 0 ? (
+          <div className="playground__sidebarEmpty">
+            <span style={{ fontSize: "1.5rem", display: "block", marginBottom: "0.5rem" }}>💬</span>
+            Nenhum chat ainda. Clique em "+ Novo" para começar!
+          </div>
+        ) : (
+          sessions.map((s) => {
+            const isActive = s.id === activeId;
+            return (
+              <div
+                key={s.id}
+                className={`playground__session ${isActive ? "playground__session-ativo" : ""}`}
+                onClick={() => onSelect(s.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") onSelect(s.id);
+                }}
+                tabIndex={0}
+                role="button"
+                aria-selected={isActive}
+              >
+                <div className="playground__sessionIndicator" />
+                <div className="playground__sessionInfo">
+                  {renameId === s.id ? (
+                    <input
+                      value={renameVal}
+                      onChange={(e) => onRename(s.id, e.target.value)}
+                      onBlur={() => onCancelRename()}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") onCancelRename();
+                        if (e.key === "Escape") onCancelRename();
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="playground__renameInput"
+                      autoFocus
+                    />
+                  ) : (
+                    <>
+                      <div className="playground__sessionName">{s.nome}</div>
+                      <div className="playground__sessionMeta">
+                        <span>{s.mensagens.length} msgs</span>
+                        <span>·</span>
+                        <span>
+                          {new Date(s.criadaEm).toLocaleDateString("pt-BR", {
+                            day: "2-digit",
+                            month: "short",
+                          })}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="playground__sessionActions">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onStartRename(s.id, s.nome);
+                    }}
+                    title="Renomear"
+                    type="button"
+                    className="playground__sessionActionBtn"
+                  >
+                    ✎
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`Deletar '${s.nome}'?`)) onDelete(s.id);
+                    }}
+                    title="Deletar"
+                    type="button"
+                    className="playground__sessionActionBtn playground__sessionDelete"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="playground__sidebarFooter">
+        <div className="playground__userAvatar">
+          <span className="playground__userOnlineDot" />
+          <span>{userEmail ? userEmail.split("@")[0] : "Usuário"}</span>
+        </div>
+        <div className="playground__userFullEmail">{userEmail}</div>
+      </div>
     </div>
   );
 
@@ -105,7 +162,7 @@ export function Sidebar({
     return (
       <>
         {sidebarOpen && <div className="playground__overlay" onClick={onClose} />}
-        <div className={`playground__sidebar-mobile${sidebarOpen ? " playground__sidebar-aberta" : ""}`}>
+        <div className={`playground__sidebar-mobile ${sidebarOpen ? "playground__sidebar-aberta" : ""}`}>
           {sidebarContent}
         </div>
       </>
