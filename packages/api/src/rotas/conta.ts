@@ -72,7 +72,6 @@ export function registrarRotasConta(app: FastifyInstance, ctx: Contexto): void {
         admin: usuario.admin,
         criadoEm: usuario.criado_em,
         email: usuario.email,
-        emailVerificado: usuario.email_verificado,
         id: usuario.id,
         limiteDiarioMicro: usuario.limite_diario_micro,
         limiteMicro: usuario.limite_mensal_micro,

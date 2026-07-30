@@ -25,7 +25,7 @@ describe.skipIf(!TEM_BANCO)("cadastro e login", () => {
     expect(resposta.json().usuario).toMatchObject({ admin: true, status: "ativo" });
   });
 
-  it("segundo usuário entra pendente, sem poderes", async () => {
+  it("segundo usuário entra ativo, sem poderes de admin", async () => {
     amb = await montar();
     await cadastrar(amb.app, "chefe@teste.com");
     const resposta = await amb.app.inject({
@@ -38,7 +38,8 @@ describe.skipIf(!TEM_BANCO)("cadastro e login", () => {
       },
       url: "/api/cadastro",
     });
-    expect(resposta.json().usuario).toMatchObject({ admin: false, status: "pendente" });
+    expect(resposta.json().usuario).toMatchObject({ admin: false, status: "ativo" });
+    expect(resposta.json().codigoVerificacao).toBeUndefined();
   });
 
   it("recusa e-mail duplicado", async () => {
@@ -172,18 +173,19 @@ describe.skipIf(!TEM_BANCO)("tokens de CLI", () => {
     expect(linha?.hash).not.toBe(texto);
   });
 
-  it("conta pendente não consegue criar token", async () => {
+  it("conta bloqueada não consegue criar token", async () => {
     amb = await montar();
     await cadastrar(amb.app, "chefe@teste.com");
-    const { cookie } = await cadastrar(amb.app, "novato@teste.com");
+    const novato = await cadastrar(amb.app, "novato@teste.com");
+    await amb.repo.atualizarUsuario(novato.id, { status: "bloqueado" });
     const resposta = await amb.app.inject({
-      headers: { cookie },
+      headers: { cookie: novato.cookie },
       method: "POST",
       payload: { nome: "x" },
       url: "/api/tokens",
     });
     expect(resposta.statusCode).toBe(403);
-    expect(resposta.json().erro).toBe("conta_nao_aprovada");
+    expect(resposta.json().erro).toBe("bloqueado");
   });
 
   it("revoga o próprio token, mas não o dos outros", async () => {
@@ -474,17 +476,10 @@ describe.skipIf(!TEM_BANCO)("painel admin", () => {
     expect(resposta.statusCode).toBe(403);
   });
 
-  it("aprova conta pendente e ela passa a poder criar token", async () => {
+  it("novato ativo cria token sem aprovação manual", async () => {
     amb = await montar();
-    const chefe = await cadastrar(amb.app, "chefe@teste.com");
+    await cadastrar(amb.app, "chefe@teste.com");
     const novato = await cadastrar(amb.app, "novato@teste.com");
-
-    await amb.app.inject({
-      headers: { cookie: chefe.cookie },
-      method: "PATCH",
-      payload: { status: "ativo" },
-      url: `/api/admin/usuarios/${novato.id}`,
-    });
 
     const token = await amb.app.inject({
       headers: { cookie: novato.cookie },

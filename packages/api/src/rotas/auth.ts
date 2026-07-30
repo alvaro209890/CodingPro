@@ -1,10 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { COOKIE_SESSAO, type Contexto, erro, exigirUsuario, ipDe, texto } from "../contexto.js";
-import { enviarEmail } from "../email.js";
 import {
   assinarSessao,
   conferirSenha,
-  gerarCodigoVerificacao,
   hashSenha,
   normalizarEmail,
   validarForcaSenha,
@@ -24,14 +22,13 @@ function opcoesCookie(producao: boolean) {
   };
 }
 
-/** Dados do usuário devolvidos ao front. Nunca inclui hash nem código de verificação. */
+/** Dados do usuário devolvidos ao front. Nunca inclui hash. */
 function publico(usuario: {
   id: number;
   email: string;
   nome: string;
   status: string;
   admin: boolean;
-  email_verificado: boolean;
   limite_mensal_micro: number;
   totp_ativado: boolean;
   limite_diario_micro: number;
@@ -40,7 +37,6 @@ function publico(usuario: {
   return {
     admin: usuario.admin,
     email: usuario.email,
-    emailVerificado: usuario.email_verificado,
     id: usuario.id,
     limiteMicro: usuario.limite_mensal_micro,
     limiteDiarioMicro: usuario.limite_diario_micro,
@@ -85,15 +81,14 @@ export function registrarRotasAuth(app: FastifyInstance, ctx: Contexto): void {
       return erro(resposta, 409, "email_em_uso", "Já existe uma conta com este e-mail.");
     }
 
-    // O primeiro usuário do sistema — ou o e-mail configurado como admin — entra já
-    // ativo e com poderes, senão não haveria como aprovar ninguém.
+    // O primeiro usuário do sistema — ou o e-mail configurado como admin — entra com
+    // poderes de admin. Demais contas já nascem ativas (sem verificação de e-mail) para
+    // usar o proxy DeepSeek da plataforma no CLI/desktop assim que fizerem login.
     const primeiro = (await ctx.repo.contarUsuarios()) === 0;
     const admin = primeiro || (ctx.config.emailAdmin !== "" && email === ctx.config.emailAdmin);
-    const codigo = gerarCodigoVerificacao();
 
     const usuario = await ctx.repo.criarUsuario({
       admin,
-      codigoVerificacao: codigo,
       email,
       limiteMicro: ctx.config.limitePadraoMicro,
       nome,
@@ -109,26 +104,11 @@ export function registrarRotasAuth(app: FastifyInstance, ctx: Contexto): void {
       ip: ipDe(req),
     });
 
-    await enviarEmail(
-      {
-        assunto: "Confirme seu e-mail no CodingPro",
-        para: email,
-        texto:
-          `Olá, ${usuario.nome}.\n\n` +
-          `Seu código de verificação do CodingPro é: ${codigo}\n\n` +
-          `Acesse ${ctx.config.siteUrl} para concluir a ativação da conta.`,
-      },
-      ctx.config,
-    );
-
     resposta.setCookie(COOKIE_SESSAO, assinarSessao(usuario.id, ctx.config.sessionSecret), {
       ...opcoesCookie(producao),
     });
 
-    // Sem SMTP configurado o código não tem como ser enviado; ele fica visível para o
-    // admin no painel (aba Usuários), que é quem aprova a conta de qualquer forma.
     return resposta.status(201).send({
-      codigoVerificacao: producao ? undefined : codigo,
       usuario: publico(usuario),
     });
   });
@@ -175,18 +155,6 @@ export function registrarRotasAuth(app: FastifyInstance, ctx: Contexto): void {
     const usuario = await exigirUsuario(ctx, req, resposta);
     if (!usuario) return resposta;
     return resposta.send({ usuario: publico(usuario) });
-  });
-
-  app.post("/api/verificar-email", async (req, resposta) => {
-    const usuario = await exigirUsuario(ctx, req, resposta);
-    if (!usuario) return resposta;
-    const codigo = texto((req.body as Record<string, unknown> | undefined)?.codigo, 10);
-    if (usuario.email_verificado) return resposta.send({ ok: true });
-    if (codigo === "" || codigo !== usuario.codigo_verificacao) {
-      return erro(resposta, 400, "codigo_invalido", "Código de verificação incorreto.");
-    }
-    await ctx.repo.marcarEmailVerificado(usuario.id);
-    return resposta.send({ ok: true });
   });
 
   app.post("/api/senha", async (req, resposta) => {

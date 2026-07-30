@@ -9,7 +9,7 @@ afterEach(async () => {
 });
 
 describe.skipIf(!TEM_BANCO)("rotas de admin", () => {
-  it("lista usuários com consumo e mostra o código de verificação de quem não verificou", async () => {
+  it("lista usuários com consumo", async () => {
     amb = await montar();
     const chefe = await cadastrar(amb.app, "chefe@teste.com");
     await cadastrar(amb.app, "novato@teste.com");
@@ -21,9 +21,8 @@ describe.skipIf(!TEM_BANCO)("rotas de admin", () => {
     });
     const usuarios = resposta.json().usuarios;
     expect(usuarios).toHaveLength(2);
-    // O envio por e-mail ainda não existe; o admin precisa conseguir passar o código.
-    expect(usuarios[0].codigoVerificacao).toMatch(/^\d{6}$/);
     expect(usuarios[0]).toHaveProperty("custoMicro");
+    expect(usuarios[0]).not.toHaveProperty("codigoVerificacao");
   });
 
   it("filtra a lista por nome e e-mail", async () => {

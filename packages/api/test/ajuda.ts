@@ -62,7 +62,7 @@ export async function cadastrar(
   email: string,
   senha = "senhaSegura123",
   nome = "Fulano",
-): Promise<{ cookie: string; id: number; codigoVerificacao: string }> {
+): Promise<{ cookie: string; id: number }> {
   const resposta = await app.inject({
     method: "POST",
     payload: { email, nome, senha, termosAceitos: true },
@@ -71,7 +71,7 @@ export async function cadastrar(
   const corpo = resposta.json();
   const bruto = resposta.headers["set-cookie"];
   const cookie = (Array.isArray(bruto) ? (bruto[0] ?? "") : (bruto ?? "")).split(";")[0] ?? "";
-  return { codigoVerificacao: corpo.codigoVerificacao, cookie, id: corpo.usuario.id };
+  return { cookie, id: corpo.usuario.id };
 }
 
 /** Resposta SSE falsa do provedor, com o bloco de usage no chunk final. */

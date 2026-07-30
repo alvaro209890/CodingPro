@@ -62,11 +62,9 @@ export function registrarRotasAdmin(app: FastifyInstance, ctx: Contexto, metrica
         const consumo = await ctx.repo.consumoDoMes(u.id, competencia);
         return {
           admin: u.admin,
-          codigoVerificacao: u.email_verificado ? null : u.codigo_verificacao,
           criadoEm: u.criado_em,
           custoMicro: consumo.custoMicro,
           email: u.email,
-          emailVerificado: u.email_verificado,
           id: u.id,
           limiteDiarioMicro: u.limite_diario_micro,
           limiteMicro: u.limite_mensal_micro,

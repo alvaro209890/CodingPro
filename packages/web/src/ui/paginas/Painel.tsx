@@ -304,7 +304,6 @@ function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: ()
   const [nova, setNova] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
-  const [codigo, setCodigo] = useState("");
   const [totpInicio, setTotpInicio] = useState<InicioTotp | null>(null);
   const [totpCodigo, setTotpCodigo] = useState("");
   const [senhaExclusao, setSenhaExclusao] = useState("");
@@ -323,18 +322,6 @@ function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: ()
       );
     } catch (causa) {
       setErro(causa instanceof ErroApi ? causa.message : "Falha ao trocar a senha.");
-    }
-  }
-
-  async function verificar(evento: FormEvent) {
-    evento.preventDefault();
-    setErro("");
-    try {
-      await api.post("/api/verificar-email", { codigo });
-      setMensagem("E-mail verificado.");
-      aoAtualizar();
-    } catch (causa) {
-      setErro(causa instanceof ErroApi ? causa.message : "Código incorreto.");
     }
   }
 
@@ -439,14 +426,7 @@ function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: ()
               </tr>
               <tr>
                 <th>E-mail</th>
-                <td>
-                  {usuario.email}{" "}
-                  {usuario.emailVerificado ? (
-                    <span className="selo ok">Verificado</span>
-                  ) : (
-                    <span className="selo espera">Não verificado</span>
-                  )}
-                </td>
+                <td>{usuario.email}</td>
               </tr>
               <tr>
                 <th>Limite mensal</th>
@@ -456,27 +436,6 @@ function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: ()
           </table>
         </div>
       </Cartao>
-
-      {!usuario.emailVerificado && (
-        <Cartao>
-          <h3>Verificar e-mail</h3>
-          <p>
-            Peça o código de 6 dígitos ao administrador (o envio automático por e-mail ainda não
-            está ligado) e confirme aqui.
-          </p>
-          <form className="linha" onSubmit={verificar}>
-            <input
-              inputMode="numeric"
-              maxLength={6}
-              onChange={(e) => setCodigo(e.target.value)}
-              placeholder="000000"
-              style={{ maxWidth: "160px" }}
-              value={codigo}
-            />
-            <button type="submit">Confirmar</button>
-          </form>
-        </Cartao>
-      )}
 
       <Cartao>
         <h3>Autenticação em dois fatores</h3>

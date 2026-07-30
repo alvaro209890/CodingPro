@@ -59,8 +59,6 @@ export type UsuarioAdmin = {
   nome: string;
   status: "pendente" | "ativo" | "bloqueado";
   admin: boolean;
-  emailVerificado: boolean;
-  codigoVerificacao: string | null;
   limiteDiarioMicro?: number;
   limiteMicro: number;
   rateRpm?: number;

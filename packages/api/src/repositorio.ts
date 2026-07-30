@@ -61,16 +61,14 @@ export function criarRepositorio(sql: Sql) {
       nome: string;
       admin: boolean;
       limiteMicro: number;
-      codigoVerificacao: string;
     }): Promise<Usuario> {
       const [usuario] = await sql<Usuario[]>`
-        INSERT INTO usuarios (email, senha_hash, nome, admin, limite_mensal_micro,
-                              codigo_verificacao, status)
-        VALUES (${dados.email}, ${dados.senhaHash}, ${dados.nome}, ${dados.admin},
-                ${dados.limiteMicro}, ${dados.codigoVerificacao},
-                ${dados.admin ? "ativo" : "pendente"})
-        RETURNING *
-      `;
+            INSERT INTO usuarios (email, senha_hash, nome, admin, limite_mensal_micro,
+                                  email_verificado, codigo_verificacao, status)
+            VALUES (${dados.email}, ${dados.senhaHash}, ${dados.nome}, ${dados.admin},
+                    ${dados.limiteMicro}, true, NULL, 'ativo')
+            RETURNING *
+          `;
       if (!usuario) throw new Error("Falha ao criar usuário.");
       return usuario;
     },
@@ -90,12 +88,6 @@ export function criarRepositorio(sql: Sql) {
         { total: number }[]
       >`SELECT count(*)::bigint AS total FROM usuarios`;
       return Number(linha?.total ?? 0);
-    },
-
-    async marcarEmailVerificado(id: number): Promise<void> {
-      await sql`
-        UPDATE usuarios SET email_verificado = true, codigo_verificacao = NULL WHERE id = ${id}
-      `;
     },
 
     async registrarLogin(id: number): Promise<void> {
@@ -254,7 +246,6 @@ export function criarRepositorio(sql: Sql) {
           admin: usuario.admin,
           criadoEm: usuario.criado_em,
           email: usuario.email,
-          emailVerificado: usuario.email_verificado,
           id: usuario.id,
           limiteDiarioMicro: usuario.limite_diario_micro,
           limiteMicro: usuario.limite_mensal_micro,

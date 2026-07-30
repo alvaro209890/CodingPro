@@ -95,12 +95,6 @@ export function Usuarios() {
                         {usuario.nome} {usuario.admin && <span className="selo info">admin</span>}
                       </div>
                       <div className="fraco">{usuario.email}</div>
-                      {!usuario.emailVerificado && usuario.codigoVerificacao && (
-                        <div className="fraco">
-                          código de verificação:{" "}
-                          <code className="mono">{usuario.codigoVerificacao}</code>
-                        </div>
-                      )}
                     </td>
                     <td>
                       <span

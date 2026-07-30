@@ -98,13 +98,30 @@ export const MIGRACOES: readonly Migracao[] = Object.freeze([
   {
     id: "0002_p4_conta_limites_2fa",
     sql: `
-      ALTER TABLE usuarios
-        ADD COLUMN IF NOT EXISTS totp_secret text,
-        ADD COLUMN IF NOT EXISTS totp_ativado boolean NOT NULL DEFAULT false,
-        ADD COLUMN IF NOT EXISTS limite_diario_micro bigint NOT NULL DEFAULT 0,
-        ADD COLUMN IF NOT EXISTS rate_rpm integer NOT NULL DEFAULT 60,
-        ADD COLUMN IF NOT EXISTS override_limite_ate timestamptz,
-        ADD COLUMN IF NOT EXISTS override_limite_micro bigint;
-    `,
+        ALTER TABLE usuarios
+          ADD COLUMN IF NOT EXISTS totp_secret text,
+          ADD COLUMN IF NOT EXISTS totp_ativado boolean NOT NULL DEFAULT false,
+          ADD COLUMN IF NOT EXISTS limite_diario_micro bigint NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS rate_rpm integer NOT NULL DEFAULT 60,
+          ADD COLUMN IF NOT EXISTS override_limite_ate timestamptz,
+          ADD COLUMN IF NOT EXISTS override_limite_micro bigint;
+      `,
+  },
+  {
+    id: "0003_sem_verificacao_email",
+    sql: `
+        -- Verificação de e-mail removida do produto: contas usam o e-mail só como login.
+        ALTER TABLE usuarios
+          ALTER COLUMN email_verificado SET DEFAULT true;
+        UPDATE usuarios
+          SET email_verificado = true,
+              codigo_verificacao = NULL
+          WHERE email_verificado = false OR codigo_verificacao IS NOT NULL;
+        -- Contas aguardando só verificação/aprovação automática ficam ativas para
+        -- CLI/desktop usarem o proxy DeepSeek da plataforma imediatamente.
+        UPDATE usuarios
+          SET status = 'ativo'
+          WHERE status = 'pendente';
+      `,
   },
 ]);
