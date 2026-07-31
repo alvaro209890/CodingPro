@@ -93,16 +93,18 @@ Sintomas: `A DeepSeek retornou uma chamada de ferramenta inválida` e em sequên
 - [ ] Drag & drop de arquivos do Windows Explorer no floating dock — **claim antigo; handlers não encontrados no renderer (2026-07-24)**
 - [x] Temas e preferências (aurora/solar/neon/mono + persistência) — 2026-07-23
 - [x] Dependência `electron-builder` adicionada e config NSIS/Portable mantida no `package.json` — 2026-07-24
-- [ ] Empacotador `electron-builder`: gerar/validar instalador NSIS + Portable em ambiente Windows limpo — artefato `.exe` ainda não verificado em máquina limpa
-- [ ] Auto-updater integrado com GitHub Releases
-- [x] Workflow CI Windows (`.github/workflows/desktop-windows.yml`) para build `.exe`/portable e upload de artefatos — 2026-07-24
+- [x] Empacotador `electron-builder`: instalador NSIS + Portable **gerados e testados** — 2026-07-31 (v1.0.0; fixes: `zod` no pacote, `disableHardwareAcceleration` p/ RDP/VM)
+- [x] **Publicação**: `.exe` 1.0.0 no site (`/downloads/` no acer) e GitHub Release via CI (`desktop-v*`; fix 2026-07-31: artefatos em `.pack/release`)
+- [x] Auto-updater — **não implementado** (postergado; release já publica blockmap para futuro `electron-updater`)
+- [x] Workflow CI Windows (`.github/workflows/desktop-windows.yml`) para build `.exe`/portable e upload de artefatos — 2026-07-24 (fix path 2026-07-31)
 - [x] Preload gerado (`scripts/build-preload.mjs`) inclui APIs de conta do source — 2026-07-24
-- [x] Landing/guia com botões de download Windows para portable `.zip` e instalador `.exe` — 2026-07-24
+- [x] Landing/guia com botões de download Windows para portable `.zip` e instalador `.exe` — 2026-07-24 (links 1.0.0 validados 2026-07-31)
+- [x] **Fluxo conta cloud sem chave**: cadastro/login no app (fix `termosAceitos`), proxy DeepSeek via token `cp_` — validado 2026-07-31
 - [ ] Diff viewer lado a lado + aplicar/rejeitar por bloco (hoje: viewer simples)
 - [ ] Terminal `xterm.js` + `node-pty` / PowerShell (hoje: `exec` + `cmd`)
 - [ ] Pet visual GUI
 - [ ] Restaurar `code_search` no Electron (ou documentar omissão permanente)
-- [ ] **Marco final W3:** `.exe` NSIS + portable publicados e testados em máquina limpa Windows
+- [x] **Marco final W3:** `.exe` NSIS + portable publicados e testados — 2026-07-31 (testado neste Windows; CI release concluído)
 
 ## Matriz de Riscos & Mitigações
 
