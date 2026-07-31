@@ -45,8 +45,8 @@ jobs:
         with:
           name: codingpro-windows
           path: |
-            packages/desktop/release/*.exe
-            packages/desktop/release/*.zip
+            packages/desktop/.pack/release/*.exe
+            packages/desktop/.pack/release/*.blockmap
           if-no-files-found: error
 
       - name: Criar GitHub Release (tags desktop-v*)
@@ -54,6 +54,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            packages/desktop/release/*.exe
-            packages/desktop/release/*.zip
+            packages/desktop/.pack/release/*.exe
+            packages/desktop/.pack/release/*.blockmap
           generate_release_notes: true
