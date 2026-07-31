@@ -59,8 +59,8 @@ export function TelaConta({ aoConectar }: { aoConectar: () => void }) {
         <h1 className="tela-conta__marca">CodingPro</h1>
         <p className="tela-conta__sub">
           {modo === "login"
-            ? "Entre com sua conta aprovada para usar o app."
-            : "Crie sua conta. O administrador vai aprová-la em seguida."}
+            ? "Entre com sua conta para usar o app."
+            : "Crie sua conta e comece a usar em seguida."}
         </p>
 
         {erro && <div className="tela-conta__erro">{erro}</div>}

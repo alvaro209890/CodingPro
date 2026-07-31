@@ -86,6 +86,10 @@ import {
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { COMANDOS_CHAT, textoAjudaComandos } from "../shared/slash-commands.js";
 
+// Renderização em RDP/VM/máquinas sem GPU dedicada fica preta com aceleração de
+// hardware (Chromium). Desligar evita janela vazia no primeiro start.
+app.disableHardwareAcceleration();
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -1331,13 +1335,13 @@ app.whenReady().then(() => {
     );
   });
 
-  /** Cadastro: cria conta pendente e devolve mensagem. */
+  /** Cadastro: cria conta (ativa na hora, sem verificação de e-mail) e devolve mensagem. */
   ipcMain.handle(
     "codingpro:conta-cadastrar",
     async (_, email: string, nome: string, senha: string) => {
       const API = "https://codingpro-api.cursar.space";
       const res = await fetch(`${API}/api/cadastro`, {
-        body: JSON.stringify({ email, nome, senha }),
+        body: JSON.stringify({ email, nome, senha, termosAceitos: true }),
         headers: { "content-type": "application/json" },
         method: "POST",
       });
