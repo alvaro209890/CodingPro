@@ -153,7 +153,7 @@ describe("criarProviderRuntime", () => {
     }
   });
 
-  it("cria DeepSeek somente quando selecionado explicitamente (auto→Pro)", async () => {
+  it("cria DeepSeek somente quando selecionado explicitamente (auto→Flash)", async () => {
     const directory = await mkdtemp(join(tmpdir(), "codingpro-runtime-"));
     const provider = await criarProviderRuntime(
       await runtimeContext(directory, {
@@ -162,13 +162,13 @@ describe("criarProviderRuntime", () => {
       }),
     );
 
-    expect(provider).toMatchObject({ id: "deepseek", model: "deepseek-v4-pro" });
+    expect(provider).toMatchObject({ id: "deepseek", model: "deepseek-v4-flash" });
     await rm(directory, { force: true, recursive: true });
   });
 
   it.each([
-    { role: "auto" as const, model: "deepseek-v4-pro" },
-    { role: "main" as const, model: "deepseek-v4-pro" },
+    { role: "auto" as const, model: "deepseek-v4-flash" },
+    { role: "main" as const, model: "deepseek-v4-flash" },
     { role: "fast" as const, model: "deepseek-v4-flash" },
   ])("runtime DeepSeek com role $role → $model", async ({ role, model }) => {
     const directory = await mkdtemp(join(tmpdir(), "codingpro-runtime-"));

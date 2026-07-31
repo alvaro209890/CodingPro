@@ -31,7 +31,9 @@ import {
   DEFAULT_MODEL_ROLE,
   isModelRole,
   type ModelRole,
+  type ReasoningEffort,
   resolveDeepSeekModelForRole,
+  resolverEsforcoRaciocinio,
 } from "../roles.js";
 import {
   copyChatRequest,
@@ -46,7 +48,8 @@ export const DEEPSEEK_MODEL_PRO = "deepseek-v4-pro";
 export const DEEPSEEK_MODEL_FLASH = "deepseek-v4-flash";
 export const DEEPSEEK_MODELS = Object.freeze([DEEPSEEK_MODEL_PRO, DEEPSEEK_MODEL_FLASH] as const);
 export type DeepSeekModel = (typeof DEEPSEEK_MODELS)[number];
-export const DEEPSEEK_MODEL = DEEPSEEK_MODEL_PRO;
+/** Padrão de produto: Flash (nunca Pro). */
+export const DEEPSEEK_MODEL = DEEPSEEK_MODEL_FLASH;
 
 type FetchFunction = NonNullable<OpenAICompatibleProviderSettings["fetch"]>;
 
@@ -66,9 +69,9 @@ export interface DeepSeekProviderOptions {
    * Se `role` e `model` forem informados juntos, precisam concordar.
    */
   readonly model?: DeepSeekModel;
-  /** Papel de produto (`auto`|`main`|`fast`). Padrão efetivo: `auto` → Pro. */
+  /** Papel de produto (`auto`|`main`|`fast`). Padrão efetivo: `auto` → Flash + raciocínio `max`. */
   readonly role?: ModelRole;
-  readonly reasoningEffort?: "high" | "max";
+  readonly reasoningEffort?: ReasoningEffort;
   readonly thinking?: boolean;
   readonly totalTimeoutMs?: number;
 }
@@ -97,7 +100,7 @@ function validateModel(model: unknown): asserts model is DeepSeekModel {
 
 /**
  * Resolve o modelo a partir de `role` e/ou `model` allowlisted.
- * Caminho de produto: só `role` (default `auto` → Pro). `model` permanece para testes/smoke.
+ * Caminho de produto: só `role` (todos os papéis → Flash). `model` permanece para testes/smoke.
  */
 export function resolveDeepSeekProviderModel(options: {
   readonly model?: unknown;
@@ -486,7 +489,9 @@ export class DeepSeekProvider implements Provider {
 
     const thinking = options.thinking ?? true;
     this.#thinking = thinking;
-    const reasoningEffort = options.reasoningEffort ?? "high";
+    // Raciocínio dinâmico: `auto`/`main` (tarefa difícil) → max; `fast` → high. Modelo é sempre Flash.
+    const reasoningEffort =
+      options.reasoningEffort ?? resolverEsforcoRaciocinio(options.role ?? DEFAULT_MODEL_ROLE);
 
     const baseUrl = normalizarBaseUrl(options.baseUrl ?? DEEPSEEK_BASE_URL);
     const provider = createOpenAICompatible({

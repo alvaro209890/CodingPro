@@ -4,10 +4,10 @@ import { ProviderError } from "./errors.js";
 export const MODEL_ROLES = Object.freeze(["auto", "main", "fast"] as const);
 export type ModelRole = (typeof MODEL_ROLES)[number];
 
-/** Padrão de produto: codificação/arquitetura/revisão usam Pro via `auto` → `main`. */
+/** Padrão de produto: sempre DeepSeek V4 Flash; a dificuldade varia o esforço de raciocínio. */
 export const DEFAULT_MODEL_ROLE: ModelRole = "auto";
 
-/** Papel fixo de codificação/arquitetura/revisão. */
+/** Papel fixo de codificação/arquitetura/revisão (agora também Flash, com raciocínio máximo). */
 export const MODEL_ROLE_MAIN: ModelRole = "main";
 
 /** Papel fixo de trabalho mecânico (roteador, explorer, resumo, commit, compactação). */
@@ -19,13 +19,17 @@ export const ROLE_MODEL_FLASH = "deepseek-v4-flash" as const;
 
 export type ResolvedDeepSeekModel = typeof ROLE_MODEL_PRO | typeof ROLE_MODEL_FLASH;
 
+/** Níveis de esforço de raciocínio aceitos pela DeepSeek (thinking habilitado). */
+export type ReasoningEffort = "high" | "max";
+
 export function isModelRole(value: unknown): value is ModelRole {
   return value === "auto" || value === "main" || value === "fast";
 }
 
 /**
  * Resolve um papel de produto para o ID allowlisted do DeepSeek.
- * `auto` e `main` → Pro; `fast` → Flash. Qualquer outro valor falha fechado.
+ * Política de produto: **todos os papéis usam Flash** — nunca Pro. A dificuldade da
+ * tarefa (auto-effort) decide o esforço de raciocínio, não o modelo.
  */
 export function resolveDeepSeekModelForRole(
   role: ModelRole = DEFAULT_MODEL_ROLE,
@@ -33,9 +37,30 @@ export function resolveDeepSeekModelForRole(
   switch (role) {
     case "auto":
     case "main":
-      return ROLE_MODEL_PRO;
     case "fast":
       return ROLE_MODEL_FLASH;
+    default: {
+      const exhaustive: never = role;
+      throw new ProviderError(
+        "not-configured",
+        `O papel de modelo é inválido: ${String(exhaustive)}.`,
+      );
+    }
+  }
+}
+
+/**
+ * Esforço de raciocínio dinâmico por papel: tarefas difíceis (`auto`/`main`,
+ * decididas pela heurística de auto-effort) raciocinam em `max`; tarefas
+ * mecânicas (`fast`) raciocinam em `high`. Modelo é sempre Flash.
+ */
+export function resolverEsforcoRaciocinio(role: ModelRole = DEFAULT_MODEL_ROLE): ReasoningEffort {
+  switch (role) {
+    case "auto":
+    case "main":
+      return "max";
+    case "fast":
+      return "high";
     default: {
       const exhaustive: never = role;
       throw new ProviderError(

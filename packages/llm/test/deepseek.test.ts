@@ -152,7 +152,7 @@ describe("DeepSeekProvider", () => {
         { content: "olá", role: "user" },
       ],
       model: DEEPSEEK_MODEL,
-      reasoning_effort: "high",
+      reasoning_effort: "max",
       stream: true,
       stream_options: { include_usage: true },
       thinking: { type: "enabled" },

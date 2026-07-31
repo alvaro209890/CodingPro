@@ -13,6 +13,7 @@ import {
   ROLE_MODEL_PRO,
   resolveDeepSeekModelForRole,
   resolveDeepSeekProviderModel,
+  resolverEsforcoRaciocinio,
 } from "../src/index.js";
 
 describe("roteamento de papéis DeepSeek", () => {
@@ -33,15 +34,22 @@ describe("roteamento de papéis DeepSeek", () => {
   });
 
   it.each([
-    { role: "auto" as const, model: DEEPSEEK_MODEL_PRO },
-    { role: "main" as const, model: DEEPSEEK_MODEL_PRO },
-    { role: "fast" as const, model: DEEPSEEK_MODEL_FLASH },
-  ])("resolve $role → $model", ({ role, model }) => {
-    expect(resolveDeepSeekModelForRole(role)).toBe(model);
+    { role: "auto" as const },
+    { role: "main" as const },
+    { role: "fast" as const },
+  ])("resolve $role → Flash (nunca Pro)", ({ role }) => {
+    expect(resolveDeepSeekModelForRole(role)).toBe(DEEPSEEK_MODEL_FLASH);
   });
 
-  it("usa auto→Pro quando o papel é omitido", () => {
-    expect(resolveDeepSeekModelForRole()).toBe(DEEPSEEK_MODEL_PRO);
+  it("usa Flash quando o papel é omitido", () => {
+    expect(resolveDeepSeekModelForRole()).toBe(DEEPSEEK_MODEL_FLASH);
+  });
+
+  it("resolverEsforcoRaciocinio: auto/main → max, fast → high", () => {
+    expect(resolverEsforcoRaciocinio("auto")).toBe("max");
+    expect(resolverEsforcoRaciocinio("main")).toBe("max");
+    expect(resolverEsforcoRaciocinio("fast")).toBe("high");
+    expect(resolverEsforcoRaciocinio()).toBe("max");
   });
 
   it("resolveDeepSeekModelForRole falha no ramo exaustivo com papel forjado", () => {
@@ -83,16 +91,16 @@ describe("roteamento de papéis DeepSeek", () => {
   });
 
   it("resolveDeepSeekProviderModel: role, model, default e inconsistência", () => {
-    expect(resolveDeepSeekProviderModel({})).toBe(DEEPSEEK_MODEL_PRO);
-    expect(resolveDeepSeekProviderModel({ role: "auto" })).toBe(DEEPSEEK_MODEL_PRO);
-    expect(resolveDeepSeekProviderModel({ role: "main" })).toBe(DEEPSEEK_MODEL_PRO);
+    expect(resolveDeepSeekProviderModel({})).toBe(DEEPSEEK_MODEL_FLASH);
+    expect(resolveDeepSeekProviderModel({ role: "auto" })).toBe(DEEPSEEK_MODEL_FLASH);
+    expect(resolveDeepSeekProviderModel({ role: "main" })).toBe(DEEPSEEK_MODEL_FLASH);
     expect(resolveDeepSeekProviderModel({ role: "fast" })).toBe(DEEPSEEK_MODEL_FLASH);
     expect(resolveDeepSeekProviderModel({ model: DEEPSEEK_MODEL_PRO })).toBe(DEEPSEEK_MODEL_PRO);
     expect(resolveDeepSeekProviderModel({ model: DEEPSEEK_MODEL_FLASH })).toBe(
       DEEPSEEK_MODEL_FLASH,
     );
-    expect(resolveDeepSeekProviderModel({ model: DEEPSEEK_MODEL_PRO, role: "main" })).toBe(
-      DEEPSEEK_MODEL_PRO,
+    expect(resolveDeepSeekProviderModel({ model: DEEPSEEK_MODEL_FLASH, role: "main" })).toBe(
+      DEEPSEEK_MODEL_FLASH,
     );
     expect(resolveDeepSeekProviderModel({ model: DEEPSEEK_MODEL_FLASH, role: "fast" })).toBe(
       DEEPSEEK_MODEL_FLASH,
@@ -121,10 +129,10 @@ describe("roteamento de papéis DeepSeek", () => {
     const fast = new DeepSeekProvider({ apiKey: chave, role: "fast" });
     const padrao = new DeepSeekProvider({ apiKey: chave });
 
-    expect(main.model).toBe(DEEPSEEK_MODEL_PRO);
-    expect(auto.model).toBe(DEEPSEEK_MODEL_PRO);
+    expect(main.model).toBe(DEEPSEEK_MODEL_FLASH);
+    expect(auto.model).toBe(DEEPSEEK_MODEL_FLASH);
     expect(fast.model).toBe(DEEPSEEK_MODEL_FLASH);
-    expect(padrao.model).toBe(DEEPSEEK_MODEL_PRO);
+    expect(padrao.model).toBe(DEEPSEEK_MODEL_FLASH);
 
     try {
       new DeepSeekProvider({ apiKey: chave, role: "turbo" as never });

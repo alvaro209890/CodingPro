@@ -319,7 +319,7 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
       ? `Você é o CodingPro, um assistente de código. O usuário está trabalhando no workspace com estes arquivos:\n${contexto}\n\nResponda de forma útil e direta.`
       : "Você é o CodingPro, um assistente de código. Responda de forma útil e direta.";
 
-    const modelo = "deepseek-v4-pro" as const;
+    const modelo = "deepseek-v4-flash" as const;
     const inicioChamada = Date.now();
 
     try {

@@ -366,10 +366,10 @@ function criarProvider(role?: "main" | "fast"): Provider {
   // para a cota da plataforma sem pedir.
   const apiKey = obterApiKey();
   if (apiKey !== undefined && apiKey.trim().length > 0) {
+    // Thinking sempre ligado (raciocínio dinâmico): `fast` → high, `main`/padrão → max.
     return new DeepSeekProvider({
       apiKey,
       ...papel,
-      ...(role === "fast" ? { thinking: false } : {}),
     });
   }
 
@@ -379,7 +379,6 @@ function criarProvider(role?: "main" | "fast"): Provider {
       apiKey: conta.token,
       baseUrl: `${conta.apiUrl}/v1`,
       ...papel,
-      ...(role === "fast" ? { thinking: false } : {}),
     });
   }
 
@@ -1624,7 +1623,8 @@ app.whenReady().then(() => {
           Array.from(session.registry.definitions(), (t) => t.name),
         );
         const papel = resolverAutoEffort(session.autoEffort);
-        const modeloNome = papel === "fast" ? "DeepSeek V4 Flash" : "DeepSeek V4 Pro";
+        const modeloNome = "DeepSeek V4 Flash";
+        // `papel` vem do auto-effort: "auto" → raciocínio max, "fast" → high. Modelo é sempre Flash.
         let providerTurno: Provider = session.provider;
         if (session.provider.id === "deepseek" && papel === "fast") {
           // `criarProvider` já escolhe entre chave própria e conta cloud;

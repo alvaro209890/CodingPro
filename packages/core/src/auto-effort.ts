@@ -1,14 +1,15 @@
 /**
- * Resolvedor automático de esforço (auto-effort v1). Decide se o próximo turno usa Flash (rápido/barato)
- * ou Pro (forte/caro) baseado no tamanho do contexto, complexidade da tarefa e histórico de falhas.
- * O usuário NUNCA escolhe — a CLI decide sozinha e escala em caso de necessidade.
+ * Resolvedor automático de esforço (auto-effort v1). Decide o **esforço de raciocínio** do próximo
+ * turno — `auto` (raciocínio `max`) ou `fast` (`high`) — baseado no tamanho do contexto,
+ * complexidade da tarefa e histórico de falhas. O modelo é **sempre DeepSeek V4 Flash**;
+ * o usuário NUNCA escolhe — a CLI decide sozinha e escala o raciocínio em caso de necessidade.
  *
  * Estratégia:
- *   1. Tarefas simples e contextos pequenos → Flash
- *   2. Contexto grande, ferramentas de edição, ou falha anterior → escala para Pro
- *   3. O papel é "auto" (resolve para Pro) ou "fast" (Flash)
+ *   1. Tarefas simples e contextos pequenos → Flash + raciocínio `high`
+ *   2. Contexto grande, ferramentas de edição, ou falha anterior → Flash + raciocínio `max`
+ *   3. O papel é "auto" (max) ou "fast" (high) — nenhum troca de modelo
  *
- * Meta: cache-hit >70% em sessão típica, auto-effort ≤60% do custo de fixo-high (doc 14.2).
+ * Meta: cache-hit >70% em sessão típica, custo ≤60% do fixo-high (doc 14.2).
  */
 
 import type { ModelRole } from "@codingpro/llm";
@@ -29,26 +30,26 @@ export interface AutoEffortState {
 }
 
 /**
- * Decide o papel de modelo para o próximo turno com base no estado acumulado.
- * Nunca retorna "main" — só "auto" (Pro) ou "fast" (Flash).
+ * Decide o papel de esforço para o próximo turno com base no estado acumulado.
+ * Nunca retorna "main" — só "auto" (Flash + raciocínio `max`) ou "fast" (Flash + `high`).
  */
 export function resolverAutoEffort(state: AutoEffortState): ModelRole {
-  // Se falhou consecutivamente, escala para Pro.
+  // Se falhou consecutivamente, escala o raciocínio para max.
   if (state.falhasConsecutivas > 0) {
     return "auto";
   }
 
-  // Contexto grande → precisa de Pro para entender tudo.
+  // Contexto grande → precisa de raciocínio máximo para entender tudo.
   if (state.tokensContexto > FLASH_CONTEXT_THRESHOLD_TOKENS) {
     return "auto";
   }
 
-  // Tools pesadas → Pro lida melhor com edições e orquestração.
+  // Tools pesadas → raciocínio máximo lida melhor com edições e orquestração.
   if (state.toolsAtivas.some((n) => HEAVY_TOOL_NAMES.includes(n))) {
     return "auto";
   }
 
-  // Tudo o mais: Flash é suficiente e econômico.
+  // Tudo o mais: raciocínio high é suficiente e econômico.
   return "fast";
 }
 

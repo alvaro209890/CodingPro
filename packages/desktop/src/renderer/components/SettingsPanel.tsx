@@ -64,7 +64,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     <div className="settings-section">
       <div className="settings-label">Modelo</div>
       <div className="settings-value">{modelName}</div>
-      <div className="settings-hint">DeepSeek V4 Pro (único disponível)</div>
+      <div className="settings-hint">DeepSeek V4 Flash (único disponível)</div>
     </div>
 
     <div className="settings-section">

@@ -160,7 +160,7 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
   onToggleTerminal,
   isTerminalOpen = false,
   branchName = "master",
-  modelName = "DeepSeek V4 Pro",
+  modelName = "DeepSeek V4 Flash",
   effortLevel = "Auto",
   cost = null,
 }) => {

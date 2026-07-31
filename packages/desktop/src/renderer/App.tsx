@@ -660,7 +660,7 @@ export const App: React.FC = () => {
               setAutoApprove(next);
               void window.codingproAPI?.setAutoApprove(next);
             }}
-            modelName={modelInfo?.modelName ?? "DeepSeek V4 Pro"}
+            modelName={modelInfo?.modelName ?? "DeepSeek V4 Flash"}
             effortLevel={modelInfo?.effort ?? "—"}
             tema={tema}
             onTemaChange={setTema}
@@ -787,7 +787,7 @@ export const App: React.FC = () => {
           onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
           isTerminalOpen={isTerminalOpen}
           branchName="master"
-          modelName={modelInfo?.modelName ?? "DeepSeek V4 Pro"}
+          modelName={modelInfo?.modelName ?? "DeepSeek V4 Flash"}
           effortLevel={modelInfo?.effort ?? "Auto"}
           cost={sessionCost}
         />

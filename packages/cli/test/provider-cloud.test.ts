@@ -37,7 +37,7 @@ describe("modo cloud da CLI", () => {
     await conectarConta();
     const provider = await criarProviderRuntime(contexto({}));
     expect(provider.id).toBe("deepseek");
-    expect(provider.model).toBe("deepseek-v4-pro");
+    expect(provider.model).toBe("deepseek-v4-flash");
   });
 
   it("funciona sem provider escolhido no settings — o login já é escolha suficiente", async () => {

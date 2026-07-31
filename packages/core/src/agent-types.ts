@@ -1,10 +1,11 @@
 import type { ModelRole } from "@codingpro/llm";
 
 /**
- * Tipos de subagente: perfil (papel de modelo), tools permitidas e system prompt. Os quatro padrões
+ * Tipos de subagente: perfil (papel de esforço), tools permitidas e system prompt. Os quatro padrões
  * de fábrica cobrem exploração, trabalho, planejamento e revisão. Tipos custom vêm de
  * `.codingpro/agents/<nome>.md` (frontmatter `role`/`tools` + corpo = prompt), sem provider nem ID de
- * modelo arbitrário — só os papéis `auto|main|fast`.
+ * modelo arbitrário — todos os papéis usam **DeepSeek V4 Flash**; o papel decide só o esforço de
+ * raciocínio (`main`/`auto` → `max`, `fast` → `high`).
  */
 export interface TipoAgente {
   readonly nome: string;

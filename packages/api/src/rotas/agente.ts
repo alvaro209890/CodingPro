@@ -245,7 +245,7 @@ export function registrarRotaAgente(app: FastifyInstance, ctx: Contexto): void {
     if (!acesso.ok) return erro(resposta, acesso.status, acesso.codigo, acesso.mensagem);
 
     const workspace = dirUsuario(u.id);
-    const modelo = "deepseek-v4-pro" as const;
+    const modelo = "deepseek-v4-flash" as const;
     let competencia = acesso.competencia;
 
     resposta.raw.writeHead(200, {
