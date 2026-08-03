@@ -3,16 +3,16 @@
 Documento operacional curto. Lacunas plano × código: **[`docs/LACUNAS_FASES.md`](docs/LACUNAS_FASES.md)**.  
 Estado Fase 1: [`docs/ESTADO_PROJETO.md`](docs/ESTADO_PROJETO.md).
 
-Último incremento: **[`docs/AUTENTICACAO-SOMENTE-SENHA-2026-08-03.md`](docs/AUTENTICACAO-SOMENTE-SENHA-2026-08-03.md)**
-— remoção integral do segundo fator, com login e painel administrativo somente por senha e sessão.
-Anterior: [`docs/RESET-APROVACAO-CREDITOS-2026-08-03.md`](docs/RESET-APROVACAO-CREDITOS-2026-08-03.md).
+Último incremento: **[`docs/CORRECAO-LOGIN-DESKTOP-1.1.1.md`](docs/CORRECAO-LOGIN-DESKTOP-1.1.1.md)**
+— app empacotado exige conta Cloud, ignora chaves locais e usa a nova tela de acesso.
+Anterior: [`docs/AUTENTICACAO-SOMENTE-SENHA-2026-08-03.md`](docs/AUTENTICACAO-SOMENTE-SENHA-2026-08-03.md).
 
 ## Fases
 
 | Fase | Status | Próximo foco |
 |------|--------|----------------|
 | 1 CLI | 🟢 Engenharia v1 completa; `glob`, JSON headless e approve-always persistente entregues | `npm publish`, QA visual, Ink/subprocessos/background/voz pós-1.0 |
-| 2 Windows | 🟢 v1.1.0: renderer auditado e refinado, pt-BR, a11y de teclado, sem controles falsos | Auto-updater live e QA visual em Windows limpo |
+| 2 Windows | 🟢 v1.1.1: login Cloud obrigatório no pacote e tela de acesso responsiva validada | Assinatura de código e auto-updater live |
 | 3 Plataforma | 🟢 Produção no acer com aprovação + créditos, LGPD/CSP/limites/backup | Configurar SMTP/Turnstile, testar restore/load e conduzir beta |
 
 ## Plataforma (Fase 3) — o que sobe no acer
@@ -27,8 +27,8 @@ pnpm plataforma:deploy
 - CLI: `codingpro login` → proxy `/v1/chat/completions` após aprovação e liberação de créditos
 - P4 entregue em código: exportar/apagar conta, Termos/Privacidade, CSP, limite diário/`rate_rpm`, SMTP/Turnstile opcionais e backup systemd.
 - Login e painel administrativo usam somente e-mail, senha e sessão segura; o segundo fator foi removido do produto em 2026-08-03.
-- Produção validada em 2026-08-03: API/site/downloads 1.1.0 online, chamada DeepSeek real e débito
-  de saldo aprovados; gate atual com 3.855 testes e integração Postgres 93/93.
+- Produção validada em 2026-08-03: API/site/downloads 1.1.1 online; app empacotado exige conta
+  Cloud; gate atual com 3.858 testes e integração Postgres 93/93.
 - P4 ainda operacional: segredos SMTP/Turnstile, teste de carga, beta fechado e restore.
 
 ### Fixes de fluxo

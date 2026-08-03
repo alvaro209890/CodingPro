@@ -7,7 +7,7 @@ export interface SessionMetaUI {
 }
 
 export interface EstadoAcesso {
-  /** `conta` = token do site; `chave-propria` = DEEPSEEK_API_KEY; `sem-acesso` = nada configurado. */
+  /** `conta` = token do site; `chave-propria` = apenas dev; `sem-acesso` = login obrigatório. */
   modo: "conta" | "chave-propria" | "sem-acesso";
   apiUrl?: string;
   prefixoToken?: string;

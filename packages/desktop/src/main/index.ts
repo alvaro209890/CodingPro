@@ -86,6 +86,7 @@ import {
 } from "@codingpro/llm";
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { COMANDOS_CHAT, textoAjudaComandos } from "../shared/slash-commands.js";
+import { decidirModoAcesso, permiteChavePropria } from "./politica-acesso.js";
 
 // Renderização em RDP/VM/máquinas sem GPU dedicada fica preta com aceleração de
 // hardware (Chromium). Desligar evita janela vazia no primeiro start.
@@ -289,6 +290,10 @@ interface ChatSession {
 let activeSession: ChatSession | null = null;
 
 function obterApiKey(): string | undefined {
+  // O produto instalado precisa passar pelo proxy Cloud para aplicar aprovação e créditos.
+  // A chave local é uma conveniência exclusiva do runtime de desenvolvimento.
+  if (!permiteChavePropria(app.isPackaged)) return undefined;
+
   if (process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY.trim().length > 0) {
     return process.env.DEEPSEEK_API_KEY.trim();
   }
@@ -326,7 +331,8 @@ function obterApiKey(): string | undefined {
  * Credenciais da conta do CodingPro Cloud, gravadas pelo `codingpro login`.
  * O app desktop distribuído usa exatamente o mesmo arquivo que a CLI: quem já entrou
  * pelo terminal não precisa entrar de novo, e quem só tem o app entra pela mesma tela
- * do site. Sem conta e sem chave própria, o app não fala com IA nenhuma.
+ * do site. Na versão empacotada, uma conta é sempre obrigatória; chave própria só é
+ * aceita durante o desenvolvimento local.
  */
 function obterCredenciaisConta(): { token: string; apiUrl: string } | undefined {
   const caminho = join(homedir(), ".codingpro", "credenciais.json");
@@ -356,12 +362,16 @@ export type EstadoAcesso = {
 
 function obterEstadoAcesso(): EstadoAcesso {
   const conta = obterCredenciaisConta();
-  if (conta) {
+  const apiKey = obterApiKey();
+  const modo = decidirModoAcesso({
+    empacotado: app.isPackaged,
+    temChavePropria: apiKey !== undefined && apiKey.trim().length > 0,
+    temConta: conta !== undefined,
+  });
+  if (modo === "conta" && conta) {
     return { apiUrl: conta.apiUrl, modo: "conta", prefixoToken: conta.token.slice(0, 11) };
   }
-  const apiKey = obterApiKey();
-  if (apiKey !== undefined && apiKey.trim().length > 0) return { modo: "chave-propria" };
-  return { modo: "sem-acesso" };
+  return { modo };
 }
 
 function criarProvider(role?: "main" | "fast"): Provider {
@@ -380,8 +390,8 @@ function criarProvider(role?: "main" | "fast"): Provider {
     }
   }
 
-  // Chave própria tem prioridade: quem já paga a própria chave não é empurrado
-  // para a cota da plataforma sem pedir.
+  // Chave própria tem prioridade somente no desenvolvimento. O app empacotado não
+  // pode contornar aprovação e créditos com uma chave encontrada neste computador.
   const apiKey = obterApiKey();
   if (apiKey !== undefined && apiKey.trim().length > 0) {
     // Thinking sempre ligado (raciocínio dinâmico): `fast` → high, `main`/padrão → max.
@@ -401,8 +411,9 @@ function criarProvider(role?: "main" | "fast"): Provider {
   }
 
   throw new Error(
-    "Nenhuma conta conectada. Crie sua conta em https://codingpro.cursar.space e rode " +
-      "`codingpro login`, ou defina DEEPSEEK_API_KEY para usar sua própria chave.",
+    app.isPackaged
+      ? "Nenhuma conta conectada. Entre com sua conta CodingPro para continuar."
+      : "Nenhuma conta conectada. Entre com sua conta CodingPro ou defina DEEPSEEK_API_KEY no ambiente de desenvolvimento.",
   );
 }
 
@@ -677,6 +688,7 @@ function createWindow(): void {
     height: 850,
     minWidth: 900,
     minHeight: 650,
+    autoHideMenuBar: true,
     title: "CodingPro Desktop",
     backgroundColor: "#0b0e14",
     show: false,

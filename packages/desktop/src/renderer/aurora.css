@@ -1813,92 +1813,334 @@ body {
 /* ---------- tela de conta (login do app distribuído) ---------- */
 
 .tela-conta {
+  position: relative;
+  isolation: isolate;
   display: grid;
-  place-items: center;
+  grid-template-columns: minmax(0, 1.08fr) minmax(430px, 0.92fr);
+  width: 100%;
+  min-width: 0;
   height: 100vh;
-  padding: 2rem;
+  overflow: hidden;
   background:
-    radial-gradient(90% 60% at 50% -10%, rgba(16, 185, 129, 0.1), transparent 70%), #0a0a0f;
-  color: #e6e6ec;
+    radial-gradient(circle at 8% 12%, rgba(16, 185, 129, 0.14), transparent 31%),
+    radial-gradient(circle at 56% 92%, rgba(139, 92, 246, 0.13), transparent 34%), #080b11;
+  color: var(--text-primary);
+}
+
+.tela-conta::before {
+  position: absolute;
+  z-index: -1;
+  top: 18%;
+  left: 8%;
+  width: 410px;
+  height: 410px;
+  content: "";
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(circle, #000 20%, transparent 72%);
+  opacity: 0.8;
+}
+
+.tela-conta__apresentacao {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(2.75rem, 5vw, 5.25rem);
+  border-right: 1px solid rgba(139, 158, 192, 0.12);
+}
+
+.tela-conta__logo,
+.tela-conta__marca-compacta {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 1.18rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.tela-conta__simbolo {
+  display: grid;
+  width: 2.45rem;
+  height: 2.45rem;
+  place-items: center;
+  color: #06110f;
+  background: linear-gradient(135deg, #34d399, #22d3ee 56%, #a78bfa);
+  border-radius: 11px;
+  box-shadow: 0 10px 32px rgba(16, 185, 129, 0.22);
+  font-size: 0.73rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.tela-conta__mensagem {
+  max-width: 590px;
+}
+
+.tela-conta__kicker,
+.tela-conta__etiqueta {
+  color: #4fe1b8;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.tela-conta__mensagem h1 {
+  max-width: 15ch;
+  margin: 1rem 0 1.25rem;
+  font-size: clamp(2.35rem, 4.2vw, 4.35rem);
+  line-height: 1.02;
+  letter-spacing: -0.055em;
+}
+
+.tela-conta__mensagem > p:not(.tela-conta__kicker) {
+  max-width: 52ch;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.tela-conta__beneficios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1.75rem;
+}
+
+.tela-conta__beneficios span {
+  padding: 0.48rem 0.72rem;
+  color: #b8c5da;
+  background: rgba(22, 28, 40, 0.72);
+  border: 1px solid rgba(139, 158, 192, 0.14);
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+
+.tela-conta__beneficios span::before {
+  margin-right: 0.45rem;
+  color: #34d399;
+  content: "●";
+  font-size: 0.55rem;
+}
+
+.tela-conta__ambiente {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+}
+
+.tela-conta__painel {
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  padding: clamp(2rem, 4vw, 4.5rem);
+  background: rgba(5, 8, 13, 0.46);
+  backdrop-filter: blur(20px);
 }
 
 .tela-conta__cartao {
-  width: min(460px, 100%);
-  padding: 2.25rem;
-  text-align: center;
-  background: #16161f;
-  border: 1px solid #24242f;
-  border-radius: 18px;
+  width: min(430px, 100%);
+  padding: clamp(1.75rem, 3.2vw, 2.55rem);
+  text-align: left;
+  background: linear-gradient(145deg, rgba(23, 29, 42, 0.94), rgba(13, 17, 26, 0.96));
+  border: 1px solid rgba(139, 158, 192, 0.18);
+  border-radius: 22px;
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.38),
+    inset 0 1px rgba(255, 255, 255, 0.035);
 }
 
-.tela-conta__marca {
-  margin: 0 0 0.4rem;
-  font-size: 2.4rem;
-  letter-spacing: -0.03em;
-  background: linear-gradient(100deg, #10b981, #06b6d4 55%, #8b5cf6);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+.tela-conta__marca-compacta {
+  display: none;
+  margin-bottom: 2rem;
+}
+
+.tela-conta__titulo {
+  margin: 0.65rem 0 0.55rem;
+  font-size: 1.85rem;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
 }
 
 .tela-conta__sub {
-  margin: 0 0 1.75rem;
-  color: #a1a1b0;
-  font-size: 0.95rem;
+  margin: 0 0 1.6rem;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.tela-conta__formulario {
+  display: grid;
+  gap: 1rem;
+}
+
+.tela-conta__campo {
+  display: grid;
+  gap: 0.48rem;
+  color: #cad5e5;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.tela-conta__campo input {
+  width: 100%;
+  height: 48px;
+  padding: 0 0.9rem;
+  color: var(--text-primary);
+  background: rgba(7, 10, 16, 0.78);
+  border: 1px solid rgba(139, 158, 192, 0.2);
+  border-radius: 11px;
+  outline: none;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 400;
+  user-select: text;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background 150ms ease;
+}
+
+.tela-conta__campo input::placeholder {
+  color: #52617a;
+}
+
+.tela-conta__campo input:hover {
+  border-color: rgba(139, 158, 192, 0.34);
+}
+
+.tela-conta__campo input:focus {
+  background: rgba(9, 14, 22, 0.96);
+  border-color: #22caa1;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
 }
 
 .tela-conta__botao {
   width: 100%;
-  padding: 0.75rem 1.1rem;
+  height: 49px;
+  margin-top: 0.35rem;
+  padding: 0 1.1rem;
   font: inherit;
-  font-weight: 600;
-  color: #04140f;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #031612;
   background: linear-gradient(100deg, #10b981, #06b6d4 55%, #8b5cf6);
   border: none;
-  border-radius: 12px;
+  border-radius: 11px;
+  box-shadow: 0 10px 28px rgba(6, 182, 212, 0.16);
   cursor: pointer;
+  transition:
+    transform 150ms ease,
+    filter 150ms ease,
+    box-shadow 150ms ease;
 }
 .tela-conta__botao:hover:not(:disabled) {
-  opacity: 0.9;
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 34px rgba(6, 182, 212, 0.22);
+}
+.tela-conta__botao:active:not(:disabled) {
+  transform: translateY(0);
 }
 .tela-conta__botao:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.tela-conta__codigo {
-  margin: 1rem 0;
-  padding: 1rem;
-  font-family: ui-monospace, monospace;
-  font-size: 1.9rem;
-  font-weight: 700;
-  letter-spacing: 0.25em;
-  color: #6ee7b7;
-  background: #0a0a0f;
-  border: 1px dashed #10b981;
-  border-radius: 12px;
+.tela-conta__divisor {
+  height: 1px;
+  margin: 1.55rem 0 1.15rem;
+  background: rgba(139, 158, 192, 0.12);
 }
 
-.tela-conta__instrucao {
-  color: #a1a1b0;
-  font-size: 0.92rem;
-}
-.tela-conta__espera {
-  color: #6b6b78;
-  font-size: 0.88rem;
-}
 .tela-conta__rodape {
-  margin: 1rem 0 0;
-  color: #6b6b78;
-  font-size: 0.82rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.42rem;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
   line-height: 1.5;
 }
+
+.tela-conta__link {
+  padding: 0;
+  color: #5ee2bd;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.tela-conta__link:hover {
+  color: #8aecd0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.tela-conta__seguranca {
+  margin-top: 1.1rem;
+  color: #52617a;
+  font-size: 0.7rem;
+  text-align: center;
+}
+
 .tela-conta__erro {
   margin-bottom: 1rem;
-  padding: 0.7rem 0.9rem;
-  font-size: 0.88rem;
+  padding: 0.72rem 0.85rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
   color: #fca5a5;
   background: rgba(242, 85, 90, 0.08);
   border: 1px solid rgba(242, 85, 90, 0.45);
-  border-radius: 12px;
+  border-radius: 10px;
+}
+
+.tela-conta__sucesso {
+  margin-bottom: 1rem;
+  padding: 0.72rem 0.85rem;
+  color: #86efcc;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.38);
+  border-radius: 10px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 980px) {
+  .tela-conta {
+    grid-template-columns: minmax(0, 0.85fr) minmax(430px, 1.15fr);
+  }
+
+  .tela-conta__mensagem h1 {
+    font-size: clamp(2.2rem, 4.6vw, 3.15rem);
+  }
+
+  .tela-conta__beneficios {
+    display: grid;
+    justify-items: start;
+  }
+}
+
+@media (max-width: 760px) {
+  .tela-conta {
+    grid-template-columns: 1fr;
+  }
+
+  .tela-conta__apresentacao {
+    display: none;
+  }
+
+  .tela-conta__painel {
+    padding: 1.5rem;
+  }
+
+  .tela-conta__marca-compacta {
+    display: flex;
+  }
 }

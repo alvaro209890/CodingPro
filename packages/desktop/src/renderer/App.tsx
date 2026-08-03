@@ -706,7 +706,7 @@ export const App: React.FC = () => {
     setStatusNote(null);
   }, []);
 
-  // Portão: sem conta e sem chave própria, só a tela de login.
+  // Portão: o app distribuído exige conta; chave própria só existe no modo de desenvolvimento.
   if (acesso?.modo === "sem-acesso") {
     return (
       <TelaConta

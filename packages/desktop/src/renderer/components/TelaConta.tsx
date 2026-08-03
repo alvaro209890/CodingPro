@@ -54,110 +54,156 @@ export function TelaConta({ aoConectar }: { aoConectar: () => void }) {
   );
 
   return (
-    <div className="tela-conta">
-      <div className="tela-conta__cartao">
-        <h1 className="tela-conta__marca">CodingPro</h1>
-        <p className="tela-conta__sub">
-          {modo === "login"
-            ? "Entre com sua conta para usar o app."
-            : "Crie sua conta e comece a usar em seguida."}
-        </p>
+    <main className="tela-conta">
+      <section className="tela-conta__apresentacao" aria-label="CodingPro Desktop">
+        <div className="tela-conta__logo">
+          <span className="tela-conta__simbolo" aria-hidden="true">
+            CP
+          </span>
+          <span>CodingPro</span>
+        </div>
 
-        {erro && <div className="tela-conta__erro">{erro}</div>}
-        {sucesso && <div className="tela-conta__sucesso">{sucesso}</div>}
+        <div className="tela-conta__mensagem">
+          <p className="tela-conta__kicker">ASSISTENTE DE IA PARA DESENVOLVIMENTO</p>
+          <h1>Seu código. Seu workspace. Um fluxo mais inteligente.</h1>
+          <p>
+            Entre com sua conta para trabalhar nos seus projetos locais com acesso controlado pelo
+            CodingPro Cloud.
+          </p>
+          <div className="tela-conta__beneficios">
+            <span>Workspace local</span>
+            <span>Aprovação segura</span>
+            <span>Créditos controlados</span>
+          </div>
+        </div>
 
-        {modo === "login" ? (
-          <form onSubmit={entrar}>
-            <label>
-              E-mail
-              <input
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                type="email"
-                value={email}
-              />
-            </label>
-            <label>
-              Senha
-              <input
-                onChange={(e) => setSenha(e.target.value)}
-                placeholder="••••••"
-                type="password"
-                value={senha}
-              />
-            </label>
-            <button className="tela-conta__botao" disabled={enviando} type="submit">
-              {enviando ? "Entrando…" : "Entrar"}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={cadastrar}>
-            <label>
-              Nome
-              <input
-                onChange={(e) => setNome(e.target.value)}
-                placeholder="Seu nome"
-                value={nome}
-              />
-            </label>
-            <label>
-              E-mail
-              <input
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                type="email"
-                value={email}
-              />
-            </label>
-            <label>
-              Senha
-              <input
-                onChange={(e) => setSenha(e.target.value)}
-                placeholder="Mínimo 8 caracteres"
-                type="password"
-                value={senha}
-              />
-            </label>
-            <button className="tela-conta__botao" disabled={enviando} type="submit">
-              {enviando ? "Criando…" : "Criar conta"}
-            </button>
-          </form>
-        )}
+        <p className="tela-conta__ambiente">CodingPro Desktop · Windows</p>
+      </section>
 
-        <p className="tela-conta__rodape">
-          {modo === "login" ? (
-            <>
-              Não tem conta?{" "}
-              <button
-                className="tela-conta__link"
-                onClick={() => {
-                  setModo("cadastro");
-                  setErro("");
-                  setSucesso("");
-                }}
-                type="button"
-              >
-                Criar agora
-              </button>
-            </>
-          ) : (
-            <>
-              Já tem conta?{" "}
-              <button
-                className="tela-conta__link"
-                onClick={() => {
-                  setModo("login");
-                  setErro("");
-                  setSucesso("");
-                }}
-                type="button"
-              >
-                Fazer login
-              </button>
-            </>
+      <section className="tela-conta__painel">
+        <div className="tela-conta__cartao">
+          <div className="tela-conta__marca-compacta" aria-hidden="true">
+            <span className="tela-conta__simbolo">CP</span>
+            <span>CodingPro</span>
+          </div>
+          <p className="tela-conta__etiqueta">CONTA CODINGPRO</p>
+          <h2 className="tela-conta__titulo">
+            {modo === "login" ? "Bem-vindo de volta" : "Crie sua conta"}
+          </h2>
+          <p className="tela-conta__sub">
+            {modo === "login"
+              ? "Use o mesmo e-mail e senha cadastrados no site."
+              : "Cadastre-se aqui. O acesso é liberado após aprovação e concessão de créditos."}
+          </p>
+
+          {erro && (
+            <div className="tela-conta__erro" role="alert">
+              {erro}
+            </div>
           )}
-        </p>
-      </div>
-    </div>
+          {sucesso && <div className="tela-conta__sucesso">{sucesso}</div>}
+
+          {modo === "login" ? (
+            <form className="tela-conta__formulario" onSubmit={entrar}>
+              <label className="tela-conta__campo">
+                <span>E-mail</span>
+                <input
+                  autoComplete="username"
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  type="email"
+                  value={email}
+                />
+              </label>
+              <label className="tela-conta__campo">
+                <span>Senha</span>
+                <input
+                  autoComplete="current-password"
+                  onChange={(e) => setSenha(e.target.value)}
+                  placeholder="Digite sua senha"
+                  type="password"
+                  value={senha}
+                />
+              </label>
+              <button className="tela-conta__botao" disabled={enviando} type="submit">
+                {enviando ? "Entrando…" : "Entrar na sua conta"}
+              </button>
+            </form>
+          ) : (
+            <form className="tela-conta__formulario" onSubmit={cadastrar}>
+              <label className="tela-conta__campo">
+                <span>Nome</span>
+                <input
+                  autoComplete="name"
+                  onChange={(e) => setNome(e.target.value)}
+                  placeholder="Seu nome"
+                  value={nome}
+                />
+              </label>
+              <label className="tela-conta__campo">
+                <span>E-mail</span>
+                <input
+                  autoComplete="username"
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  type="email"
+                  value={email}
+                />
+              </label>
+              <label className="tela-conta__campo">
+                <span>Senha</span>
+                <input
+                  autoComplete="new-password"
+                  minLength={8}
+                  onChange={(e) => setSenha(e.target.value)}
+                  placeholder="Mínimo de 8 caracteres"
+                  type="password"
+                  value={senha}
+                />
+              </label>
+              <button className="tela-conta__botao" disabled={enviando} type="submit">
+                {enviando ? "Criando…" : "Criar minha conta"}
+              </button>
+            </form>
+          )}
+
+          <div className="tela-conta__divisor" aria-hidden="true" />
+          <p className="tela-conta__rodape">
+            {modo === "login" ? (
+              <>
+                Ainda não tem conta?
+                <button
+                  className="tela-conta__link"
+                  onClick={() => {
+                    setModo("cadastro");
+                    setErro("");
+                    setSucesso("");
+                  }}
+                  type="button"
+                >
+                  Criar conta
+                </button>
+              </>
+            ) : (
+              <>
+                Já tem uma conta?
+                <button
+                  className="tela-conta__link"
+                  onClick={() => {
+                    setModo("login");
+                    setErro("");
+                    setSucesso("");
+                  }}
+                  type="button"
+                >
+                  Fazer login
+                </button>
+              </>
+            )}
+          </p>
+          <p className="tela-conta__seguranca">Sua credencial fica protegida neste dispositivo.</p>
+        </div>
+      </section>
+    </main>
   );
 }

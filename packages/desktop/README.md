@@ -6,7 +6,8 @@ App Windows Electron que reutiliza o core da CLI (`@codingpro/core` + `@codingpr
 
 - Node.js 24 (CLI/workspace) — o app em si roda no Node embutido do Electron 34 (Node 20)
 - pnpm 10.34.4
-- `DEEPSEEK_API_KEY` em um destes locais (sem commitar):
+- **App instalado:** conta CodingPro Cloud aprovada e com créditos liberados pelo administrador.
+- **Somente no desenvolvimento:** `DEEPSEEK_API_KEY` em um destes locais (sem commitar):
   - `.codingpro/.env` na raiz do monorepo
   - `%USERPROFILE%\.config\codingpro\deepseek.env`
   - variável de ambiente
@@ -158,6 +159,15 @@ Ver `fase2-app-windows/04_roadmap_checklist.md`.
 | Conversa | Chat com streaming, raciocínio recolhível, timeline de ferramentas e subagentes |
 | Configurações | Temas, auto-aprovar, reduzir animações, skills, atalhos, versão |
 | Terminal | Painel inferior com histórico de comandos, na pasta aberta |
+
+## v1.1.1 — login Cloud obrigatório no pacote (2026-08-03)
+
+- O executável distribuído ignora `DEEPSEEK_API_KEY` encontrada no computador e exige login.
+- Aprovação e créditos passam sempre pelo proxy CodingPro Cloud no produto instalado.
+- Chave própria permanece disponível apenas para desenvolvimento no monorepo.
+- Tela de login refeita com layout responsivo, campos completos e estados acessíveis.
+
+Relatório: [`docs/CORRECAO-LOGIN-DESKTOP-1.1.1.md`](../../docs/CORRECAO-LOGIN-DESKTOP-1.1.1.md).
 
 ## v1.1.0 — auditoria e refino do renderer (2026-08-03)
 
