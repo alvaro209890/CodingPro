@@ -52,6 +52,8 @@ a migração de remoção.
 - builds de API, site e painel administrativo aprovados;
 - migração `0005_remover_segundo_fator` aplicada em produção;
 - inspeção do schema: zero colunas antigas na tabela `usuarios`;
+- dump pré-wipe e bootstrap SQL antigos removidos por ainda conterem material legado; a remoção é
+  definitiva e esses dois arquivos não são recuperáveis;
 - login da conta admin somente por senha: HTTP 200;
 - `/api/admin/check` com a sessão criada: HTTP 200;
 - três endpoints antigos: HTTP 404 local e rota pública verificada com 404;

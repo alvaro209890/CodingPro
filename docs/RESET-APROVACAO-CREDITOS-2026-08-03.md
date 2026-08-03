@@ -14,7 +14,8 @@ limites mensal, diário e de RPM continuam como proteções secundárias.
 
 - O túnel público foi interrompido antes do wipe para impedir que um cadastro externo se tornasse o
   primeiro administrador.
-- Um dump de segurança foi gravado no acer em `~/codingpro-backup-pre-wipe.sql`, modo `0600`.
+- O dump temporário pré-wipe foi removido em 2026-08-03 após a retirada do segundo fator, pois ainda
+  continha o schema e material legado que não deve ser preservado.
 - O schema `public` foi removido e recriado; a API reaplicou `0001`, `0002`, `0003` e, no deploy,
   `0004_creditos`.
 - A contagem de `usuarios` foi confirmada em zero antes da recriação do admin.
@@ -143,6 +144,5 @@ do GitHub. O Segundo Cérebro foi atualizado e commitado como `8b424b5`.
 
 ## Recuperação
 
-- O dump pré-wipe fica no acer e pode ser restaurado manualmente em caso de incidente.
 - A receita segura para recriar o admin está em `references/admin-password-reset.md`.
 - A receita de empacotamento/publicação está em `references/packaging-electron-builder.md`.
