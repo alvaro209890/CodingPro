@@ -16,6 +16,18 @@ afterEach(async () => {
 });
 
 describe.skipIf(!TEM_BANCO)("rotas de admin", () => {
+  it("libera o painel em produção com sessão admin e senha", async () => {
+    amb = await montar({ config: { CODINGPRO_AMBIENTE: "producao" } });
+    const chefe = await cadastrar(amb.app, "chefe@teste.com");
+    const resposta = await amb.app.inject({
+      headers: { cookie: chefe.cookie },
+      method: "GET",
+      url: "/api/admin/check",
+    });
+    expect(resposta.statusCode).toBe(200);
+    expect(resposta.json()).toMatchObject({ admin: true });
+  });
+
   it("lista usuários com consumo", async () => {
     amb = await montar();
     const chefe = await cadastrar(amb.app, "chefe@teste.com");

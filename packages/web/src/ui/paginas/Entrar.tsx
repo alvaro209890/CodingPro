@@ -13,8 +13,6 @@ export function Entrar({
 }) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [totp, setTotp] = useState("");
-  const [precisaTotp, setPrecisaTotp] = useState(false);
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
 
@@ -26,16 +24,10 @@ export function Entrar({
       const dados = await api.post<{ usuario: Usuario }>("/api/login", {
         email,
         senha,
-        ...(precisaTotp ? { totp } : {}),
       });
       aoEntrar(dados.usuario);
       navegar(destinoSeguro(destino));
     } catch (causa) {
-      if (causa instanceof ErroApi && causa.status === 401 && causa.codigo === "totp_obrigatorio") {
-        setPrecisaTotp(true);
-        setErro(causa.message);
-        return;
-      }
       setErro(causa instanceof ErroApi ? causa.message : "Não consegui entrar.");
     } finally {
       setEnviando(false);
@@ -55,11 +47,7 @@ export function Entrar({
             <span>E-mail</span>
             <input
               autoComplete="email"
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setPrecisaTotp(false);
-                setTotp("");
-              }}
+              onChange={(e) => setEmail(e.target.value)}
               required
               type="email"
               value={email}
@@ -75,22 +63,8 @@ export function Entrar({
               value={senha}
             />
           </label>
-          {precisaTotp && (
-            <label>
-              <span>Código 2FA</span>
-              <input
-                autoComplete="one-time-code"
-                inputMode="numeric"
-                maxLength={6}
-                onChange={(e) => setTotp(e.target.value)}
-                placeholder="000000"
-                required
-                value={totp}
-              />
-            </label>
-          )}
           <button className="primario auth-submit" disabled={enviando} type="submit">
-            {enviando ? "Entrando…" : precisaTotp ? "Confirmar 2FA" : "Entrar"}
+            {enviando ? "Entrando…" : "Entrar"}
           </button>
         </form>
         <p className="fraco centro" style={{ margin: "1rem 0 0" }}>

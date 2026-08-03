@@ -37,7 +37,7 @@ audit_log      id, ator_id, acao (criar_user, mudar_limite, bloquear...), alvo, 
 | Tabelas | TanStack Table | Lista de usuários com sort/busca client-side |
 | Gráficos | Recharts | Gráfico de consumo diário, cache-hit; leve e declarativo |
 | Fetch | Fetch nativo + React Query (TanStack Query) | Cache de leituras, refetch em intervalo p/ consumo em tempo real |
-| Auth | Sessão httpOnly do site + endpoint `/api/admin/check` | O admin valida sessão admin + 2FA no boot; sem token separado |
+| Auth | Sessão httpOnly do site + endpoint `/api/admin/check` | O admin valida sessão + role no boot; sem token separado |
 | Build output | `dist/` estático servido pelo Fastify (`@fastify/static`) | Mesmo processo da API (porta 8700), zero sistema extra |
 | Roteamento | React Router (ou TanStack Router) | SPA com 5 rotas; sem necessidade de file-based routing |
 
@@ -51,7 +51,7 @@ Ver justificativa completa no [01_arquitetura.md](01_arquitetura.md). Em resumo:
 
 ---
 
-## Telas do painel admin (`/admin`, role admin + 2FA obrigatório)
+## Telas do painel admin (`/admin`, role admin obrigatório)
 
 ### 1. Usuários (`/admin/usuarios`)
 
@@ -123,15 +123,15 @@ Filtros: por ação (dropdown), por ator (busca), por período (range de datas).
 - Indicador: "Proxy: 🔵 Aberto — todas as requisições de usuários estão passando" ou "🔴 Fechado — requisições de usuários estão bloqueadas"
 - Botão "Fechar proxy": abre modal "Tem certeza? Todos os usuários (exceto admin) serão bloqueados. Isso NÃO afeta quem usa chave própria."
 - Confirmação: digitar "FECHAR" + botão confirmar
-- Endpoint: `POST /api/admin/kill-switch` (só admin + 2FA, rate limit 1 req/s)
+- Endpoint: `POST /api/admin/kill-switch` (só admin, rate limit 1 req/s)
 - Reabertura: mesmo fluxo com botão "Reabrir proxy"
 
 ---
 
 ## Auth do admin: guarda dupla
 
-1. **No boot do SPA:** `GET /api/admin/check` valida sessão httpOnly + role=admin + 2FA completado → se falhar, redireciona para `/login`.
-2. **Em toda rota `/api/admin/*`:** middleware Fastify valida role + 2FA — independe do front-end. Mesmo que alguém descubra o endpoint, sem token de admin não passa.
+1. **No boot do SPA:** `GET /api/admin/check` valida sessão httpOnly + role=admin → se falhar, redireciona para `/login`.
+2. **Em toda rota `/api/admin/*`:** middleware Fastify valida a sessão e a role — independe do front-end. Mesmo que alguém descubra o endpoint, sem sessão de admin não passa.
 3. **Kill switch:** endpoint com rate limit extra (1 req/s) + confirmação textual.
 
 ---
@@ -174,7 +174,7 @@ Filtros: por ação (dropdown), por ator (busca), por período (range de datas).
 
 ## Segurança
 
-- Senhas argon2id; sessões httpOnly+Secure+SameSite; CSRF no site; 2FA TOTP (obrigatório admin, opcional user).
+- Senhas com scrypt; sessões httpOnly+Secure+SameSite; CSRF no site; troca de senha revoga dispositivos.
 - Tokens `cp_` opacos, hash no banco, mostrados 1×, revogáveis; escopo único (chat) na v1.
 - Rate limit por IP no cadastro/login (anti-abuso) + Cloudflare Turnstile no signup.
 - Chave DeepSeek de **produção**: exclusiva da plataforma (não a do Hermes — essa é só dev), em `/etc/codingpro/env`, com **teto de gasto configurado no painel da DeepSeek** como última linha de defesa.

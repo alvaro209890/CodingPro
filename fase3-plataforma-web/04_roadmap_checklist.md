@@ -60,7 +60,6 @@ Detalhes: [INVENTARIO_PC.md](INVENTARIO_PC.md) · [SETUP_P0.md](SETUP_P0.md)
 
 - [x] Área logada `/painel`: consumo, %, renovação, gráfico diário, tokens, perfil, senha
 - [x] Gerar/listar/revogar tokens + instruções `codingpro login`
-- [x] 2FA TOTP no perfil
 - [x] Exportar dados e apagar conta (LGPD)
 - [ ] Recharts (há gráfico próprio)
 - [x] **Marco funcional:** usuário aprovado vê consumo e gera token
@@ -82,12 +81,10 @@ Detalhes: [INVENTARIO_PC.md](INVENTARIO_PC.md) · [SETUP_P0.md](SETUP_P0.md)
 - [ ] Sort de usuários; filtros de auditoria por ator/período; JSON expandível
 - [ ] Disco livre; projeção linear; % cache-hit; custo DeepSeek real
 - [ ] Kill switch com rate limit extra + confirmação na reabertura
-- [x] 2FA admin obrigatório em produção
 - [x] **Marco MVP:** Álvaro administra limites pelo painel sem SSH
 
 ## P4 — Endurecimento e beta — 🟡 parcialmente code-complete
 
-- [x] 2FA TOTP (obrigatório admin em produção, opcional user)
 - [ ] Turnstile — 🔶 código entregue; falta configurar `TURNSTILE_SITE_KEY`/secret pelo Álvaro
 - [x] Header CSP
 - [ ] Teste de carga: 10 usuários simultâneos
@@ -110,7 +107,7 @@ Detalhes: [INVENTARIO_PC.md](INVENTARIO_PC.md) · [SETUP_P0.md](SETUP_P0.md)
 | P1 | 🟢 núcleo; `rate_rpm` e limite diário entregues; faltam concorrência/override/carga |
 | P2 | 🟢 |
 | P3a/P3b/P3c | 🟢 MVP funcional; acabamento do plano original aberto |
-| P4 | 🟡 code-complete em 2FA/LGPD/CSP/limites/backup; segredos/ops/beta abertos |
+| P4 | 🟡 code-complete em LGPD/CSP/limites/backup; segredos/ops/beta abertos |
 
 ## Riscos (inalterados)
 

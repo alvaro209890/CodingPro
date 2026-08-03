@@ -75,8 +75,6 @@ export type Usuario = {
   readonly limiteDiarioMicro?: number;
   readonly limiteMicro: number;
   readonly rateRpm?: number;
-  readonly totpAtivado?: boolean;
-  readonly totpAtivo?: boolean;
 };
 
 /** Micro-dólares → texto em dólar. A API guarda inteiros para não acumular erro de float. */

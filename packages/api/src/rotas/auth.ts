@@ -6,7 +6,6 @@ import {
   hashSenha,
   normalizarEmail,
   validarForcaSenha,
-  verificarTotp,
 } from "../seguranca.js";
 import { verificarTurnstile } from "../turnstile.js";
 
@@ -31,7 +30,6 @@ function publico(usuario: {
   admin: boolean;
   creditos_micro: number;
   limite_mensal_micro: number;
-  totp_ativado: boolean;
   limite_diario_micro: number;
   rate_rpm: number;
 }) {
@@ -45,7 +43,6 @@ function publico(usuario: {
     nome: usuario.nome,
     rateRpm: usuario.rate_rpm,
     status: usuario.status,
-    totpAtivado: usuario.totp_ativado,
   };
 }
 
@@ -131,16 +128,6 @@ export function registrarRotasAuth(app: FastifyInstance, ctx: Contexto): void {
     if (usuario.status === "bloqueado") {
       return erro(resposta, 403, "bloqueado", "Esta conta está bloqueada.");
     }
-    if (usuario.totp_ativado) {
-      const totp = texto(corpo.totp, 20);
-      if (totp === "") {
-        return erro(resposta, 401, "totp_obrigatorio", "Informe o código 2FA para continuar.");
-      }
-      if (!usuario.totp_secret || !verificarTotp(usuario.totp_secret, totp)) {
-        return erro(resposta, 401, "totp_invalido", "Código 2FA inválido.");
-      }
-    }
-
     await ctx.repo.registrarLogin(usuario.id);
     resposta.setCookie(COOKIE_SESSAO, assinarSessao(usuario.id, ctx.config.sessionSecret), {
       ...opcoesCookie(producao),

@@ -24,14 +24,11 @@ export {
   conferirSenha,
   gerarCodigoUsuario,
   gerarCodigoVerificacao,
-  gerarSegredoTotp,
   gerarTokenCli,
   hashSenha,
   hashToken,
   lerSessao,
   normalizarEmail,
-  otpauthUrl,
   validarForcaSenha,
-  verificarTotp,
 } from "./seguranca.js";
 export { verificarTurnstile } from "./turnstile.js";

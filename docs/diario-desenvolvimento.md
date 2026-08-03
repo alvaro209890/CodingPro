@@ -166,7 +166,7 @@ curl -fsS https://codingpro-api.cursar.space/saude
 
 - Fase 1: engenharia v1 ok; Ink/`packages/tui`, background tasks, voz, etc. ainda abertos/pós-1.0.
 - Fase 2: app usável; instalador `.exe`/auto-update e vários itens W3 incompletos (claims antigos corrigidos).
-- Fase 3: núcleo contas/proxy/limites/admin/login cloud **funcional**; P4 (2FA, SMTP, backup, beta) aberto.
+- Fase 3: núcleo contas/proxy/limites/admin/login cloud **funcional**; P4 (SMTP, backup, beta) aberto.
 
 ### Também no mesmo dia (código)
 

@@ -7,7 +7,7 @@
 |------|--------|
 | **1 — CLI** | 🟢 Completa no plano de engenharia v1. Empacotamento/CI ok. `npm publish` + QA visual humano ficam com o Álvaro. |
 | **2 — Windows** | 🟡 App Electron usável (W0–W2). W3 instalador/auto-update **incompleto**. |
-| **3 — Plataforma** | 🟢 Contas, proxy medido, limites, site, admin MVP, `codingpro login`. **P4** (2FA, SMTP, backup, beta) aberto. |
+| **3 — Plataforma** | 🟢 Contas, proxy medido, limites, site, admin MVP, `codingpro login`. **P4** (SMTP, backup, beta) aberto. |
 
 **Lacunas detalhadas (plano × código):** [`LACUNAS_FASES.md`](LACUNAS_FASES.md)
 

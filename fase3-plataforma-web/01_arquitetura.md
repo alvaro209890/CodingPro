@@ -84,7 +84,7 @@ Decisões:
 ## Site público + dashboard (Next.js)
 
 - **Landing** em pt-BR: o que é, GIF/asciinema da CLI, download (CLI npm + .exe da Fase 2), preços/planos (quando existirem).
-- **Cadastro/login:** e-mail + senha (argon2id) + verificação de e-mail; 2FA TOTP opcional (obrigatório p/ admin).
+- **Cadastro/login:** e-mail + senha; sessão httpOnly assinada.
 - **Dashboard do usuário:** consumo do mês (tokens/US$ e % do limite), gráfico diário, gerar/revogar **token da CLI**, instruções de `codingpro login`.
 
 ## Painel admin (Vite + React standalone)
@@ -92,7 +92,7 @@ Decisões:
 Ver especificação completa no doc [03_contas_limites_admin.md](03_contas_limites_admin.md). Resumo:
 
 - **Stack:** Vite 6 + React 19 + shadcn/ui (Tailwind) + TanStack Table + Recharts + React Query
-- **Auth gate:** `GET /api/admin/check` no boot do SPA → valida sessão + role admin + 2FA; redireciona se falhar
+- **Auth gate:** `GET /api/admin/check` no boot do SPA → valida sessão + role admin; redireciona se falhar
 - **Servido via:** `@fastify/static` na rota `/admin` (mesmo processo da API, porta 8700)
 - **Telas:** usuários, consumo, saúde, auditoria, kill switch
 

@@ -18,8 +18,8 @@ limites mensal, diário e de RPM continuam como proteções secundárias.
 - O schema `public` foi removido e recriado; a API reaplicou `0001`, `0002`, `0003` e, no deploy,
   `0004_creditos`.
 - A contagem de `usuarios` foi confirmada em zero antes da recriação do admin.
-- Somente o admin configurado foi recriado, preservando o hash de senha e o TOTP existentes. A
-  conferência estrutural confirmou uma conta admin ativa com TOTP.
+- Somente o admin configurado foi recriado, preservando o hash de senha existente. A conferência
+  estrutural confirmou uma conta admin ativa.
 - O túnel permaneceu desligado durante a implementação e voltou somente depois da migração, dos
   testes e do deploy do novo código.
 
@@ -69,7 +69,7 @@ preservados.
 3. Informe o valor em **Liberar créditos (US$)** e confirme.
 4. O saldo exibido é cumulativo; uma nova liberação soma ao valor ainda disponível.
 
-O painel administrativo continua exigindo TOTP em produção.
+O painel administrativo exige sessão autenticada e permissão `admin`.
 
 ### Site e desktop
 
@@ -104,8 +104,8 @@ Integração no `acer` com Postgres real: **94/94 testes aprovados**. O teste op
 `packages/api/scripts/e2e-producao-aprovacao-creditos.mjs` também passou contra a API de produção
 local, cobrindo:
 
-1. login do admin exige TOTP;
-2. login com TOTP e acesso ao painel;
+1. login do admin por e-mail e senha;
+2. sessão autenticada com acesso ao painel;
 3. cadastro nasce pendente e sem créditos;
 4. aprovação, liberação e device flow;
 5. `403 conta_nao_aprovada` no proxy;
@@ -115,7 +115,7 @@ local, cobrindo:
 
 O script exige confirmação explícita, aceita somente URL local e remove contas e auditorias
 temporárias em `finally`. A conferência posterior mostrou novamente um único usuário no banco: o
-admin real, ativo, com TOTP e saldo zero.
+admin real, ativo e com saldo zero.
 
 ## Artefatos e estado online
 
@@ -144,5 +144,5 @@ do GitHub. O Segundo Cérebro foi atualizado e commitado como `8b424b5`.
 ## Recuperação
 
 - O dump pré-wipe fica no acer e pode ser restaurado manualmente em caso de incidente.
-- A receita segura para recriar o admin está em `references/admin-totp-reset.md`.
+- A receita segura para recriar o admin está em `references/admin-password-reset.md`.
 - A receita de empacotamento/publicação está em `references/packaging-electron-builder.md`.

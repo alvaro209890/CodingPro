@@ -250,8 +250,8 @@ não está claro.
 
 ## Painel web da conta
 
-Após entrar no site, o **Painel** mostra consumo, tokens e ações da conta. Na seção de segurança é
-possível ativar/desativar **2FA TOTP** com um aplicativo autenticador. O painel também oferece
+Após entrar no site, o **Painel** mostra consumo, dispositivos e ações da conta. A autenticação usa
+e-mail e senha; trocar a senha desconecta os dispositivos por segurança. O painel também oferece
 exportação dos dados e exclusão da conta.
 
 ## Memória

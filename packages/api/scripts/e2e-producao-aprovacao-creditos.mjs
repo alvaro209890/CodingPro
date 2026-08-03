@@ -1,43 +1,11 @@
-import { createHmac, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import postgres from "postgres";
-import { gerarSegredoTotp, hashSenha } from "../dist/index.mjs";
+import { hashSenha } from "../dist/index.mjs";
 
 const CONFIRMACAO = "APROVACAO_CREDITOS_PRODUCAO";
-const BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
 function exigir(condicao, mensagem) {
   if (!condicao) throw new Error(mensagem);
-}
-
-function decodificarBase32(segredo) {
-  let bits = 0;
-  let valor = 0;
-  const bytes = [];
-  for (const char of segredo.replaceAll(/\s|=/gu, "").toUpperCase()) {
-    const indice = BASE32.indexOf(char);
-    exigir(indice >= 0, "Segredo TOTP invalido.");
-    valor = (valor << 5) | indice;
-    bits += 5;
-    if (bits >= 8) {
-      bytes.push((valor >>> (bits - 8)) & 0xff);
-      bits -= 8;
-    }
-  }
-  return Buffer.from(bytes);
-}
-
-function codigoTotp(segredo) {
-  const contador = Math.floor(Date.now() / 30_000);
-  const buffer = Buffer.alloc(8);
-  buffer.writeBigUInt64BE(BigInt(contador));
-  const hmac = createHmac("sha1", decodificarBase32(segredo)).update(buffer).digest();
-  const offset = (hmac.at(-1) ?? 0) & 0x0f;
-  const binario =
-    (((hmac[offset] ?? 0) & 0x7f) << 24) |
-    (((hmac[offset + 1] ?? 0) & 0xff) << 16) |
-    (((hmac[offset + 2] ?? 0) & 0xff) << 8) |
-    ((hmac[offset + 3] ?? 0) & 0xff);
-  return String(binario % 1_000_000).padStart(6, "0");
 }
 
 async function pedir(baseUrl, caminho, opcoes = {}) {
@@ -81,44 +49,33 @@ async function executar() {
   const emailUsuario = `e2e-user-${marca}@local.invalid`;
   const senhaAdmin = `Cp9!${randomBytes(18).toString("base64url")}`;
   const senhaUsuario = `Cp9!${randomBytes(18).toString("base64url")}`;
-  const segredoTotp = gerarSegredoTotp();
   const sql = postgres(databaseUrl, { max: 1 });
 
   try {
     const [admin] = await sql`
       INSERT INTO usuarios (
         email, senha_hash, nome, status, admin, email_verificado,
-        codigo_verificacao, totp_secret, totp_ativado, creditos_micro
+        codigo_verificacao, creditos_micro
       ) VALUES (
         ${emailAdmin}, ${await hashSenha(senhaAdmin)}, 'Admin E2E temporario', 'ativo', true, true,
-        NULL, ${segredoTotp}, true, 0
+        NULL, 0
       )
       RETURNING id
     `;
     exigir(Number.isSafeInteger(Number(admin?.id)), "Nao foi possivel criar o admin temporario.");
 
-    const semTotp = await pedir(baseUrl, "/api/login", {
+    const loginAdmin = await pedir(baseUrl, "/api/login", {
       body: JSON.stringify({ email: emailAdmin, senha: senhaAdmin }),
       method: "POST",
     });
-    exigir(
-      semTotp.status === 401 && semTotp.corpo?.erro === "totp_obrigatorio",
-      "TOTP nao exigido.",
-    );
-    registrarPasso("login exige TOTP");
-
-    const loginAdmin = await pedir(baseUrl, "/api/login", {
-      body: JSON.stringify({ email: emailAdmin, senha: senhaAdmin, totp: codigoTotp(segredoTotp) }),
-      method: "POST",
-    });
-    exigir(loginAdmin.status === 200 && loginAdmin.cookie !== "", "Login TOTP do admin falhou.");
+    exigir(loginAdmin.status === 200 && loginAdmin.cookie !== "", "Login do admin falhou.");
     const cookieAdmin = loginAdmin.cookie;
     const checkAdmin = await pedir(baseUrl, "/api/admin/check", {
       headers: { cookie: cookieAdmin },
       method: "GET",
     });
     exigir(checkAdmin.status === 200 && checkAdmin.corpo?.admin === true, "Check do admin falhou.");
-    registrarPasso("login TOTP e sessao admin");
+    registrarPasso("login por senha e sessao admin");
 
     const cadastro = await pedir(baseUrl, "/api/cadastro", {
       body: JSON.stringify({

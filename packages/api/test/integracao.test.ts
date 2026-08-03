@@ -111,6 +111,22 @@ describe.skipIf(!TEM_BANCO)("cadastro e login", () => {
 
     const eu = await amb.app.inject({ headers: { cookie }, method: "GET", url: "/api/eu" });
     expect(eu.json().usuario.email).toBe("chefe@teste.com");
+    expect(login.json().usuario).not.toHaveProperty("totpAtivado");
+    expect(eu.json().usuario).not.toHaveProperty("totpAtivado");
+  });
+
+  it("não expõe rotas de segundo fator", async () => {
+    amb = await montar();
+    const { cookie } = await cadastrar(amb.app, "chefe@teste.com");
+
+    for (const [method, url] of [
+      ["POST", "/api/conta/totp/iniciar"],
+      ["POST", "/api/conta/totp/ativar"],
+      ["DELETE", "/api/conta/totp"],
+    ] as const) {
+      const resposta = await amb.app.inject({ headers: { cookie }, method, url });
+      expect(resposta.statusCode, `${method} ${url}`).toBe(404);
+    }
   });
 
   it("dá a mesma mensagem para e-mail inexistente e senha errada", async () => {

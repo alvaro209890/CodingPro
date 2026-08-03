@@ -13,8 +13,6 @@ export type Usuario = {
   readonly codigo_verificacao: string | null;
   readonly limite_mensal_micro: number;
   readonly creditos_micro: number;
-  readonly totp_secret: string | null;
-  readonly totp_ativado: boolean;
   readonly limite_diario_micro: number;
   readonly rate_rpm: number;
   readonly override_limite_ate: Date | null;
@@ -99,22 +97,6 @@ export function criarRepositorio(sql: Sql) {
 
     async trocarSenha(id: number, senhaHash: string): Promise<void> {
       await sql`UPDATE usuarios SET senha_hash = ${senhaHash} WHERE id = ${id}`;
-    },
-
-    async salvarTotp(id: number, segredo: string): Promise<void> {
-      await sql`
-        UPDATE usuarios
-        SET totp_secret = ${segredo}, totp_ativado = false
-        WHERE id = ${id}
-      `;
-    },
-
-    async ativarTotp(id: number): Promise<void> {
-      await sql`UPDATE usuarios SET totp_ativado = true WHERE id = ${id} AND totp_secret IS NOT NULL`;
-    },
-
-    async desativarTotp(id: number): Promise<void> {
-      await sql`UPDATE usuarios SET totp_secret = NULL, totp_ativado = false WHERE id = ${id}`;
     },
 
     async apagarUsuario(id: number): Promise<boolean> {
@@ -262,7 +244,6 @@ export function criarRepositorio(sql: Sql) {
           overrideLimiteMicro: usuario.override_limite_micro,
           rateRpm: usuario.rate_rpm,
           status: usuario.status,
-          totpAtivado: usuario.totp_ativado,
           ultimoLogin: usuario.ultimo_login,
         },
       };

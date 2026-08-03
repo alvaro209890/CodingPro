@@ -99,8 +99,6 @@ export const MIGRACOES: readonly Migracao[] = Object.freeze([
     id: "0002_p4_conta_limites_2fa",
     sql: `
         ALTER TABLE usuarios
-          ADD COLUMN IF NOT EXISTS totp_secret text,
-          ADD COLUMN IF NOT EXISTS totp_ativado boolean NOT NULL DEFAULT false,
           ADD COLUMN IF NOT EXISTS limite_diario_micro bigint NOT NULL DEFAULT 0,
           ADD COLUMN IF NOT EXISTS rate_rpm integer NOT NULL DEFAULT 60,
           ADD COLUMN IF NOT EXISTS override_limite_ate timestamptz,
@@ -129,6 +127,14 @@ export const MIGRACOES: readonly Migracao[] = Object.freeze([
     sql: `
         ALTER TABLE usuarios
           ADD COLUMN IF NOT EXISTS creditos_micro bigint NOT NULL DEFAULT 0;
+      `,
+  },
+  {
+    id: "0005_remover_segundo_fator",
+    sql: `
+        ALTER TABLE usuarios
+          DROP COLUMN IF EXISTS totp_secret,
+          DROP COLUMN IF EXISTS totp_ativado;
       `,
   },
 ]);

@@ -61,15 +61,6 @@ export async function exigirAdmin(
     await erro(resposta, 403, "sem_permissao", "Esta área é restrita ao administrador.");
     return null;
   }
-  if (ctx.config.ambiente === "producao" && !usuario.totp_ativado) {
-    await erro(
-      resposta,
-      403,
-      "admin_2fa_obrigatorio",
-      "Ative a autenticação em dois fatores antes de acessar o painel admin.",
-    );
-    return null;
-  }
   return usuario;
 }
 

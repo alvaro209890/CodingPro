@@ -54,7 +54,6 @@
 - Cadastro (valida nome/senha/termos; admin automático por e-mail), login+cookie, `/api/eu`, tokens `cp_...` — ✅
 - **Proxy `/v1/chat/completions` com DeepSeek real** — ✅; allowlist de modelos (gpt-4o → 400); sem token → 401; `/v1/models` — ✅
 - Limites: `/api/consumo` medindo custo real, `/api/admin/consumo`, `/api/admin/saude`, `/api/admin/usuarios` — ✅
-- TOTP 2FA (iniciar gera otpauth) — ✅
 - Playground `/api/vps/chat` com reasoning — ✅
 - RBAC: usuário normal bloqueado do admin — ✅
 

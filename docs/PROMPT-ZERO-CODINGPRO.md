@@ -50,7 +50,7 @@ O banco é Postgres (URL em `DATABASE_URL` no env). Apague **todos os dados** (u
    Esperado: `{"ok":true,"banco":true,...}` e log com "migrations aplicadas".
 4. Confirmar zero dados: `psql "$DATABASE_URL" -c "SELECT count(*) FROM usuarios;"` → 0.
 
-⚠️ **Depois do wipe não existe admin.** Como o primeiro usuário cadastrado vira admin (ou o e-mail de `CODINGPRO_EMAIL_ADMIN`), o fluxo novo nasce com contas `pendente` — então o admin precisa ser garantido. Siga a receita `references/admin-totp-reset.md` do repo (script em `packages/api`, TAMANHO_HASH=32, formato `scrypt$sal$hash`, `totp_ativado=true`) para criar/ativar o usuário admin **antes** de liberar o site para cadastros, OU garanta que `CODINGPRO_EMAIL_ADMIN` está no env e cadastre esse e-mail (nasce admin). Valide com login → `totp_obrigatorio` → TOTP → `admin:true`.
+⚠️ **Depois do wipe não existe admin.** Como o primeiro usuário cadastrado vira admin (ou o e-mail de `CODINGPRO_EMAIL_ADMIN`), o fluxo novo nasce com contas `pendente` — então o admin precisa ser garantido. Siga a receita `references/admin-password-reset.md` do repo para criar/ativar o usuário admin **antes** de liberar o site para cadastros, OU garanta que `CODINGPRO_EMAIL_ADMIN` está no env e cadastre esse e-mail (nasce admin). Valide com login por e-mail e senha → `admin:true`.
 
 ---
 
@@ -75,7 +75,7 @@ Apague (com confirmação de cada exclusão):
 - Cadastro (`packages/api/src/rotas/auth.ts` → `repositorio.ts:69`): grava `status='ativo'` direto. **Não há aprovação de admin.**
 - Não existe saldo de créditos. Existem: `limite_mensal_micro` (renova todo mês), `limite_diario_micro`, `rate_rpm` (`packages/api/src/limites.ts`, `checarAcessoLlm`).
 - Proxy (`packages/api/src/rotas/proxy.ts`): autentica token `cp_`, **já bloqueia** `status !== 'ativo'` com 403 `conta_nao_aprovada` ("Sua conta ainda não foi aprovada pelo administrador.") — mas isso nunca dispara porque contas nascem ativas. Bloqueia limite mensal com 402 `limite_atingido`.
-- Painel admin (`packages/admin/src/telas/Usuarios.tsx` + `packages/api/src/rotas/admin.ts`): admin ajusta `status`, `limiteMicro`, `limiteDiarioMicro`, `rateRpm`, `admin`. Exige TOTP em produção (`admin_2fa_obrigatorio`).
+- Painel admin (`packages/admin/src/telas/Usuarios.tsx` + `packages/api/src/rotas/admin.ts`): admin ajusta `status`, `limiteMicro`, `limiteDiarioMicro`, `rateRpm`, `admin`. Exige sessão autenticada e permissão `admin`.
 - Desktop (`packages/desktop/src/main/index.ts`): login por device flow OU login direto email+senha (`codingpro:conta-login-direto`) → token salvo em `~/.codingpro/credenciais.json`. **Já atende "baixa e loga"** — não precisa vir pré-logado.
 
 ### 4.2 Correções necessárias (implemente tudo)
@@ -95,7 +95,7 @@ Apague (com confirmação de cada exclusão):
 ### 4.3 Validação E2E do fluxo (com curl, sem abrir o app)
 1. `POST /api/cadastro` (email novo, `termosAceitos:true`) → 201 com `status:"pendente"`.
 2. Login → 200 (sessão ok), mas `POST /v1/chat/completions` com token `cp_` → **403 `conta_nao_aprovada`**.
-3. Admin (com TOTP) aprova (`status:"ativo"`) e libera créditos (`creditosMicro`) via PATCH → 200.
+3. Admin autenticado aprova (`status:"ativo"`) e libera créditos (`creditosMicro`) via PATCH → 200.
 4. `POST /v1/chat/completions` → **200**.
 5. Esgotar créditos (ou zerar manualmente no banco) → próxima chamada → **402 `creditos_esgotados`**.
 6. Liberar mais crédito pelo admin → volta a funcionar.
@@ -176,5 +176,5 @@ Apague (com confirmação de cada exclusão):
 - NUNCA embutir `DEEPSEEK_API_KEY` no binário do app (download é público — o proxy do servidor é quem autentica).
 - NÃO apagar `C:\GIS\CodingPro` nem `~/Documentos/CodingPro` (código-fonte).
 - NÃO editar migrações já aplicadas (0001–0003) — acrescente a 0004.
-- NÃO prometer verificação de e-mail (não existe). Aprovação é manual via painel admin, com TOTP.
-- Se algo não der certo (ex.: artefato .exe faltando, TOTP do admin), **pare e reporte** em vez de contornar com gambiarra.
+- NÃO prometer verificação de e-mail (não existe). Aprovação é manual via painel admin.
+- Se algo não der certo (ex.: artefato `.exe` faltando ou login do admin), **pare e reporte** em vez de contornar com gambiarra.

@@ -22,11 +22,6 @@ type Token = {
   revogadoEm: string | null;
 };
 
-type InicioTotp = {
-  segredo: string;
-  otpauth: string;
-};
-
 type Aba = "consumo" | "dispositivos" | "perfil";
 
 export function Painel({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: () => void }) {
@@ -253,13 +248,10 @@ function AbaDispositivos() {
   );
 }
 function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: () => void }) {
-  const totpAtivo = usuario.totpAtivo ?? usuario.totpAtivado ?? false;
   const [atual, setAtual] = useState("");
   const [nova, setNova] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
-  const [totpInicio, setTotpInicio] = useState<InicioTotp | null>(null);
-  const [totpCodigo, setTotpCodigo] = useState("");
   const [senhaExclusao, setSenhaExclusao] = useState("");
   const [processandoDados, setProcessandoDados] = useState(false);
 
@@ -276,50 +268,6 @@ function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: ()
       );
     } catch (causa) {
       setErro(causa instanceof ErroApi ? causa.message : "Falha ao trocar a senha.");
-    }
-  }
-
-  async function iniciarTotp() {
-    setErro("");
-    setMensagem("");
-    try {
-      const dados = await api.post<InicioTotp>("/api/conta/totp/iniciar");
-      setTotpInicio(dados);
-      setTotpCodigo("");
-    } catch (causa) {
-      setErro(causa instanceof ErroApi ? causa.message : "Falha ao iniciar o 2FA.");
-    }
-  }
-
-  async function ativarTotp(evento: FormEvent) {
-    evento.preventDefault();
-    if (!totpInicio) return;
-    setErro("");
-    setMensagem("");
-    try {
-      await api.post("/api/conta/totp/ativar", {
-        codigo: totpCodigo,
-        segredo: totpInicio.segredo,
-      });
-      setTotpInicio(null);
-      setTotpCodigo("");
-      setMensagem("Autenticação em dois fatores ativada.");
-      aoAtualizar();
-    } catch (causa) {
-      setErro(causa instanceof ErroApi ? causa.message : "Falha ao ativar o 2FA.");
-    }
-  }
-
-  async function desativarTotp() {
-    if (!window.confirm("Desativar a autenticação em dois fatores desta conta?")) return;
-    setErro("");
-    setMensagem("");
-    try {
-      await api.del("/api/conta/totp");
-      setMensagem("Autenticação em dois fatores desativada.");
-      aoAtualizar();
-    } catch (causa) {
-      setErro(causa instanceof ErroApi ? causa.message : "Falha ao desativar o 2FA.");
     }
   }
 
@@ -393,61 +341,6 @@ function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: ()
             </tbody>
           </table>
         </div>
-      </Cartao>
-
-      <Cartao>
-        <h3>Autenticação em dois fatores</h3>
-        <p className="fraco">
-          Proteja o login com um código temporário do seu aplicativo autenticador.
-        </p>
-        <div className="linha" style={{ marginBottom: totpInicio ? "1rem" : 0 }}>
-          <span className={`selo ${totpAtivo ? "ok" : "espera"}`}>
-            {totpAtivo ? "2FA ativo" : "2FA desativado"}
-          </span>
-          {!totpAtivo && (
-            <button onClick={iniciarTotp} type="button">
-              Iniciar
-            </button>
-          )}
-          {totpAtivo && (
-            <button className="perigo" onClick={desativarTotp} type="button">
-              Desativar
-            </button>
-          )}
-        </div>
-        {totpInicio && (
-          <form onSubmit={ativarTotp}>
-            <p>
-              Escaneie este URI no autenticador ou cadastre o segredo manualmente. Depois informe o
-              código de 6 dígitos para ativar.
-            </p>
-            <code className="token-revelado">{totpInicio.otpauth}</code>
-            <p className="fraco">
-              Segredo: <code>{totpInicio.segredo}</code>
-            </p>
-            <label>
-              <span>Código 2FA</span>
-              <input
-                autoComplete="one-time-code"
-                inputMode="numeric"
-                maxLength={6}
-                onChange={(e) => setTotpCodigo(e.target.value)}
-                placeholder="000000"
-                required
-                style={{ maxWidth: "180px" }}
-                value={totpCodigo}
-              />
-            </label>
-            <div className="linha">
-              <button className="primario" type="submit">
-                Ativar 2FA
-              </button>
-              <button onClick={() => setTotpInicio(null)} type="button">
-                Cancelar
-              </button>
-            </div>
-          </form>
-        )}
       </Cartao>
 
       <Cartao>

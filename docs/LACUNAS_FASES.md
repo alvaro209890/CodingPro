@@ -110,7 +110,7 @@ O marco “v1.0.0 .exe entregue” no roadmap antigo estava **adiante do código
 | CLI cloud | `codingpro login`/`logout`/`conta`; `credenciais.json`; `CODINGPRO_TOKEN` |
 | Site | Vite + React (`packages/web`): landing, cadastro, login, painel, device flow, playground |
 | Admin | Vite SPA (`packages/admin`) em `/admin`: usuários, consumo, saúde, auditoria, kill switch |
-| Segurança/conta P4 | 2FA TOTP, exportar/apagar conta, páginas LGPD, CSP, limites diário/`rate_rpm`, SMTP/Turnstile opcionais por env |
+| Segurança/conta P4 | Exportar/apagar conta, páginas LGPD, CSP, limites diário/`rate_rpm`, SMTP/Turnstile opcionais por env |
 
 ### Desvios intencionais (não são “falta”, são stack diferente)
 
@@ -127,7 +127,6 @@ O marco “v1.0.0 .exe entregue” no roadmap antigo estava **adiante do código
 
 | Item | Situação |
 |---|---|
-| 2FA TOTP (user + admin obrigatório) | ✅ | Usuário ativa/desativa no painel; admin é exigido em produção |
 | Turnstile no cadastro | 🔶 | Código opcional entregue; precisa `TURNSTILE_SITE_KEY`/secret configurados pelo Álvaro |
 | CSP / WAF rules documentadas | 🔶 | Header CSP entregue na API/web; WAF operacional ainda fora do repo |
 | SMTP + verificação de e-mail automática | 🔶 | Módulo SMTP opcional entregue; envio real depende de `SMTP_*` configurado pelo Álvaro |
