@@ -83,8 +83,13 @@ describe.skipIf(!TEM_BANCO)("rotas de admin", () => {
       method: "GET",
       url: "/api/admin/auditoria?acao=creditos_liberados",
     });
-    expect(auditoria.json().registros).toHaveLength(2);
-    expect(auditoria.json().registros[0].detalhe).toMatchObject({ valorMicro: 250_000 });
+    const registrosDoNovato = auditoria
+      .json()
+      .registros.filter(
+        (registro: { alvo: string | null }) => registro.alvo === "novato@teste.com",
+      );
+    expect(registrosDoNovato).toHaveLength(2);
+    expect(registrosDoNovato[0].detalhe).toMatchObject({ valorMicro: 250_000 });
   });
 
   it("edita o limite mensal e o proxy passa a respeitar o novo valor", async () => {
@@ -261,11 +266,11 @@ describe.skipIf(!TEM_BANCO)("rotas de admin", () => {
     const filtrada = await amb.app.inject({
       headers: { cookie: chefe.cookie },
       method: "GET",
-      url: "/api/admin/auditoria?acao=token_criado",
+      url: "/api/admin/auditoria?acao=device_aprovado",
     });
     const registros = filtrada.json().registros;
     expect(registros).toHaveLength(1);
-    expect(registros[0].acao).toBe("token_criado");
+    expect(registros[0].acao).toBe("device_aprovado");
 
     const pagina2 = await amb.app.inject({
       headers: { cookie: chefe.cookie },

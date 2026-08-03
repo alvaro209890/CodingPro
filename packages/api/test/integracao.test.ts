@@ -170,7 +170,7 @@ describe.skipIf(!TEM_BANCO)("tokens de CLI", () => {
       payload: {},
       url: "/api/device/iniciar",
     });
-    expect(criado.statusCode).toBe(200);
+    expect(criado.statusCode).toBe(201);
     const texto = (await conectarDispositivo(amb.app, cookie)).token;
     expect(texto.startsWith("cp_")).toBe(true);
 
@@ -200,6 +200,7 @@ describe.skipIf(!TEM_BANCO)("tokens de CLI", () => {
   it("revoga o próprio token, mas não o dos outros", async () => {
     amb = await montar();
     const chefe = await cadastrar(amb.app, "chefe@teste.com");
+    await conectarDispositivo(amb.app, chefe.cookie);
     const criado = await amb.app.inject({
       headers: { cookie: chefe.cookie },
       method: "GET",
@@ -539,18 +540,40 @@ describe.skipIf(!TEM_BANCO)("painel admin", () => {
     expect(resposta.statusCode).toBe(403);
   });
 
-  it("novato ativo cria token sem aprovação manual", async () => {
+  it("novato só conecta o dispositivo depois da aprovação manual", async () => {
     amb = await montar();
-    await cadastrar(amb.app, "chefe@teste.com");
+    const chefe = await cadastrar(amb.app, "chefe@teste.com");
     const novato = await cadastrar(amb.app, "novato@teste.com");
 
-    const token = await amb.app.inject({
+    const inicio = await amb.app.inject({
+      method: "POST",
+      payload: {},
+      url: "/api/device/iniciar",
+    });
+    const codigoUsuario = inicio.json().codigoUsuario;
+
+    const pendente = await amb.app.inject({
       headers: { cookie: novato.cookie },
       method: "POST",
-      payload: { nome: "x" },
-      url: "/api/tokens",
+      payload: { codigoUsuario },
+      url: "/api/device/aprovar",
     });
-    expect(token.statusCode).toBe(201);
+    expect(pendente.statusCode).toBe(403);
+    expect(pendente.json().erro).toBe("conta_nao_aprovada");
+
+    await amb.app.inject({
+      headers: { cookie: chefe.cookie },
+      method: "PATCH",
+      payload: { status: "ativo" },
+      url: `/api/admin/usuarios/${novato.id}`,
+    });
+    const aprovado = await amb.app.inject({
+      headers: { cookie: novato.cookie },
+      method: "POST",
+      payload: { codigoUsuario },
+      url: "/api/device/aprovar",
+    });
+    expect(aprovado.statusCode).toBe(200);
   });
 
   it("admin não consegue remover o próprio poder de admin", async () => {
