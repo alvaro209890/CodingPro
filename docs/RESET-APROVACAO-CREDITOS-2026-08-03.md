@@ -15,12 +15,13 @@ limites mensal, diário e de RPM continuam como proteções secundárias.
 - O túnel público foi interrompido antes do wipe para impedir que um cadastro externo se tornasse o
   primeiro administrador.
 - Um dump de segurança foi gravado no acer em `~/codingpro-backup-pre-wipe.sql`, modo `0600`.
-- O schema `public` foi removido e recriado; a API reaplicou `0001`, `0002` e `0003`.
+- O schema `public` foi removido e recriado; a API reaplicou `0001`, `0002`, `0003` e, no deploy,
+  `0004_creditos`.
 - A contagem de `usuarios` foi confirmada em zero antes da recriação do admin.
 - Somente o admin configurado foi recriado, preservando o hash de senha e o TOTP existentes. A
   conferência estrutural confirmou uma conta admin ativa com TOTP.
-- O túnel permanece desligado durante a implementação e só deve voltar após migração, testes e
-  deploy do novo código.
+- O túnel permaneceu desligado durante a implementação e voltou somente depois da migração, dos
+  testes e do deploy do novo código.
 
 A migração nova `0004_creditos` adiciona `usuarios.creditos_micro bigint NOT NULL DEFAULT 0` sem
 alterar migrações já aplicadas.
@@ -80,19 +81,65 @@ O painel administrativo continua exigindo TOTP em produção.
 - O app continua sendo distribuído sem login embutido: a pessoa instala/abre e entra com a própria
   conta.
 
-## Validação pré-deploy
+## Validação e deploy
 
 Executada no Windows com Node 24:
 
 - Biome nos pacotes alterados: aprovado;
 - typecheck API, admin, web e workspace: aprovado;
-- testes locais API + provider: 87 aprovados e 48 integrações Postgres puladas por ausência de banco
+- testes locais API + provider: 87 aprovados e integrações Postgres puladas por ausência de banco
   local;
 - builds API, admin, web, LLM, core e desktop: aprovados;
 - empacotamento NSIS + portable 1.1.0: aprovado.
 
-As integrações Postgres, o E2E HTTP, os hashes dos instaladores e os checks públicos serão
-registrados nesta página após o deploy.
+Gate completo no Windows com Node 24:
+
+- 336 arquivos de teste aprovados e 2 pulados;
+- 3.858 testes aprovados e 50 pulados;
+- cobertura: 89,52% statements, 82,20% branches, 92,35% functions e 89,91% lines;
+- builds e smoke do pacote aprovados;
+- quatro avisos preexistentes de supressão Biome sem efeito, sem erro de lint.
+
+Integração no `acer` com Postgres real: **94/94 testes aprovados**. O teste operacional protegido
+`packages/api/scripts/e2e-producao-aprovacao-creditos.mjs` também passou contra a API de produção
+local, cobrindo:
+
+1. login do admin exige TOTP;
+2. login com TOTP e acesso ao painel;
+3. cadastro nasce pendente e sem créditos;
+4. aprovação, liberação e device flow;
+5. `403 conta_nao_aprovada` no proxy;
+6. chamada real ao DeepSeek e débito do saldo;
+7. `402 creditos_esgotados` com saldo zero;
+8. recarga e nova chamada real.
+
+O script exige confirmação explícita, aceita somente URL local e remove contas e auditorias
+temporárias em `finally`. A conferência posterior mostrou novamente um único usuário no banco: o
+admin real, ativo, com TOTP e saldo zero.
+
+## Artefatos e estado online
+
+Os artefatos foram gerados no Windows, copiados para `CODINGPRO_DOWNLOADS_DIR` no `acer` e
+conferidos no servidor:
+
+| Artefato | Bytes | SHA-256 |
+|---|---:|---|
+| `CodingPro-Setup-1.1.0.exe` | 84.731.192 | `c1b078cbebd22dc0aa7ce8189d4f7f0b22e9d0a85f5d574e17ad2666ccbbc734` |
+| `CodingPro-portable-1.1.0.exe` | 84.503.646 | `4b2f67aaa831dac7327b2ce98a60c648e63c64ed07ca5171dd4ae9d94fb9e321` |
+
+Os dois PE foram verificados e estão **sem assinatura Authenticode** (`NotSigned`), portanto o
+SmartScreen pode avisar até existir assinatura de código.
+
+Checks públicos com cache-buster em 2026-08-03:
+
+- `https://codingpro-api.cursar.space/saude`: `ok: true`, `banco: true`;
+- `https://codingpro.cursar.space/`: HTTP 200;
+- Setup 1.1.0: HTTP 200 e 84.731.192 bytes;
+- portable 1.1.0: HTTP 200 e 84.503.646 bytes.
+
+As units `codingpro-api`, `codingpro-web`, `codingpro-tunnel` e `codingpro-backup.timer` ficaram
+ativas; o timer de backup também permanece habilitado. O código foi publicado no branch `master`
+do GitHub. O Segundo Cérebro foi atualizado e commitado como `8b424b5`.
 
 ## Recuperação
 

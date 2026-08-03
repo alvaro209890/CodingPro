@@ -3,11 +3,10 @@
 Documento operacional curto. Lacunas plano × código: **[`docs/LACUNAS_FASES.md`](docs/LACUNAS_FASES.md)**.  
 Estado Fase 1: [`docs/ESTADO_PROJETO.md`](docs/ESTADO_PROJETO.md).
 
-Último incremento: **[`docs/RELATORIO-DESKTOP-1.1.0.md`](docs/RELATORIO-DESKTOP-1.1.0.md)**
-— desktop 1.1.0: auditoria funcional do renderer (fila de permissões que travava o app,
-controles sem handler, dados inventados), refino de UI em pt-BR, nome do modelo fora do app
-e fim da criação manual de token (padrão = conta CodingPro Cloud).
-Anterior: [`docs/RELATORIO-CORRECOES-2026-08-03-B.md`](docs/RELATORIO-CORRECOES-2026-08-03-B.md).
+Último incremento: **[`docs/RESET-APROVACAO-CREDITOS-2026-08-03.md`](docs/RESET-APROVACAO-CREDITOS-2026-08-03.md)**
+— reset do banco e das instalações locais, cadastro pendente, aprovação manual, créditos
+consumíveis e deploy público validado. Anterior:
+[`docs/RELATORIO-DESKTOP-1.1.0.md`](docs/RELATORIO-DESKTOP-1.1.0.md).
 
 ## Fases
 
@@ -15,7 +14,7 @@ Anterior: [`docs/RELATORIO-CORRECOES-2026-08-03-B.md`](docs/RELATORIO-CORRECOES-
 |------|--------|----------------|
 | 1 CLI | 🟢 Engenharia v1 completa; `glob`, JSON headless e approve-always persistente entregues | `npm publish`, QA visual, Ink/subprocessos/background/voz pós-1.0 |
 | 2 Windows | 🟢 v1.1.0: renderer auditado e refinado, pt-BR, a11y de teclado, sem controles falsos | Auto-updater live e QA visual em Windows limpo |
-| 3 Plataforma | 🟢 Núcleo P0–P3 + P4 code-complete em 2FA/LGPD/CSP/limites/backup | Configurar SMTP/Turnstile, validar chave DeepSeek prod, load test e beta |
+| 3 Plataforma | 🟢 Produção no acer com aprovação + créditos, 2FA/LGPD/CSP/limites/backup | Configurar SMTP/Turnstile, testar restore/load e conduzir beta |
 
 ## Plataforma (Fase 3) — o que sobe no acer
 
@@ -26,14 +25,18 @@ pnpm plataforma:deploy
 
 - Site: `codingpro.cursar.space` (`packages/web`)
 - API: `codingpro-api.cursar.space` (`packages/api` + admin em `/admin`)
-- CLI: `codingpro login` → proxy `/v1/chat/completions` com limites
+- CLI: `codingpro login` → proxy `/v1/chat/completions` após aprovação e liberação de créditos
 - P4 entregue em código: 2FA TOTP, exportar/apagar conta, Termos/Privacidade, CSP, limite diário/`rate_rpm`, SMTP/Turnstile opcionais e backup systemd.
-- P4 ainda operacional: segredos SMTP/Turnstile, chave DeepSeek dedicada de produção, teste de carga, beta fechado e restore.
+- Produção validada em 2026-08-03: API/site/downloads 1.1.0 online, chamada DeepSeek real e débito
+  de saldo aprovados; `pnpm check` com 3.858 testes e integração Postgres 94/94.
+- P4 ainda operacional: segredos SMTP/Turnstile, teste de carga, beta fechado e restore.
 
 ### Fixes de fluxo
 
 - Device flow atômico (sem tokens órfãos)
 - Cookie desktop `cp_sessao`; redirect pós-login com `?voltar=`
+- Cadastro nasce `pendente` e com saldo zero; admin aprova e soma créditos pelo painel
+- Proxy devolve 403 para conta não aprovada e 402 quando o saldo termina
 
 ## Onde o usuário trabalha
 

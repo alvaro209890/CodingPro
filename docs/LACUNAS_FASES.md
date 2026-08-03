@@ -20,7 +20,7 @@ Legenda: ✅ feito · 🔶 parcial / simplificado · ❌ não feito · 📌 pós
 |------|-------------------|-------------|
 | **1 — CLI** | Loop agêntico, DeepSeek, Aurora ANSI, empacotamento npm | 🟢 Completa no **plano de engenharia v1**; `glob`, JSON headless e persistência de approve-always entregues; pós-1.0 ainda aberto |
 | **2 — App Windows** | Electron + chat + permissões + sessões | 🟡 W0–W2 usáveis; W3 avançou (preload, builder, CI, downloads), mas **auto-update/build limpo** ainda abertos |
-| **3 — Plataforma web** | Contas, proxy medido, limites, `codingpro login`, admin | 🟢 Núcleo P0–P3 funcional; P4 com itens code-complete, mas **segredos/ops/beta** ainda pendentes |
+| **3 — Plataforma web** | Contas, proxy medido, limites, `codingpro login`, admin | 🟢 Produção com aprovação + créditos validada; **SMTP/Turnstile/restore/load/beta** ainda pendentes |
 
 Documento irmão: [ESTADO_PROJETO.md](ESTADO_PROJETO.md) (Fase 1), roadmaps em `fase2-app-windows/04` e `fase3-plataforma-web/04`.
 
@@ -157,7 +157,7 @@ O marco “v1.0.0 .exe entregue” no roadmap antigo estava **adiante do código
 
 ## Prioridades sugeridas
 
-1. **Ops Fase 3 P4** — configurar segredos SMTP/Turnstile, validar chave DeepSeek dedicada, backup/restore e beta/load test.  
+1. **Ops Fase 3 P4** — configurar segredos SMTP/Turnstile, testar restore e executar beta/load test.
 2. **Fase 2 W3** — validar `.exe`/portable em Windows limpo e concluir auto-updater live.  
 3. **Fase 1 pós-1.0** — Ink real, subprocess subagents, `/tasks` em background, voz e `npm publish`.
 
