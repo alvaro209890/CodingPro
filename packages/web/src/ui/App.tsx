@@ -7,7 +7,6 @@ import { destinoSeguro, Entrar } from "./paginas/Entrar.js";
 import { EntrarDispositivo } from "./paginas/EntrarDispositivo.js";
 import { Landing } from "./paginas/Landing.js";
 import { Painel } from "./paginas/Painel.js";
-import { Playground } from "./paginas/Playground.js";
 import { Privacidade } from "./paginas/Privacidade.js";
 import { Termos } from "./paginas/Termos.js";
 import { navegar, propsLink, useCaminho } from "./rotas.js";
@@ -41,15 +40,6 @@ export function App() {
     navegar("/");
   }
 
-  // Playground roda em tela cheia, sem header/footer
-  if (caminho === "/playground") {
-    if (carregando) return <Carregando />;
-    if (!usuario) {
-      return <Entrar aoEntrar={setDepoisDeEntrar(recarregarUsuario)} destino="/playground" />;
-    }
-    return <Playground usuario={usuario} />;
-  }
-
   return (
     <div className="casca">
       <header className="topo">
@@ -62,9 +52,6 @@ export function App() {
           </a>
           {usuario ? (
             <>
-              <a className="botao pequeno topo-link" {...propsLink("/playground")}>
-                Workspace
-              </a>
               <a className="botao pequeno topo-link" {...propsLink("/painel")}>
                 Painel
               </a>
@@ -151,7 +138,9 @@ function Conteudo({
     return <EntrarDispositivo usuario={usuario} />;
   }
 
-  if (caminho === "/painel") {
+  // O workspace no navegador foi descontinuado: o front de trabalho é o app desktop e a CLI,
+  // e a web ficou só como site de conta e informações. Links antigos caem no painel.
+  if (caminho === "/painel" || caminho === "/playground") {
     if (!usuario) {
       return <Entrar aoEntrar={setDepoisDeEntrar(recarregar)} destino="/painel" />;
     }

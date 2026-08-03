@@ -57,7 +57,39 @@ O gate só rodava no Linux. Três bloqueios, todos corrigidos:
 - `packages/web/.../Landing.tsx` anunciava **"DeepSeek V4 Pro"** no console da hero. O produto
   passou a ser Flash único no commit `419dd19`; corrigido para "DeepSeek V4 Flash".
 
-## 5. Gate executado (resultados reais)
+## 5. Workspace no navegador removido
+
+Decisão de produto: **o front de trabalho é o app desktop e a CLI**. A web fica só como
+site de conta e informação (cadastro/login, painel de consumo e limites, autorização de
+dispositivo, downloads, termos, privacidade).
+
+Além de duplicar o que o desktop já faz melhor (local-first, sem subir código para
+servidor nenhum), o `/playground` exigia manter no ar um conjunto de rotas que dava a um
+browser autenticado **terminal, escrita de arquivo e git no servidor**. Remover só a tela
+deixaria essa superfície viva e sem dono, então front e back saíram juntos.
+
+**Front (`packages/web`)** — removidos: `Playground.tsx`, `PlaygroundTypes.ts`,
+`ChatView.tsx`, `EditorPanel.tsx`, `FilesPanel.tsx`, `GitPanel.tsx`, `MemoryPanel.tsx`,
+`TerminalPanel.tsx`, `TabBar.tsx`, `InputBar.tsx`, `SlashDropdown.tsx`,
+`ThinkingBalloon.tsx`, `TaskTrackerCard.tsx`, `Sidebar.tsx`, `Banner.tsx`,
+`CyberBackground.tsx`, `inferirNomeSessao.ts`, `MarkdownRenderer.tsx`. Rota `/playground`
+e o link "Workspace" saíram do `App.tsx`; links antigos caem no painel.
+
+**Back (`packages/api`)** — removidos: `rotas/playground.ts` (`/api/vps/files`, `upload`,
+`read`, `write`, `delete`, `terminal`, `git`, `memory`, `chat`, `info`),
+`rotas/agente.ts` (`/api/vps/agent`), `rotas/cli.ts` (`/api/vps/cli/exec`, que dava spawn
+da CLI no servidor) e `src/workspace.ts` (raiz de workspaces por usuário). Saiu também o
+`@fastify/multipart`, registrado só para o upload do playground, e a coluna **VPS**
+(`workspaceMb`) do painel admin, que media aquele diretório.
+
+Cobertura: `packages/api/test/integracao.test.ts` ganhou um teste que afirma **404** em
+todas as rotas removidas, para a superfície não voltar por engano.
+
+Texto do site ajustado para não prometer mais workspace no navegador (hero, nota, passo 03
+e a tela de entrar). Efeito colateral: o bundle da web caiu de **279 kB → 233 kB** de JS e
+de **50 kB → 14 kB** de CSS.
+
+## 6. Gate executado (resultados reais)
 
 | Etapa | Resultado |
 |---|---|

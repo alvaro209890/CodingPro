@@ -28,14 +28,19 @@ pnpm plataforma:deploy
 - P4 entregue em código: 2FA TOTP, exportar/apagar conta, Termos/Privacidade, CSP, limite diário/`rate_rpm`, SMTP/Turnstile opcionais e backup systemd.
 - P4 ainda operacional: segredos SMTP/Turnstile, chave DeepSeek dedicada de produção, teste de carga, beta fechado e restore.
 
-### Fixes de fluxo (mesmo dia)
+### Fixes de fluxo
 
-- Limites também no playground (`/api/vps/agent`)
 - Device flow atômico (sem tokens órfãos)
 - Cookie desktop `cp_sessao`; redirect pós-login com `?voltar=`
 
-## Playground web (resumo)
+## Onde o usuário trabalha
 
-Workspace no browser (`/playground`): chat/agente, files, editor, terminal, git, memory.  
-Detalhe histórico do redesign: commits do dia e arquivos em `packages/web/src/ui/paginas/`.  
-Nota: `CyberBackground` pode existir no tree sem estar montado — a UI atual é o layout limpo pós-refactor.
+**O front de trabalho é o app desktop (Windows) e a CLI — não o navegador.**
+O site (`codingpro.cursar.space`) é só conta e informação: cadastro/login, painel de
+consumo e limites, autorização de dispositivo, downloads, termos e privacidade.
+
+O **workspace no navegador foi removido** em 2026-08-03 (`/playground` + rotas
+`/api/vps/*`): dava a um browser autenticado terminal, escrita de arquivo e git no
+servidor, e duplicava o que o app desktop já faz melhor e local-first. Links antigos
+para `/playground` caem no painel. Detalhes em
+[`docs/RELATORIO-CORRECOES-2026-08-03-B.md`](docs/RELATORIO-CORRECOES-2026-08-03-B.md).

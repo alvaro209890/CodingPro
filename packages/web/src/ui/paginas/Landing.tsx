@@ -37,13 +37,13 @@ export function Landing() {
       <section className="landing-hero">
         <div className="landing-copy">
           <span className="selo info">Beta fechado · acesso por convite</span>
-          <p className="landing-eyebrow">SEU WORKSPACE, SUA FORMA DE CRIAR</p>
+          <p className="landing-eyebrow">NA SUA MÁQUINA, DO SEU JEITO</p>
           <h1>
             Uma IA que acompanha <span>o jeito que você trabalha.</span>
           </h1>
           <p className="landing-lead">
-            CodingPro conecta CLI, desktop e navegador para você criar, corrigir e entregar software
-            com contexto de verdade.
+            CodingPro une a CLI e o app para Windows para você criar, corrigir e entregar software
+            com contexto de verdade — direto na sua máquina.
           </p>
           <div className="landing-actions">
             <a className="botao primario" {...propsLink("/cadastro")}>
@@ -54,7 +54,7 @@ export function Landing() {
             </a>
           </div>
           <p className="landing-note">
-            Sem chave de IA própria para começar. Você controla o workspace.
+            Sem chave de IA própria para começar. Seus arquivos não saem do seu PC.
           </p>
         </div>
 
@@ -131,7 +131,7 @@ export function Landing() {
       </section>
 
       <section className="landing-steps">
-        <p className="landing-eyebrow">DA CONTA AO WORKSPACE</p>
+        <p className="landing-eyebrow">DA CONTA AO PRIMEIRO PROJETO</p>
         <h2>Pronto para começar?</h2>
         <div className="landing-stepGrid">
           {["Crie sua conta", "Conecte sua máquina", "Construa com contexto"].map(
@@ -144,7 +144,7 @@ export function Landing() {
                     ? "Cadastre-se e acompanhe a liberação de acesso."
                     : indice === 1
                       ? "Faça login na CLI ou no app desktop."
-                      : "Use chat, terminal e arquivos no mesmo fluxo."}
+                      : "Abra seu projeto e trabalhe com o agente na sua própria máquina."}
                 </p>
               </div>
             ),

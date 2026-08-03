@@ -47,8 +47,8 @@ export function Entrar({
       <Cartao className="auth-card">
         <span className="auth-symbol">✦</span>
         <p className="landing-eyebrow">BEM-VINDO DE VOLTA</p>
-        <h2>Entre no seu workspace.</h2>
-        <p>Acesse a sua conta para usar o painel, a CLI e o Playground.</p>
+        <h2>Entre na sua conta.</h2>
+        <p>Acesse a sua conta para ver o painel e conectar a CLI e o app desktop.</p>
         {erro && <Aviso tipo="erro">{erro}</Aviso>}
         <form onSubmit={enviar}>
           <label>

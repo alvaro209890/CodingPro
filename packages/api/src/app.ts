@@ -1,6 +1,5 @@
 import { existsSync } from "node:fs";
 import cookie from "@fastify/cookie";
-import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import estatico from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
@@ -8,13 +7,10 @@ import type { ConfigApi } from "./config.js";
 import type { Contexto } from "./contexto.js";
 import type { Repositorio } from "./repositorio.js";
 import { criarMetricas, registrarRotasAdmin } from "./rotas/admin.js";
-import { registrarRotaAgente } from "./rotas/agente.js";
 import { registrarRotasAuth } from "./rotas/auth.js";
-import { registrarRotaCli } from "./rotas/cli.js";
 import { registrarRotasConta } from "./rotas/conta.js";
 import { registrarRotasConsumo } from "./rotas/consumo.js";
 import { registrarRotasDevice } from "./rotas/device.js";
-import { registrarRotasPlayground } from "./rotas/playground.js";
 import { registrarRotasProxy } from "./rotas/proxy.js";
 import { registrarRotasPublicas } from "./rotas/publico.js";
 import { registrarRotasTokens } from "./rotas/tokens.js";
@@ -85,13 +81,6 @@ export async function criarApp(opcoes: OpcoesApp): Promise<FastifyInstance> {
   });
 
   await app.register(cookie, { secret: config.sessionSecret });
-  await app.register(multipart, {
-    limits: {
-      fileSize: 512 * 1024 * 1024,
-      files: 1_000,
-    },
-  });
-
   await app.register(rateLimit, {
     // Teto global por IP. Login/cadastro/device ficam de fora para não travar QA nem device flow.
     allowList: (req) => {
@@ -161,9 +150,6 @@ export async function criarApp(opcoes: OpcoesApp): Promise<FastifyInstance> {
     registrarRotasConsumo(app, ctx);
     registrarRotasDevice(app, ctx);
     registrarRotasAdmin(app, ctx, metricas);
-    registrarRotasPlayground(app, ctx);
-    registrarRotaAgente(app, ctx);
-    registrarRotaCli(app, ctx);
 
     // O proxy vive num escopo próprio para ter rate limit independente do resto:
     // uma rajada de chamadas de IA não pode derrubar o login de ninguém.

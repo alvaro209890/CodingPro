@@ -656,69 +656,26 @@ describe.skipIf(!TEM_BANCO)("device flow do codingpro login", () => {
   });
 });
 
-describe.skipIf(!TEM_BANCO)("agente do playground e limites", () => {
-  it("recusa o agente com 402 quando o limite mensal acabou", async () => {
-    amb = await montar({
-      config: { DEEPSEEK_API_KEY: "k" },
-      fetch: async () =>
-        new Response(JSON.stringify({ choices: [{ message: { content: "oi" } }] }), {
-          headers: { "content-type": "application/json" },
-          status: 200,
-        }),
-    });
-    const { cookie, id } = await cadastrar(amb.app, "chefe@teste.com");
-    await amb.repo.registrarUso({
-      competencia: new Date().toISOString().slice(0, 7),
-      custoMicro: 5_000_000,
-      duracaoMs: 1,
-      erro: null,
-      modelo: "deepseek-v4-pro",
-      tokenId: null,
-      tokensCache: 0,
-      tokensEntrada: 1,
-      tokensRaciocinio: 0,
-      tokensSaida: 1,
-      usuarioId: id,
-    });
-
-    const resposta = await amb.app.inject({
-      headers: { cookie },
-      method: "POST",
-      payload: { prompt: "liste os arquivos" },
-      url: "/api/vps/agent",
-    });
-    expect(resposta.statusCode).toBe(402);
-    expect(resposta.json().erro).toBe("limite_atingido");
-  });
-
-  it("grava o consumo do playground no mesmo agregado mensal da CLI", async () => {
-    amb = await montar({
-      config: { DEEPSEEK_API_KEY: "k" },
-      fetch: async () =>
-        new Response(
-          JSON.stringify({
-            choices: [{ message: { content: "pronto" } }],
-            usage: { completion_tokens: 20, prompt_tokens: 100 },
-          }),
-          { headers: { "content-type": "application/json" }, status: 200 },
-        ),
-    });
+describe.skipIf(!TEM_BANCO)("workspace no navegador foi removido", () => {
+  // O front de trabalho é o app desktop e a CLI; a web ficou só como site de conta.
+  // Estas rotas davam a um browser autenticado terminal, escrita de arquivo e git no
+  // servidor — o teste garante que a superfície não volte por engano.
+  it.each([
+    "/api/vps/agent",
+    "/api/vps/chat",
+    "/api/vps/terminal",
+    "/api/vps/write",
+    "/api/vps/git",
+    "/api/vps/cli/exec",
+  ])("%s não existe mais", async (url) => {
+    amb = await montar({ config: { DEEPSEEK_API_KEY: "k" } });
     const { cookie } = await cadastrar(amb.app, "chefe@teste.com");
     const resposta = await amb.app.inject({
       headers: { cookie },
       method: "POST",
       payload: { prompt: "olá" },
-      url: "/api/vps/agent",
+      url,
     });
-    expect(resposta.statusCode).toBe(200);
-    expect(resposta.body).toContain("pronto");
-
-    const consumo = await amb.app.inject({
-      headers: { cookie },
-      method: "GET",
-      url: "/api/consumo",
-    });
-    expect(consumo.json().requisicoes).toBe(1);
-    expect(consumo.json().custoMicro).toBeGreaterThan(0);
+    expect(resposta.statusCode).toBe(404);
   });
 });
