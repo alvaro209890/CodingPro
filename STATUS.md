@@ -28,7 +28,7 @@ pnpm plataforma:deploy
 - P4 entregue em código: exportar/apagar conta, Termos/Privacidade, CSP, limite diário/`rate_rpm`, SMTP/Turnstile opcionais e backup systemd.
 - Login e painel administrativo usam somente e-mail, senha e sessão segura; o segundo fator foi removido do produto em 2026-08-03.
 - Produção validada em 2026-08-03: API/site/downloads 1.1.0 online, chamada DeepSeek real e débito
-  de saldo aprovados; `pnpm check` com 3.858 testes e integração Postgres 94/94.
+  de saldo aprovados; gate atual com 3.855 testes e integração Postgres 93/93.
 - P4 ainda operacional: segredos SMTP/Turnstile, teste de carga, beta fechado e restore.
 
 ### Fixes de fluxo

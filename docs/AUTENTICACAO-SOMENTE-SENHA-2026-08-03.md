@@ -42,3 +42,19 @@ a migração de remoção.
 - rate limits, CSP e isolamento do painel por role;
 - troca de senha revoga tokens da CLI e do desktop;
 - auditoria das ações administrativas e de conta.
+
+## Validação e produção
+
+- `pnpm check`: 335 arquivos de teste aprovados, 2 pulados; 3.855 testes aprovados e 52 pulados;
+- cobertura: 89,52% statements, 82,40% branches, 92,29% functions e 89,81% lines;
+- teste de subprocesso Windows que oscilou no primeiro gate: 12/12 aprovado isoladamente;
+- integração da API com Postgres real no `acer`: 93/93 aprovada;
+- builds de API, site e painel administrativo aprovados;
+- migração `0005_remover_segundo_fator` aplicada em produção;
+- inspeção do schema: zero colunas antigas na tabela `usuarios`;
+- login da conta admin somente por senha: HTTP 200;
+- `/api/admin/check` com a sessão criada: HTTP 200;
+- três endpoints antigos: HTTP 404 local e rota pública verificada com 404;
+- E2E real: login por senha, aprovação, créditos, device flow, chamada DeepSeek, débito, bloqueio
+  sem saldo e recarga aprovados;
+- `codingpro-api`, `codingpro-web` e `codingpro-tunnel` ativos; site e `/saude` públicos em HTTP 200.
