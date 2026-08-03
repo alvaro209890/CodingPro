@@ -19,8 +19,8 @@ export function Termos() {
       <section>
         <h2>Contas</h2>
         <p>
-          Você é responsável por manter sua senha e tokens de acesso em segurança. Contas podem
-          exigir aprovação manual e verificação de e-mail antes de liberar todos os recursos.
+          Você é responsável por manter sua senha e tokens de acesso em segurança. O uso da IA exige
+          aprovação manual da conta e créditos liberados pelo administrador.
         </p>
       </section>
 

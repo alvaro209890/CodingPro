@@ -21,6 +21,7 @@ export function registrarRotasConsumo(app: FastifyInstance, ctx: Contexto): void
 
     return resposta.send({
       competencia,
+      creditosMicro: Number(usuario.creditos_micro),
       custoMicro: mes.custoMicro,
       diario,
       diasAteRenovar: diasAteRenovar(),

@@ -124,4 +124,11 @@ export const MIGRACOES: readonly Migracao[] = Object.freeze([
           WHERE status = 'pendente';
       `,
   },
+  {
+    id: "0004_creditos",
+    sql: `
+        ALTER TABLE usuarios
+          ADD COLUMN IF NOT EXISTS creditos_micro bigint NOT NULL DEFAULT 0;
+      `,
+  },
 ]);

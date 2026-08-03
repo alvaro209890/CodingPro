@@ -5,6 +5,10 @@
 **Objetivo:** deixar explícito o que está **entregue**, o que é **versão simplificada** e o que **ainda falta** — sem confundir claim de checklist com implementação real.
 
 > **Atualização 2026-08-03:** gate `pnpm check` estava vermelho no main (format/lint/typecheck/smoke) e foi **corrigido** — ver [RELATORIO-TESTES-2026-08-03.md](RELATORIO-TESTES-2026-08-03.md).
+>
+> **Atualização 2026-08-03 (aprovação + créditos):** cadastro pendente, aprovação manual, saldo
+> consumível, liberação cumulativa no admin e bloqueio `creditos_esgotados` foram implementados e
+> cobertos por testes. Ver [RESET-APROVACAO-CREDITOS-2026-08-03.md](RESET-APROVACAO-CREDITOS-2026-08-03.md).
 
 Legenda: ✅ feito · 🔶 parcial / simplificado · ❌ não feito · 📌 pós-1.0 / diferido de propósito
 
@@ -130,6 +134,7 @@ O marco “v1.0.0 .exe entregue” no roadmap antigo estava **adiante do código
 | Termos + privacidade LGPD | ✅ | Páginas públicas adicionadas |
 | Exportar/apagar conta (LGPD) | ✅ | Endpoints e ações no painel do usuário |
 | Limite diário, `rate_rpm` / concorrência **por usuário** | 🔶 | Limite diário e `rate_rpm` entregues; concorrência por usuário ainda aberta |
+| Aprovação manual + saldo de créditos consumível | ✅ | Admin aprova e soma créditos; uso debita até zero e nova liberação destrava |
 | Override temporário de limite | ❌ |
 | Cache-hit % e projeção no admin | ❌ |
 | Alertas e-mail/WhatsApp | ❌ |

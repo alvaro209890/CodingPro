@@ -1,9 +1,10 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { api, ErroApi, formatarData, formatarUsd, type Usuario } from "../api.js";
-import { Aviso, Barra, Carregando, Cartao, GraficoDiario, Metrica } from "../componentes.js";
+import { Aviso, Carregando, Cartao, GraficoDiario, Metrica } from "../componentes.js";
 import { navegar, propsLink } from "../rotas.js";
 
 type Consumo = {
+  creditosMicro: number;
   custoMicro: number;
   limiteMicro: number;
   percentual: number;
@@ -52,8 +53,9 @@ export function Painel({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar
 
       {usuario.status === "pendente" && (
         <Aviso tipo="atencao">
-          <strong>Conta aguardando aprovação.</strong> Você já pode navegar pelo painel, mas só vai
-          conseguir usar a CLI e o app depois que o administrador liberar seu acesso.
+          <strong>Conta criada! Aguardando aprovação do administrador.</strong> Você já pode navegar
+          pelo painel, mas só poderá usar a CLI e o app depois que o administrador aprovar a conta e
+          liberar créditos.
         </Aviso>
       )}
       {usuario.status === "bloqueado" && (
@@ -118,14 +120,14 @@ function AbaConsumo() {
         <Cartao className="painel-metrica">
           <Metrica rotulo="Consumo do mês" valor={formatarUsd(consumo.custoMicro)} />
           <p className="fraco" style={{ margin: "0.5rem 0 0" }}>
-            de {formatarUsd(consumo.limiteMicro)} disponíveis
+            limite mensal: {formatarUsd(consumo.limiteMicro)}
           </p>
         </Cartao>
         <Cartao className="painel-metrica">
-          <Metrica rotulo="Do limite" valor={`${consumo.percentual.toFixed(1)}%`} />
-          <div style={{ marginTop: "0.75rem" }}>
-            <Barra percentual={consumo.percentual} />
-          </div>
+          <Metrica rotulo="Saldo de créditos" valor={formatarUsd(consumo.creditosMicro)} />
+          <p className="fraco" style={{ margin: "0.5rem 0 0" }}>
+            liberado pelo administrador
+          </p>
         </Cartao>
         <Cartao className="painel-metrica">
           <Metrica rotulo="Renova em" valor={`${consumo.diasAteRenovar}d`} />
@@ -134,6 +136,12 @@ function AbaConsumo() {
           </p>
         </Cartao>
       </div>
+
+      {consumo.creditosMicro <= 0 && (
+        <Aviso tipo="erro">
+          Seus créditos acabaram. Aguarde o administrador liberar mais para voltar a usar a IA.
+        </Aviso>
+      )}
 
       {consumo.percentual >= 80 && (
         <Aviso tipo={consumo.percentual >= 95 ? "erro" : "atencao"}>
@@ -373,6 +381,10 @@ function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: ()
               <tr>
                 <th>E-mail</th>
                 <td>{usuario.email}</td>
+              </tr>
+              <tr>
+                <th>Saldo de créditos</th>
+                <td>{formatarUsd(usuario.creditosMicro)}</td>
               </tr>
               <tr>
                 <th>Limite mensal</th>

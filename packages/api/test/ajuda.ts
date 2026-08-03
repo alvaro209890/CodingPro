@@ -71,6 +71,17 @@ export async function cadastrar(
   const corpo = resposta.json();
   const bruto = resposta.headers["set-cookie"];
   const cookie = (Array.isArray(bruto) ? (bruto[0] ?? "") : (bruto ?? "")).split(";")[0] ?? "";
+  // A API de produção cria toda conta pendente e sem saldo. A maioria dos testes
+  // precisa de um administrador operacional como fixture, então o primeiro usuário
+  // aprova a si mesmo e recebe um saldo amplo pelo mesmo endpoint do painel.
+  if (corpo.usuario.admin === true) {
+    await app.inject({
+      headers: { cookie },
+      method: "PATCH",
+      payload: { creditosMicro: 1_000_000_000, status: "ativo" },
+      url: `/api/admin/usuarios/${corpo.usuario.id}`,
+    });
+  }
   return { cookie, id: corpo.usuario.id };
 }
 

@@ -12,6 +12,7 @@ export type Usuario = {
   readonly email_verificado: boolean;
   readonly codigo_verificacao: string | null;
   readonly limite_mensal_micro: number;
+  readonly creditos_micro: number;
   readonly totp_secret: string | null;
   readonly totp_ativado: boolean;
   readonly limite_diario_micro: number;
@@ -40,6 +41,8 @@ export type ConsumoMes = {
 
 export type AtualizacaoUsuario = {
   status?: StatusUsuario;
+  /** Valor a somar ao saldo atual, em micro-dólares. */
+  creditosMicro?: number;
   limiteMicro?: number;
   limiteDiarioMicro?: number;
   rateRpm?: number;
@@ -66,7 +69,7 @@ export function criarRepositorio(sql: Sql) {
             INSERT INTO usuarios (email, senha_hash, nome, admin, limite_mensal_micro,
                                   email_verificado, codigo_verificacao, status)
             VALUES (${dados.email}, ${dados.senhaHash}, ${dados.nome}, ${dados.admin},
-                    ${dados.limiteMicro}, true, NULL, 'ativo')
+                    ${dados.limiteMicro}, true, NULL, 'pendente')
             RETURNING *
           `;
       if (!usuario) throw new Error("Falha ao criar usuário.");
@@ -133,6 +136,10 @@ export function criarRepositorio(sql: Sql) {
       const [usuario] = await sql<Usuario[]>`
         UPDATE usuarios SET
           status                 = COALESCE(${campos.status ?? null}, status),
+          creditos_micro         = LEAST(
+            9007199254740991::bigint,
+            creditos_micro + ${campos.creditosMicro ?? 0}
+          ),
           limite_mensal_micro    = COALESCE(${campos.limiteMicro ?? null}, limite_mensal_micro),
           limite_diario_micro    = COALESCE(${campos.limiteDiarioMicro ?? null}, limite_diario_micro),
           rate_rpm               = COALESCE(${campos.rateRpm ?? null}, rate_rpm),
@@ -244,6 +251,7 @@ export function criarRepositorio(sql: Sql) {
         })),
         usuario: {
           admin: usuario.admin,
+          creditosMicro: Number(usuario.creditos_micro),
           criadoEm: usuario.criado_em,
           email: usuario.email,
           id: usuario.id,
@@ -325,7 +333,7 @@ export function criarRepositorio(sql: Sql) {
       };
     },
 
-    /** Grava o evento e soma no agregado mensal numa transação só. */
+    /** Grava o evento, soma o agregado mensal e debita o saldo numa transação só. */
     async registrarUso(dados: {
       usuarioId: number;
       tokenId: number | null;
@@ -340,6 +348,7 @@ export function criarRepositorio(sql: Sql) {
       competencia: string;
     }): Promise<void> {
       await sql.begin(async (tx) => {
+        const debitoMicro = Math.max(0, dados.custoMicro);
         await tx`
           INSERT INTO eventos_uso (usuario_id, token_id, modelo, tokens_entrada, tokens_saida,
                                    tokens_cache, tokens_raciocinio, custo_micro, duracao_ms, erro)
@@ -353,6 +362,11 @@ export function criarRepositorio(sql: Sql) {
           ON CONFLICT (usuario_id, competencia) DO UPDATE
             SET custo_micro = uso_mensal.custo_micro + EXCLUDED.custo_micro,
                 requisicoes = uso_mensal.requisicoes + 1
+        `;
+        await tx`
+          UPDATE usuarios
+          SET creditos_micro = GREATEST(creditos_micro - ${debitoMicro}, 0)
+          WHERE id = ${dados.usuarioId}
         `;
       });
     },

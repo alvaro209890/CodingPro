@@ -276,6 +276,31 @@ describe("DeepSeekProvider", () => {
     expect(consoleSpy).not.toHaveBeenCalled();
   });
 
+  it.each([
+    {
+      codigo: "conta_nao_aprovada",
+      mensagem: "Sua conta ainda não foi aprovada pelo administrador.",
+      status: 403,
+    },
+    {
+      codigo: "creditos_esgotados",
+      mensagem: "Seus créditos acabaram. Aguarde o administrador liberar mais.",
+      status: 402,
+    },
+  ])("mostra o bloqueio do CodingPro Cloud: $codigo", async ({ codigo, mensagem, status }) => {
+    const provider = new DeepSeekProvider({
+      apiKey: "cp_token-sintetico",
+      baseUrl: "https://codingpro-api.cursar.space/v1",
+      fetch: async () => Response.json({ erro: codigo, mensagem }, { status }),
+    });
+
+    await expect(collect(provider)).rejects.toMatchObject({
+      code: "provider-failed",
+      retryable: false,
+      safeMessage: mensagem,
+    });
+  });
+
   it("respeita AbortSignal antes e durante a chamada", async () => {
     let requests = 0;
     const fetchMock: FetchFunction = async (_input, init) => {

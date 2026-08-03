@@ -131,7 +131,7 @@ export function Cadastro({ aoEntrar }: { aoEntrar: (usuario: Usuario) => void })
         <h2>Crie seu espaço de trabalho.</h2>
         <p>
           Durante o beta, cada conta é aprovada manualmente. Você já entra no painel e recebe acesso
-          assim que for liberada.
+          quando o administrador aprovar a conta e liberar créditos.
         </p>
         {erro && <Aviso tipo="erro">{erro}</Aviso>}
         <form onSubmit={enviar}>

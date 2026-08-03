@@ -382,6 +382,29 @@ function providerFailure(error: unknown): ProviderError {
     );
   }
 
+  // O app/CLI também usa este provider contra o proxy CodingPro Cloud. Aceitamos
+  // somente códigos públicos conhecidos e devolvemos mensagens estáticas; nunca
+  // repassamos texto arbitrário do corpo, que pode conter detalhe do upstream.
+  if (typeof apiError.responseBody === "string") {
+    try {
+      const corpo = JSON.parse(apiError.responseBody) as { erro?: unknown };
+      if (corpo.erro === "conta_nao_aprovada") {
+        return new ProviderError(
+          "provider-failed",
+          "Sua conta ainda não foi aprovada pelo administrador.",
+        );
+      }
+      if (corpo.erro === "creditos_esgotados") {
+        return new ProviderError(
+          "provider-failed",
+          "Seus créditos acabaram. Aguarde o administrador liberar mais.",
+        );
+      }
+    } catch {
+      // Corpo não JSON: segue para a sanitização genérica por status.
+    }
+  }
+
   const status = apiError.statusCode;
   if (status === 401 || status === 403) {
     return new ProviderError("provider-failed", "A autenticação da DeepSeek falhou.");

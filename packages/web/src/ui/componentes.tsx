@@ -107,7 +107,6 @@ export function Modal({
     // biome-ignore lint/a11y/noStaticElementInteractions: overlay de modal, o conteúdo tem foco próprio
     // biome-ignore lint/a11y/useKeyWithClickEvents: fechar pelo overlay é atalho; o botão Cancelar é o caminho acessível
     <div className="modal-fundo" onClick={onFechar}>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: impede que o clique dentro feche o modal */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: só barra a propagação, não é um controle */}
       <div
         aria-modal="true"

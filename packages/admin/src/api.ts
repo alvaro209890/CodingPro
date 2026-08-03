@@ -59,6 +59,7 @@ export type UsuarioAdmin = {
   nome: string;
   status: "pendente" | "ativo" | "bloqueado";
   admin: boolean;
+  creditosMicro: number;
   limiteDiarioMicro?: number;
   limiteMicro: number;
   rateRpm?: number;

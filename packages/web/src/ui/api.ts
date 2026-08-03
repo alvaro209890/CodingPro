@@ -71,6 +71,7 @@ export type Usuario = {
   readonly nome: string;
   readonly status: "pendente" | "ativo" | "bloqueado";
   readonly admin: boolean;
+  readonly creditosMicro: number;
   readonly limiteDiarioMicro?: number;
   readonly limiteMicro: number;
   readonly rateRpm?: number;

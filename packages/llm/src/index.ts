@@ -53,10 +53,10 @@ export {
   parseModelRole,
   type ReasoningEffort,
   type ResolvedDeepSeekModel,
-  resolverEsforcoRaciocinio,
   ROLE_MODEL_FLASH,
   ROLE_MODEL_PRO,
   resolveDeepSeekModelForRole,
+  resolverEsforcoRaciocinio,
 } from "./roles.js";
 export {
   copyChatMessage,

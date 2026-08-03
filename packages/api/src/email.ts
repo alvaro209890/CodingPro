@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { carregarConfig, type ConfigApi } from "./config.js";
+import { type ConfigApi, carregarConfig } from "./config.js";
 
 export type EmailTexto = {
   readonly para: string;

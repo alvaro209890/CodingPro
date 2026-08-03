@@ -40,6 +40,9 @@ export default defineConfig({
       },
     },
     environment: "node",
+    // O empacotamento do Electron copia o workspace para `.pack`; nunca execute
+    // novamente os testes dessa cópia gerada nem tente resolver o tsconfig por ela.
+    exclude: ["packages/**/.pack/**"],
     include: ["packages/**/test/**/*.test.ts"],
   },
 });

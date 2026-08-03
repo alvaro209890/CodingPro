@@ -29,6 +29,7 @@ function publico(usuario: {
   nome: string;
   status: string;
   admin: boolean;
+  creditos_micro: number;
   limite_mensal_micro: number;
   totp_ativado: boolean;
   limite_diario_micro: number;
@@ -36,6 +37,7 @@ function publico(usuario: {
 }) {
   return {
     admin: usuario.admin,
+    creditosMicro: Number(usuario.creditos_micro),
     email: usuario.email,
     id: usuario.id,
     limiteMicro: usuario.limite_mensal_micro,
@@ -82,8 +84,8 @@ export function registrarRotasAuth(app: FastifyInstance, ctx: Contexto): void {
     }
 
     // O primeiro usuário do sistema — ou o e-mail configurado como admin — entra com
-    // poderes de admin. Demais contas já nascem ativas (sem verificação de e-mail) para
-    // usar o proxy DeepSeek da plataforma no CLI/desktop assim que fizerem login.
+    // poderes de admin. Toda conta nasce pendente e sem créditos: o acesso à IA só é
+    // liberado depois de aprovação e concessão manual pelo painel administrativo.
     const primeiro = (await ctx.repo.contarUsuarios()) === 0;
     const admin = primeiro || (ctx.config.emailAdmin !== "" && email === ctx.config.emailAdmin);
 

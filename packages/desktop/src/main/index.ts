@@ -6,8 +6,6 @@ import { fileURLToPath } from "node:url";
 import {
   type AgentEvent,
   ALL_TOOLS,
-  filtrarToolsDoRuntime,
-  SUBAGENT_TOOL_POOL,
   type Approval,
   type Approver,
   type AutoEffortState,
@@ -31,6 +29,7 @@ import {
   detectarProjeto,
   dirsSkills,
   estimateMessageTokens,
+  filtrarToolsDoRuntime,
   formatarPerguntaUi,
   formatarRelatorioDoctor,
   gerarCodingproMd,
@@ -65,6 +64,7 @@ import {
   type ServidoresMcp,
   SessionStore,
   type Skill,
+  SUBAGENT_TOOL_POOL,
   type SubagenteSpawner,
   SYSTEM_PROMPT_V1,
   salvarPlanoEmDisco,
@@ -1420,7 +1420,7 @@ app.whenReady().then(() => {
     );
   });
 
-  /** Cadastro: cria conta (ativa na hora, sem verificação de e-mail) e devolve mensagem. */
+  /** Cadastro: cria conta pendente, sem créditos, e devolve a orientação ao usuário. */
   ipcMain.handle(
     "codingpro:conta-cadastrar",
     async (_, email: string, nome: string, senha: string) => {
@@ -1433,7 +1433,7 @@ app.whenReady().then(() => {
       const corpo = (await res.json()) as { usuario?: { status: string }; mensagem?: string };
       if (!res.ok) throw new Error(corpo.mensagem || "Erro ao criar conta.");
       if (corpo.usuario?.status === "pendente") {
-        return "Conta criada! O administrador precisa aprová-la antes de usar. Você será avisado.";
+        return "Conta criada! Aguardando aprovação do administrador para liberar o uso e os créditos.";
       }
       return "Conta criada com sucesso!";
     },

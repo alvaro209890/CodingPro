@@ -44,6 +44,7 @@ export function registrarRotasAdmin(app: FastifyInstance, ctx: Contexto, metrica
         const consumo = await ctx.repo.consumoDoMes(u.id, competencia);
         return {
           admin: u.admin,
+          creditosMicro: Number(u.creditos_micro),
           criadoEm: u.criado_em,
           custoMicro: consumo.custoMicro,
           email: u.email,
@@ -88,6 +89,18 @@ export function registrarRotasAdmin(app: FastifyInstance, ctx: Contexto, metrica
       }
       campos.limiteMicro = limite;
     }
+    if (corpo.creditosMicro !== undefined) {
+      const creditos = Number(corpo.creditosMicro);
+      if (!Number.isSafeInteger(creditos) || creditos <= 0) {
+        return erro(
+          resposta,
+          400,
+          "creditos_invalidos",
+          "Informe um valor positivo de créditos para liberar.",
+        );
+      }
+      campos.creditosMicro = creditos;
+    }
     if (corpo.limiteDiarioMicro !== undefined) {
       const limite = Number(corpo.limiteDiarioMicro);
       if (!Number.isSafeInteger(limite) || limite < 0) {
@@ -120,16 +133,33 @@ export function registrarRotasAdmin(app: FastifyInstance, ctx: Contexto, metrica
     // Bloquear é uma medida de contenção: sem revogar os tokens, a CLI continuaria passando.
     if (campos.status === "bloqueado") await ctx.repo.revogarTodosTokens(id);
 
-    await ctx.repo.registrarAuditoria({
-      acao: "usuario_atualizado",
-      alvo: atualizado.email,
-      atorEmail: admin.email,
-      atorId: admin.id,
-      detalhe: campos,
-      ip: ipDe(req),
-    });
+    if (campos.creditosMicro !== undefined) {
+      await ctx.repo.registrarAuditoria({
+        acao: "creditos_liberados",
+        alvo: atualizado.email,
+        atorEmail: admin.email,
+        atorId: admin.id,
+        detalhe: {
+          saldoMicro: Number(atualizado.creditos_micro),
+          valorMicro: campos.creditosMicro,
+        },
+        ip: ipDe(req),
+      });
+    }
 
-    return resposta.send({ ok: true });
+    const houveOutraAtualizacao = Object.keys(campos).some((campo) => campo !== "creditosMicro");
+    if (houveOutraAtualizacao) {
+      await ctx.repo.registrarAuditoria({
+        acao: "usuario_atualizado",
+        alvo: atualizado.email,
+        atorEmail: admin.email,
+        atorId: admin.id,
+        detalhe: campos,
+        ip: ipDe(req),
+      });
+    }
+
+    return resposta.send({ creditosMicro: Number(atualizado.creditos_micro), ok: true });
   });
 
   app.post("/api/admin/usuarios/:id/revogar-tokens", async (req, resposta) => {

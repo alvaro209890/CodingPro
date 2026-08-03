@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { Usuario } from "../api.js";
-import { Cartao, Aviso } from "../componentes.js";
-import { propsLink } from "../rotas.js";
+import { Aviso, Cartao } from "../componentes.js";
 import { DESKTOP_VERSAO, DOWNLOAD_WINDOWS, urlDownload } from "../downloads.js";
+import { propsLink } from "../rotas.js";
 
 function Bloco({ children }: { children: string }) {
   const [copiado, setCopiado] = useState(false);
@@ -100,13 +100,13 @@ export function Comecar({ usuario }: { usuario: Usuario | null }) {
       {usuario === null && (
         <Aviso tipo="atencao">
           Você ainda não tem conta neste navegador. <a {...propsLink("/cadastro")}>Crie a sua</a>{" "}
-          antes de seguir os passos — o login da CLI precisa de uma conta aprovada.
+          antes de seguir os passos — o uso da IA precisa de uma conta aprovada e com créditos.
         </Aviso>
       )}
       {usuario?.status === "pendente" && (
         <Aviso tipo="atencao">
           Sua conta está <strong>aguardando aprovação</strong>. Pode instalar tudo desde já; o passo
-          de login só vai concluir depois que o administrador liberar seu acesso.
+          de login só vai concluir depois que o administrador aprovar a conta e liberar créditos.
         </Aviso>
       )}
 
@@ -145,6 +145,10 @@ export function Comecar({ usuario }: { usuario: Usuario | null }) {
           <li>
             <strong>&quot;Você atingiu seu limite mensal&quot;</strong> — o limite renova no dia 1º;
             veja quanto falta no <a {...propsLink("/painel")}>painel</a>.
+          </li>
+          <li>
+            <strong>&quot;Seus créditos acabaram&quot;</strong> — aguarde o administrador liberar
+            mais créditos; o saldo aparece no <a {...propsLink("/painel")}>painel</a>.
           </li>
           <li>
             <strong>O código expirou</strong> — ele vale 10 minutos. Rode{" "}

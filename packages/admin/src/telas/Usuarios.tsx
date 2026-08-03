@@ -13,6 +13,7 @@ export function Usuarios() {
   const [busca, setBusca] = useState("");
   const [erro, setErro] = useState("");
   const [editando, setEditando] = useState<UsuarioAdmin | null>(null);
+  const [liberando, setLiberando] = useState<UsuarioAdmin | null>(null);
 
   const carregar = useCallback((termo: string) => {
     api
@@ -79,6 +80,7 @@ export function Usuarios() {
                 <tr>
                   <th>Conta</th>
                   <th>Status</th>
+                  <th>Saldo</th>
                   <th>Consumo/mês</th>
                   <th>Limite</th>
                   <th>Reqs</th>
@@ -108,6 +110,7 @@ export function Usuarios() {
                         {usuario.status}
                       </span>
                     </td>
+                    <td>{formatarUsd(usuario.creditosMicro)}</td>
                     <td>{formatarUsd(usuario.custoMicro)}</td>
                     <td>
                       <div>
@@ -156,6 +159,13 @@ export function Usuarios() {
                         )}
                         <button
                           className="pequeno"
+                          onClick={() => setLiberando(usuario)}
+                          type="button"
+                        >
+                          Liberar créditos
+                        </button>
+                        <button
+                          className="pequeno"
                           onClick={() => setEditando(usuario)}
                           type="button"
                         >
@@ -188,6 +198,78 @@ export function Usuarios() {
           usuario={editando}
         />
       )}
+
+      {liberando && (
+        <ModalCreditos
+          onFechar={() => setLiberando(null)}
+          onSalvar={async (creditosMicro) => {
+            await alterar(liberando, { creditosMicro });
+            setLiberando(null);
+          }}
+          usuario={liberando}
+        />
+      )}
+    </div>
+  );
+}
+
+function ModalCreditos({
+  usuario,
+  onFechar,
+  onSalvar,
+}: {
+  usuario: UsuarioAdmin;
+  onFechar: () => void;
+  onSalvar: (creditosMicro: number) => Promise<void>;
+}) {
+  const [valor, setValor] = useState("");
+
+  async function enviar(evento: FormEvent) {
+    evento.preventDefault();
+    const dolares = Number.parseFloat(valor.replace(",", "."));
+    if (!Number.isFinite(dolares) || dolares <= 0) return;
+    const creditosMicro = Math.round(dolares * 1_000_000);
+    if (!Number.isSafeInteger(creditosMicro) || creditosMicro <= 0) return;
+    await onSalvar(creditosMicro);
+  }
+
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: overlay de modal
+    // biome-ignore lint/a11y/useKeyWithClickEvents: o botão Cancelar é o caminho acessível
+    <div className="modal-fundo" onClick={onFechar}>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: stopPropagation no painel do modal */}
+      <div
+        aria-modal="true"
+        className="cartao modal"
+        onClick={(evento) => evento.stopPropagation()}
+        role="dialog"
+      >
+        <h3>Liberar créditos para {usuario.nome}</h3>
+        <p className="fraco">Saldo atual: {formatarUsd(usuario.creditosMicro)}.</p>
+        <form onSubmit={enviar}>
+          <label>
+            <span>Liberar créditos (US$)</span>
+            <input
+              inputMode="decimal"
+              min="0.000001"
+              onChange={(e) => setValor(e.target.value)}
+              placeholder="2,00"
+              required
+              step="0.000001"
+              type="number"
+              value={valor}
+            />
+          </label>
+          <div className="linha">
+            <button className="primario" type="submit">
+              Liberar
+            </button>
+            <button onClick={onFechar} type="button">
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

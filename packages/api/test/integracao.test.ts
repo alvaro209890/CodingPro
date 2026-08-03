@@ -16,7 +16,7 @@ afterEach(async () => {
 });
 
 describe.skipIf(!TEM_BANCO)("cadastro e login", () => {
-  it("primeiro usuário vira admin ativo — senão não haveria quem aprovar", async () => {
+  it("primeiro usuário vira admin pendente e sem créditos", async () => {
     amb = await montar();
     const resposta = await amb.app.inject({
       method: "POST",
@@ -29,10 +29,14 @@ describe.skipIf(!TEM_BANCO)("cadastro e login", () => {
       url: "/api/cadastro",
     });
     expect(resposta.statusCode).toBe(201);
-    expect(resposta.json().usuario).toMatchObject({ admin: true, status: "ativo" });
+    expect(resposta.json().usuario).toMatchObject({
+      admin: true,
+      creditosMicro: 0,
+      status: "pendente",
+    });
   });
 
-  it("segundo usuário entra ativo, sem poderes de admin", async () => {
+  it("segundo usuário nasce pendente, sem créditos nem poderes de admin", async () => {
     amb = await montar();
     await cadastrar(amb.app, "chefe@teste.com");
     const resposta = await amb.app.inject({
@@ -45,7 +49,11 @@ describe.skipIf(!TEM_BANCO)("cadastro e login", () => {
       },
       url: "/api/cadastro",
     });
-    expect(resposta.json().usuario).toMatchObject({ admin: false, status: "ativo" });
+    expect(resposta.json().usuario).toMatchObject({
+      admin: false,
+      creditosMicro: 0,
+      status: "pendente",
+    });
     expect(resposta.json().codigoVerificacao).toBeUndefined();
   });
 
@@ -235,6 +243,61 @@ describe.skipIf(!TEM_BANCO)("proxy LLM", () => {
     model: "deepseek-v4-pro",
     stream: true,
   };
+
+  it("exige aprovação e créditos, e nova liberação destrava o uso", async () => {
+    amb = await montar({
+      config: { DEEPSEEK_API_KEY: "k" },
+      fetch: async () => respostaSseFalsa({ completion_tokens: 1, prompt_tokens: 1 }),
+    });
+    const { cookie, token } = await comToken();
+    const usuario = await amb.repo.buscarPorEmail("chefe@teste.com");
+    if (!usuario) throw new Error("usuário sumiu");
+
+    await amb.repo.atualizarUsuario(usuario.id, { status: "pendente" });
+    const pendente = await amb.app.inject({
+      headers: { authorization: `Bearer ${token}` },
+      method: "POST",
+      payload: CORPO,
+      url: "/v1/chat/completions",
+    });
+    expect(pendente.statusCode).toBe(403);
+    expect(pendente.json().erro).toBe("conta_nao_aprovada");
+
+    await amb.repo.atualizarUsuario(usuario.id, { status: "ativo" });
+    await amb.sql`UPDATE usuarios SET creditos_micro = 0 WHERE id = ${usuario.id}`;
+    const semCreditos = await amb.app.inject({
+      headers: { authorization: `Bearer ${token}` },
+      method: "POST",
+      payload: CORPO,
+      url: "/v1/chat/completions",
+    });
+    expect(semCreditos.statusCode).toBe(402);
+    expect(semCreditos.json()).toMatchObject({
+      erro: "creditos_esgotados",
+      mensagem: "Seus créditos acabaram. Aguarde o administrador liberar mais.",
+    });
+
+    const liberacao = await amb.app.inject({
+      headers: { cookie },
+      method: "PATCH",
+      payload: { creditosMicro: 1_000_000 },
+      url: `/api/admin/usuarios/${usuario.id}`,
+    });
+    expect(liberacao.statusCode).toBe(200);
+    expect(liberacao.json().creditosMicro).toBe(1_000_000);
+
+    const liberado = await amb.app.inject({
+      headers: { authorization: `Bearer ${token}` },
+      method: "POST",
+      payload: CORPO,
+      url: "/v1/chat/completions",
+    });
+    expect(liberado.statusCode).toBe(200);
+    expect(liberado.headers["x-codingpro-creditos-micro"]).toBe("1000000");
+
+    const depois = await amb.repo.buscarPorId(usuario.id);
+    expect(Number(depois?.creditos_micro)).toBeLessThan(1_000_000);
+  });
 
   it("repassa a resposta e grava o consumo medido", async () => {
     amb = await montar({

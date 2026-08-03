@@ -9,6 +9,7 @@ export type BloqueioLimite =
       readonly competencia: string;
       readonly custoMicro: number;
       readonly limiteMicro: number;
+      readonly creditosMicro: number;
     }
   | {
       readonly ok: false;
@@ -57,6 +58,15 @@ export async function checarAcessoLlm(ctx: Contexto, usuario: Usuario): Promise<
     };
   }
 
+  if (usuario.creditos_micro <= 0) {
+    return {
+      codigo: "creditos_esgotados",
+      mensagem: "Seus créditos acabaram. Aguarde o administrador liberar mais.",
+      ok: false,
+      status: 402,
+    };
+  }
+
   if (!checarRateLimit(usuario)) {
     return {
       codigo: "rate_limit",
@@ -100,6 +110,7 @@ export async function checarAcessoLlm(ctx: Contexto, usuario: Usuario): Promise<
 
   return {
     competencia,
+    creditosMicro: Number(usuario.creditos_micro),
     custoMicro: consumo.custoMicro,
     limiteMicro: limiteMensalMicro,
     ok: true,

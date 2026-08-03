@@ -70,6 +70,7 @@ export function registrarRotasConta(app: FastifyInstance, ctx: Contexto): void {
       exportadoEm: new Date().toISOString(),
       usuario: {
         admin: usuario.admin,
+        creditosMicro: Number(usuario.creditos_micro),
         criadoEm: usuario.criado_em,
         email: usuario.email,
         id: usuario.id,

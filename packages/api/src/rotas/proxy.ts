@@ -115,6 +115,7 @@ export function registrarRotasProxy(app: FastifyInstance, ctx: Contexto): void {
 
     const aviso = cabecalhoAviso(acesso.custoMicro, acesso.limiteMicro);
     if (aviso) resposta.header("x-codingpro-aviso", encodeURIComponent(aviso));
+    resposta.header("x-codingpro-creditos-micro", String(acesso.creditosMicro));
     resposta.header("x-codingpro-uso-micro", String(acesso.custoMicro));
     resposta.header("x-codingpro-limite-micro", String(acesso.limiteMicro));
 

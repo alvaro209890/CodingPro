@@ -29,6 +29,7 @@ describe.skipIf(!TEM_BANCO)("rotas de admin", () => {
     const usuarios = resposta.json().usuarios;
     expect(usuarios).toHaveLength(2);
     expect(usuarios[0]).toHaveProperty("custoMicro");
+    expect(usuarios[0]).toHaveProperty("creditosMicro");
     expect(usuarios[0]).not.toHaveProperty("codigoVerificacao");
   });
 
@@ -57,6 +58,33 @@ describe.skipIf(!TEM_BANCO)("rotas de admin", () => {
       url: "/api/admin/usuarios?busca=ninguem",
     });
     expect(semResultado.json().usuarios).toHaveLength(0);
+  });
+
+  it("soma liberações de créditos e registra a auditoria específica", async () => {
+    amb = await montar();
+    const chefe = await cadastrar(amb.app, "chefe@teste.com");
+    const novato = await cadastrar(amb.app, "novato@teste.com");
+
+    for (const creditosMicro of [500_000, 250_000]) {
+      const resposta = await amb.app.inject({
+        headers: { cookie: chefe.cookie },
+        method: "PATCH",
+        payload: { creditosMicro },
+        url: `/api/admin/usuarios/${novato.id}`,
+      });
+      expect(resposta.statusCode).toBe(200);
+    }
+
+    const usuario = await amb.repo.buscarPorId(novato.id);
+    expect(Number(usuario?.creditos_micro)).toBe(750_000);
+
+    const auditoria = await amb.app.inject({
+      headers: { cookie: chefe.cookie },
+      method: "GET",
+      url: "/api/admin/auditoria?acao=creditos_liberados",
+    });
+    expect(auditoria.json().registros).toHaveLength(2);
+    expect(auditoria.json().registros[0].detalhe).toMatchObject({ valorMicro: 250_000 });
   });
 
   it("edita o limite mensal e o proxy passa a respeitar o novo valor", async () => {
@@ -175,6 +203,8 @@ describe.skipIf(!TEM_BANCO)("rotas de admin", () => {
     expect((await pedir({ status: "inventado" }))?.json().erro).toBe("status_invalido");
     expect((await pedir({ limiteMicro: -5 }))?.json().erro).toBe("limite_invalido");
     expect((await pedir({ limiteMicro: 1.5 }))?.json().erro).toBe("limite_invalido");
+    expect((await pedir({ creditosMicro: 0 }))?.json().erro).toBe("creditos_invalidos");
+    expect((await pedir({ creditosMicro: -1 }))?.json().erro).toBe("creditos_invalidos");
     expect((await pedir({ status: "ativo" }, "abc"))?.json().erro).toBe("id_invalido");
     expect((await pedir({ status: "ativo" }, 999_999))?.json().erro).toBe("usuario_inexistente");
   });
@@ -336,6 +366,7 @@ describe.skipIf(!TEM_BANCO)("consumo do usuário", () => {
       url: "/api/consumo",
     });
     expect(resposta.json()).toMatchObject({
+      creditosMicro: 1_000_000_000,
       custoMicro: 0,
       diario: [],
       percentual: 0,
