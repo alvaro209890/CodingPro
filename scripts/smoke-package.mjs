@@ -264,20 +264,41 @@ try {
   }
 
   const dist = join(destinoInstalacao, "node_modules", "codingpro", "dist");
+  // O modo TUI é lazy (--tui) e opcional: os chunks do @codingpro/tui mantêm as
+  // deps dele como externas (Ink ~30MB e amigos só carregam quando o TUI é usado).
+  const EXTERNOS_LAZY_PERMITIDOS = new Set([
+    "ink",
+    "ink-gradient",
+    "ink-big-text",
+    "react",
+    "react-devtools-core",
+  ]);
   for (const arquivo of readdirSync(dist).filter((nome) => nome.endsWith(".mjs"))) {
     const modulo = readFileSync(join(dist, arquivo), "utf8");
-    const imports = [
+    const importsEstaticos = [
       ...modulo.matchAll(/^import\s+(?:.*?\s+from\s+)?["']([^"']+)["'];?$/gmu),
-      ...modulo.matchAll(/\bimport\(["']([^"']+)["']\)/gu),
     ];
-    for (const match of imports) {
+    const importsDinamicos = [...modulo.matchAll(/\bimport\(["']([^"']+)["']\)/gu)];
+    for (const match of importsEstaticos) {
       const specifier = match[1];
       if (
         specifier !== undefined &&
+        !EXTERNOS_LAZY_PERMITIDOS.has(specifier) &&
         !specifier.startsWith("./") &&
         !specifier.startsWith("node:")
       ) {
         throw new Error(`O bundle manteve import externo: ${specifier}`);
+      }
+    }
+    for (const match of importsDinamicos) {
+      const specifier = match[1];
+      if (
+        specifier !== undefined &&
+        !EXTERNOS_LAZY_PERMITIDOS.has(specifier) &&
+        !specifier.startsWith("./") &&
+        !specifier.startsWith("node:")
+      ) {
+        throw new Error(`O bundle manteve import externo (dinâmico): ${specifier}`);
       }
     }
   }

@@ -16,7 +16,10 @@ const itemTarefa = {
   additionalProperties: false,
   properties: {
     prompt: { description: "A tarefa para o subagente.", type: "string" },
-    tipo: { description: "O tipo de subagente (explorer/worker/architect/reviewer).", type: "string" },
+    tipo: {
+      description: "O tipo de subagente (explorer/worker/architect/reviewer).",
+      type: "string",
+    },
     type: {
       description: "Alias em inglês de `tipo` (explorer/worker/architect/reviewer).",
       type: "string",

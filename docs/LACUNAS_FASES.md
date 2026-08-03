@@ -4,6 +4,8 @@
 **Método:** cruzamento dos planos (`planos/`, `fase2-app-windows/`, `fase3-plataforma-web/`) com o código em `packages/*`.  
 **Objetivo:** deixar explícito o que está **entregue**, o que é **versão simplificada** e o que **ainda falta** — sem confundir claim de checklist com implementação real.
 
+> **Atualização 2026-08-03:** gate `pnpm check` estava vermelho no main (format/lint/typecheck/smoke) e foi **corrigido** — ver [RELATORIO-TESTES-2026-08-03.md](RELATORIO-TESTES-2026-08-03.md).
+
 Legenda: ✅ feito · 🔶 parcial / simplificado · ❌ não feito · 📌 pós-1.0 / diferido de propósito
 
 ---

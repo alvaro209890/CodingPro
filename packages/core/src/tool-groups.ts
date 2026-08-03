@@ -56,9 +56,7 @@ export const SUBAGENT_TOOL_POOL = Object.freeze([
 ] as const);
 
 /** Omite `code_search` quando `node:sqlite` não existe (Electron 34 / Node 20). */
-export function filtrarToolsDoRuntime(
-  tools: readonly ExecutableTool[],
-): readonly ExecutableTool[] {
+export function filtrarToolsDoRuntime(tools: readonly ExecutableTool[]): readonly ExecutableTool[] {
   if (isNodeSqliteDisponivel()) {
     return tools;
   }

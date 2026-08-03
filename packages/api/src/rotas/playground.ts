@@ -25,6 +25,13 @@ import type { FastifyInstance } from "fastify";
 import { type Contexto, erro, exigirUsuario, texto } from "../contexto.js";
 import { checarAcessoLlm, registrarUsoDaResposta } from "../limites.js";
 import { dirUsuario } from "../workspace.js";
+import type { UsoBruto } from "../proxy.js";
+type RespostaChat = {
+  usage?: UsoBruto;
+  choices?: Array<{
+    message?: { content?: string; reasoning_content?: string };
+  }>;
+};
 
 const exec = promisify(execCb);
 const TIMEOUT_CMD = 60_000;
@@ -111,20 +118,28 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
       if (enviados.length === 0)
         return erro(resposta, 400, "arquivo_ausente", "Selecione ao menos um arquivo para enviar.");
       return resposta.status(201).send({ files: enviados, total: enviados.length });
-    } catch (e: any) {
-      return erro(resposta, 500, "erro_upload", e.message || "Falha ao receber o arquivo.");
+    } catch (e) {
+      return erro(
+        resposta,
+        500,
+        "erro_upload",
+        e instanceof Error ? e.message : String(e) || "Falha ao receber o arquivo.",
+      );
     }
   });
 
   app.post("/api/vps/read", async (req, resposta) => {
     const u = await exigirUsuario(ctx, req, resposta);
     if (!u) return;
-    const caminho = resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.path, 500));
+    const caminho = resolverSeguro(
+      dirUsuario(u.id),
+      texto((req.body as Record<string, unknown>)?.path, 500),
+    );
     if (!caminho) return erro(resposta, 403, "acesso_negado", "Acesso negado.");
     try {
       return resposta.send({
         content: readFileSync(caminho, "utf8").slice(0, 500_000),
-        path: (req.body as any)?.path,
+        path: (req.body as Record<string, unknown>)?.path,
       });
     } catch {
       return erro(resposta, 404, "nao_encontrado", "Arquivo não encontrado.");
@@ -134,12 +149,14 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
   app.post("/api/vps/write", async (req, resposta) => {
     const u = await exigirUsuario(ctx, req, resposta);
     if (!u) return;
-    const relativo = texto((req.body as any)?.path, 500);
+    const relativo = texto((req.body as Record<string, unknown>)?.path, 500);
     if (relativo.includes("~")) return erro(resposta, 403, "acesso_negado", "Acesso negado.");
     const caminho = destinoUploadSeguro(dirUsuario(u.id), relativo);
     if (!caminho) return erro(resposta, 403, "acesso_negado", "Acesso negado.");
     const conteudo =
-      typeof (req.body as any)?.content === "string" ? (req.body as any).content : "";
+      typeof (req.body as Record<string, unknown>)?.content === "string"
+        ? ((req.body as Record<string, unknown>).content as string)
+        : "";
     try {
       mkdirSync(dirname(caminho), { recursive: true });
       writeFileSync(caminho, conteudo, "utf8");
@@ -152,7 +169,10 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
   app.post("/api/vps/delete", async (req, resposta) => {
     const u = await exigirUsuario(ctx, req, resposta);
     if (!u) return;
-    const caminho = resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.path, 500));
+    const caminho = resolverSeguro(
+      dirUsuario(u.id),
+      texto((req.body as Record<string, unknown>)?.path, 500),
+    );
     if (!caminho) return erro(resposta, 403, "acesso_negado", "Acesso negado.");
     try {
       const { rmSync } = await import("node:fs");
@@ -167,10 +187,12 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
   app.post("/api/vps/terminal", async (req, resposta) => {
     const u = await exigirUsuario(ctx, req, resposta);
     if (!u) return;
-    const comando = texto((req.body as any)?.command, 2000);
+    const comando = texto((req.body as Record<string, unknown>)?.command, 2000);
     const cwd =
-      resolverSeguro(dirUsuario(u.id), texto((req.body as any)?.cwd, 500) || ".") ??
-      dirUsuario(u.id);
+      resolverSeguro(
+        dirUsuario(u.id),
+        texto((req.body as Record<string, unknown>)?.cwd, 500) || ".",
+      ) ?? dirUsuario(u.id);
     if (!comando) return erro(resposta, 400, "comando_vazio", "Comando vazio.");
     try {
       const { stdout, stderr } = await exec(comando, {
@@ -184,11 +206,12 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
         stderr: stderr.slice(0, MAX_OUTPUT),
         cwd,
       });
-    } catch (e: any) {
+    } catch (e) {
+      const err = e as Error & { stdout?: string; stderr?: string; code?: number };
       return resposta.send({
-        stdout: e.stdout?.slice(0, MAX_OUTPUT) ?? "",
-        stderr: (e.stderr ?? e.message ?? "").slice(0, MAX_OUTPUT),
-        code: e.code ?? 1,
+        stdout: err.stdout?.slice(0, MAX_OUTPUT) ?? "",
+        stderr: (err.stderr ?? err.message ?? "").slice(0, MAX_OUTPUT),
+        code: err.code ?? 1,
         cwd,
       });
     }
@@ -198,16 +221,16 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
   app.post("/api/vps/git", async (req, resposta) => {
     const u = await exigirUsuario(ctx, req, resposta);
     if (!u) return;
-    const action = texto((req.body as any)?.action, 50);
+    const action = texto((req.body as Record<string, unknown>)?.action, 50);
     const raiz = dirUsuario(u.id);
-    const cwdRel = texto((req.body as any)?.cwd, 500) || "repositorios";
+    const cwdRel = texto((req.body as Record<string, unknown>)?.cwd, 500) || "repositorios";
     try {
       let cmd = "";
       let cwd = raiz;
       let repoPath: string | undefined;
 
       if (action === "clone") {
-        const url = texto((req.body as any)?.url, 500);
+        const url = texto((req.body as Record<string, unknown>)?.url, 500);
         if (!url) return erro(resposta, 400, "url_faltando", "URL do repositório necessária.");
         const repoDir = join(raiz, "repositorios");
         mkdirSync(repoDir, { recursive: true });
@@ -236,11 +259,12 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
         output: stdout || stderr,
         ...(repoPath ? { repoPath } : {}),
       });
-    } catch (e: any) {
+    } catch (e) {
+      const err = e as Error & { stderr?: string };
       return resposta.send({
         cwd: cwdRel,
         ok: false,
-        output: e.stderr || e.message || "erro",
+        output: err.stderr || err.message || "erro",
       });
     }
   });
@@ -251,28 +275,30 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
     if (!u) return;
     const memDir = join(dirUsuario(u.id), ".memory");
     try {
-      const action = texto((req.body as any)?.action, 20);
+      const action = texto((req.body as Record<string, unknown>)?.action, 20);
       if (action === "list") {
         const arquivos = listarArquivos(memDir).filter((f) => f.endsWith(".md"));
         return resposta.send({ files: arquivos });
       }
       if (action === "save") {
-        const nome = texto((req.body as any)?.name, 100) || "nota";
+        const nome = texto((req.body as Record<string, unknown>)?.name, 100) || "nota";
         const conteudo =
-          typeof (req.body as any)?.content === "string" ? (req.body as any).content : "";
+          typeof (req.body as Record<string, unknown>)?.content === "string"
+            ? ((req.body as Record<string, unknown>).content as string)
+            : "";
         writeFileSync(join(memDir, `${nome.replace(/[^a-zA-Z0-9_-]/g, "_")}.md`), conteudo, "utf8");
         return resposta.send({ ok: true });
       }
       if (action === "load") {
-        const nome = texto((req.body as any)?.name, 100);
+        const nome = texto((req.body as Record<string, unknown>)?.name, 100);
         const caminho = join(memDir, `${nome.replace(/[^a-zA-Z0-9_-]/g, "_")}.md`);
         if (!existsSync(caminho))
           return erro(resposta, 404, "nao_encontrado", "Memória não encontrada.");
         return resposta.send({ content: readFileSync(caminho, "utf8") });
       }
       return erro(resposta, 400, "acao_invalida", "Ação inválida.");
-    } catch (e: any) {
-      return erro(resposta, 500, "erro_memoria", e.message);
+    } catch (e) {
+      return erro(resposta, 500, "erro_memoria", e instanceof Error ? e.message : String(e));
     }
   });
 
@@ -282,13 +308,13 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
     if (!u) return;
     if (u.status !== "ativo") return erro(resposta, 403, "nao_aprovado", "Conta não aprovada.");
 
-    const prompt = texto((req.body as any)?.prompt, 10000);
+    const prompt = texto((req.body as Record<string, unknown>)?.prompt, 10000);
     if (!prompt) return erro(resposta, 400, "prompt_vazio", "Prompt vazio.");
 
     const acesso = await checarAcessoLlm(ctx, u);
     if (!acesso.ok) return erro(resposta, acesso.status, acesso.codigo, acesso.mensagem);
 
-    const contexto = texto((req.body as any)?.contexto, 5000) || "";
+    const contexto = texto((req.body as Record<string, unknown>)?.contexto, 5000) || "";
     const systemPrompt = contexto
       ? `Você é o CodingPro, um assistente de código. O usuário está trabalhando no workspace com estes arquivos:\n${contexto}\n\nResponda de forma útil e direta.`
       : "Você é o CodingPro, um assistente de código. Responda de forma útil e direta.";
@@ -325,7 +351,7 @@ export function registrarRotasPlayground(app: FastifyInstance, ctx: Contexto): v
         }).catch(() => {});
         return erro(resposta, 502, "provedor_erro", "Erro no provedor.");
       }
-      const corpo = (await upstream.json()) as any;
+      const corpo = (await upstream.json()) as RespostaChat;
       await registrarUsoDaResposta(ctx, {
         competencia: acesso.competencia,
         duracaoMs: Date.now() - inicioChamada,

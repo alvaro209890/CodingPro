@@ -9,8 +9,10 @@ export async function iniciarTui(context: ProviderRuntimeContext): Promise<void>
   const provider = await criarProviderRuntime(context);
   // Dynamic import — Ink é ~30MB e só carrega no modo TUI.
   const [{ App }, ink] = await Promise.all([
-    import("@codingpro/tui") as Promise<{ App: any }>,
-    import("ink") as Promise<{ render: any }>,
+    import("@codingpro/tui") as Promise<{ App: import("react").ComponentType }>,
+    import("ink") as Promise<{
+      render: (elemento: unknown) => { waitUntilExit: () => Promise<void> };
+    }>,
   ]);
 
   const { waitUntilExit } = ink.render(

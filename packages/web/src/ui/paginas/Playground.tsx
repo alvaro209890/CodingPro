@@ -7,7 +7,7 @@ import { FilesPanel } from "./FilesPanel.js";
 import { GitPanel } from "./GitPanel.js";
 import { ehNomePadrao, inferirNomeSessao } from "./inferirNomeSessao.js";
 import { MemoryPanel } from "./MemoryPanel.js";
-import type { Mensagem, Session } from "./PlaygroundTypes.js";
+import { novaMensagem, type Mensagem, type Session } from "./PlaygroundTypes.js";
 import { Sidebar } from "./Sidebar.js";
 import { TabBar } from "./TabBar.js";
 import type { TaskRow } from "./TaskTrackerCard.js";
@@ -98,7 +98,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [thinkingSteps, setThinkingSteps] = useState<string[]>([]);
   const [tasks, setTasks] = useState<TaskRow[]>([]);
-  const timerRef = useRef<any>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -193,7 +193,10 @@ export function Playground({ usuario }: { usuario: Usuario }) {
       body: body ? JSON.stringify(body) : "{}",
       credentials: "include",
     });
-    if (!r.ok) throw new Error(((await r.json().catch(() => ({}))) as any).mensagem || "Erro");
+    if (!r.ok)
+      throw new Error(
+        ((await r.json().catch(() => ({}))) as { mensagem?: string }).mensagem || "Erro",
+      );
     return r.json() as T;
   }, []);
 
@@ -265,7 +268,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         setElapsedMs(Date.now() - startTime);
       }, 100);
 
-      setMsgs((prev) => [...prev, { role: "user", content: p, timestamp: Date.now() }]);
+      setMsgs((prev) => [...prev, novaMensagem("user", p)]);
       const sessaoId = activeSession?.id;
       const podeAutoNomear = Boolean(
         activeSession && !activeSession.nomeManual && ehNomePadrao(activeSession.nome),
@@ -280,8 +283,10 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             body: JSON.stringify({ prompt: p }),
             credentials: "include",
           });
-        } catch (netErr: any) {
-          throw new Error(`Rede: ${netErr.message || "sem conexão"}`);
+        } catch (netErr) {
+          throw new Error(
+            `Rede: ${netErr instanceof Error ? netErr.message : String(netErr) || "sem conexão"}`,
+          );
         }
         if (!r.ok) {
           let msg = `Erro ${r.status}`;
@@ -334,12 +339,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               const textoFinal = content || d.content || "";
               setMsgs((prev) => [
                 ...prev,
-                {
-                  role: "assistant",
-                  content: textoFinal,
-                  tools: toolsLog,
-                  timestamp: Date.now(),
-                },
+                novaMensagem("assistant", textoFinal, { tools: toolsLog }),
               ]);
               if (sessaoId && podeAutoNomear) {
                 const tituloLocal = inferirNomeSessao(p, textoFinal);
@@ -351,11 +351,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             } else if (d.type === "error") {
               setMsgs((prev) => [
                 ...prev,
-                {
-                  role: "assistant",
-                  content: `❌ ${d.message || "Erro no agente"}`,
-                  timestamp: Date.now(),
-                },
+                novaMensagem("assistant", `❌ ${d.message || "Erro no agente"}`),
               ]);
               setStream("");
               setStatus("");
@@ -385,10 +381,10 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             if (line.startsWith("data: ")) processarEvento(line.slice(6));
           }
         }
-      } catch (e: any) {
+      } catch (e) {
         setMsgs((prev) => [
           ...prev,
-          { role: "assistant", content: `❌ ${e.message}`, timestamp: Date.now() },
+          novaMensagem("assistant", `❌ ${e instanceof Error ? e.message : String(e)}`),
         ]);
       } finally {
         if (timerRef.current) clearInterval(timerRef.current);
@@ -417,18 +413,16 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         case "/list":
           setMsgs((prev) => [
             ...prev,
-            {
-              role: "system",
-              content:
-                sessions
-                  .filter((s) => s.mensagens.length > 0)
-                  .map(
-                    (s) =>
-                      `  ${s.id.slice(-6)}  ${s.nome}  ${s.mensagens.length} msgs  ${new Date(s.criadaEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`,
-                  )
-                  .join("\n") || "  Nenhum chat salvo.",
-              timestamp: Date.now(),
-            },
+            novaMensagem(
+              "system",
+              sessions
+                .filter((s) => s.mensagens.length > 0)
+                .map(
+                  (s) =>
+                    `  ${s.id.slice(-6)}  ${s.nome}  ${s.mensagens.length} msgs  ${new Date(s.criadaEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`,
+                )
+                .join("\n") || "  Nenhum chat salvo.",
+            ),
           ]);
           break;
         case "/switch":
@@ -440,11 +434,10 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               else
                 setMsgs((prev) => [
                   ...prev,
-                  {
-                    role: "system",
-                    content: `Chat '${target}' não encontrado. Use /list para ver os chats.`,
-                    timestamp: Date.now(),
-                  },
+                  novaMensagem(
+                    "system",
+                    `Chat '${target}' não encontrado. Use /list para ver os chats.`,
+                  ),
                 ]);
             }
           }
@@ -458,20 +451,12 @@ export function Playground({ usuario }: { usuario: Usuario }) {
                 deletarSessao(found.id);
                 setMsgs((prev) => [
                   ...prev,
-                  {
-                    role: "system",
-                    content: `Chat '${found.nome}' deletado.`,
-                    timestamp: Date.now(),
-                  },
+                  novaMensagem("system", `Chat '${found.nome}' deletado.`),
                 ]);
               } else
                 setMsgs((prev) => [
                   ...prev,
-                  {
-                    role: "system",
-                    content: `Chat '${target}' não encontrado.`,
-                    timestamp: Date.now(),
-                  },
+                  novaMensagem("system", `Chat '${target}' não encontrado.`),
                 ]);
             }
           }
@@ -487,11 +472,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
               }));
               setMsgs((prev) => [
                 ...prev,
-                {
-                  role: "system",
-                  content: `Chat renomeado para '${novoNome.slice(0, 30)}'.`,
-                  timestamp: Date.now(),
-                },
+                novaMensagem("system", `Chat renomeado para '${novoNome.slice(0, 30)}'.`),
               ]);
             }
           }
@@ -520,11 +501,10 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             await navigator.clipboard.writeText(md.join("\n"));
             setMsgs((prev) => [
               ...prev,
-              {
-                role: "system",
-                content: "📋 Chat exportado para a área de transferência como Markdown.",
-                timestamp: Date.now(),
-              },
+              novaMensagem(
+                "system",
+                "📋 Chat exportado para a área de transferência como Markdown.",
+              ),
             ]);
           } catch {
             const joined = md.join("\n");
@@ -541,17 +521,15 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         case "/history":
           setMsgs((prev) => [
             ...prev,
-            {
-              role: "system",
-              content:
-                cmdHistory.length > 0
-                  ? cmdHistory
-                      .slice(0, 20)
-                      .map((c, i) => `  ${String(i + 1).padStart(2)}. ${c}`)
-                      .join("\n")
-                  : "  Nenhum comando no histórico.",
-              timestamp: Date.now(),
-            },
+            novaMensagem(
+              "system",
+              cmdHistory.length > 0
+                ? cmdHistory
+                    .slice(0, 20)
+                    .map((c, i) => `  ${String(i + 1).padStart(2)}. ${c}`)
+                    .join("\n")
+                : "  Nenhum comando no histórico.",
+            ),
           ]);
           break;
         case "/context":
@@ -560,17 +538,16 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             setFiles(d.files);
             setMsgs((prev) => [
               ...prev,
-              {
-                role: "system",
-                content: `📁 Workspace: ${d.files.length} arquivos/diretórios. Veja a aba Files.`,
-                timestamp: Date.now(),
-              },
+              novaMensagem(
+                "system",
+                `📁 Workspace: ${d.files.length} arquivos/diretórios. Veja a aba Files.`,
+              ),
             ]);
             setTab("files");
-          } catch (e: any) {
+          } catch (e) {
             setMsgs((prev) => [
               ...prev,
-              { role: "system", content: `❌ ${e.message}`, timestamp: Date.now() },
+              novaMensagem("system", `❌ ${e instanceof Error ? e.message : String(e)}`),
             ]);
           }
           break;
@@ -585,12 +562,10 @@ export function Playground({ usuario }: { usuario: Usuario }) {
             setTab("chat");
             setMsgs((prev) => [
               ...prev,
-              {
-                role: "system",
-                content:
-                  "Modo agente ativado. Digite seu prompt para usar ferramentas reais (list_dir, read_file, write_file, bash, grep).",
-                timestamp: Date.now(),
-              },
+              novaMensagem(
+                "system",
+                "Modo agente ativado. Digite seu prompt para usar ferramentas reais (list_dir, read_file, write_file, bash, grep).",
+              ),
             ]);
           }
           break;
@@ -611,11 +586,7 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         case "/help":
           setMsgs((prev) => [
             ...prev,
-            {
-              role: "system",
-              content: CMD_SLASH.map((c) => `${c.cmd} — ${c.desc}`).join("\n"),
-              timestamp: Date.now(),
-            },
+            novaMensagem("system", CMD_SLASH.map((c) => `${c.cmd} — ${c.desc}`).join("\n")),
           ]);
           break;
       }
@@ -703,8 +674,8 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         }
         await refreshFiles();
         setStatus(`${itens.length} arquivo(s) enviado(s)`);
-      } catch (e: any) {
-        setStatus(`Upload: ${e.message}`);
+      } catch (e) {
+        setStatus(`Upload: ${e instanceof Error ? e.message : String(e)}`);
       } finally {
         setUploading(false);
       }
@@ -718,8 +689,8 @@ export function Playground({ usuario }: { usuario: Usuario }) {
       try {
         await POST("/api/vps/delete", { path });
         await refreshFiles();
-      } catch (e: any) {
-        setStatus(`Excluir: ${e.message}`);
+      } catch (e) {
+        setStatus(`Excluir: ${e instanceof Error ? e.message : String(e)}`);
       }
     },
     [POST, refreshFiles],
@@ -730,8 +701,8 @@ export function Playground({ usuario }: { usuario: Usuario }) {
     try {
       await POST("/api/vps/write", { path: activeFile, content: code });
       setStatus("Arquivo salvo");
-    } catch (e: any) {
-      setStatus(`Salvar: ${e.message}`);
+    } catch (e) {
+      setStatus(`Salvar: ${e instanceof Error ? e.message : String(e)}`);
     }
   }, [POST, activeFile, code]);
 
@@ -748,8 +719,8 @@ export function Playground({ usuario }: { usuario: Usuario }) {
           cwd: ".",
         });
         setOut((p) => p + (d.stdout || "") + (d.stderr || ""));
-      } catch (e: any) {
-        setOut((p) => `${p}Erro: ${e.message}`);
+      } catch (e) {
+        setOut((p) => `${p}Erro: ${e instanceof Error ? e.message : String(e)}`);
       }
     },
     [cmd, POST],
@@ -786,8 +757,8 @@ export function Playground({ usuario }: { usuario: Usuario }) {
         } else {
           setGitOut(saida || "Concluído.");
         }
-      } catch (e: any) {
-        setGitOut(e.message || "Erro");
+      } catch (e) {
+        setGitOut((e instanceof Error ? e.message : String(e)) || "Erro");
       } finally {
         setCloning(false);
       }
@@ -808,8 +779,8 @@ export function Playground({ usuario }: { usuario: Usuario }) {
       const d = await POST<{ files: string[] }>("/api/vps/memory", { action: "list" });
       setMemFiles(d.files);
       setStatus("Memória salva com sucesso");
-    } catch (e: any) {
-      setStatus(`Erro memória: ${e.message}`);
+    } catch (e) {
+      setStatus(`Erro memória: ${e instanceof Error ? e.message : String(e)}`);
     }
   }, [memName, memContent, POST]);
 

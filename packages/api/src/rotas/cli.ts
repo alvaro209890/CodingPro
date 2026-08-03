@@ -22,7 +22,7 @@ export function registrarRotaCli(app: FastifyInstance, ctx: Contexto): void {
     if (!u) return;
     if (u.status !== "ativo") return erro(resposta, 403, "nao_aprovado", "Conta não aprovada.");
 
-    const prompt = texto((req.body as any)?.prompt, 10000);
+    const prompt = texto((req.body as Record<string, unknown>)?.prompt, 10000);
     if (!prompt) return erro(resposta, 400, "prompt_vazio", "Prompt vazio.");
 
     const ws = dirUsuario(u.id);

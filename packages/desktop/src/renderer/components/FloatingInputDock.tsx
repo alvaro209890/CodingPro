@@ -240,7 +240,15 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
       {onToggleTerminal && (
         <div className="dock-terminals-row">
           <button type="button" className="dock-terminals-pill" onClick={onToggleTerminal}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <title>Terminal</title>
               <polyline points="4 17 10 11 4 5" />
               <line x1="12" y1="19" x2="20" y2="19" />
             </svg>
@@ -251,7 +259,15 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
 
       <div className="dock-composer">
         <button type="button" className="dock-plus-btn" title="Anexar / comandos" tabIndex={-1}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <title>Anexar</title>
             <path d="M12 5v14M5 12h14" />
           </svg>
         </button>
@@ -272,7 +288,13 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
           <button
             type="button"
             className="dock-model-chip"
-            title={onToggleAutoApprove ? (autoApprove ? "Auto-aprovar ligado" : "Auto-aprovar") : undefined}
+            title={
+              onToggleAutoApprove
+                ? autoApprove
+                  ? "Auto-aprovar ligado"
+                  : "Auto-aprovar"
+                : undefined
+            }
             onClick={onToggleAutoApprove}
           >
             {modelName}
@@ -287,6 +309,7 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
               title="Parar (Ctrl+.)"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <title>Parar</title>
                 <rect x="6" y="6" width="12" height="12" rx="2" />
               </svg>
             </button>
@@ -298,7 +321,15 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
               disabled={!inputPrompt.trim()}
               title="Enviar (Enter)"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <title>Enviar</title>
                 <line x1="22" y1="2" x2="11" y2="13" />
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />
               </svg>
@@ -309,7 +340,15 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
 
       <div className="dock-status-bar">
         <div className="dock-status-left">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <title>Status</title>
             <line x1="6" y1="3" x2="6" y2="15" />
             <circle cx="18" cy="6" r="3" />
             <circle cx="6" cy="18" r="3" />

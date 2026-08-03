@@ -37,7 +37,7 @@ function resolverArquivo(url: string): string | null {
 }
 
 async function servirDownload(
-  req: IncomingMessage,
+  _req: IncomingMessage,
   resposta: ServerResponse,
   url: string,
 ): Promise<boolean> {

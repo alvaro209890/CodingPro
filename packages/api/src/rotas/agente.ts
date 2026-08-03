@@ -18,6 +18,20 @@ import type { FastifyInstance } from "fastify";
 import { type Contexto, erro, exigirUsuario, texto } from "../contexto.js";
 import { checarAcessoLlm, registrarUsoDaResposta } from "../limites.js";
 import { dirUsuario } from "../workspace.js";
+import type { UsoBruto } from "../proxy.js";
+type RespostaChat = {
+  usage?: UsoBruto;
+  choices?: Array<{
+    message?: {
+      content?: string;
+      reasoning_content?: string;
+      tool_calls?: Array<{
+        id?: string;
+        function?: { name?: string; arguments?: string };
+      }>;
+    };
+  }>;
+};
 
 const exec = promisify(execCb);
 
@@ -131,8 +145,8 @@ async function executarTool(
       default:
         return `Tool '${nome}' não implementada.`;
     }
-  } catch (e: any) {
-    return `Erro: ${e.message}`;
+  } catch (e) {
+    return `Erro: ${e instanceof Error ? e.message : String(e)}`;
   }
 }
 
@@ -224,7 +238,7 @@ export function registrarRotaAgente(app: FastifyInstance, ctx: Contexto): void {
     if (!u) return;
     if (u.status !== "ativo") return erro(resposta, 403, "nao_aprovado", "Conta não aprovada.");
 
-    const prompt = texto((req.body as any)?.prompt, 10000);
+    const prompt = texto((req.body as Record<string, unknown>)?.prompt, 10000);
     if (!prompt) return erro(resposta, 400, "prompt_vazio", "Prompt vazio.");
 
     const acesso = await checarAcessoLlm(ctx, u);
@@ -246,7 +260,7 @@ export function registrarRotaAgente(app: FastifyInstance, ctx: Contexto): void {
 
     let concluiu = false;
     try {
-      const messages: any[] = [
+      const messages: Array<Record<string, unknown>> = [
         {
           role: "system",
           content: `Você é o CodingPro, um assistente de IA rodando num VPS Linux. Você tem acesso REAL ao sistema de arquivos do workspace do usuário.
@@ -310,7 +324,7 @@ Sempre responda em português. Seja direto e útil. Quando o usuário pedir para
           break;
         }
 
-        const corpo = (await upstream.json()) as any;
+        const corpo = (await upstream.json()) as RespostaChat;
         await registrarUsoDaResposta(ctx, {
           competencia,
           duracaoMs: Date.now() - inicioChamada,
@@ -330,13 +344,13 @@ Sempre responda em português. Seja direto e útil. Quando o usuário pedir para
         }
 
         // Tool calls?
-        if (msg.tool_calls?.length > 0) {
+        if ((msg.tool_calls?.length ?? 0) > 0) {
           // Envia reasoning (pensamento) do DeepSeek antes das tools
           if (msg.reasoning_content) {
             send("think", { type: "think", content: msg.reasoning_content });
           }
           messages.push(msg);
-          for (const tc of msg.tool_calls) {
+          for (const tc of msg.tool_calls ?? []) {
             const nome = tc.function?.name ?? "?";
             const args = JSON.parse(tc.function?.arguments ?? "{}");
             send("tool-start", {
@@ -378,8 +392,11 @@ Sempre responda em português. Seja direto e útil. Quando o usuário pedir para
           content: "A tarefa excedeu o limite de etapas. Tente dividir o pedido em partes menores.",
         });
       }
-    } catch (e: any) {
-      send("error", { type: "error", message: e.message || "Erro no agente" });
+    } catch (e) {
+      send("error", {
+        type: "error",
+        message: e instanceof Error ? e.message : String(e) || "Erro no agente",
+      });
     } finally {
       resposta.raw.end();
     }

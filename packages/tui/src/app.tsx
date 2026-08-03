@@ -21,7 +21,7 @@ export function App({
   onApprove,
   historicoInicial = [],
 }: TuiProps) {
-  const tema = (TEMAS[nomeTema] ?? TEMAS.aurora)!;
+  const tema = TEMAS[nomeTema] ?? TEMAS.aurora;
   const [mensagens, setMensagens] = useState<ChatMessage[]>(() => [...historicoInicial]);
   const [input, setInput] = useState("");
   const [enviando, setEnviando] = useState(false);

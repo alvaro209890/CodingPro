@@ -24,7 +24,6 @@ export function Sidebar({
   sidebarOpen,
   renameId,
   renameVal,
-  onToggle,
   onClose,
   onSelect,
   onNew,

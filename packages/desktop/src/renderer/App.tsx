@@ -35,8 +35,7 @@ const CollapsibleReasoning: React.FC<{ text?: string | undefined; startedAt?: nu
   }, [text, startedAt]);
 
   if (!text) return null;
-  const label =
-    elapsed > 0 ? `Thought for ${elapsed}s` : "Thought";
+  const label = elapsed > 0 ? `Thought for ${elapsed}s` : "Thought";
   return (
     <div className="reasoning-box">
       <button type="button" className="reasoning-toggle" onClick={() => setOpen(!open)}>
@@ -392,7 +391,7 @@ export const App: React.FC = () => {
                       ? ae.result.value
                       : undefined;
                 const updated = { ...it, status: ok ? ("success" as const) : ("failed" as const) };
-                if (out !== undefined) (updated as any).output = out;
+                if (out !== undefined) (updated as { output?: string }).output = out;
                 return updated;
               }
               return it;
@@ -680,7 +679,11 @@ export const App: React.FC = () => {
         {statusNote && (
           <div className="status-banner">
             <span>{statusNote}</span>
-            <button type="button" className="status-banner-close" onClick={() => setStatusNote(null)}>
+            <button
+              type="button"
+              className="status-banner-close"
+              onClick={() => setStatusNote(null)}
+            >
               ✕
             </button>
           </div>

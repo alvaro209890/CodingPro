@@ -7,11 +7,7 @@ interface HeaderProps {
   onCancel?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({
-  title,
-  onToggleTerminal,
-  onCancel,
-}) => {
+export const Header: React.FC<HeaderProps> = ({ title, onToggleTerminal, onCancel }) => {
   return (
     <header className="top-header">
       <div className="header-title-container">
