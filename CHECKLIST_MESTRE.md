@@ -12,7 +12,7 @@ Legenda: ☐ pendente · ✅ feito · 🔶 em andamento / parcial
 | Fase | Status |
 |------|--------|
 | 1 CLI | 🟢 Engenharia v1 completa; `glob`, JSON headless e approve-always persistente entregues; `npm publish` e pós-1.0 abertos |
-| 2 Windows | 🟡 App usável; preload/builder/CI/downloads entregues; auto-updater e validação em Windows limpo abertos |
+| 2 Windows | 🟢 v1.1.0: renderer auditado (fila de permissões, controles falsos, dados fictícios), pt-BR e a11y; auto-updater e QA em Windows limpo abertos |
 | 3 Plataforma | 🟢 Núcleo + P4 code-complete em 2FA/LGPD/CSP/limites/backup; SMTP/Turnstile/chave prod/beta dependem de ops |
 
 ## Planejamento

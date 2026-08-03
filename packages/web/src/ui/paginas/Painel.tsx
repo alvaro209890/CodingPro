@@ -26,7 +26,7 @@ type InicioTotp = {
   otpauth: string;
 };
 
-type Aba = "consumo" | "tokens" | "perfil";
+type Aba = "consumo" | "dispositivos" | "perfil";
 
 export function Painel({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: () => void }) {
   const [aba, setAba] = useState<Aba>("consumo");
@@ -53,7 +53,7 @@ export function Painel({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar
       {usuario.status === "pendente" && (
         <Aviso tipo="atencao">
           <strong>Conta aguardando aprovação.</strong> Você já pode navegar pelo painel, mas só vai
-          conseguir gerar tokens e usar a CLI depois que o administrador liberar seu acesso.
+          conseguir usar a CLI e o app depois que o administrador liberar seu acesso.
         </Aviso>
       )}
       {usuario.status === "bloqueado" && (
@@ -72,12 +72,12 @@ export function Painel({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar
           Consumo
         </button>
         <button
-          aria-selected={aba === "tokens"}
-          onClick={() => setAba("tokens")}
+          aria-selected={aba === "dispositivos"}
+          onClick={() => setAba("dispositivos")}
           role="tab"
           type="button"
         >
-          Tokens da CLI
+          Dispositivos
         </button>
         <button
           aria-selected={aba === "perfil"}
@@ -90,7 +90,7 @@ export function Painel({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar
       </div>
 
       {aba === "consumo" && <AbaConsumo />}
-      {aba === "tokens" && <AbaTokens usuario={usuario} />}
+      {aba === "dispositivos" && <AbaDispositivos />}
       {aba === "perfil" && <AbaPerfil usuario={usuario} aoAtualizar={aoAtualizar} />}
     </>
   );
@@ -150,10 +150,13 @@ function AbaConsumo() {
   );
 }
 
-function AbaTokens({ usuario }: { usuario: Usuario }) {
+/**
+ * Dispositivos conectados. A geração manual de token saiu do produto — o padrão é a
+ * conta CodingPro Cloud, e o token é emitido sozinho quando você conecta a máquina.
+ * O que continua aqui é o controle de segurança de verdade: ver e desconectar máquinas.
+ */
+function AbaDispositivos() {
   const [tokens, setTokens] = useState<Token[] | null>(null);
-  const [novo, setNovo] = useState("");
-  const [nome, setNome] = useState("");
   const [erro, setErro] = useState("");
 
   const carregar = useCallback(() => {
@@ -161,34 +164,23 @@ function AbaTokens({ usuario }: { usuario: Usuario }) {
       .get<{ tokens: Token[] }>("/api/tokens")
       .then((dados) => setTokens(dados.tokens))
       .catch((causa: unknown) =>
-        setErro(causa instanceof ErroApi ? causa.message : "Falha ao carregar os tokens."),
+        setErro(causa instanceof ErroApi ? causa.message : "Falha ao carregar os dispositivos."),
       );
   }, []);
 
   useEffect(carregar, [carregar]);
 
-  async function criar(evento: FormEvent) {
-    evento.preventDefault();
-    setErro("");
-    try {
-      const dados = await api.post<{ texto: string }>("/api/tokens", { nome: nome || "Meu token" });
-      setNovo(dados.texto);
-      setNome("");
-      carregar();
-    } catch (causa) {
-      setErro(causa instanceof ErroApi ? causa.message : "Falha ao criar o token.");
-    }
-  }
-
-  async function revogar(id: number) {
+  async function desconectar(id: number) {
     setErro("");
     try {
       await api.del(`/api/tokens/${id}`);
       carregar();
     } catch (causa) {
-      setErro(causa instanceof ErroApi ? causa.message : "Falha ao revogar.");
+      setErro(causa instanceof ErroApi ? causa.message : "Falha ao desconectar.");
     }
   }
+
+  const ativos = (tokens ?? []).filter((t) => !t.revogadoEm);
 
   return (
     <div className="pilha">
@@ -198,94 +190,49 @@ function AbaTokens({ usuario }: { usuario: Usuario }) {
           Ainda não instalou? Veja o{" "}
           <a {...propsLink("/comecar")}>passo a passo para a CLI e o app de Windows</a>.
         </p>
-        <p>
-          Com a CLI instalada, rode <code>codingpro login</code> no terminal e digite o código que
-          aparecer em <a {...propsLink("/entrar-dispositivo")}>entrar-dispositivo</a> — o token é
-          criado sozinho.
-        </p>
         <p style={{ margin: 0 }}>
-          Se preferir colar o token manualmente, gere um abaixo e grave em{" "}
-          <code>~/.codingpro/credenciais.json</code> (campo <code>token</code>) ou exporte{" "}
-          <code>CODINGPRO_TOKEN</code> no ambiente.
+          Com o CodingPro instalado, rode <code>codingpro login</code> (ou entre pelo app de
+          Windows) e confirme o código em{" "}
+          <a {...propsLink("/entrar-dispositivo")}>entrar-dispositivo</a>. A conexão é automática —
+          você não precisa criar nem copiar nada.
         </p>
       </Cartao>
 
       {erro && <Aviso tipo="erro">{erro}</Aviso>}
 
-      {novo && (
-        <Aviso tipo="sucesso">
-          <strong>Guarde este token agora — ele não será mostrado de novo.</strong>
-          <code className="token-revelado">{novo}</code>
-          <button className="pequeno" onClick={() => setNovo("")} type="button">
-            Já guardei
-          </button>
-        </Aviso>
-      )}
-
       <Cartao>
-        <h3>Gerar token</h3>
-        {usuario.status !== "ativo" ? (
-          <p className="fraco" style={{ margin: 0 }}>
-            Disponível assim que sua conta for aprovada.
-          </p>
-        ) : (
-          <form className="linha" onSubmit={criar}>
-            <input
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Nome (ex.: notebook do trabalho)"
-              style={{ flex: 1, minWidth: "200px" }}
-              value={nome}
-            />
-            <button className="primario" type="submit">
-              Gerar
-            </button>
-          </form>
-        )}
-      </Cartao>
-
-      <Cartao>
-        <h3>Meus tokens</h3>
+        <h3>Máquinas conectadas</h3>
         {tokens === null ? (
           <Carregando />
-        ) : tokens.length === 0 ? (
+        ) : ativos.length === 0 ? (
           <p className="fraco" style={{ margin: 0 }}>
-            Nenhum token ainda.
+            Nenhuma máquina conectada ainda.
           </p>
         ) : (
           <div className="tabela-rolagem">
             <table>
               <thead>
                 <tr>
-                  <th>Nome</th>
-                  <th>Início</th>
-                  <th>Criado</th>
+                  <th>Máquina</th>
+                  <th>Conectada em</th>
                   <th>Último uso</th>
-                  <th>Estado</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
-                {tokens.map((token) => (
+                {ativos.map((token) => (
                   <tr key={token.id}>
                     <td>{token.nome}</td>
-                    <td className="mono">{token.prefixo}…</td>
                     <td className="fraco">{formatarData(token.criadoEm)}</td>
                     <td className="fraco">{formatarData(token.ultimoUso)}</td>
                     <td>
-                      <span className={`selo ${token.revogadoEm ? "ruim" : "ok"}`}>
-                        {token.revogadoEm ? "Revogado" : "Ativo"}
-                      </span>
-                    </td>
-                    <td>
-                      {!token.revogadoEm && (
-                        <button
-                          className="pequeno perigo"
-                          onClick={() => revogar(token.id)}
-                          type="button"
-                        >
-                          Revogar
-                        </button>
-                      )}
+                      <button
+                        className="pequeno perigo"
+                        onClick={() => desconectar(token.id)}
+                        type="button"
+                      >
+                        Desconectar
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -297,7 +244,6 @@ function AbaTokens({ usuario }: { usuario: Usuario }) {
     </div>
   );
 }
-
 function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: () => void }) {
   const totpAtivo = usuario.totpAtivo ?? usuario.totpAtivado ?? false;
   const [atual, setAtual] = useState("");
@@ -318,7 +264,7 @@ function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: ()
       setAtual("");
       setNova("");
       setMensagem(
-        `Senha alterada. ${dados.tokensRevogados} token(s) de CLI foram revogados por segurança — rode \`codingpro login\` de novo nas suas máquinas.`,
+        `Senha alterada. ${dados.tokensRevogados} máquina(s) foram desconectadas por segurança — entre de novo no app ou rode \`codingpro login\`.`,
       );
     } catch (causa) {
       setErro(causa instanceof ErroApi ? causa.message : "Falha ao trocar a senha.");

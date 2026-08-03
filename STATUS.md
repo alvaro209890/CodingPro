@@ -3,16 +3,18 @@
 Documento operacional curto. Lacunas plano × código: **[`docs/LACUNAS_FASES.md`](docs/LACUNAS_FASES.md)**.  
 Estado Fase 1: [`docs/ESTADO_PROJETO.md`](docs/ESTADO_PROJETO.md).
 
-Último incremento: **[`docs/RELATORIO-CORRECOES-2026-08-03-B.md`](docs/RELATORIO-CORRECOES-2026-08-03-B.md)**
-— subagentes (timeout, aprovador, diagnóstico), aviso de conta cloud fora da fala da IA,
-ferramentas fechadas por padrão no chat, e gate `pnpm check` reprodutível no Windows.
+Último incremento: **[`docs/RELATORIO-DESKTOP-1.1.0.md`](docs/RELATORIO-DESKTOP-1.1.0.md)**
+— desktop 1.1.0: auditoria funcional do renderer (fila de permissões que travava o app,
+controles sem handler, dados inventados), refino de UI em pt-BR, nome do modelo fora do app
+e fim da criação manual de token (padrão = conta CodingPro Cloud).
+Anterior: [`docs/RELATORIO-CORRECOES-2026-08-03-B.md`](docs/RELATORIO-CORRECOES-2026-08-03-B.md).
 
 ## Fases
 
 | Fase | Status | Próximo foco |
 |------|--------|----------------|
 | 1 CLI | 🟢 Engenharia v1 completa; `glob`, JSON headless e approve-always persistente entregues | `npm publish`, QA visual, Ink/subprocessos/background/voz pós-1.0 |
-| 2 Windows | 🟡 W0–W2 usáveis; preload, `electron-builder`, CI Windows e downloads avançaram | Validar `.exe`/portable em Windows limpo e auto-updater live |
+| 2 Windows | 🟢 v1.1.0: renderer auditado e refinado, pt-BR, a11y de teclado, sem controles falsos | Auto-updater live e QA visual em Windows limpo |
 | 3 Plataforma | 🟢 Núcleo P0–P3 + P4 code-complete em 2FA/LGPD/CSP/limites/backup | Configurar SMTP/Turnstile, validar chave DeepSeek prod, load test e beta |
 
 ## Plataforma (Fase 3) — o que sobe no acer

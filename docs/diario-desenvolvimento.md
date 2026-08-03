@@ -1,5 +1,58 @@
 # Diário de desenvolvimento
 
+## 2026-08-03 — Desktop 1.1.0: auditoria do renderer, fim do token manual
+
+### Diagnóstico
+
+Auditoria de todo controle do renderer Electron. Achados que não eram estéticos:
+
+- **Fila de permissões inexistente.** O renderer guardava um `currentPermissionRequest` só.
+  Com subagentes escrevendo em paralelo, o 2º pedido sobrescrevia o 1º — que nunca era
+  respondido — e a promessa no main ficava pendente para sempre: **o turno travava**.
+- **Três controles sem handler:** botão “+” do dock, chip de modelo e “Search” da sidebar
+  (que prometia Ctrl+K e só trocava de aba).
+- **Dados inventados na tela:** usuário “Álvaro Emanuel / Pro Plan” fixo no código, branch
+  `master` fixa, versão `v0.1.0` (o app era 1.0.2), “Skills: Ativo” sem origem, e as quatro
+  amostras de tema lendo as variáveis do tema ativo — logo, idênticas.
+- **Catálogo de comandos triplicado:** dock 15, paleta 10, catálogo real 21. `/doctor`,
+  `/skills`, `/skill`, `/memory`, `/index` e `/nova` não apareciam em lugar nenhum.
+- **8 APIs do preload nunca chamadas**, entre elas `contaLogout` (não havia como sair da
+  conta) e `getAutoApprove` (o botão mentia depois de recarregar a janela).
+- **Terminal com chave React derivada do texto** → chaves duplicadas ao repetir um comando.
+- Paleta sem navegação por setas; modal de permissão sem foco e sem `Esc`.
+
+### Correções
+
+- Fila de permissões com contador “+N na fila”; responder remove só o respondido.
+- Controles falsos: “+” insere `/`, “Comandos” abre a paleta, chip de modelo removido.
+- Dados reais vindos do main: `projectName`, `branch` (git), `appVersion`, `skills`.
+- Catálogo único via `getSlashCommands()`, com o compartilhado como fallback.
+- Logout na sidebar; auto-aprovar inicializado do main.
+- Teclado: ↑/↓/Home/End/Enter/Esc na paleta, `Esc` **nega** a permissão (fail-closed),
+  `:focus-visible` global, `prefers-reduced-motion` + interruptor próprio.
+- Terminal reescrito: id próprio por linha, histórico ↑/↓, limpar, foco ao abrir, `Esc` fecha.
+- Interface inteira em pt-BR; `refino.css` novo, só com tokens já existentes.
+
+### Decisões de produto
+
+- **Nome do modelo não aparece no app.** Chip do dock e seção “Modelo” removidos; o evento
+  `model-info` continua no core, a UI só não o exibe. No site, a hero mostra “CodingPro Cloud”.
+- **Fim da criação manual de token.** O padrão é a conta CodingPro Cloud e a emissão é
+  automática pelo device flow. `POST /api/tokens` removida; a aba “Tokens da CLI” do site
+  virou **“Dispositivos”** (listar e desconectar máquinas). Testes passaram a usar o helper
+  `conectarDispositivo()`, que roda o device flow real.
+
+### Verificação
+
+Gate verde: format, lint (0 erros), typecheck ×3, **954 testes**, build, smoke de pacote e
+`smoke-core`. 11 testes novos em `packages/desktop/test/`.
+
+**Não validado nesta rodada:** o smoke real do DeepSeek falhou (chave local inválida) — o
+caminho de produção, a conta cloud, foi checado à parte e responde HTTP 200. O QA visual do
+Electron ficou incompleto a pedido do Álvaro (parei de operar a máquina dele).
+
+Relatório: [`RELATORIO-DESKTOP-1.1.0.md`](RELATORIO-DESKTOP-1.1.0.md).
+
 ## 2026-07-24 — Limite no chat, reset do banco e conta Álvaro limpa
 
 ### Diagnóstico

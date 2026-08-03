@@ -3,52 +3,94 @@ import type React from "react";
 interface HeaderProps {
   title: string;
   projectName: string;
-  onToggleTerminal?: () => void;
+  workspacePath: string;
+  branch?: string | undefined;
+  isRunning: boolean;
+  isTerminalOpen: boolean;
+  onToggleTerminal: () => void;
   onCancel?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ title, onToggleTerminal, onCancel }) => {
-  return (
-    <header className="top-header">
-      <div className="header-title-container">
-        <span>{title}</span>
-      </div>
-
-      <div className="header-actions">
-        {onCancel && (
-          <button
-            type="button"
-            className="header-icon-btn"
-            onClick={onCancel}
-            title="Cancelar execução (Ctrl+.)"
-            style={{ color: "#f87171" }}
-          >
-            Stop
-          </button>
-        )}
-        <button
-          type="button"
-          className="header-icon-btn"
-          onClick={onToggleTerminal}
-          title="Terminal / IDE"
-        >
-          IDE
+export const Header: React.FC<HeaderProps> = ({
+  title,
+  projectName,
+  workspacePath,
+  branch,
+  isRunning,
+  isTerminalOpen,
+  onToggleTerminal,
+  onCancel,
+}) => (
+  <header className="top-header">
+    <div className="header-title-container">
+      {/* O projeto aberto é a informação mais importante do cabeçalho: define o que o
+          agente enxerga. Antes chegava como prop e não era renderizado. */}
+      <span className="header-projeto" title={workspacePath}>
+        {projectName}
+      </span>
+      {branch && (
+        <span className="header-branch" title={`Branch git: ${branch}`}>
           <svg
             aria-hidden="true"
-            width="12"
-            height="12"
+            width="11"
+            height="11"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
-            style={{ marginLeft: 4 }}
+            strokeLinecap="round"
           >
-            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
-            <polyline points="15 3 21 3 21 9" />
-            <line x1="10" y1="14" x2="21" y2="3" />
+            <line x1="6" y1="3" x2="6" y2="15" />
+            <circle cx="18" cy="6" r="3" />
+            <circle cx="6" cy="18" r="3" />
+            <path d="M18 9a9 9 0 01-9 9" />
           </svg>
+          {branch}
+        </span>
+      )}
+      <span className="header-sep" aria-hidden="true">
+        /
+      </span>
+      <span className="header-conversa">{title}</span>
+    </div>
+
+    <div className="header-actions">
+      {isRunning && onCancel && (
+        <button
+          type="button"
+          className="header-btn header-btn--parar"
+          onClick={onCancel}
+          title="Cancelar execução (Ctrl+.)"
+        >
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="6" width="12" height="12" rx="2" />
+          </svg>
+          Parar
         </button>
-      </div>
-    </header>
-  );
-};
+      )}
+      <button
+        type="button"
+        className={`header-btn ${isTerminalOpen ? "active" : ""}`}
+        onClick={onToggleTerminal}
+        aria-pressed={isTerminalOpen}
+        title={isTerminalOpen ? "Fechar o terminal integrado" : "Abrir o terminal integrado"}
+      >
+        <svg
+          aria-hidden="true"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="4 17 10 11 4 5" />
+          <line x1="12" y1="19" x2="20" y2="19" />
+        </svg>
+        Terminal
+      </button>
+    </div>
+  </header>
+);

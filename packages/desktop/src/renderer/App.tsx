@@ -1,7 +1,8 @@
 import type { CoreUiEvent, PermissionRequest, PreviaEscrita } from "@codingpro/core";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { EstadoAcesso } from "../types/electron.js";
+import type { ComandoChat } from "../shared/slash-commands.js";
+import type { EstadoAcesso, WorkspaceInfo } from "../types/electron.js";
 import { CommandPalette } from "./components/CommandPalette.js";
 import { FloatingInputDock } from "./components/FloatingInputDock.js";
 import { Header } from "./components/Header.js";
@@ -10,14 +11,16 @@ import { renderMarkdown } from "./components/MarkdownRenderer.js";
 import { PermissionModal } from "./components/PermissionModal.js";
 import { type PlanTask, PlanTracker } from "./components/PlanTracker.js";
 import { SettingsPanel } from "./components/SettingsPanel.js";
-import { Sidebar } from "./components/Sidebar.js";
+import { type SessionRow, Sidebar } from "./components/Sidebar.js";
 import { SubagentPanel } from "./components/SubagentPanel.js";
 import { TaskTracker, toTaskRow } from "./components/TaskTracker.js";
 import { TelaConta } from "./components/TelaConta.js";
 import { type ToolItem, ToolSummaryBlock } from "./components/ToolSummaryBlock.js";
-import { useTheme } from "./useTheme.js";
+import { useReducaoMovimento, useTheme } from "./useTheme.js";
 import "./aurora.css";
 import "./cursor-skin.css";
+// Por último: refina o que as duas folhas legadas deixaram inconsistente.
+import "./refino.css";
 
 const CollapsibleReasoning: React.FC<{
   text?: string | undefined;
@@ -41,11 +44,19 @@ const CollapsibleReasoning: React.FC<{
   }, [text, startedAt, endedAt]);
 
   if (!text) return null;
-  const label = elapsed > 0 ? `Thought for ${elapsed}s` : "Thought";
+  const label = elapsed > 0 ? `Raciocinou por ${elapsed}s` : "Raciocínio";
   return (
     <div className="reasoning-box">
-      <button type="button" className="reasoning-toggle" onClick={() => setOpen(!open)}>
-        {open ? "▾" : "▸"} {label}
+      <button
+        type="button"
+        className="reasoning-toggle"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+      >
+        <span className="reasoning-caret" aria-hidden="true">
+          {open ? "▾" : "▸"}
+        </span>
+        {label}
       </button>
       {open && (
         <div
@@ -98,15 +109,8 @@ export const App: React.FC = () => {
   const [apiReady, setApiReady] = useState(() => typeof window.codingproAPI !== "undefined");
   const [statusNote, setStatusNote] = useState<string | null>(null);
 
-  const [workspaceInfo, setWorkspaceInfo] = useState<{
-    cwd: string;
-    platform: string;
-    hasApiKey?: boolean;
-    acesso?: EstadoAcesso;
-    isCodingProMonorepo?: boolean;
-    projectSummary?: string;
-  }>({
-    cwd: "Carregando...",
+  const [workspaceInfo, setWorkspaceInfo] = useState<WorkspaceInfo>({
+    cwd: "Carregando…",
     platform: "win32",
   });
 
@@ -117,15 +121,22 @@ export const App: React.FC = () => {
    */
   const [acesso, setAcesso] = useState<EstadoAcesso | null>(null);
 
-  const [currentPermissionRequest, setCurrentPermissionRequest] = useState<{
-    request: PermissionRequest;
-    id: string;
-    previa?: PreviaEscrita;
-  } | null>(null);
+  /**
+   * FILA, não um slot só. Subagentes rodam em paralelo e podem pedir permissão ao mesmo
+   * tempo; guardar apenas o pedido atual fazia o segundo sobrescrever o primeiro, que
+   * nunca era respondido — a promessa correspondente no main ficava pendente para sempre
+   * e o turno travava. Agora cada pedido é respondido na ordem em que chegou.
+   */
+  const [permissionQueue, setPermissionQueue] = useState<
+    Array<{
+      request: PermissionRequest;
+      id: string;
+      previa?: PreviaEscrita;
+    }>
+  >([]);
+  const currentPermissionRequest = permissionQueue[0] ?? null;
 
-  const [recentSessions, setRecentSessions] = useState([
-    { id: "current", title: "Nova sessão", active: true },
-  ]);
+  const [recentSessions, setRecentSessions] = useState<SessionRow[]>([]);
 
   const [sessionCost, setSessionCost] = useState<{
     inputTokens: number;
@@ -140,11 +151,14 @@ export const App: React.FC = () => {
 
   const [taskItems, setTaskItems] = useState<ReturnType<typeof toTaskRow>[]>([]);
   const [planTasks, setPlanTasks] = useState<PlanTask[]>([]);
-  const [modelInfo, setModelInfo] = useState<{ modelName: string; effort: string } | null>(null);
 
   const [autoApprove, setAutoApprove] = useState(false);
 
   const { tema, setTema } = useTheme();
+  const { reducaoMovimento, alternarReducaoMovimento } = useReducaoMovimento();
+
+  /** Catálogo real de comandos, vindo do main (era duplicado em 3 lugares divergentes). */
+  const [comandos, setComandos] = useState<readonly ComandoChat[] | undefined>(undefined);
 
   const [subAgents, setSubAgents] = useState<
     Array<{ id: string; label: string; status: "running" | "done" | "failed" }>
@@ -160,18 +174,18 @@ export const App: React.FC = () => {
     if (!window.codingproAPI) return;
     try {
       const sessions = await window.codingproAPI.listSessions();
-      if (sessions.length > 0) {
-        setRecentSessions((prev) => {
-          const activeId = prev.find((s) => s.active)?.id;
-          return sessions.map((s, idx) => ({
-            id: s.id,
-            title: s.preview || `Sessão ${s.id.slice(0, 8)}`,
-            active: activeId ? s.id === activeId : idx === 0,
-          }));
-        });
-      }
+      setRecentSessions((prev) => {
+        const activeId = prev.find((s) => s.active)?.id;
+        return sessions.map((s, idx) => ({
+          active: activeId ? s.id === activeId : idx === 0,
+          id: s.id,
+          // `updatedAt` chegava da API e era descartado — a coluna de tempo ficava vazia.
+          title: s.preview || `Sessão ${s.id.slice(0, 8)}`,
+          updatedAt: s.updatedAt,
+        }));
+      });
     } catch {
-      // ignore
+      // lista de sessões é acessório: falhar aqui não pode derrubar a tela
     }
   }, []);
 
@@ -246,13 +260,37 @@ export const App: React.FC = () => {
 
     void refreshSessions();
 
+    // Estado real do main, não o palpite `false` do useState: depois de recarregar a
+    // janela a UI mostrava "desligado" mesmo com auto-aprovar ligado no processo.
+    void api
+      .getAutoApprove()
+      .then((v) => {
+        if (!cancelled) setAutoApprove(v);
+      })
+      .catch(() => undefined);
+
+    void api
+      .getSlashCommands()
+      .then((lista) => {
+        if (!cancelled) setComandos(lista);
+      })
+      .catch(() => undefined);
+
     const unsubscribe = api.onCoreEvent((event: CoreUiEvent) => {
       if (event.type === "permission-request") {
-        setCurrentPermissionRequest({
-          request: event.request,
-          id: event.requestId,
-          ...(event.previa !== undefined ? { previa: event.previa } : {}),
-        });
+        setPermissionQueue((prev) =>
+          // Reentrega do mesmo id não duplica o card.
+          prev.some((p) => p.id === event.requestId)
+            ? prev
+            : [
+                ...prev,
+                {
+                  request: event.request,
+                  id: event.requestId,
+                  ...(event.previa !== undefined ? { previa: event.previa } : {}),
+                },
+              ],
+        );
       } else if (event.type === "agent-event") {
         const ae = event.event;
         if (ae.type === "text-delta") {
@@ -457,14 +495,9 @@ export const App: React.FC = () => {
           copy[idx] = event.task;
           return copy;
         });
-      } else if (event.type === "model-info") {
-        setModelInfo({
-          modelName: event.modelName,
-          effort: event.effort === "fast" ? "Rápido" : "Alto",
-        });
       } else if (event.type === "session-updated") {
         setIsRunning(false);
-        setCurrentPermissionRequest(null);
+        setPermissionQueue([]);
         // congela reasoning pendente (fim do turno — contador não fica rodando)
         setMessages((prev) =>
           prev.map((m) =>
@@ -484,7 +517,7 @@ export const App: React.FC = () => {
           .catch(() => undefined);
       } else if (event.type === "error") {
         setIsRunning(false);
-        setCurrentPermissionRequest(null);
+        setPermissionQueue([]);
         setMessages((prev) => [
           ...prev,
           { id: newId("err"), role: "assistant", content: `❌ ${event.message}` },
@@ -588,7 +621,7 @@ export const App: React.FC = () => {
         ]);
       } finally {
         setIsRunning(false);
-        setCurrentPermissionRequest(null);
+        setPermissionQueue([]);
       }
     },
     [inputPrompt, isRunning],
@@ -598,16 +631,18 @@ export const App: React.FC = () => {
     if (!window.codingproAPI) return;
     await window.codingproAPI.cancelRun();
     setIsRunning(false);
-    setCurrentPermissionRequest(null);
+    setPermissionQueue([]);
   }, []);
 
   const handlePermissionResponse = (action: "allow" | "always" | "deny") => {
     if (!currentPermissionRequest || !window.codingproAPI) return;
+    const respondido = currentPermissionRequest.id;
     window.codingproAPI.respondPermission({
-      requestId: currentPermissionRequest.id,
+      requestId: respondido,
       decision: { action },
     });
-    setCurrentPermissionRequest(null);
+    // Só o pedido respondido sai da fila; o próximo assume o modal.
+    setPermissionQueue((prev) => prev.filter((p) => p.id !== respondido));
   };
 
   const handleSelectSession = async (id: string) => {
@@ -655,8 +690,21 @@ export const App: React.FC = () => {
     void refreshSessions();
   };
 
-  const cwdShort =
-    workspaceInfo.cwd.split(/[/\\]/).filter(Boolean).slice(-1)[0] || workspaceInfo.cwd;
+  const projectName =
+    workspaceInfo.projectName ||
+    workspaceInfo.cwd.split(/[/\\]/).filter(Boolean).slice(-1)[0] ||
+    workspaceInfo.cwd;
+
+  /** Desconecta esta máquina da conta e volta para a tela de acesso. */
+  const handleLogout = useCallback(async () => {
+    if (!window.codingproAPI) return;
+    await window.codingproAPI.contaLogout();
+    const estado = await window.codingproAPI.estadoAcesso();
+    setAcesso(estado);
+    setMessages([]);
+    setRecentSessions([]);
+    setStatusNote(null);
+  }, []);
 
   // Portão: sem conta e sem chave própria, só a tela de login.
   if (acesso?.modo === "sem-acesso") {
@@ -678,14 +726,22 @@ export const App: React.FC = () => {
         activeTab={activeTab}
         onSelectTab={setActiveTab}
         recentSessions={recentSessions}
-        onSelectSession={handleSelectSession}
+        onSelectSession={(id) => {
+          void handleSelectSession(id);
+        }}
         onNewSession={() => {
           void handleNewSession();
         }}
         onChooseWorkspace={() => {
           void handleChooseWorkspace();
         }}
+        onOpenPalette={() => setIsPaletteOpen(true)}
+        onLogout={() => {
+          void handleLogout();
+        }}
         workspacePath={workspaceInfo.cwd}
+        projectName={projectName}
+        acesso={acesso}
         settingsPanel={
           <SettingsPanel
             autoApprove={autoApprove}
@@ -694,46 +750,56 @@ export const App: React.FC = () => {
               setAutoApprove(next);
               void window.codingproAPI?.setAutoApprove(next);
             }}
-            modelName={modelInfo?.modelName ?? "DeepSeek V4 Flash"}
-            effortLevel={modelInfo?.effort ?? "—"}
             tema={tema}
             onTemaChange={setTema}
+            appVersion={workspaceInfo.appVersion}
+            skills={workspaceInfo.skills}
+            reducaoMovimento={reducaoMovimento}
+            onToggleReducaoMovimento={alternarReducaoMovimento}
           />
         }
       />
 
       <div className="main-content">
         <Header
-          title={recentSessions.find((s) => s.active)?.title ?? "Nova sessão"}
-          projectName={cwdShort}
+          title={recentSessions.find((s) => s.active)?.title ?? "Nova conversa"}
+          projectName={projectName}
+          workspacePath={workspaceInfo.cwd}
+          branch={workspaceInfo.branch}
+          isRunning={isRunning}
+          isTerminalOpen={isTerminalOpen}
           onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
           {...(isRunning ? { onCancel: () => void handleCancel() } : {})}
         />
 
         {statusNote && (
-          <div className="status-banner">
+          <div className="status-banner" role="status">
             <span>{statusNote}</span>
             <button
               type="button"
               className="status-banner-close"
               onClick={() => setStatusNote(null)}
+              aria-label="Dispensar aviso"
+              title="Dispensar"
             >
               ✕
             </button>
           </div>
         )}
 
-        {/* Chat Feed */}
         <div className="chat-feed" ref={chatFeedRef}>
           <SubagentPanel agents={subAgents} />
 
           {messages.length === 0 && (
             <div className="empty-chat">
-              <div className="empty-chat-title">New Agent</div>
-              <div className="empty-chat-hint">
-                Digite abaixo para começar. O agente trabalha na pasta aberta deste PC.
-              </div>
-              <div className="empty-chat-path">{workspaceInfo.cwd}</div>
+              <h2 className="empty-chat-title">Em que vamos trabalhar?</h2>
+              <p className="empty-chat-hint">
+                O agente lê e edita arquivos apenas dentro da pasta aberta, neste computador. Toda
+                escrita passa por você antes de acontecer.
+              </p>
+              <p className="empty-chat-path" title={workspaceInfo.cwd}>
+                {workspaceInfo.cwd}
+              </p>
               <button
                 type="button"
                 className="empty-chat-open"
@@ -741,8 +807,25 @@ export const App: React.FC = () => {
                   void handleChooseWorkspace();
                 }}
               >
-                Abrir pasta…
+                Abrir outra pasta…
               </button>
+              <ul className="empty-chat-exemplos">
+                {[
+                  "explique a estrutura deste projeto",
+                  "onde fica a validação de login?",
+                  "escreva testes para o módulo de datas",
+                ].map((exemplo) => (
+                  <li key={exemplo}>
+                    <button
+                      type="button"
+                      className="empty-chat-exemplo"
+                      onClick={() => setInputPrompt(exemplo)}
+                    >
+                      {exemplo}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
@@ -836,17 +919,15 @@ export const App: React.FC = () => {
             setAutoApprove(next);
             void window.codingproAPI?.setAutoApprove(next);
           }}
-          onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
-          isTerminalOpen={isTerminalOpen}
-          branchName="master"
-          modelName={modelInfo?.modelName ?? "DeepSeek V4 Flash"}
-          effortLevel={modelInfo?.effort ?? "Auto"}
+          comandos={comandos}
+          branchName={workspaceInfo.branch}
           cost={sessionCost}
         />
 
         <CommandPalette
           isOpen={isPaletteOpen}
           onClose={() => setIsPaletteOpen(false)}
+          comandos={comandos}
           onSelectCommand={(cmd) => {
             if (cmd === "/limpar") {
               void handleNewSession();
@@ -862,6 +943,7 @@ export const App: React.FC = () => {
 
         {currentPermissionRequest && (
           <PermissionModal
+            naFila={permissionQueue.length - 1}
             request={currentPermissionRequest.request}
             {...(currentPermissionRequest.previa !== undefined
               ? { previa: currentPermissionRequest.previa }

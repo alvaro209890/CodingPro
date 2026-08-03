@@ -74,6 +74,37 @@ export async function cadastrar(
   return { cookie, id: corpo.usuario.id };
 }
 
+/**
+ * Conecta uma máquina pelo device flow e devolve o token emitido.
+ *
+ * É o único caminho de emissão que sobrou no produto: a criação manual de token
+ * (`POST /api/tokens`) foi removida, então os testes usam o mesmo fluxo do usuário.
+ */
+export async function conectarDispositivo(
+  app: FastifyInstance,
+  cookie: string,
+): Promise<{ token: string; codigoUsuario: string }> {
+  const inicio = await app.inject({ method: "POST", payload: {}, url: "/api/device/iniciar" });
+  const { codigoDispositivo, codigoUsuario } = inicio.json() as {
+    codigoDispositivo: string;
+    codigoUsuario: string;
+  };
+
+  await app.inject({
+    headers: { cookie },
+    method: "POST",
+    payload: { codigoUsuario },
+    url: "/api/device/aprovar",
+  });
+
+  const troca = await app.inject({
+    method: "POST",
+    payload: { codigoDispositivo },
+    url: "/api/device/token",
+  });
+  return { codigoUsuario, token: (troca.json() as { token: string }).token };
+}
+
 /** Resposta SSE falsa do provedor, com o bloco de usage no chunk final. */
 export function respostaSseFalsa(uso: {
   prompt_tokens: number;

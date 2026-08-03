@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { type Ambiente, cadastrar, montar, respostaSseFalsa, TEM_BANCO } from "./ajuda.js";
+import {
+  type Ambiente,
+  cadastrar,
+  conectarDispositivo,
+  montar,
+  respostaSseFalsa,
+  TEM_BANCO,
+} from "./ajuda.js";
 
 let amb: Ambiente | null = null;
 
@@ -58,13 +65,7 @@ describe.skipIf(!TEM_BANCO)("rotas de admin", () => {
       fetch: async () => respostaSseFalsa({ completion_tokens: 1, prompt_tokens: 1 }),
     });
     const chefe = await cadastrar(amb.app, "chefe@teste.com");
-    const criado = await amb.app.inject({
-      headers: { cookie: chefe.cookie },
-      method: "POST",
-      payload: { nome: "cli" },
-      url: "/api/tokens",
-    });
-    const token = criado.json().texto;
+    const token = (await conectarDispositivo(amb.app, chefe.cookie)).token;
 
     // Limite zerado = corta na primeira chamada.
     await amb.app.inject({
@@ -125,14 +126,7 @@ describe.skipIf(!TEM_BANCO)("rotas de admin", () => {
       fetch: async () => respostaSseFalsa({ completion_tokens: 1, prompt_tokens: 1 }),
     });
     const chefe = await cadastrar(amb.app, "chefe@teste.com");
-    const token = (
-      await amb.app.inject({
-        headers: { cookie: chefe.cookie },
-        method: "POST",
-        payload: { nome: "cli" },
-        url: "/api/tokens",
-      })
-    ).json().texto;
+    const token = (await conectarDispositivo(amb.app, chefe.cookie)).token;
 
     await amb.app.inject({
       headers: { cookie: chefe.cookie },
@@ -188,18 +182,8 @@ describe.skipIf(!TEM_BANCO)("rotas de admin", () => {
   it("revoga todos os tokens de um usuário pelo painel", async () => {
     amb = await montar();
     const chefe = await cadastrar(amb.app, "chefe@teste.com");
-    await amb.app.inject({
-      headers: { cookie: chefe.cookie },
-      method: "POST",
-      payload: { nome: "t1" },
-      url: "/api/tokens",
-    });
-    await amb.app.inject({
-      headers: { cookie: chefe.cookie },
-      method: "POST",
-      payload: { nome: "t2" },
-      url: "/api/tokens",
-    });
+    await conectarDispositivo(amb.app, chefe.cookie);
+    await conectarDispositivo(amb.app, chefe.cookie);
 
     const resposta = await amb.app.inject({
       headers: { cookie: chefe.cookie },
@@ -215,14 +199,7 @@ describe.skipIf(!TEM_BANCO)("rotas de admin", () => {
       fetch: async () => respostaSseFalsa({ completion_tokens: 500, prompt_tokens: 9000 }),
     });
     const chefe = await cadastrar(amb.app, "chefe@teste.com");
-    const token = (
-      await amb.app.inject({
-        headers: { cookie: chefe.cookie },
-        method: "POST",
-        payload: { nome: "cli" },
-        url: "/api/tokens",
-      })
-    ).json().texto;
+    const token = (await conectarDispositivo(amb.app, chefe.cookie)).token;
     await amb.app.inject({
       headers: { authorization: `Bearer ${token}` },
       method: "POST",
@@ -249,12 +226,7 @@ describe.skipIf(!TEM_BANCO)("rotas de admin", () => {
   it("auditoria filtra por ação e pagina", async () => {
     amb = await montar();
     const chefe = await cadastrar(amb.app, "chefe@teste.com");
-    await amb.app.inject({
-      headers: { cookie: chefe.cookie },
-      method: "POST",
-      payload: { nome: "t" },
-      url: "/api/tokens",
-    });
+    await conectarDispositivo(amb.app, chefe.cookie);
 
     const filtrada = await amb.app.inject({
       headers: { cookie: chefe.cookie },

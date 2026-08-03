@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { type Ambiente, cadastrar, montar, respostaSseFalsa, TEM_BANCO } from "./ajuda.js";
+import {
+  type Ambiente,
+  cadastrar,
+  conectarDispositivo,
+  montar,
+  respostaSseFalsa,
+  TEM_BANCO,
+} from "./ajuda.js";
 
 let amb: Ambiente | null = null;
 
@@ -125,12 +132,7 @@ describe.skipIf(!TEM_BANCO)("cadastro e login", () => {
   it("troca de senha revoga os tokens de CLI", async () => {
     amb = await montar();
     const { cookie } = await cadastrar(amb.app, "chefe@teste.com");
-    await amb.app.inject({
-      headers: { cookie },
-      method: "POST",
-      payload: { nome: "t1" },
-      url: "/api/tokens",
-    });
+    await conectarDispositivo(amb.app, cookie);
 
     const troca = await amb.app.inject({
       headers: { cookie },
@@ -157,11 +159,11 @@ describe.skipIf(!TEM_BANCO)("tokens de CLI", () => {
     const criado = await amb.app.inject({
       headers: { cookie },
       method: "POST",
-      payload: { nome: "meu notebook" },
-      url: "/api/tokens",
+      payload: {},
+      url: "/api/device/iniciar",
     });
-    expect(criado.statusCode).toBe(201);
-    const texto = criado.json().texto as string;
+    expect(criado.statusCode).toBe(200);
+    const texto = (await conectarDispositivo(amb.app, cookie)).token;
     expect(texto.startsWith("cp_")).toBe(true);
 
     const lista = await amb.app.inject({ headers: { cookie }, method: "GET", url: "/api/tokens" });
@@ -180,8 +182,7 @@ describe.skipIf(!TEM_BANCO)("tokens de CLI", () => {
     await amb.repo.atualizarUsuario(novato.id, { status: "bloqueado" });
     const resposta = await amb.app.inject({
       headers: { cookie: novato.cookie },
-      method: "POST",
-      payload: { nome: "x" },
+      method: "GET",
       url: "/api/tokens",
     });
     expect(resposta.statusCode).toBe(403);
@@ -193,11 +194,10 @@ describe.skipIf(!TEM_BANCO)("tokens de CLI", () => {
     const chefe = await cadastrar(amb.app, "chefe@teste.com");
     const criado = await amb.app.inject({
       headers: { cookie: chefe.cookie },
-      method: "POST",
-      payload: { nome: "t" },
+      method: "GET",
       url: "/api/tokens",
     });
-    const tokenId = criado.json().token.id;
+    const tokenId = criado.json().tokens[0].id;
 
     const outro = await cadastrar(amb.app, "outro@teste.com");
     await amb.repo.atualizarUsuario(outro.id, { status: "ativo" });
@@ -223,11 +223,11 @@ describe.skipIf(!TEM_BANCO)("proxy LLM", () => {
     const { cookie } = await cadastrar(amb.app, "chefe@teste.com");
     const criado = await amb.app.inject({
       headers: { cookie },
-      method: "POST",
-      payload: { nome: "cli" },
+      method: "GET",
       url: "/api/tokens",
     });
-    return { cookie, token: criado.json().texto };
+    void criado;
+    return { cookie, token: (await conectarDispositivo(amb.app, cookie)).token };
   }
 
   const CORPO = {

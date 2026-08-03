@@ -757,6 +757,18 @@ function execCommand(
   });
 }
 
+/**
+ * Branch git da pasta aberta. A barra de status mostrava "master" fixo no código, o que
+ * mentia em qualquer projeto — sem repositório, devolvemos `undefined` e a UI omite o campo.
+ */
+async function branchDoWorkspace(cwd: string): Promise<string | undefined> {
+  if (!existsSync(join(cwd, ".git"))) return undefined;
+  const r = await execCommand("git rev-parse --abbrev-ref HEAD", { cwd });
+  if (r.exitCode !== 0) return undefined;
+  const nome = r.stdout.trim();
+  return nome.length > 0 && nome !== "HEAD" ? nome : undefined;
+}
+
 /** Extrai um checklist best-effort da seção "## Passos" do plano, para o PlanTracker da UI. */
 function extrairPassosPlano(
   texto: string,
@@ -1258,6 +1270,9 @@ app.whenReady().then(() => {
     } catch {
       projectSummary = undefined;
     }
+    const branch = await branchDoWorkspace(selectedWorkspacePath);
+    const projectName =
+      selectedWorkspacePath.split(/[/\\]/u).filter(Boolean).at(-1) ?? selectedWorkspacePath;
     return {
       cwd: selectedWorkspacePath,
       platform: process.platform,
@@ -1265,6 +1280,10 @@ app.whenReady().then(() => {
       acesso: obterEstadoAcesso(),
       hasApiKey: obterEstadoAcesso().modo !== "sem-acesso",
       isCodingProMonorepo: ehMonorepoCodingPro(selectedWorkspacePath),
+      projectName,
+      appVersion: app.getVersion(),
+      skills: activeSession?.skills.length ?? 0,
+      ...(branch !== undefined ? { branch } : {}),
       ...(projectSummary !== undefined ? { projectSummary } : {}),
     };
   });

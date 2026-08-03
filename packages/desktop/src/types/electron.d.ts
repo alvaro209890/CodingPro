@@ -29,6 +29,14 @@ export interface WorkspaceInfo {
   acesso?: EstadoAcesso;
   isCodingProMonorepo?: boolean;
   projectSummary?: string;
+  /** Nome da pasta aberta — o que a UI mostra como "projeto". */
+  projectName?: string;
+  /** Branch git da pasta aberta; ausente quando não é repositório. */
+  branch?: string;
+  /** Quantidade de skills carregadas de `.codingpro/skills` na sessão atual. */
+  skills?: number;
+  /** Versão do app (package.json) — a UI não pode inventar este número. */
+  appVersion?: string;
 }
 
 export interface SendMessageResult {

@@ -1,81 +1,118 @@
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
-
-interface CommandItem {
-  command: string;
-  description: string;
-}
-
-const COMMANDS: CommandItem[] = [
-  { command: "/ajuda", description: "Lista comandos e atalhos disponíveis." },
-  { command: "/abrir", description: "Abre outra pasta (diálogo; padrão Downloads)." },
-  { command: "/pwd", description: "Mostra a pasta do projeto aberta agora." },
-  { command: "/limpar", description: "Limpa o histórico da conversa atual." },
-  { command: "/custo", description: "Exibe o custo acumulado de tokens da sessão." },
-  { command: "/desfazer", description: "Desfaz o último checkpoint de escrita." },
-  { command: "/refazer", description: "Refaz um checkpoint desfeito." },
-  { command: "/checkpoint", description: "Lista checkpoints recentes." },
-  { command: "/cancelar", description: "Cancela a execução em andamento." },
-  { command: "/review", description: "Pede revisão de código ao agente." },
-];
+import { useEffect, useMemo, useRef, useState } from "react";
+import { COMANDOS_CHAT, type ComandoChat } from "../../shared/slash-commands.js";
 
 interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectCommand: (cmd: string) => void;
+  /** Catálogo real vindo do main; cai no compartilhado se o IPC ainda não respondeu. */
+  comandos?: readonly ComandoChat[] | undefined;
+}
+
+function filtrar(catalogo: readonly ComandoChat[], termo: string): ComandoChat[] {
+  const t = termo.trim().toLowerCase();
+  if (t.length === 0) return [...catalogo];
+  return catalogo.filter(
+    (c) =>
+      c.nome.toLowerCase().includes(t) ||
+      c.descricao.toLowerCase().includes(t) ||
+      c.aliases.some((a) => a.toLowerCase().includes(t)),
+  );
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
   isOpen,
   onClose,
   onSelectCommand,
+  comandos = COMANDOS_CHAT,
 }) => {
   const [filter, setFilter] = useState("");
+  const [selecionado, setSelecionado] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const listaRef = useRef<HTMLDivElement | null>(null);
+
+  const filtrados = useMemo(() => filtrar(comandos, filter), [comandos, filter]);
 
   useEffect(() => {
     if (!isOpen) {
       setFilter("");
+      setSelecionado(0);
       return;
     }
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    // foco sem autoFocus attribute (biome a11y)
     inputRef.current?.focus();
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    setSelecionado((i) => (i >= filtrados.length ? 0 : i));
+  }, [filtrados.length]);
+
+  // Mantém o item selecionado visível ao navegar com as setas.
+  useEffect(() => {
+    const lista = listaRef.current;
+    const item = lista?.children[selecionado] as HTMLElement | undefined;
+    item?.scrollIntoView({ block: "nearest" });
+  }, [selecionado]);
 
   if (!isOpen) return null;
 
-  const filtered = COMMANDS.filter(
-    (c) =>
-      c.command.toLowerCase().includes(filter.toLowerCase()) ||
-      c.description.toLowerCase().includes(filter.toLowerCase()),
-  );
+  const escolher = (nome: string) => {
+    onSelectCommand(nome);
+    onClose();
+  };
+
+  /**
+   * Toda a navegação vive no input: setas movem, Enter escolhe, Esc fecha. Antes só dava
+   * para escolher com o mouse (ou tabulando por todos os itens).
+   */
+  const aoTeclar = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      onClose();
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelecionado((i) => (filtrados.length === 0 ? 0 : (i + 1) % filtrados.length));
+      return;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelecionado((i) =>
+        filtrados.length === 0 ? 0 : (i - 1 + filtrados.length) % filtrados.length,
+      );
+      return;
+    }
+    if (e.key === "Home") {
+      e.preventDefault();
+      setSelecionado(0);
+      return;
+    }
+    if (e.key === "End") {
+      e.preventDefault();
+      setSelecionado(Math.max(0, filtrados.length - 1));
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const alvo = filtrados[selecionado];
+      if (alvo) escolher(alvo.nome);
+    }
+  };
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: overlay fecha ao clicar fora
     <div className="modal-overlay" role="presentation" onClick={onClose}>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: contêiner do diálogo */}
       <div
-        className="modal-card"
-        style={{ width: 600, padding: 16 }}
+        className="modal-card paleta"
         role="dialog"
         aria-modal="true"
         aria-label="Paleta de comandos"
         onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
+        onKeyDown={aoTeclar}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            paddingBottom: 12,
-            borderBottom: "1px solid var(--border-subtle)",
-          }}
-        >
+        <div className="paleta-busca">
           <svg
             aria-hidden="true"
             width="16"
@@ -84,6 +121,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
+            strokeLinecap="round"
           >
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -91,86 +129,55 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           <input
             ref={inputRef}
             type="text"
-            placeholder="Digite um comando (ex: /plano, /desfazer)..."
+            className="paleta-input"
+            placeholder="Buscar comando (ex.: desfazer, custo, plano)"
+            aria-label="Buscar comando"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="paleta-lista"
+            aria-activedescendant={
+              filtrados[selecionado] ? `paleta-item-${selecionado}` : undefined
+            }
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            style={{
-              flex: 1,
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              color: "var(--text-primary)",
-              fontSize: 14,
-              fontFamily: "var(--font-sans)",
-            }}
           />
-          <span
-            style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}
-          >
-            ESC para fechar
-          </span>
+          <kbd className="paleta-kbd">Esc</kbd>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 4,
-            maxHeight: 300,
-            overflowY: "auto",
-            paddingTop: 8,
-          }}
-        >
-          {filtered.map((cmd) => (
-            <button
-              type="button"
-              key={cmd.command}
-              onClick={() => {
-                onSelectCommand(cmd.command);
-                onClose();
-              }}
-              className="recent-item"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 12px",
-                borderRadius: 8,
-                cursor: "pointer",
-                border: "none",
-                background: "transparent",
-                color: "inherit",
-                textAlign: "left",
-                width: "100%",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    color: "var(--accent-blue)",
-                    fontWeight: 600,
-                  }}
-                >
-                  {cmd.command}
-                </span>
-                <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                  {cmd.description}
-                </span>
-              </div>
-              <svg
-                aria-hidden="true"
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
+        {filtrados.length === 0 ? (
+          <p className="paleta-vazio">Nenhum comando corresponde a “{filter}”.</p>
+        ) : (
+          <div className="paleta-lista" id="paleta-lista" role="listbox" ref={listaRef}>
+            {filtrados.map((cmd, i) => (
+              <button
+                type="button"
+                key={cmd.nome}
+                id={`paleta-item-${i}`}
+                role="option"
+                aria-selected={i === selecionado}
+                className={`paleta-item${i === selecionado ? " selected" : ""}`}
+                onClick={() => escolher(cmd.nome)}
+                onMouseEnter={() => setSelecionado(i)}
               >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-          ))}
+                <span className="paleta-item-nome">{cmd.nome}</span>
+                <span className="paleta-item-desc">{cmd.descricao}</span>
+                {cmd.aceitaArgs && <span className="paleta-item-args">aceita argumento</span>}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="paleta-rodape">
+          <span>
+            <kbd>↑</kbd>
+            <kbd>↓</kbd> navegar
+          </span>
+          <span>
+            <kbd>Enter</kbd> executar
+          </span>
+          <span>
+            <kbd>Esc</kbd> fechar
+          </span>
         </div>
       </div>
     </div>

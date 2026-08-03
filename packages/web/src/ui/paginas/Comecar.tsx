@@ -136,7 +136,7 @@ export function Comecar({ usuario }: { usuario: Usuario | null }) {
         <ul className="suave" style={{ margin: 0, paddingLeft: "1.2rem" }}>
           <li>
             <strong>&quot;Nenhuma conta conectada&quot;</strong> — rode <code>codingpro login</code>{" "}
-            de novo; o token pode ter sido revogado (trocar a senha revoga todos).
+            de novo; a máquina pode ter sido desconectada (trocar a senha desconecta todas).
           </li>
           <li>
             <strong>&quot;Sua conta ainda não foi aprovada&quot;</strong> — aguarde a liberação do
@@ -190,7 +190,7 @@ function PassosCli() {
       <Passo numero={4} titulo="Confira se está tudo certo">
         <Bloco>codingpro conta</Bloco>
         <p className="fraco">
-          Deve mostrar a API, o início do seu token e <strong>Estado: ✓ Token válido</strong>.
+          Deve mostrar a conta conectada e <strong>Estado: ✓ conectado</strong>.
         </p>
       </Passo>
 

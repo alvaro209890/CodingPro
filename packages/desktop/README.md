@@ -151,10 +151,29 @@ Ver `fase2-app-windows/04_roadmap_checklist.md`.
 - Efeitos passam por `PermissionController` (fail-closed)
 - Terminal embutido bloqueia multilinha; timeout 60s
 
-## Abas
+## Telas
 
-| Aba | Função |
+| Tela | Função |
 |---|---|
-| Início | Chat estilo Claude Code, busca de docs |
-| Code | Editor de código com tools integradas |
-| Config | Temas, modelo, auto-aprovar, atalhos |
+| Conversa | Chat com streaming, raciocínio recolhível, timeline de ferramentas e subagentes |
+| Configurações | Temas, auto-aprovar, reduzir animações, skills, atalhos, versão |
+| Terminal | Painel inferior com histórico de comandos, na pasta aberta |
+
+## v1.1.0 — auditoria e refino do renderer (2026-08-03)
+
+Relatório completo: [`docs/RELATORIO-DESKTOP-1.1.0.md`](../../docs/RELATORIO-DESKTOP-1.1.0.md).
+
+- **Fila de permissões** — dois pedidos simultâneos (subagentes em paralelo) faziam o segundo
+  sobrescrever o primeiro, que nunca era respondido: o turno travava para sempre. Agora é fila.
+- **Controles falsos removidos** — botão “+” sem `onClick`, chip de modelo sem ação e “Search”
+  que não abria a paleta.
+- **Dados inventados removidos** — usuário/plano fixos no código, branch `master` fixa, versão
+  `v0.1.0` errada, “Skills: Ativo” sem origem, quatro amostras de tema idênticas.
+- **Catálogo de comandos unificado** — dock (15) e paleta (10) divergiam do catálogo real (21);
+  `/doctor`, `/skills`, `/memory`, `/index` e `/nova` não apareciam.
+- **Conta** — logout no app (antes `contaLogout` nunca era chamado) e auto-aprovar lido do main.
+- **Teclado e a11y** — paleta navegável por setas, `Esc` nega a permissão (fail-closed), foco
+  visível, `prefers-reduced-motion` + interruptor próprio.
+- **Modelo não aparece mais no app** — decisão de produto: nada de provedor/modelo na UI.
+- **Token manual acabou** — o padrão é a conta CodingPro Cloud; a emissão é automática pelo
+  device flow. `POST /api/tokens` foi removida; a web mostra “Dispositivos” conectados.

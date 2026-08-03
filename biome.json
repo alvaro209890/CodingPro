@@ -29,6 +29,14 @@
           "style": { "noNonNullAssertion": "off" }
         }
       }
+    },
+    {
+      "includes": ["packages/desktop/src/renderer/*.css"],
+      "linter": {
+        "rules": {
+          "complexity": { "noImportantStyles": "off" }
+        }
+      }
     }
   ],
   "assist": {

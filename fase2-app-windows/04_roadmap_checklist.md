@@ -115,3 +115,24 @@ Sintomas: `A DeepSeek retornou uma chamada de ferramenta inválida` e em sequên
 | IPC Electron com vazamento de segurança | Alta | Crítico | Mantido `contextIsolation: true` + API tipada em `preload` | **Resolvido (W1)** |
 | Perda de estado ao desanexar/recarregar a janela | Média | Médio | Sessões persistidas em `.codingpro/sessions/` (`SessionStore`) | **Resolvido (W2)** |
 | Instalação bloqueada pelo Windows SmartScreen | Alta | Médio | Documentar override de execução + assinatura de binário | Pendente (W3) |
+
+## W4 — Auditoria funcional e refino do renderer (2026-08-03) ✅
+
+Entregue como **desktop v1.1.0**. Relatório: [`docs/RELATORIO-DESKTOP-1.1.0.md`](../docs/RELATORIO-DESKTOP-1.1.0.md).
+
+- [x] **Fila de permissões** — dois pedidos simultâneos travavam o turno para sempre (o 2º
+      sobrescrevia o 1º, que nunca era respondido). Agora fila com contador na UI.
+- [x] **Controles falsos removidos** — “+” do dock, chip de modelo e “Search” da sidebar
+      não tinham handler real.
+- [x] **Dados fictícios removidos** — usuário/plano hardcoded, branch fixa, versão errada,
+      “Skills: Ativo” sem origem, amostras de tema idênticas.
+- [x] **Catálogo de comandos unificado** (dock 15 / paleta 10 / real 21 → fonte única do main)
+- [x] **Logout no app** e auto-aprovar lido do main (8 APIs do preload estavam órfãs)
+- [x] **Interface 100% pt-BR**
+- [x] **Acessibilidade** — paleta por teclado, `Esc` nega permissão, foco visível,
+      `prefers-reduced-motion` + interruptor
+- [x] **Terminal** — chaves React duplicadas corrigidas, histórico, limpar, `Esc`
+- [x] **Nome do modelo fora da UI** (decisão de produto)
+- [x] **Fim da criação manual de token** — padrão é a conta CodingPro Cloud
+- [ ] QA visual em Windows limpo — **pendente** (interrompido a pedido do Álvaro)
+- [ ] Smoke real DeepSeek — **pendente** (chave local inválida; conta cloud validada à parte)

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { nomeTemaValido, TEMAS, type TemaNome } from "../shared/temas-paleta.js";
 
 const STORAGE_KEY = "codingpro-theme";
+const CHAVE_MOVIMENTO = "codingpro-reducao-movimento";
 
 function carregarTemaSalvo(): TemaNome {
   try {
@@ -62,4 +63,42 @@ export function useTheme() {
   }, []);
 
   return { tema, setTema, temas: TEMAS } as const;
+}
+
+function carregarReducaoSalva(): boolean {
+  try {
+    const raw = localStorage.getItem(CHAVE_MOVIMENTO);
+    if (raw === "1") return true;
+    if (raw === "0") return false;
+  } catch {
+    // sem localStorage: cai na preferência do sistema
+  }
+  // Sem escolha explícita, respeita o Windows ("Mostrar animações no Windows").
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+}
+
+/**
+ * Preferência de movimento reduzido. O CSS já respeita `prefers-reduced-motion`; isto
+ * dá ao usuário um interruptor explícito no app, que vence a preferência do sistema.
+ */
+export function useReducaoMovimento() {
+  const [reducaoMovimento, setEstado] = useState<boolean>(carregarReducaoSalva);
+
+  useEffect(() => {
+    document.documentElement.toggleAttribute("data-reducao-movimento", reducaoMovimento);
+  }, [reducaoMovimento]);
+
+  const alternar = useCallback(() => {
+    setEstado((atual) => {
+      const proximo = !atual;
+      try {
+        localStorage.setItem(CHAVE_MOVIMENTO, proximo ? "1" : "0");
+      } catch {
+        // ignore
+      }
+      return proximo;
+    });
+  }, []);
+
+  return { reducaoMovimento, alternarReducaoMovimento: alternar } as const;
 }

@@ -1,121 +1,144 @@
 import type React from "react";
 import type { TemaNome } from "../../shared/temas-paleta.js";
-import { DESCRICAO_TEMA, TEMAS } from "../../shared/temas-paleta.js";
+import { DESCRICAO_TEMA, gradienteCSS, PALETAS, TEMAS } from "../../shared/temas-paleta.js";
 
 interface SettingsPanelProps {
   autoApprove: boolean;
   onToggleAutoApprove: () => void;
-  modelName: string;
-  onModelChange?: (m: string) => void;
-  effortLevel: string;
-  onEffortChange?: (e: string) => void;
   tema: TemaNome;
   onTemaChange: (t: TemaNome) => void;
+  /** Versão real do app (main → package.json); a UI nunca inventa este número. */
+  appVersion?: string | undefined;
+  /** Skills carregadas de `.codingpro/skills` na sessão atual. */
+  skills?: number | undefined;
+  reducaoMovimento: boolean;
+  onToggleReducaoMovimento: () => void;
 }
 
 const ROTULOS_TEMA: Record<TemaNome, string> = {
   aurora: "Aurora",
-  solar: "Solar",
-  neon: "Neon",
   mono: "Mono",
+  neon: "Neon",
+  solar: "Solar",
 };
 
-const _CORES_TEMA: Record<TemaNome, string> = {
-  aurora: "var(--theme-primaria)",
-  solar: "var(--theme-primaria)",
-  neon: "var(--theme-primaria)",
-  mono: "var(--theme-primaria)",
-};
+const ATALHOS: ReadonlyArray<readonly [string, string]> = [
+  ["Ctrl K", "Paleta de comandos"],
+  ["Ctrl .", "Cancelar execução"],
+  ["Enter", "Enviar mensagem"],
+  ["Shift Enter", "Quebrar linha"],
+  ["/", "Sugerir comandos"],
+  ["Esc", "Fechar diálogo · negar permissão"],
+];
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   autoApprove,
   onToggleAutoApprove,
-  modelName,
-  effortLevel,
   tema,
   onTemaChange,
+  appVersion,
+  skills,
+  reducaoMovimento,
+  onToggleReducaoMovimento,
 }) => (
   <div className="settings-panel">
-    <div className="settings-section">
-      <div className="settings-label">Tema</div>
-      <div className="settings-theme-grid">
-        {TEMAS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            className={`settings-theme-chip${t === tema ? " active" : ""}`}
-            onClick={() => onTemaChange(t)}
-            title={DESCRICAO_TEMA[t]}
-          >
-            <span
-              className="settings-theme-swatch"
-              style={{
-                background: `linear-gradient(135deg, var(--theme-primaria), var(--theme-acento))`,
-              }}
-              data-theme-preview={t}
-            />
-            <span className="settings-theme-name">{ROTULOS_TEMA[t]}</span>
-          </button>
-        ))}
-      </div>
-      <div className="settings-hint">{DESCRICAO_TEMA[tema]}</div>
-    </div>
+    <section className="settings-section">
+      <fieldset className="settings-fieldset">
+        <legend className="settings-label">Tema</legend>
+        <div className="settings-theme-grid">
+          {TEMAS.map((t) => (
+            <button
+              key={t}
+              type="button"
+              aria-pressed={t === tema}
+              className={`settings-theme-chip${t === tema ? " active" : ""}`}
+              onClick={() => onTemaChange(t)}
+              title={DESCRICAO_TEMA[t]}
+            >
+              {/* Cada amostra usa o gradiente REAL do seu tema. Antes todas liam as
+                variáveis do tema ativo, então os quatro chips ficavam idênticos. */}
+              <span
+                className="settings-theme-swatch"
+                style={{ background: gradienteCSS(PALETAS[t]) }}
+                aria-hidden="true"
+              />
+              <span className="settings-theme-name">{ROTULOS_TEMA[t]}</span>
+            </button>
+          ))}
+        </div>
+        <p className="settings-hint">{DESCRICAO_TEMA[tema]}</p>
+      </fieldset>
+    </section>
 
-    <div className="settings-section">
-      <div className="settings-label">Modelo</div>
-      <div className="settings-value">{modelName}</div>
-      <div className="settings-hint">DeepSeek V4 Flash (único disponível)</div>
-    </div>
-
-    <div className="settings-section">
-      <div className="settings-label">Esforço de raciocínio</div>
-      <div className="settings-value">{effortLevel}</div>
-      <div className="settings-hint">Alto = mais tokens, respostas melhores</div>
-    </div>
-
-    <div className="settings-section">
-      <div className="settings-label">Auto-aprovar ferramentas</div>
+    <section className="settings-section">
+      <h2 className="settings-label">Auto-aprovar ferramentas</h2>
       <button
         type="button"
         className={`settings-toggle ${autoApprove ? "on" : "off"}`}
         onClick={onToggleAutoApprove}
+        role="switch"
+        aria-checked={autoApprove}
       >
-        <span className="settings-toggle-knob" />
+        <span className="settings-toggle-knob" aria-hidden="true" />
         <span className="settings-toggle-label">{autoApprove ? "Ligado" : "Desligado"}</span>
       </button>
-      <div className="settings-hint">Pula pedidos de permissão para write_file, bash, etc.</div>
-    </div>
+      <p className="settings-hint">
+        Ligado, escritas e comandos rodam sem pedir permissão. Desligado, cada efeito abre um pedido
+        com prévia do diff.
+      </p>
+    </section>
 
-    <div className="settings-section">
-      <div className="settings-label">Skills automáticas</div>
-      <div className="settings-value">Ativo</div>
-      <div className="settings-hint">Skills de .codingpro/skills/ carregadas automaticamente</div>
-    </div>
+    <section className="settings-section">
+      <h2 className="settings-label">Reduzir animações</h2>
+      <button
+        type="button"
+        className={`settings-toggle ${reducaoMovimento ? "on" : "off"}`}
+        onClick={onToggleReducaoMovimento}
+        role="switch"
+        aria-checked={reducaoMovimento}
+      >
+        <span className="settings-toggle-knob" aria-hidden="true" />
+        <span className="settings-toggle-label">{reducaoMovimento ? "Ligado" : "Desligado"}</span>
+      </button>
+      <p className="settings-hint">
+        Desliga transições e o pulsar dos indicadores. O sistema já é respeitado automaticamente
+        quando você pede movimento reduzido no Windows.
+      </p>
+    </section>
 
-    <div className="settings-section">
-      <div className="settings-label">Atalhos</div>
-      <div className="settings-shortcuts">
-        <div>
-          <kbd>Ctrl+K</kbd> Paleta de comandos
-        </div>
-        <div>
-          <kbd>Ctrl+.</kbd> Cancelar execução
-        </div>
-        <div>
-          <kbd>Enter</kbd> Enviar mensagem
-        </div>
-        <div>
-          <kbd>Shift+Enter</kbd> Nova linha
-        </div>
-        <div>
-          <kbd>/</kbd> Sugestão de comandos
-        </div>
-      </div>
-    </div>
+    <section className="settings-section">
+      <h2 className="settings-label">Skills do projeto</h2>
+      <p className="settings-value">
+        {skills === undefined
+          ? "—"
+          : skills === 0
+            ? "Nenhuma"
+            : `${skills} carregada${skills > 1 ? "s" : ""}`}
+      </p>
+      <p className="settings-hint">
+        Lidas de <code>.codingpro/skills</code> na pasta aberta.
+      </p>
+    </section>
 
-    <div className="settings-section">
-      <div className="settings-label">Versão</div>
-      <div className="settings-value">v0.1.0 — Fase 2 (W3-dev)</div>
-    </div>
+    <section className="settings-section">
+      <h2 className="settings-label">Atalhos</h2>
+      <dl className="settings-shortcuts">
+        {ATALHOS.map(([tecla, acao]) => (
+          <div key={tecla}>
+            <dt>
+              {tecla.split(" ").map((k) => (
+                <kbd key={k}>{k}</kbd>
+              ))}
+            </dt>
+            <dd>{acao}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+
+    <section className="settings-section">
+      <h2 className="settings-label">Versão</h2>
+      <p className="settings-value">{appVersion ? `CodingPro Desktop ${appVersion}` : "—"}</p>
+    </section>
   </div>
 );
