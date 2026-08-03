@@ -82,6 +82,7 @@ import {
   type CostBreakdown,
   DeepSeekProvider,
   type Provider,
+  ProviderError,
 } from "@codingpro/llm";
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { COMANDOS_CHAT, textoAjudaComandos } from "../shared/slash-commands.js";
@@ -99,6 +100,9 @@ const CONTEXT_BUDGET = 400_000;
 let mainWindow: BrowserWindow | null = null;
 let requestCounter = 0;
 const pendingPermissions = new Map<string, (approval: Approval) => void>();
+
+/** Modo atual do provider da sessão — vira "conta" após fallback de chave inválida. */
+let providerModoAtual: "chave-propria" | "conta" = "chave-propria";
 
 /** Pasta de trabalho escolhida na UI (independe do process.cwd do Electron). */
 let selectedWorkspacePath: string = process.cwd();
@@ -260,7 +264,8 @@ interface PlanoPendente {
 interface ChatSession {
   readonly cwd: string;
   readonly gate: ToolGate;
-  readonly provider: Provider;
+  provider: Provider;
+  providerModo: "chave-propria" | "conta";
   readonly registry: ToolRegistry;
   readonly workspace: Workspace;
   readonly sessionStore: SessionStore;
@@ -362,6 +367,19 @@ function obterEstadoAcesso(): EstadoAcesso {
 function criarProvider(role?: "main" | "fast"): Provider {
   const papel = role === undefined ? {} : { role };
 
+  // Fallback ativo: se a chave própria falhou e a sessão caiu para a conta cloud,
+  // todos os providers criados depois (subagentes, repair) usam a conta também.
+  if (providerModoAtual === "conta") {
+    const contaFallback = obterCredenciaisConta();
+    if (contaFallback) {
+      return new DeepSeekProvider({
+        apiKey: contaFallback.token,
+        baseUrl: `${contaFallback.apiUrl}/v1`,
+        ...papel,
+      });
+    }
+  }
+
   // Chave própria tem prioridade: quem já paga a própria chave não é empurrado
   // para a cota da plataforma sem pedir.
   const apiKey = obterApiKey();
@@ -390,6 +408,45 @@ function criarProvider(role?: "main" | "fast"): Provider {
 
 function mensagemAssistente(content: string): ChatMessage {
   return { role: "assistant", content };
+}
+
+/**
+ * Fallback de autenticação: se o turno falhar por chave própria inválida (401/403)
+ * e existir conta cloud conectada, troca o provider da sessão para a conta e
+ * re-executa o runAgent uma única vez.
+ */
+async function runAgentComFallback(
+  session: ChatSession,
+  params: Omit<Parameters<typeof runAgent>[0], "provider"> & { provider?: Provider },
+): Promise<Awaited<ReturnType<typeof runAgent>>> {
+  try {
+    return await runAgent({ ...params, provider: params.provider ?? session.provider });
+  } catch (err) {
+    const ehAuth =
+      err instanceof ProviderError &&
+      (err.code === "provider-failed" || err.code === "invalid-request") &&
+      /autentica/i.test(err.safeMessage);
+    if (!ehAuth) throw err;
+    if (session.providerModo === "conta") throw err; // já está na conta — não re-tenta
+
+    const conta = obterCredenciaisConta();
+    if (!conta) throw err;
+
+    session.provider = new DeepSeekProvider({
+      apiKey: conta.token,
+      baseUrl: `${conta.apiUrl}/v1`,
+    });
+    session.providerModo = "conta";
+    providerModoAtual = "conta";
+    sendCoreEvent({
+      type: "agent-event",
+      event: {
+        type: "notice",
+        text: "Chave DeepSeek local inválida — usando conta CodingPro Cloud.",
+      },
+    });
+    return await runAgent({ ...params, provider: session.provider });
+  }
 }
 
 function mensagemUsuario(content: string): ChatMessage {
@@ -527,6 +584,14 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
     hooks.length > 0 ? criarHookRunner(hooks) : undefined,
   );
   const provider = criarProvider();
+  const chavePropria = obterApiKey();
+  const providerModo: "chave-propria" | "conta" =
+    chavePropria !== undefined && chavePropria.trim().length > 0
+      ? "chave-propria"
+      : obterCredenciaisConta() !== undefined
+        ? "conta"
+        : "conta"; // sem acesso: criarProvider já lançou; fallback tenta conta depois
+  providerModoAtual = providerModo;
   const sessionStore = await SessionStore.create(join(normalized, ".codingpro", "sessions"));
   const checkpoints = await CheckpointStore.create(
     join(normalized, ".codingpro", "checkpoints"),
@@ -567,6 +632,7 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
     hooks,
     mcp,
     provider,
+    providerModo,
     registry,
     sessionStore,
     checkpoints,
@@ -1659,7 +1725,7 @@ app.whenReady().then(() => {
           sendCoreEvent({ type: "agent-event", event: agentEvent });
         };
 
-        const agentResult = await runAgent({
+        const agentResult = await runAgentComFallback(session, {
           context: {
             workspace: session.workspace,
             readTracker: session.readTracker,
@@ -1716,7 +1782,7 @@ app.whenReady().then(() => {
             { content: promptReparo, role: "user" },
           ];
           const arquivosReparo: string[] = [];
-          const repairResult = await runAgent({
+          const repairResult = await runAgentComFallback(session, {
             context: {
               workspace: session.workspace,
               readTracker: session.readTracker,
