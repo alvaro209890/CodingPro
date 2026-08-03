@@ -13,6 +13,29 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 const raiz = resolve(import.meta.dirname, "..");
+const noWindows = process.platform === "win32";
+
+/**
+ * No Windows, tanto os gerenciadores (`pnpm`/`npm`) quanto os shims de `node_modules/.bin`
+ * são arquivos `.cmd`; `execFileSync` não resolve `PATHEXT` sozinho (ENOENT) e, desde o Node 20,
+ * recusa executar `.cmd` sem `shell: true` (EINVAL). O smoke morria antes de testar coisa alguma.
+ */
+function caminhoBin(nome) {
+  const base = join(destinoInstalacao, "node_modules", ".bin", nome);
+  return noWindows ? `${base}.cmd` : base;
+}
+
+/** Com `shell: true` o Windows re-parseia a linha; aspas protegem caminhos com espaço. */
+function citar(argumento) {
+  return noWindows ? `"${argumento}"` : argumento;
+}
+
+function rodarFerramenta(nome, argumentos, opcoes) {
+  return execFileSync(noWindows ? `${nome}.cmd` : nome, argumentos.map(citar), {
+    ...opcoes,
+    ...(noWindows ? { shell: true } : {}),
+  });
+}
 const manifesto = JSON.parse(readFileSync(join(raiz, "packages", "cli", "package.json"), "utf8"));
 const temporario = mkdtempSync(join(tmpdir(), "codingpro-package-"));
 const destinoPacote = join(temporario, "pacote");
@@ -36,6 +59,9 @@ const ambienteBaseCli = {
   TEMP: process.env.TEMP,
   TMP: process.env.TMP,
   TMPDIR: process.env.TMPDIR,
+  // `os.homedir()` no Windows lê USERPROFILE, não HOME: sem isto o smoke lia a config
+  // real da máquina em vez da home isolada e a precedência global→projeto→flags falhava.
+  ...(noWindows ? { USERPROFILE: homeIsolada } : {}),
   XDG_CONFIG_HOME: xdgIsolado,
 };
 const ambienteCli = {
@@ -67,11 +93,22 @@ function escreverFixture(path, resposta) {
 escreverFixture(replayFile, "Olá! Como posso ajudar?");
 
 function executarBin(nome, argumentos, environment = ambienteCli, cwd = raiz) {
-  return execFileSync(join(destinoInstalacao, "node_modules", ".bin", nome), argumentos, {
+  return execFileSync(citar(caminhoBin(nome)), argumentos.map(citar), {
     cwd,
     encoding: "utf8",
     env: environment,
-    timeout: 10_000,
+    timeout: 20_000,
+    ...(noWindows ? { shell: true } : {}),
+  });
+}
+
+/** Igual a `executarBin`, mas devolve o resultado bruto (status/stderr) em vez de lançar. */
+function spawnBin(nome, argumentos, opcoes) {
+  return spawnSync(citar(caminhoBin(nome)), argumentos.map(citar), {
+    encoding: "utf8",
+    timeout: 20_000,
+    ...opcoes,
+    ...(noWindows ? { shell: true } : {}),
   });
 }
 
@@ -104,18 +141,18 @@ function validarRecusaSmoke(env, stderrEsperado) {
 }
 
 try {
-  execFileSync("pnpm", ["--filter", "codingpro", "pack", "--pack-destination", destinoPacote], {
+  rodarFerramenta("pnpm", ["--filter", "codingpro", "pack", "--pack-destination", destinoPacote], {
     cwd: raiz,
     env: ambienteFerramentas,
     stdio: "pipe",
-    timeout: 30_000,
+    timeout: 120_000,
   });
 
   const pacote = join(destinoPacote, `codingpro-${manifesto.version}.tgz`);
-  execFileSync(
+  rodarFerramenta(
     "npm",
     ["install", "--ignore-scripts", "--offline", "--prefix", destinoInstalacao, pacote],
-    { cwd: raiz, env: ambienteFerramentas, stdio: "pipe", timeout: 30_000 },
+    { cwd: raiz, env: ambienteFerramentas, stdio: "pipe", timeout: 120_000 },
   );
 
   const versao = executarBin("codingpro", ["--version"]);
@@ -188,11 +225,10 @@ try {
 
   const settingsProjeto = join(projetoConfig, ".codingpro", "settings.json");
   writeFileSync(settingsProjeto, '{ "provider": "deepseek" }\n', { mode: 0o644 });
-  const projetoTentouDeepSeek = spawnSync(
-    join(destinoInstalacao, "node_modules", ".bin", "codingpro"),
-    ["-p", "olá"],
-    { cwd: projetoConfig, encoding: "utf8", env: ambienteBaseCli, timeout: 10_000 },
-  );
+  const projetoTentouDeepSeek = spawnBin("codingpro", ["-p", "olá"], {
+    cwd: projetoConfig,
+    env: ambienteBaseCli,
+  });
   if (
     projetoTentouDeepSeek.status !== 2 ||
     !projetoTentouDeepSeek.stderr.includes("não pode ativar o provider DeepSeek") ||
@@ -221,11 +257,10 @@ try {
   if (versaoComConfigInvalida.trim() !== manifesto.version) {
     throw new Error("A versão tentou carregar configuração inválida.");
   }
-  const erroConfig = spawnSync(
-    join(destinoInstalacao, "node_modules", ".bin", "codingpro"),
-    ["-p", "olá"],
-    { cwd: projetoConfig, encoding: "utf8", env: ambienteBaseCli, timeout: 10_000 },
-  );
+  const erroConfig = spawnBin("codingpro", ["-p", "olá"], {
+    cwd: projetoConfig,
+    env: ambienteBaseCli,
+  });
   if (
     erroConfig.status !== 2 ||
     !erroConfig.stderr.includes("Configuração do projeto inválida") ||
@@ -234,20 +269,12 @@ try {
     throw new Error("O pacote não tratou configuração inválida de forma segura.");
   }
 
-  const erro = spawnSync(
-    join(destinoInstalacao, "node_modules", ".bin", "codingpro"),
-    ["--inexistente"],
-    { encoding: "utf8", env: ambienteCli, timeout: 10_000 },
-  );
+  const erro = spawnBin("codingpro", ["--inexistente"], { env: ambienteCli });
   if (erro.status !== 1 || !erro.stderr.includes("erro: opção desconhecida")) {
     throw new Error(`Erro inesperado do pacote: status=${erro.status}, stderr=${erro.stderr}`);
   }
 
-  const promptAusente = spawnSync(
-    join(destinoInstalacao, "node_modules", ".bin", "codingpro"),
-    ["-p"],
-    { encoding: "utf8", env: ambienteCli, timeout: 10_000 },
-  );
+  const promptAusente = spawnBin("codingpro", ["-p"], { env: ambienteCli });
   if (promptAusente.status !== 1 || !promptAusente.stderr.includes("exige um argumento")) {
     throw new Error(
       `Erro inesperado para prompt ausente: status=${promptAusente.status}, stderr=${promptAusente.stderr}`,

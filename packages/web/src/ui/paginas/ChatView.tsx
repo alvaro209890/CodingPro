@@ -121,11 +121,11 @@ export function ChatView({
               {m.tools && m.tools.length > 0 && (
                 <div className="playground__msgToolsContainer">
                   <div className="playground__msgToolsHeader">Ferramentas executadas</div>
+                  {/* Fechadas por padrão, igual ao balão de raciocínio: o detalhe abre no clique. */}
                   {m.tools.map((t, i) => (
                     <details
-                      key={`${t.nome}-${t.result?.slice(0, 24) ?? "vazio"}-${i === (m.tools?.length ?? 0) - 1 ? "last" : "mid"}`}
+                      key={`${t.nome}-${t.result?.slice(0, 24) ?? "vazio"}-${i}`}
                       className="playground__msgToolDetails"
-                      open={i === (m.tools?.length ?? 0) - 1}
                     >
                       <summary className="playground__msgToolSummary">
                         <span className="playground__msgToolName">{t.nome}</span>

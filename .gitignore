@@ -1,5 +1,11 @@
 # Clones de repos de terceiros p/ estudo (nunca subir — ver planos/13)
 referencias/
+# Projeto de terceiro deixado dentro da árvore; fora do monorepo. Sem esta linha o
+# Biome (que respeita o .gitignore) o varre e o gate acusa ~16k erros que não são nossos.
+odysseus/
+
+# Anexos locais do Hermes (arquivos que o usuário arrasta para o chat)
+.hermes/
 
 # Futuro código
 node_modules/

@@ -78,7 +78,8 @@ function parseTarefas(input: JsonObject): Entrada[] {
 }
 
 function formatarRelatorio(indice: number, r: SubagenteRelatorio): string {
-  const cabecalho = `## Subagente ${indice + 1} — ${r.tipo}${r.interrompido ? " (interrompido)" : ""}`;
+  const sufixo = r.interrompido ? ` (${r.motivo ?? "interrompido"})` : "";
+  const cabecalho = `## Subagente ${indice + 1} — ${r.tipo}${sufixo}`;
   const corpo = r.texto.length > 0 ? r.texto : "(sem saída)";
   return `${cabecalho}\n${corpo}`;
 }
@@ -117,7 +118,21 @@ export const taskTool: ExecutableTool = {
         if (tarefa === undefined) {
           return;
         }
-        relatorios[i] = await spawner.executar(tarefa.tipo, tarefa.prompt, context.signal);
+        try {
+          relatorios[i] = await spawner.executar(tarefa.tipo, tarefa.prompt, context.signal);
+        } catch (error) {
+          // Uma tarefa que estoura não pode derrubar as irmãs nem virar o genérico
+          // "A ferramenta falhou ao executar." — vira relatório com a causa.
+          relatorios[i] = {
+            finishReason: "max-steps",
+            interrompido: true,
+            motivo: "erro",
+            passos: 0,
+            texto: `(falhou: ${error instanceof Error ? error.message : String(error)})`,
+            tipo: tarefa.tipo,
+            usage: { inputTokens: 0, outputTokens: 0 },
+          };
+        }
       }
     };
     await Promise.all(Array.from({ length: Math.min(limite, tarefas.length) }, () => trabalhar()));

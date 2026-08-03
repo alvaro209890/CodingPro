@@ -19,20 +19,26 @@ import { useTheme } from "./useTheme.js";
 import "./aurora.css";
 import "./cursor-skin.css";
 
-const CollapsibleReasoning: React.FC<{ text?: string | undefined; startedAt?: number }> = ({
-  text,
-  startedAt,
-}) => {
+const CollapsibleReasoning: React.FC<{
+  text?: string | undefined;
+  startedAt?: number;
+  endedAt?: number;
+}> = ({ text, startedAt, endedAt }) => {
   const [open, setOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
     if (!text || startedAt === undefined) return;
+    // Se o reasoning já terminou, congela o valor final — não roda timer.
+    if (endedAt !== undefined) {
+      setElapsed(Math.max(1, Math.round((endedAt - startedAt) / 1000)));
+      return;
+    }
     const tick = () => setElapsed(Math.max(1, Math.round((Date.now() - startedAt) / 1000)));
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, [text, startedAt]);
+  }, [text, startedAt, endedAt]);
 
   if (!text) return null;
   const label = elapsed > 0 ? `Thought for ${elapsed}s` : "Thought";
@@ -54,10 +60,12 @@ const CollapsibleReasoning: React.FC<{ text?: string | undefined; startedAt?: nu
 
 interface ChatMessageUI {
   id: string;
-  role: "user" | "assistant";
+  /** `notice` = aviso do próprio app (ex.: caiu para a conta cloud) — nunca fala pela IA. */
+  role: "user" | "assistant" | "notice";
   content: string;
   reasoning?: string;
   reasoningStartedAt?: number;
+  reasoningEndedAt?: number;
   toolGroup?: {
     summaryText: string;
     items: ToolItem[];
@@ -251,7 +259,17 @@ export const App: React.FC = () => {
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (last && last.role === "assistant") {
-              return [...prev.slice(0, -1), { ...last, content: last.content + ae.text }];
+              return [
+                ...prev.slice(0, -1),
+                {
+                  ...last,
+                  content: last.content + ae.text,
+                  // primeiro texto da resposta final = reasoning terminou
+                  ...(last.reasoning !== undefined && last.reasoningEndedAt === undefined
+                    ? { reasoningEndedAt: Date.now() }
+                    : {}),
+                },
+              ];
             }
             return [...prev, { id: newId("asst"), role: "assistant", content: ae.text }];
           });
@@ -285,14 +303,19 @@ export const App: React.FC = () => {
             ...prev,
             {
               id: newId("notice"),
-              role: "assistant",
-              content: `· ${ae.text}`,
+              role: "notice",
+              content: ae.text,
             },
           ]);
         } else if (ae.type === "tool-call") {
           // Cada tool ganha seu próprio bloco de raciocínio
           setMessages((prev) => {
             const last = prev[prev.length - 1];
+            // tool começou → reasoning do bloco anterior terminou
+            const lastComFim =
+              last && last.role === "assistant" && last.reasoningEndedAt === undefined
+                ? { ...last, reasoningEndedAt: Date.now() }
+                : last;
             const input = ae.call.input as Record<string, unknown> | undefined;
             const target =
               (typeof input?.path === "string" && input.path) ||
@@ -328,15 +351,15 @@ export const App: React.FC = () => {
               });
             }
 
-            if (last && last.role === "assistant") {
-              const group = last.toolGroup ?? {
+            if (lastComFim && lastComFim.role === "assistant") {
+              const group = lastComFim.toolGroup ?? {
                 summaryText: `Executando ${ae.call.name}`,
                 items: [],
               };
               return [
                 ...prev.slice(0, -1),
                 {
-                  ...last,
+                  ...lastComFim,
                   toolGroup: {
                     ...group,
                     items: [...group.items, newItem],
@@ -442,6 +465,14 @@ export const App: React.FC = () => {
       } else if (event.type === "session-updated") {
         setIsRunning(false);
         setCurrentPermissionRequest(null);
+        // congela reasoning pendente (fim do turno — contador não fica rodando)
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.role === "assistant" && m.reasoning !== undefined && m.reasoningEndedAt === undefined
+              ? { ...m, reasoningEndedAt: Date.now() }
+              : m,
+          ),
+        );
         // se o main mandou o transcript completo (ex.: /limpar), sincroniza UI
         if (event.messages.length === 0) {
           setMessages([]);
@@ -509,6 +540,9 @@ export const App: React.FC = () => {
       setIsRunning(true);
       setRunStartTime(Date.now());
       setTaskItems([]);
+      // O painel de subagentes é do turno atual; sem isso ele acumulava as execuções
+      // de todos os turnos anteriores da sessão.
+      setSubAgents([]);
       setMessages((prev) => [...prev, { id: newId("user"), role: "user", content: textToSend }]);
 
       try {
@@ -714,7 +748,24 @@ export const App: React.FC = () => {
 
           {messages.map((m) => (
             <div key={m.id} className="message-group">
-              {m.role === "user" ? (
+              {m.role === "notice" ? (
+                <div className="system-notice" role="status">
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    aria-hidden="true"
+                  >
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 8h.01M11 12h1v4h1" />
+                  </svg>
+                  <span>{m.content}</span>
+                </div>
+              ) : m.role === "user" ? (
                 <div className="user-message-card">
                   <div className="user-message-bubble">{m.content}</div>
                 </div>
@@ -733,6 +784,7 @@ export const App: React.FC = () => {
                     {...(m.reasoningStartedAt !== undefined
                       ? { startedAt: m.reasoningStartedAt }
                       : {})}
+                    {...(m.reasoningEndedAt !== undefined ? { endedAt: m.reasoningEndedAt } : {})}
                   />
                   {/* biome-ignore lint/security/noDangerouslySetInnerHtml: markdown do LLM */}
                   {m.content && (

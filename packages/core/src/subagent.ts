@@ -2,7 +2,7 @@ import type { CostBreakdown, Provider, TokenUsage } from "@codingpro/llm";
 import { type AgentFinishReason, runAgent } from "./agent.js";
 import type { TipoAgente } from "./agent-types.js";
 import { ToolGate } from "./gate.js";
-import { PermissionController } from "./permissions.js";
+import { type Approver, type PermissionMode, PermissionController } from "./permissions.js";
 import { ToolRegistry } from "./registry.js";
 import type { ExecutableTool, ToolContext } from "./tool.js";
 import { rememberTool } from "./tools/remember.js";
@@ -14,6 +14,12 @@ const SUBAGENTE_ALWAYS_ALLOW = [rememberTool.definition.name];
 export const SUBAGENTE_MAX_STEPS = 12;
 /** Concorrência padrão do orquestrador. */
 export const SUBAGENTE_MAX_PARALELO = 3;
+/**
+ * Tempo máximo de um subagente. Todo papel roda DeepSeek V4 Flash com raciocínio `high`/`max`
+ * e até {@link SUBAGENTE_MAX_STEPS} passos com ferramentas: os 2 min antigos cortavam quase
+ * toda execução real no meio, e o relatório voltava vazio.
+ */
+export const SUBAGENTE_TIMEOUT_PADRAO_MS = 600_000;
 
 export interface SubagenteRelatorio {
   readonly tipo: string;
@@ -23,8 +29,10 @@ export interface SubagenteRelatorio {
   readonly cost?: CostBreakdown;
   readonly finishReason: AgentFinishReason;
   readonly passos: number;
-  /** `true` se foi interrompido por tempo/cancelamento antes de concluir. */
+  /** `true` se foi interrompido por tempo/cancelamento/erro antes de concluir. */
   readonly interrompido: boolean;
+  /** Por que foi interrompido; ausente quando concluiu normalmente. */
+  readonly motivo?: "timeout" | "cancelado" | "erro";
 }
 
 export interface ExecutarSubagenteOptions {
@@ -38,6 +46,14 @@ export interface ExecutarSubagenteOptions {
   readonly maxSteps?: number;
   readonly timeoutMs?: number;
   readonly signal?: AbortSignal;
+  /**
+   * Aprovador do runtime pai. Sem ele, um subagente com tools de efeito (`worker`) tem toda
+   * escrita negada fail-closed e devolve relatório vazio — que era o sintoma de "subagente não
+   * funciona". Com ele, a escrita passa pelo mesmo fluxo de permissão do agente principal.
+   */
+  readonly approver?: Approver;
+  /** Modo de permissão do subagente; padrão `ask` (o aprovador decide). */
+  readonly permissionMode?: PermissionMode;
 }
 
 function registrarTools(
@@ -66,7 +82,10 @@ export async function executarSubagente(
   const registry = registrarTools(options.toolPool, options.tipo.tools);
   const gate = new ToolGate(
     registry,
-    new PermissionController({ alwaysAllow: SUBAGENTE_ALWAYS_ALLOW, mode: "ask" }),
+    new PermissionController(
+      { alwaysAllow: SUBAGENTE_ALWAYS_ALLOW, mode: options.permissionMode ?? "ask" },
+      options.approver,
+    ),
   );
 
   const controller = new AbortController();
@@ -78,12 +97,20 @@ export async function executarSubagente(
       options.signal.addEventListener("abort", onParentAbort, { once: true });
     }
   }
+  // Distingue "estourou o tempo do subagente" de "o usuário cancelou": sem isso os dois casos
+  // viravam o mesmo relatório mudo e não dava para saber que o culpado era o timeout.
+  let porTimeout = false;
+  const timeoutMs = options.timeoutMs ?? SUBAGENTE_TIMEOUT_PADRAO_MS;
   const timer =
-    options.timeoutMs !== undefined && options.timeoutMs > 0
-      ? setTimeout(() => controller.abort(new Error("tempo esgotado")), options.timeoutMs)
+    timeoutMs > 0
+      ? setTimeout(() => {
+          porTimeout = true;
+          controller.abort(new Error("tempo esgotado"));
+        }, timeoutMs)
       : undefined;
 
   let texto = "";
+  let passos = 0;
   try {
     const result = await runAgent({
       context: { ...options.context, signal: controller.signal },
@@ -93,6 +120,8 @@ export async function executarSubagente(
       onEvent: (event) => {
         if (event.type === "text-delta") {
           texto += event.text;
+        } else if (event.type === "step") {
+          passos = event.step;
         }
       },
       provider: options.provider,
@@ -111,16 +140,33 @@ export async function executarSubagente(
     };
   } catch (error) {
     if (controller.signal.aborted) {
+      const motivo = porTimeout
+        ? `(interrompido: tempo esgotado após ${Math.round(timeoutMs / 1000)}s)`
+        : "(interrompido: cancelado)";
+      const parcial = texto.trim();
       return {
         finishReason: "max-steps",
         interrompido: true,
-        passos: 0,
-        texto: texto.trim(),
+        motivo: porTimeout ? "timeout" : "cancelado",
+        passos,
+        texto: parcial.length > 0 ? `${parcial}\n\n${motivo}` : motivo,
         tipo: options.tipo.nome,
         usage: { inputTokens: 0, outputTokens: 0 },
       };
     }
-    throw error;
+    // Falha real (auth, saldo, rede…): vira relatório com a causa em vez de derrubar a tool
+    // inteira, que no runtime virava o genérico "A ferramenta falhou ao executar."
+    const parcial = texto.trim();
+    const causa = error instanceof Error ? error.message : String(error);
+    return {
+      finishReason: "max-steps",
+      interrompido: true,
+      motivo: "erro",
+      passos,
+      texto: parcial.length > 0 ? `${parcial}\n\n(falhou: ${causa})` : `(falhou: ${causa})`,
+      tipo: options.tipo.nome,
+      usage: { inputTokens: 0, outputTokens: 0 },
+    };
   } finally {
     if (timer !== undefined) {
       clearTimeout(timer);

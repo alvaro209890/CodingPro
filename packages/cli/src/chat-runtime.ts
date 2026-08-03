@@ -345,6 +345,7 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
   // Subagentes: tipos padrão + custom de `.codingpro/agents`; a tool `task` e o `/plan` usam isto.
   const tiposCustom = await carregarTiposCustom(join(workspace.root, ".codingpro", "agents"));
   const spawner = criarSpawnerSubagentes({
+    approver: aprovador,
     custom: tiposCustom,
     memory: memoria.scope,
     provider: options.provider,

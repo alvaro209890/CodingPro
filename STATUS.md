@@ -1,7 +1,11 @@
-# STATUS do projeto — 2026-07-24
+# STATUS do projeto — 2026-08-03
 
 Documento operacional curto. Lacunas plano × código: **[`docs/LACUNAS_FASES.md`](docs/LACUNAS_FASES.md)**.  
 Estado Fase 1: [`docs/ESTADO_PROJETO.md`](docs/ESTADO_PROJETO.md).
+
+Último incremento: **[`docs/RELATORIO-CORRECOES-2026-08-03-B.md`](docs/RELATORIO-CORRECOES-2026-08-03-B.md)**
+— subagentes (timeout, aprovador, diagnóstico), aviso de conta cloud fora da fala da IA,
+ferramentas fechadas por padrão no chat, e gate `pnpm check` reprodutível no Windows.
 
 ## Fases
 

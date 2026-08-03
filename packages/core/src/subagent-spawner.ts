@@ -7,13 +7,16 @@ import {
   TIPOS_AGENTE_PADRAO,
   type TipoAgente,
 } from "./agent-types.js";
-import { executarSubagente, type SubagenteRelatorio, type SubagenteSpawner } from "./subagent.js";
+import type { Approver, PermissionMode } from "./permissions.js";
+import {
+  executarSubagente,
+  type SubagenteRelatorio,
+  type SubagenteSpawner,
+  SUBAGENTE_TIMEOUT_PADRAO_MS,
+} from "./subagent.js";
 import type { ExecutableTool, MemoryScope } from "./tool.js";
 import { SUBAGENT_TOOL_POOL } from "./tool-groups.js";
 import type { Workspace } from "./workspace.js";
-
-/** Timeout padrão de um subagente. */
-const SUBAGENTE_TIMEOUT_MS = 120_000;
 
 /** Carrega tipos custom de `.codingpro/agents/*.md` (best-effort; arquivos inválidos ignorados). */
 export async function carregarTiposCustom(dir: string): Promise<Record<string, TipoAgente>> {
@@ -53,6 +56,10 @@ export interface SpawnerOptions {
   readonly toolPool?: readonly ExecutableTool[];
   readonly maxParalelo?: number;
   readonly timeoutMs?: number;
+  /** Aprovador do runtime pai, para que subagentes com tools de efeito possam escrever. */
+  readonly approver?: Approver;
+  /** Modo de permissão dos subagentes; padrão `ask`. */
+  readonly permissionMode?: PermissionMode;
 }
 
 /**
@@ -79,9 +86,11 @@ export function criarSpawnerSubagentes(options: SpawnerOptions): SubagenteSpawne
         },
         prompt,
         provider,
-        timeoutMs: options.timeoutMs ?? SUBAGENTE_TIMEOUT_MS,
+        timeoutMs: options.timeoutMs ?? SUBAGENTE_TIMEOUT_PADRAO_MS,
         tipo,
         toolPool,
+        ...(options.approver === undefined ? {} : { approver: options.approver }),
+        ...(options.permissionMode === undefined ? {} : { permissionMode: options.permissionMode }),
         ...(signal === undefined ? {} : { signal }),
       });
     },

@@ -1,11 +1,38 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    Temas CodingPro — variáveis CSS dinâmicas por tema
    Aplica via data-theme="aurora|solar|neon|mono" no <html>
+   Cada tema define o conjunto COMPLETO de variáveis usadas pelo app
+   (aurora.css usa --bg-*, --text-*, --accent-*, --border-* + --theme-*).
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ─── Aurora (padrão) ─── */
+/* ─── Aurora (padrão) — esmeralda → ciano → violeta ─── */
 :root,
 [data-theme="aurora"] {
+  --bg-app: #0a0d12;
+  --bg-sidebar: #10141c;
+  --bg-header: #10141c;
+  --bg-card: #161c28;
+  --bg-card-hover: #1c2436;
+  --bg-input: #131924;
+  --bg-subtle: rgba(255, 255, 255, 0.035);
+
+  --border-subtle: #1e2740;
+  --border-strong: #2a3654;
+  --border-focus: #10b981;
+
+  --text-primary: #e8edf5;
+  --text-secondary: #8b9ec0;
+  --text-muted: #566888;
+
+  --accent-blue: #38bdf8;
+  --accent-purple: #a78bfa;
+  --accent-green: #34d399;
+  --accent-red: #f87171;
+  --accent-amber: #fbbf24;
+
+  --green-add: #22c55e;
+  --red-del: #ef4444;
+
   --theme-primaria: #10b981;
   --theme-acento: #06b6d4;
   --theme-prompt: #8b5cf6;
@@ -17,8 +44,33 @@
   --theme-gradiente-brand: linear-gradient(135deg, #10b981, #8b5cf6);
 }
 
-/* ─── Solar ─── */
+/* ─── Solar — âmbar → laranja → rosa quente ─── */
 [data-theme="solar"] {
+  --bg-app: #120d08;
+  --bg-sidebar: #181009;
+  --bg-header: #181009;
+  --bg-card: #221709;
+  --bg-card-hover: #2c1e0d;
+  --bg-input: #1c1208;
+  --bg-subtle: rgba(250, 203, 21, 0.04);
+
+  --border-subtle: #3d2c0e;
+  --border-strong: #553d14;
+  --border-focus: #f97316;
+
+  --text-primary: #f7f0e4;
+  --text-secondary: #c4ab8a;
+  --text-muted: #8a7450;
+
+  --accent-blue: #f97316;
+  --accent-purple: #f43f5e;
+  --accent-green: #84cc16;
+  --accent-red: #f43f5e;
+  --accent-amber: #facb15;
+
+  --green-add: #84cc16;
+  --red-del: #f43f5e;
+
   --theme-primaria: #f97316;
   --theme-acento: #facb15;
   --theme-prompt: #f43f5e;
@@ -30,8 +82,33 @@
   --theme-gradiente-brand: linear-gradient(135deg, #f97316, #f43f5e);
 }
 
-/* ─── Neon ─── */
+/* ─── Neon — magenta → azul → ciano vibrante ─── */
 [data-theme="neon"] {
+  --bg-app: #0a0812;
+  --bg-sidebar: #100c1c;
+  --bg-header: #100c1c;
+  --bg-card: #191228;
+  --bg-card-hover: #211836;
+  --bg-input: #140e24;
+  --bg-subtle: rgba(255, 60, 160, 0.04);
+
+  --border-subtle: #2e1e4a;
+  --border-strong: #422a66;
+  --border-focus: #ff3ca0;
+
+  --text-primary: #ece9f7;
+  --text-secondary: #a99ac9;
+  --text-muted: #6d5f8f;
+
+  --accent-blue: #22d3ee;
+  --accent-purple: #ff3ca0;
+  --accent-green: #10e6a0;
+  --accent-red: #ef5c5c;
+  --accent-amber: #facb15;
+
+  --green-add: #10e6a0;
+  --red-del: #ef5c5c;
+
   --theme-primaria: #22d3ee;
   --theme-acento: #ff3ca0;
   --theme-prompt: #ff3ca0;
@@ -43,8 +120,33 @@
   --theme-gradiente-brand: linear-gradient(135deg, #ff3ca0, #22d3ee);
 }
 
-/* ─── Mono ─── */
+/* ─── Mono — grafite minimalista, alto contraste ─── */
 [data-theme="mono"] {
+  --bg-app: #0d0d0f;
+  --bg-sidebar: #131316;
+  --bg-header: #131316;
+  --bg-card: #1a1a1e;
+  --bg-card-hover: #222227;
+  --bg-input: #161619;
+  --bg-subtle: rgba(255, 255, 255, 0.04);
+
+  --border-subtle: #26262c;
+  --border-strong: #3a3a42;
+  --border-focus: #f5f5f5;
+
+  --text-primary: #f2f2f2;
+  --text-secondary: #a0a0a8;
+  --text-muted: #6a6a72;
+
+  --accent-blue: #d4d4d8;
+  --accent-purple: #b4b4b4;
+  --accent-green: #f5f5f5;
+  --accent-red: #ef5c5c;
+  --accent-amber: #f5bf47;
+
+  --green-add: #f5f5f5;
+  --red-del: #ef5c5c;
+
   --theme-primaria: #f5f5f5;
   --theme-acento: #b4b4b4;
   --theme-prompt: #f5f5f5;

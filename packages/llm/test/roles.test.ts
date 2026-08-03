@@ -33,13 +33,12 @@ describe("roteamento de papéis DeepSeek", () => {
     expect(ROLE_MODEL_FLASH).toBe("deepseek-v4-flash");
   });
 
-  it.each([
-    { role: "auto" as const },
-    { role: "main" as const },
-    { role: "fast" as const },
-  ])("resolve $role → Flash (nunca Pro)", ({ role }) => {
-    expect(resolveDeepSeekModelForRole(role)).toBe(DEEPSEEK_MODEL_FLASH);
-  });
+  it.each([{ role: "auto" as const }, { role: "main" as const }, { role: "fast" as const }])(
+    "resolve $role → Flash (nunca Pro)",
+    ({ role }) => {
+      expect(resolveDeepSeekModelForRole(role)).toBe(DEEPSEEK_MODEL_FLASH);
+    },
+  );
 
   it("usa Flash quando o papel é omitido", () => {
     expect(resolveDeepSeekModelForRole()).toBe(DEEPSEEK_MODEL_FLASH);

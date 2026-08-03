@@ -1,0 +1,18 @@
+# O Biome formata com fim de linha LF. Sem isto, um checkout Windows com
+# core.autocrlf=true converte tudo para CRLF e o gate `pnpm format:check`
+# nasce vermelho na máquina do desenvolvedor mesmo sem nenhuma alteração.
+* text=auto eol=lf
+
+# Binários — nunca normalizar.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.pdf binary
+*.zip binary
+*.exe binary
+*.node binary
+*.woff binary
+*.woff2 binary

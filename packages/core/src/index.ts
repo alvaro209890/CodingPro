@@ -215,6 +215,7 @@ export {
   orquestrarSubagentes,
   SUBAGENTE_MAX_PARALELO,
   SUBAGENTE_MAX_STEPS,
+  SUBAGENTE_TIMEOUT_PADRAO_MS,
   type SubagenteRelatorio,
   type SubagenteSpawner,
   type TarefaSubagente,

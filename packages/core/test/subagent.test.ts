@@ -35,6 +35,41 @@ function echoProvider(): { provider: Provider; systems: string[] } {
   };
 }
 
+/** Provider que pede um `write_file` no 1º turno e encerra no 2º. */
+function escritorProvider(): { provider: Provider } {
+  let turno = 0;
+  return {
+    provider: {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "fake",
+      model: "fake",
+      async *stream(): AsyncGenerator<ProviderEvent> {
+        turno += 1;
+        if (turno === 1) {
+          yield {
+            message: {
+              content: "",
+              role: "assistant",
+              toolCalls: [
+                {
+                  id: "c1",
+                  input: { content: "oi", path: "novo.txt" },
+                  name: "write_file",
+                },
+              ],
+            },
+            reason: "tool-calls",
+            type: "finish",
+          };
+          return;
+        }
+        yield { text: "pronto", type: "text-delta" };
+        yield { message: { content: "pronto", role: "assistant" }, reason: "stop", type: "finish" };
+      },
+    },
+  };
+}
+
 const POOL = [readFileTool, listDirTool, grepTool, repoMapTool, writeFileTool];
 
 describe("executarSubagente", () => {
@@ -107,6 +142,62 @@ describe("executarSubagente", () => {
       toolPool: POOL,
     });
     expect(rel.interrompido).toBe(true);
+    expect(rel.motivo).toBe("timeout");
+    // O relatório precisa dizer que estourou o tempo: antes voltava vazio e parecia
+    // que o subagente simplesmente não tinha funcionado.
+    expect(rel.texto).toContain("tempo esgotado");
+  });
+
+  it("falha do provider vira relatório com a causa, sem derrubar o chamador", async () => {
+    const quebrado: Provider = {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "fake",
+      model: "fake",
+      // biome-ignore lint/correctness/useYield: provider que só falha
+      async *stream(): AsyncGenerator<ProviderEvent> {
+        throw new Error("saldo insuficiente");
+      },
+    };
+    const rel = await executarSubagente({
+      context: { workspace },
+      prompt: "algo",
+      provider: quebrado,
+      tipo: AGENTE_EXPLORER,
+      toolPool: POOL,
+    });
+    expect(rel.motivo).toBe("erro");
+    expect(rel.texto).toContain("saldo insuficiente");
+  });
+
+  it("sem aprovador, o worker não consegue escrever (fail-closed)", async () => {
+    const { provider } = escritorProvider();
+    const rel = await executarSubagente({
+      context: { workspace },
+      prompt: "cria o arquivo",
+      provider,
+      tipo: AGENTE_WORKER,
+      toolPool: POOL,
+    });
+    expect(rel.interrompido).toBe(false);
+    await expect(readFile(join(root, "novo.txt"), "utf8")).rejects.toThrow();
+  });
+
+  it("com aprovador do runtime pai, o worker escreve de verdade", async () => {
+    const { provider } = escritorProvider();
+    const rel = await executarSubagente({
+      approver: {
+        async request() {
+          return "approve-once" as const;
+        },
+      },
+      context: { workspace },
+      prompt: "cria o arquivo",
+      provider,
+      tipo: AGENTE_WORKER,
+      toolPool: POOL,
+    });
+    expect(rel.interrompido).toBe(false);
+    await expect(readFile(join(root, "novo.txt"), "utf8")).resolves.toBe("oi");
   });
 
   it("cancelamento pelo signal-pai durante a execução vira parcial", async () => {

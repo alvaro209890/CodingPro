@@ -604,6 +604,7 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
   // SubagenteSpawner: fábrica de subagentes para a tool `task` e para /plan e /review —
   // inclui tipos customizados de `.codingpro/agents/*.md` (paridade com a CLI).
   const spawner = criarSpawnerSubagentes({
+    approver,
     custom: tiposCustom,
     criarProvider: (role) => {
       if (role === "fast") {

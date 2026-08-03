@@ -285,17 +285,38 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
         />
 
         <div className="dock-composer-right">
+          {onToggleAutoApprove && (
+            <button
+              type="button"
+              className={`dock-autoapprove-btn ${autoApprove ? "on" : "off"}`}
+              title={
+                autoApprove
+                  ? "Auto-aprovar ligado — comandos de escrita/edição rodam sem pedir permissão"
+                  : "Auto-aprovar desligado — comandos pedem permissão antes de executar"
+              }
+              onClick={onToggleAutoApprove}
+            >
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                {autoApprove ? <path d="M20 6 9 17l-5-5" /> : <path d="M12 3v18M3 12h18" />}
+              </svg>
+              <span>Auto-aprovar</span>
+            </button>
+          )}
+
           <button
             type="button"
             className="dock-model-chip"
-            title={
-              onToggleAutoApprove
-                ? autoApprove
-                  ? "Auto-aprovar ligado"
-                  : "Auto-aprovar"
-                : undefined
-            }
-            onClick={onToggleAutoApprove}
+            title={`${modelName}${effortLevel ? ` · esforço ${effortLevel}` : ""}`}
           >
             {modelName}
             {effortLevel ? ` · ${effortLevel}` : ""}

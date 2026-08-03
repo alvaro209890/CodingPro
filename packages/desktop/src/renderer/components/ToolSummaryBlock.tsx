@@ -36,7 +36,9 @@ export const ToolSummaryBlock: React.FC<ToolSummaryBlockProps> = ({
   totalAdd,
   totalDel,
 }) => {
-  const [expanded, setExpanded] = useState(true);
+  // Fechado por padrão, igual às janelas de raciocínio: o chat mostra só o resumo
+  // ("Executando 3 ferramenta(s)") e o detalhe abre no clique.
+  const [expanded, setExpanded] = useState(false);
   const [expandedOutputs, setExpandedOutputs] = useState<Record<string, boolean>>({});
 
   const toggleOutput = (id: string) => setExpandedOutputs((prev) => ({ ...prev, [id]: !prev[id] }));
