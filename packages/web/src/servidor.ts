@@ -28,6 +28,7 @@ const TIPOS: Readonly<Record<string, string>> = {
   ".webp": "image/webp",
   ".woff2": "font/woff2",
   ".zip": "application/zip",
+  ".yml": "application/yaml; charset=utf-8",
 };
 
 function resolverArquivo(url: string): string | null {
@@ -63,9 +64,12 @@ async function servirDownload(
     return true;
   }
   const extensao = extname(arquivo);
+  const metadataUpdate = nome === "latest.yml" || nome === "latest.json";
   resposta.writeHead(200, {
-    "cache-control": "public, max-age=3600",
-    "content-disposition": `attachment; filename="${basename(arquivo)}"`,
+    "cache-control": metadataUpdate ? "no-store, max-age=0" : "public, max-age=31536000, immutable",
+    ...(metadataUpdate
+      ? {}
+      : { "content-disposition": `attachment; filename="${basename(arquivo)}"` }),
     "content-length": String(info.size),
     "content-type": TIPOS[extensao] ?? "application/octet-stream",
     "x-content-type-options": "nosniff",

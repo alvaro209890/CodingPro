@@ -125,20 +125,17 @@ p {
   backdrop-filter: blur(10px);
 }
 .topo .marca {
+  display: inline-flex;
+  align-items: center;
   font-weight: 700;
   font-size: 1.1rem;
   letter-spacing: -0.02em;
 }
 .marca-sinal {
-  display: inline-grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 30px;
+  height: 30px;
   margin-right: 0.3rem;
-  border-radius: 7px;
-  background: var(--gradiente);
-  color: #04140f;
-  font-size: 0.78rem;
+  object-fit: contain;
 }
 .topo-link {
   background: transparent;

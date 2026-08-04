@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { Provider, ProviderEvent } from "@codingpro/llm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AGENTE_EXPLORER, AGENTE_WORKER } from "../src/agent-types.js";
-import { executarSubagente, orquestrarSubagentes } from "../src/subagent.js";
+import { executarSubagente, orquestrarSubagentes, type SubagenteEvento } from "../src/subagent.js";
 import { grepTool } from "../src/tools/grep.js";
 import { listDirTool } from "../src/tools/list-dir.js";
 import { readFileTool } from "../src/tools/read-file.js";
@@ -87,10 +87,12 @@ describe("executarSubagente", () => {
 
   it("roda com o system prompt do tipo e devolve o relatório", async () => {
     const { provider, systems } = echoProvider();
+    const events: SubagenteEvento[] = [];
     const rel = await executarSubagente({
       context: { workspace },
       prompt: "ache o arquivo X",
       provider,
+      onEvent: (event) => events.push(event),
       tipo: AGENTE_EXPLORER,
       toolPool: POOL,
     });
@@ -98,6 +100,8 @@ describe("executarSubagente", () => {
     expect(rel.texto).toBe("ok:ache o arquivo X");
     expect(rel.interrompido).toBe(false);
     expect(systems[0]).toContain("subagente explorador");
+    expect(events.map((event) => event.type)).toEqual(["started", "progress", "step", "completed"]);
+    expect(events.at(-1)).toMatchObject({ report: "ok:ache o arquivo X", steps: 1 });
   });
 
   it("restringe as tools às do tipo (worker inclui edit_file; explorer não)", () => {

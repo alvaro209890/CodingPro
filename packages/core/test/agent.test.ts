@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   type ChatRequest,
@@ -379,6 +379,61 @@ describe("runAgent", () => {
       ),
     ).toBe(true);
     expect(notices.some((t) => t.includes("recuperando"))).toBe(true);
+  });
+
+  it("consolida várias correções antes de uma única escrita válida de 10 KiB", async () => {
+    const content = "x".repeat(10_240);
+    const call: ToolCall = {
+      id: "write-once",
+      input: { content, path: "plano.md" },
+      name: "write_file",
+    };
+    let providerCalls = 0;
+    let writeResults = 0;
+    const provider: Provider = {
+      capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
+      id: "write-recovery",
+      model: "fake",
+      async *stream() {
+        providerCalls += 1;
+        if (providerCalls <= 3) {
+          throw new ProviderError(
+            "invalid-tool-call",
+            'A DeepSeek retornou uma chamada de ferramenta inválida (argumentos fora do schema de "write_file").',
+          );
+        }
+        if (providerCalls === 4) {
+          yield { call, type: "tool-call" };
+          yield finish(assistant("", [call]));
+          return;
+        }
+        yield finish(assistant("arquivo concluído"));
+      },
+    };
+    const approvedGate = new ToolGate(
+      registry,
+      new PermissionController(
+        { mode: "ask" },
+        {
+          async request() {
+            return "approve-once";
+          },
+        },
+      ),
+    );
+    await runAgent({
+      context,
+      gate: approvedGate,
+      messages: [{ content: "escreva o plano", role: "user" }],
+      onEvent: (event) => {
+        if (event.type === "tool-result" && event.call.name === "write_file") writeResults += 1;
+      },
+      provider,
+      tools: registry.definitions(),
+    });
+    expect(providerCalls).toBe(5);
+    expect(writeResults).toBe(1);
+    expect(await readFile(join(root, "plano.md"), "utf8")).toBe(content);
   });
 
   it("desiste após esgotar as correções de chamada de ferramenta inválida", async () => {

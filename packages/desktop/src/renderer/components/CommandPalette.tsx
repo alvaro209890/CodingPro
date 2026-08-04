@@ -103,7 +103,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: overlay fecha ao clicar fora
     <div className="modal-overlay" role="presentation" onClick={onClose}>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: contêiner do diálogo */}
       <div
         className="modal-card paleta"
         role="dialog"

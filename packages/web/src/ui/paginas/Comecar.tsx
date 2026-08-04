@@ -217,6 +217,12 @@ function PassosWindows() {
 
   return (
     <Cartao>
+      <Aviso tipo="atencao">
+        <strong>Transição da versão 1.1.1:</strong> instale a 1.2.0 manualmente uma única vez. A
+        partir desta versão, o instalador passa a avisar sobre novas atualizações e sempre pede
+        autorização antes de baixar e antes de reiniciar para instalar. A edição portátil continua
+        usando download manual.
+      </Aviso>
       <Passo numero={1} titulo="Baixe o aplicativo">
         <p>
           Aplicativo de desktop com a mesma engine da CLI: chat, diffs e terminal integrado. Versão{" "}

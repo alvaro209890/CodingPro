@@ -21,7 +21,7 @@ if (releaseDir === undefined) {
 
 mkdirSync(downloadsDir, { recursive: true });
 
-const exts = [".exe", ".zip", ".blockmap", ".yml"];
+const exts = [".exe", ".zip", ".blockmap", ".yml", ".json"];
 let copiados = 0;
 for (const nome of readdirSync(releaseDir)) {
   if (!exts.some((ext) => nome.endsWith(ext))) continue;

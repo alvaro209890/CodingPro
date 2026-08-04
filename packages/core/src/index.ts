@@ -79,6 +79,8 @@ export {
   type IpcEnvelope,
   type UiPermissionEvent,
   type UiPermissionResponse,
+  type UsageSnapshotUi,
+  type UsageSourceUi,
 } from "./events.js";
 export { readFileWithin, removeFileWithin, writeFileWithin } from "./fs-safe.js";
 export { ToolGate } from "./gate.js";
@@ -216,6 +218,7 @@ export {
   SUBAGENTE_MAX_PARALELO,
   SUBAGENTE_MAX_STEPS,
   SUBAGENTE_TIMEOUT_PADRAO_MS,
+  type SubagenteEvento,
   type SubagenteRelatorio,
   type SubagenteSpawner,
   type TarefaSubagente,
@@ -249,12 +252,12 @@ export {
 export {
   ALL_TOOLS,
   EFFECT_TOOLS,
+  filtrarToolsDoRuntime,
   MEMORY_TOOL_NAMES,
   MEMORY_TOOLS,
   ORCHESTRATION_TOOLS,
   READ_ONLY_TOOLS,
   SUBAGENT_TOOL_POOL,
-  filtrarToolsDoRuntime,
 } from "./tool-groups.js";
 export {
   BASH_DEFAULT_TIMEOUT_MS,

@@ -44,7 +44,8 @@ export function App() {
     <div className="casca">
       <header className="topo">
         <a className="marca gradiente" {...propsLink("/")}>
-          <span className="marca-sinal">✦</span> CodingPro
+          <img className="marca-sinal" src="/codingpro-mark.png" alt="" />
+          <span>CodingPro</span>
         </a>
         <nav>
           <a className="botao pequeno topo-link" {...propsLink("/comecar")}>

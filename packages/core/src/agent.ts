@@ -45,7 +45,14 @@ export type AgentEvent =
   | { readonly call: ToolCall; readonly type: "tool-call" }
   | { readonly call: ToolCall; readonly result: ToolResult; readonly type: "tool-result" }
   /** Aviso não-fatal do loop (ex.: recuperação de uma chamada de ferramenta inválida). */
-  | { readonly text: string; readonly type: "notice" }
+  | {
+      readonly text: string;
+      readonly type: "notice";
+      /** Chave estável para a UI consolidar tentativas do mesmo reparo. */
+      readonly key?: string;
+      readonly attempt?: number;
+      readonly total?: number;
+    }
   | {
       readonly reason: FinishReason;
       readonly step: number;
@@ -334,15 +341,25 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
         // aborta se o modelo travar em N chamadas inválidas seguidas.
         correcoesToolCall += 1;
         options.onEvent?.({
+          attempt: correcoesToolCall,
+          key: "tool-call-recovery",
           text: `recuperando de chamada de ferramenta inválida (${correcoesToolCall}/${AGENT_MAX_TOOL_CALL_FIXES})`,
+          total: AGENT_MAX_TOOL_CALL_FIXES,
           type: "notice",
         });
+        const nomeNoErro = tools.find((tool) => error.safeMessage.includes(`"${tool.name}"`));
+        const schemaExato = nomeNoErro
+          ? JSON.stringify({ name: nomeNoErro.name, inputSchema: nomeNoErro.inputSchema })
+          : JSON.stringify(
+              tools.map((tool) => ({ name: tool.name, inputSchema: tool.inputSchema })),
+            );
         working = [
           ...working,
           {
             content:
-              `${error.safeMessage} Revise a lista de ferramentas e seus parâmetros e responda de novo: ` +
-              "emita uma chamada válida (nome exato + argumentos no schema) ou, se já tiver a resposta, apenas texto.",
+              `${error.safeMessage} Schema exato permitido: ${schemaExato}. ` +
+              "Responda de novo com o nome exato e apenas os argumentos declarados nesse schema; " +
+              "se já tiver a resposta, responda apenas texto.",
             role: "user",
           },
         ];

@@ -1,5 +1,5 @@
 import { type ExecOptions, exec } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -73,20 +73,33 @@ import {
   ToolGate,
   ToolRegistry,
   type UiPermissionResponse,
+  type UsageSnapshotUi,
   Workspace,
   WRITE_FILE_MAX_BYTES,
   writeFileWithin,
 } from "@codingpro/core";
 import {
   type ChatMessage,
-  type CostBreakdown,
+  DEEPSEEK_MODEL_FLASH,
   DeepSeekProvider,
+  estimateCost,
   type Provider,
   ProviderError,
 } from "@codingpro/llm";
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
+import electronUpdater from "electron-updater";
 import { COMANDOS_CHAT, textoAjudaComandos } from "../shared/slash-commands.js";
+import {
+  initialUpdateState,
+  isNewerVersion,
+  releaseNotesToText,
+  type UpdateStateUI,
+} from "../shared/updater.js";
 import { decidirModoAcesso, permiteChavePropria } from "./politica-acesso.js";
+import { type IndexedSession, ProjectIndexStore, ZERO_PERSISTED_USAGE } from "./project-index.js";
+import { UsageLedger, type UsageSource } from "./usage-ledger.js";
+
+const { autoUpdater } = electronUpdater;
 
 // Renderização em RDP/VM/máquinas sem GPU dedicada fica preta com aceleração de
 // hardware (Chromium). Desligar evita janela vazia no primeiro start.
@@ -115,9 +128,145 @@ let _runStartMs = 0;
 let _tokenCount = 0;
 let _stepCount = 0;
 let _thinkingMs = 0;
+let projectIndex: ProjectIndexStore | null = null;
+const UPDATE_DIAGNOSTIC = process.env.CODINGPRO_DIAGNOSTIC_UPDATE === "1";
+const UPDATE_DIAGNOSTIC_DOWNLOAD = process.env.CODINGPRO_DIAGNOSTIC_UPDATE_DOWNLOAD === "1";
+const UPDATE_FEED_URL =
+  process.env.CODINGPRO_UPDATE_FEED_URL?.trim() || "https://codingpro.cursar.space/downloads";
+const UPDATE_MANUAL_URL = "https://codingpro.cursar.space/comecar";
+let updateState: UpdateStateUI = initialUpdateState("0.0.0", "development");
+let diagnosticDownloadStarted = false;
+
+function enviarEstadoUpdate(patch: Partial<UpdateStateUI>): UpdateStateUI {
+  updateState = { ...updateState, ...patch };
+  if (UPDATE_DIAGNOSTIC) {
+    console.log(`[codingpro] update diagnostic: ${JSON.stringify(updateState)}`);
+    if (
+      UPDATE_DIAGNOSTIC_DOWNLOAD &&
+      !diagnosticDownloadStarted &&
+      updateState.mode === "nsis" &&
+      updateState.status === "available"
+    ) {
+      diagnosticDownloadStarted = true;
+      setImmediate(() => {
+        void autoUpdater.downloadUpdate().catch((error: unknown) => {
+          enviarEstadoUpdate({ error: mensagemUpdateError(error), status: "error" });
+        });
+      });
+    }
+    const terminal =
+      updateState.status === "error" ||
+      updateState.status === "not-available" ||
+      updateState.status === "downloaded" ||
+      (updateState.status === "available" && !UPDATE_DIAGNOSTIC_DOWNLOAD);
+    if (terminal) setTimeout(() => app.quit(), 100);
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("codingpro:update-event", updateState);
+  }
+  return updateState;
+}
+
+function mensagemUpdateError(error: unknown): string {
+  const text = error instanceof Error ? error.message : String(error);
+  if (/net::|network|internet|ENOTFOUND|ECONN/u.test(text)) {
+    return "Não foi possível consultar atualizações. Verifique a conexão e tente novamente.";
+  }
+  return "A atualização não pôde ser concluída. Tente novamente mais tarde.";
+}
+
+async function verificarAtualizacao(): Promise<UpdateStateUI> {
+  if (!app.isPackaged) {
+    return enviarEstadoUpdate({ mode: "development", status: "not-available" });
+  }
+  enviarEstadoUpdate({ error: undefined, status: "checking" });
+  if (updateState.mode === "portable") {
+    try {
+      const response = await fetch(`${UPDATE_FEED_URL}/latest.json`, {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error(`feed ${response.status}`);
+      const latest = (await response.json()) as {
+        version?: unknown;
+        notes?: unknown;
+        portableUrl?: unknown;
+      };
+      if (typeof latest.version !== "string") throw new Error("feed inválido");
+      if (!isNewerVersion(latest.version, app.getVersion())) {
+        return enviarEstadoUpdate({ status: "not-available" });
+      }
+      return enviarEstadoUpdate({
+        availableVersion: latest.version,
+        manualUrl: typeof latest.portableUrl === "string" ? latest.portableUrl : UPDATE_MANUAL_URL,
+        releaseNotes: releaseNotesToText(latest.notes),
+        status: "available",
+      });
+    } catch (error) {
+      return enviarEstadoUpdate({ error: mensagemUpdateError(error), status: "error" });
+    }
+  }
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch (error) {
+    enviarEstadoUpdate({ error: mensagemUpdateError(error), status: "error" });
+  }
+  return updateState;
+}
+
+function configurarUpdater(): void {
+  const mode = !app.isPackaged
+    ? "development"
+    : process.env.PORTABLE_EXECUTABLE_FILE
+      ? "portable"
+      : "nsis";
+  updateState = initialUpdateState(app.getVersion(), mode);
+  if (!app.isPackaged || mode === "portable") {
+    if (app.isPackaged) setTimeout(() => void verificarAtualizacao(), 2_000);
+    return;
+  }
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = false;
+  autoUpdater.setFeedURL({ provider: "generic", url: UPDATE_FEED_URL });
+  autoUpdater.on("checking-for-update", () => enviarEstadoUpdate({ status: "checking" }));
+  autoUpdater.on("update-not-available", () =>
+    enviarEstadoUpdate({ error: undefined, status: "not-available" }),
+  );
+  autoUpdater.on("update-available", (info) =>
+    enviarEstadoUpdate({
+      availableVersion: info.version,
+      error: undefined,
+      releaseNotes: releaseNotesToText(info.releaseNotes),
+      status: "available",
+    }),
+  );
+  autoUpdater.on("download-progress", (progress) =>
+    enviarEstadoUpdate({
+      progress: progress.percent,
+      status: "downloading",
+      total: progress.total,
+      transferred: progress.transferred,
+    }),
+  );
+  autoUpdater.on("update-downloaded", (info) =>
+    enviarEstadoUpdate({
+      availableVersion: info.version,
+      progress: 100,
+      status: "downloaded",
+    }),
+  );
+  autoUpdater.on("error", (error) =>
+    enviarEstadoUpdate({ error: mensagemUpdateError(error), status: "error" }),
+  );
+  setTimeout(() => void verificarAtualizacao(), 2_000);
+}
 
 function lastWorkspaceFile(): string {
   return join(app.getPath("userData"), "last-workspace.json");
+}
+
+function projectIndexFile(): string {
+  return join(app.getPath("userData"), "project-sessions-v1.json");
 }
 
 function carregarUltimoWorkspace(): string | undefined {
@@ -208,6 +357,7 @@ function definirWorkspace(cwd: string): string {
   selectedWorkspacePath = resolvePath(cwd);
   // multi-session: não limpa;
   salvarUltimoWorkspace(selectedWorkspacePath);
+  projectIndex?.touchProject(selectedWorkspacePath);
   return selectedWorkspacePath;
 }
 
@@ -247,13 +397,6 @@ const approver: Approver = {
   },
 };
 
-interface SessionCost {
-  inputTokens: number;
-  outputTokens: number;
-  totalCostUsd: number;
-  turns: number;
-}
-
 /** Pergunta pendente de um /plan em andamento (Q&A do arquiteto ao longo de vários turnos). */
 interface PlanoPendente {
   readonly objetivo: string;
@@ -282,7 +425,7 @@ interface ChatSession {
   readonly autoEffort: AutoEffortState;
   sessionId: string;
   transcript: ChatMessage[];
-  cost: SessionCost;
+  usage: UsageLedger;
   planoAtivo?: PlanoAtivo | undefined;
   planoPendente?: PlanoPendente | undefined;
 }
@@ -465,41 +608,41 @@ function mensagemUsuario(content: string): ChatMessage {
 }
 
 function formatarCusto(session: ChatSession): string {
-  const cost = session.cost;
-  const msgs: ChatMessage[] = [
-    { role: "system", content: SYSTEM_PROMPT_V1 },
-    ...session.transcript,
-  ];
-  const contextTokens = msgs.reduce((acc, m) => acc + estimateMessageTokens(m), 0);
-  const restam = Math.max(0, CONTEXT_BUDGET - contextTokens);
-  if (cost.turns === 0) {
+  const usage = snapshotCusto(session);
+  const restam = Math.max(0, CONTEXT_BUDGET - usage.contextTokens);
+  if (usage.turns === 0) {
     return [
       "· sem custo de API ainda nesta sessão",
-      `· contexto estimado: ${contextTokens.toLocaleString("pt-BR")} / ${CONTEXT_BUDGET.toLocaleString("pt-BR")} tok · restam ${restam.toLocaleString("pt-BR")} · janela ~${CONTEXT_BUDGET.toLocaleString("pt-BR")}`,
+      `· contexto estimado: ${usage.contextTokens.toLocaleString("pt-BR")} / ${CONTEXT_BUDGET.toLocaleString("pt-BR")} tok · restam ${restam.toLocaleString("pt-BR")}`,
     ].join("\n");
   }
   return [
-    `sessão: US$ ${cost.totalCostUsd.toFixed(6)} · in ${cost.inputTokens} · out ${cost.outputTokens} · turnos ${cost.turns}`,
-    `contexto: ${contextTokens.toLocaleString("pt-BR")} / ${CONTEXT_BUDGET.toLocaleString("pt-BR")} tok · restam ${restam.toLocaleString("pt-BR")} · janela ~${CONTEXT_BUDGET.toLocaleString("pt-BR")}`,
+    `sessão: US$ ${usage.totalCostUsd.toFixed(6)} · in ${usage.inputTokens} · out ${usage.outputTokens} · cache ${usage.cacheReadTokens} · raciocínio ${usage.reasoningTokens}`,
+    `turnos ${usage.turns} · chamadas ${usage.apiCalls} · subagentes ${usage.subagentCalls}`,
+    `contexto: ${usage.contextTokens.toLocaleString("pt-BR")} / ${CONTEXT_BUDGET.toLocaleString("pt-BR")} tok · restam ${restam.toLocaleString("pt-BR")}`,
   ].join("\n");
 }
 
-function snapshotCusto(session: ChatSession | null): {
-  inputTokens: number;
-  outputTokens: number;
-  totalCostUsd: number;
-  turns: number;
-  contextTokens: number;
-  contextBudget: number;
-} {
+function snapshotCusto(
+  session: ChatSession | null,
+  estimated = false,
+  extraOutputTokens = 0,
+): UsageSnapshotUi {
   if (session === null) {
     return {
+      apiCalls: 0,
+      cacheReadTokens: 0,
+      contextBudget: CONTEXT_BUDGET,
+      contextTokens: 0,
+      estimated,
       inputTokens: 0,
       outputTokens: 0,
+      reasoningTokens: 0,
+      sources: [],
+      subagentCalls: 0,
       totalCostUsd: 0,
       turns: 0,
-      contextTokens: 0,
-      contextBudget: CONTEXT_BUDGET,
+      updatedAt: new Date().toISOString(),
     };
   }
   const msgs: ChatMessage[] = [
@@ -507,22 +650,103 @@ function snapshotCusto(session: ChatSession | null): {
     ...session.transcript,
   ];
   const contextTokens = msgs.reduce((acc, m) => acc + estimateMessageTokens(m), 0);
+  const totals = session.usage.totals();
+  const estimate =
+    extraOutputTokens > 0
+      ? estimateCost({ inputTokens: 0, outputTokens: extraOutputTokens }, DEEPSEEK_MODEL_FLASH)
+          .totalCostUsd
+      : 0;
   return {
-    inputTokens: session.cost.inputTokens,
-    outputTokens: session.cost.outputTokens,
-    totalCostUsd: session.cost.totalCostUsd,
-    turns: session.cost.turns,
-    contextTokens,
+    apiCalls: totals.apiCalls,
+    cacheReadTokens: totals.cacheReadTokens,
     contextBudget: CONTEXT_BUDGET,
+    contextTokens: contextTokens + extraOutputTokens,
+    estimated,
+    inputTokens: totals.inputTokens,
+    outputTokens: totals.outputTokens + extraOutputTokens,
+    reasoningTokens: totals.reasoningTokens,
+    sources: totals.sources,
+    subagentCalls: totals.subagentCalls,
+    totalCostUsd: totals.totalCostUsd + estimate,
+    turns: totals.turns,
+    updatedAt: new Date().toISOString(),
   };
 }
 
-function acumularCusto(session: ChatSession, cost: CostBreakdown | undefined): void {
-  if (cost === undefined) return;
-  session.cost.turns += 1;
-  session.cost.inputTokens += cost.inputTokens;
-  session.cost.outputTokens += cost.outputTokens;
-  session.cost.totalCostUsd += cost.totalCostUsd;
+function sendUsage(session: ChatSession, estimated = false, extraOutputTokens = 0): void {
+  sendCoreEvent({
+    snapshot: snapshotCusto(session, estimated, extraOutputTokens),
+    type: "usage-updated",
+  });
+}
+
+function tituloDaSessao(session: ChatSession): string {
+  const first = session.transcript.find((message) => message.role === "user") as
+    | { role: "user"; content: string }
+    | undefined;
+  if (!first || first.content.trim() === "") return `Sessão ${session.sessionId.slice(0, 19)}`;
+  const compact = first.content.replace(/\s+/gu, " ").trim();
+  return compact.length > 80 ? `${compact.slice(0, 80)}…` : compact;
+}
+
+function persistirIndiceSessao(session: ChatSession): void {
+  const totals = session.usage.totals();
+  const existing = projectIndex?.getSession(session.cwd, session.sessionId);
+  const metadata: IndexedSession = {
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
+    id: session.sessionId,
+    title: tituloDaSessao(session),
+    updatedAt: new Date().toISOString(),
+    usage: {
+      apiCalls: totals.apiCalls,
+      cacheReadTokens: totals.cacheReadTokens,
+      inputTokens: totals.inputTokens,
+      outputTokens: totals.outputTokens,
+      reasoningTokens: totals.reasoningTokens,
+      subagentCalls: totals.subagentCalls,
+      totalCostUsd: totals.totalCostUsd,
+      turns: totals.turns,
+    },
+  };
+  projectIndex?.upsertSession(session.cwd, metadata);
+}
+
+async function sincronizarSessoesConhecidas(): Promise<void> {
+  if (!projectIndex) return;
+  if (activeSession?.transcript.length) persistirIndiceSessao(activeSession);
+  for (const group of projectIndex.groups()) {
+    if (!group.available) continue;
+    try {
+      const store = await SessionStore.create(join(group.workspacePath, ".codingpro", "sessions"));
+      for (const id of await store.list()) {
+        if (projectIndex.getSession(group.workspacePath, id)) continue;
+        let title = `Sessão ${id.slice(0, 19)}`;
+        try {
+          const messages = await store.load(id);
+          const first = messages.find((message) => message.role === "user") as
+            | { role: "user"; content: string }
+            | undefined;
+          if (first?.content) {
+            const compact = first.content.replace(/\s+/gu, " ").trim();
+            title = compact.length > 80 ? `${compact.slice(0, 80)}…` : compact;
+          }
+        } catch {
+          // Mantém o título por timestamp para sessão corrompida.
+        }
+        const path = join(group.workspacePath, ".codingpro", "sessions", `${id}.jsonl`);
+        const stats = statSync(path);
+        projectIndex.upsertSession(group.workspacePath, {
+          createdAt: stats.birthtime.toISOString(),
+          id,
+          title,
+          updatedAt: stats.mtime.toISOString(),
+          usage: { ...ZERO_PERSISTED_USAGE },
+        });
+      }
+    } catch {
+      // Pastas removidas ou sem permissão continuam visíveis como indisponíveis.
+    }
+  }
 }
 
 /** Expande /goal em prompt de agente (/review e /plan já são tratados em handleLocalCommand). */
@@ -614,6 +838,7 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
 
   // SubagenteSpawner: fábrica de subagentes para a tool `task` e para /plan e /review —
   // inclui tipos customizados de `.codingpro/agents/*.md` (paridade com a CLI).
+  let sessionRef: ChatSession | undefined;
   const spawner = criarSpawnerSubagentes({
     approver,
     custom: tiposCustom,
@@ -632,6 +857,23 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
       }
     },
     memory: { global: memoryGlobal, projeto: memoryProjeto },
+    onEvent: (event) => {
+      sendCoreEvent({ event, type: "subagent-event" });
+      if (!sessionRef) return;
+      if (event.type === "started") {
+        sessionRef.usage.beginSubagent();
+        sendUsage(sessionRef, true);
+      } else if (event.type === "step" && event.usage) {
+        const cost = estimateCost(event.usage, DEEPSEEK_MODEL_FLASH);
+        sessionRef.usage.record(
+          `subagent:${event.id}`,
+          `${event.id}:step:${event.step}`,
+          event.usage,
+          cost.totalCostUsd,
+        );
+        sendUsage(sessionRef);
+      }
+    },
     provider,
     toolPool: filtrarToolsDoRuntime(SUBAGENT_TOOL_POOL),
     workspace,
@@ -657,8 +899,9 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
     sessionId: newSessionId(),
     transcript: [],
     workspace,
-    cost: { inputTokens: 0, outputTokens: 0, totalCostUsd: 0, turns: 0 },
+    usage: new UsageLedger(),
   };
+  sessionRef = sess;
   selectedWorkspacePath = normalized;
   activeSession = sess;
   return sess;
@@ -670,7 +913,7 @@ async function novaSessaoVazia(): Promise<ChatSession> {
   const session = await obterOuCriarSessao(normalized);
   session.transcript = [];
   session.sessionId = newSessionId();
-  session.cost = { inputTokens: 0, outputTokens: 0, totalCostUsd: 0, turns: 0 };
+  session.usage = new UsageLedger();
   activeSession = session;
   session.readTracker; // mantém tracker
   sendCoreEvent({ type: "session-updated", messages: [] });
@@ -679,6 +922,7 @@ async function novaSessaoVazia(): Promise<ChatSession> {
 
 function createWindow(): void {
   const preloadPath = join(__dirname, "../preload/index.cjs");
+  const diagnosticHeadless = process.env.CODINGPRO_DIAGNOSTIC_HEADLESS === "1";
   if (!existsSync(preloadPath)) {
     console.error("[codingpro] preload ausente:", preloadPath);
   }
@@ -686,12 +930,13 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 850,
-    minWidth: 900,
+    minWidth: 680,
     minHeight: 650,
     autoHideMenuBar: true,
     title: "CodingPro Desktop",
     backgroundColor: "#0b0e14",
     show: false,
+    icon: join(__dirname, "../../assets/branding/codingpro-mark.png"),
     webPreferences: {
       // Preload DEVE ser CommonJS (.cjs). Com "type":"module", o .js ESM falha no
       // renderer com ERR_UNSUPPORTED_ESM_URL_SCHEME (protocol 'electron:') e a UI
@@ -704,27 +949,48 @@ function createWindow(): void {
   });
 
   mainWindow.once("ready-to-show", () => {
-    mainWindow?.show();
+    if (!diagnosticHeadless) {
+      mainWindow?.show();
+    }
   });
 
   mainWindow.webContents.on("did-finish-load", () => {
     void mainWindow?.webContents
-      .executeJavaScript("typeof window.codingproAPI")
-      .then((t) => {
-        console.log(`[codingpro] preload API: ${String(t)}`);
-        if (t !== "object") {
+      .executeJavaScript(`({
+        api: typeof window.codingproAPI,
+        rootChildren: document.getElementById("root")?.childElementCount ?? 0,
+        bodyText: document.body.innerText.slice(0, 120),
+      })`)
+      .then((diagnostic: { api: string; rootChildren: number; bodyText: string }) => {
+        console.log(`[codingpro] renderer diagnostic: ${JSON.stringify(diagnostic)}`);
+        if (diagnostic.api !== "object") {
           console.error(
             "[codingpro] window.codingproAPI ausente — preload não carregou (use dist/preload/index.cjs).",
           );
         }
+        if (diagnostic.rootChildren === 0) {
+          console.error("[codingpro] renderer carregou sem montar a interface React.");
+        }
       })
       .catch((err: unknown) => {
         console.error("[codingpro] falha ao inspecionar preload:", err);
+      })
+      .finally(() => {
+        if (diagnosticHeadless && !UPDATE_DIAGNOSTIC) {
+          app.quit();
+        }
       });
   });
 
   mainWindow.webContents.on("did-fail-load", (_e, code, desc) => {
     console.error(`[codingpro] falha ao carregar UI: ${code} ${desc}`);
+  });
+  mainWindow.webContents.on("console-message", (_event, level, message, line, sourceId) => {
+    const log = level >= 3 ? console.error : console.log;
+    log(`[codingpro:renderer:${level}] ${message}${sourceId ? ` (${sourceId}:${line})` : ""}`);
+  });
+  mainWindow.webContents.on("render-process-gone", (_event, details) => {
+    console.error(`[codingpro] renderer encerrado: ${details.reason} (${details.exitCode})`);
   });
 
   if (process.env.VITE_DEV_SERVER_URL) {
@@ -994,7 +1260,7 @@ async function handleLocalCommand(
   if (cmd0 === "/limpar" || cmd0 === "/clear" || cmd0 === "/nova" || cmd0 === "/new") {
     session.transcript = [];
     session.sessionId = newSessionId();
-    session.cost = { inputTokens: 0, outputTokens: 0, totalCostUsd: 0, turns: 0 };
+    session.usage = new UsageLedger();
     return { handled: true, reply: "· histórico esquecido · sessão nova" };
   }
   if (cmd0 === "/custo" || cmd0 === "/cost" || cmd0 === "/gasto") {
@@ -1259,6 +1525,7 @@ async function tentarAbrirWorkspace(
 }
 
 app.whenReady().then(() => {
+  projectIndex = new ProjectIndexStore(projectIndexFile(), lastWorkspaceFile());
   // Último projeto do usuário > monorepo CodingPro (só se for dev do próprio app)
   const ultimo = carregarUltimoWorkspace();
   if (ultimo !== undefined) {
@@ -1272,7 +1539,10 @@ app.whenReady().then(() => {
     }
   }
 
+  projectIndex.touchProject(selectedWorkspacePath);
+
   createWindow();
+  configurarUpdater();
 
   ipcMain.handle("codingpro:get-workspace-info", async () => {
     let projectSummary: string | undefined;
@@ -1459,6 +1729,7 @@ app.whenReady().then(() => {
   );
 
   ipcMain.handle("codingpro:choose-workspace-folder", async () => {
+    if (runInFlight) return undefined;
     const chosen = await escolherPastaProjeto(
       ehMonorepoCodingPro(selectedWorkspacePath) ? pastaDownloads() : selectedWorkspacePath,
     );
@@ -1468,6 +1739,9 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle("codingpro:set-workspace", async (_, cwd: string) => {
+    if (runInFlight) {
+      return { success: false, error: "Pare a tarefa atual antes de trocar de projeto." };
+    }
     if (typeof cwd !== "string" || cwd.trim() === "") {
       return { success: false, error: "Caminho inválido" };
     }
@@ -1490,6 +1764,32 @@ app.whenReady().then(() => {
 
   ipcMain.handle("codingpro:get-session-cost", async () => {
     return snapshotCusto(activeSession);
+  });
+
+  ipcMain.handle("codingpro:update-state", async () => updateState);
+  ipcMain.handle("codingpro:update-check", async () => verificarAtualizacao());
+  ipcMain.handle("codingpro:update-download", async () => {
+    if (updateState.mode === "portable") {
+      await shell.openExternal(updateState.manualUrl ?? UPDATE_MANUAL_URL);
+      return updateState;
+    }
+    if (updateState.mode !== "nsis" || updateState.status !== "available") {
+      return updateState;
+    }
+    enviarEstadoUpdate({ error: undefined, progress: 0, status: "downloading" });
+    try {
+      await autoUpdater.downloadUpdate();
+    } catch (error) {
+      enviarEstadoUpdate({ error: mensagemUpdateError(error), status: "error" });
+    }
+    return updateState;
+  });
+  ipcMain.handle("codingpro:update-install", async () => {
+    if (updateState.mode !== "nsis" || updateState.status !== "downloaded") {
+      return { success: false, error: "Nenhuma atualização pronta para instalar." };
+    }
+    setImmediate(() => autoUpdater.quitAndInstall(false, true));
+    return { success: true };
   });
 
   ipcMain.handle("codingpro:list-slash-commands", async () => {
@@ -1531,52 +1831,58 @@ app.whenReady().then(() => {
 
   ipcMain.handle("codingpro:list-sessions", async () => {
     try {
-      const cwd = activeSession?.cwd ?? selectedWorkspacePath;
-      const store = await SessionStore.create(join(cwd, ".codingpro", "sessions"));
-      const ids = await store.list();
-      const ordered = [...ids].reverse();
-      return await Promise.all(
-        ordered.map(async (id: string) => {
-          let preview = `Sessão ${id.slice(0, 19)}`;
-          try {
-            const msgs = await store.load(id);
-            const firstUser = msgs.find((m) => m.role === "user") as
-              | { role: "user"; content: string }
-              | undefined;
-            if (firstUser && firstUser.content.length > 0) {
-              preview = firstUser.content.slice(0, 60).replace(/\n/g, " ");
-              if (firstUser.content.length > 60) preview += "\u2026";
-            }
-          } catch {
-            // usa timestamp
-          }
-          return {
-            id,
-            preview,
-            updatedAt: id.slice(0, 19).replace("T", " "),
-            isRunning: activeSession !== null && id === activeSession.sessionId && runInFlight,
-          };
-        }),
+      await sincronizarSessoesConhecidas();
+      return (
+        projectIndex?.groups(
+          runInFlight && activeSession
+            ? { sessionId: activeSession.sessionId, workspacePath: activeSession.cwd }
+            : undefined,
+        ) ?? []
       );
     } catch {
       return [];
     }
   });
 
-  ipcMain.handle("codingpro:load-session", async (_, sessionId: string) => {
-    try {
-      const session = await obterOuCriarSessao(selectedWorkspacePath);
-      const messages = await session.sessionStore.load(sessionId);
-      // remove system do transcript exibido/continuado
-      const withoutSystem = messages[0]?.role === "system" ? messages.slice(1) : messages;
-      session.transcript = [...withoutSystem];
-      session.sessionId = sessionId;
-      sendCoreEvent({ type: "session-updated", messages: session.transcript });
-      return { success: true, messages: session.transcript };
-    } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : String(err) };
-    }
-  });
+  ipcMain.handle(
+    "codingpro:load-session",
+    async (_, target: { workspacePath: string; sessionId: string }) => {
+      try {
+        if (runInFlight) {
+          return {
+            success: false,
+            error: "Pare a tarefa atual antes de trocar de projeto ou conversa.",
+          };
+        }
+        if (
+          typeof target?.workspacePath !== "string" ||
+          typeof target?.sessionId !== "string" ||
+          !existsSync(target.workspacePath)
+        ) {
+          return { success: false, error: "Projeto ou conversa indisponível." };
+        }
+        const workspacePath = resolvePath(target.workspacePath);
+        const targetStore = await SessionStore.create(
+          join(workspacePath, ".codingpro", "sessions"),
+        );
+        const messages = await targetStore.load(target.sessionId);
+        const session = await obterOuCriarSessao(workspacePath);
+        // remove system do transcript exibido/continuado
+        const withoutSystem = messages[0]?.role === "system" ? messages.slice(1) : messages;
+        session.transcript = [...withoutSystem];
+        session.sessionId = target.sessionId;
+        session.usage = new UsageLedger(
+          projectIndex?.getSession(workspacePath, target.sessionId)?.usage,
+        );
+        definirWorkspace(workspacePath);
+        sendCoreEvent({ type: "session-updated", messages: session.transcript });
+        sendUsage(session);
+        return { success: true, messages: session.transcript, cwd: workspacePath };
+      } catch (err: unknown) {
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
+      }
+    },
+  );
 
   ipcMain.handle(
     "codingpro:get-diff-preview",
@@ -1650,9 +1956,11 @@ app.whenReady().then(() => {
         if (aberto !== undefined) {
           selectedWorkspacePath = aberto.cwd;
           const sessionOpen = await obterOuCriarSessao(aberto.cwd);
+          sessionOpen.usage.beginUserTurn();
           sessionOpen.transcript.push(mensagemUsuario(prompt), mensagemAssistente(aberto.reply));
           try {
             await sessionOpen.sessionStore.save(sessionOpen.sessionId, sessionOpen.transcript);
+            persistirIndiceSessao(sessionOpen);
           } catch {
             // best-effort
           }
@@ -1662,6 +1970,8 @@ app.whenReady().then(() => {
             local: true,
             reply: aberto.reply,
             cwd: aberto.cwd,
+            sessionId: sessionOpen.sessionId,
+            cost: snapshotCusto(sessionOpen),
           };
         }
 
@@ -1671,6 +1981,8 @@ app.whenReady().then(() => {
             : selectedWorkspacePath;
 
         const session = await obterOuCriarSessao(targetCwd2);
+        session.usage.beginUserTurn();
+        sendUsage(session, true);
 
         // SANITIZA o transcript ANTES de cada execução, evitando invalid-request
         // causado por mensagens sujas de turnos anteriores no Windows
@@ -1686,6 +1998,7 @@ app.whenReady().then(() => {
           session.transcript.push(mensagemUsuario(prompt), mensagemAssistente(local.reply));
           try {
             await session.sessionStore.save(session.sessionId, session.transcript);
+            persistirIndiceSessao(session);
           } catch {
             // persistência best-effort
           }
@@ -1695,12 +2008,14 @@ app.whenReady().then(() => {
             local: true,
             reply: local.reply,
             cwd: session.cwd,
+            sessionId: session.sessionId,
             cost: snapshotCusto(session),
           };
         }
 
         const promptAgente = expandirPromptAgente(prompt) ?? prompt;
         session.transcript.push(mensagemUsuario(promptAgente));
+        const usageRunId = `run-${Date.now()}-${requestCounter++}`;
         session.checkpoints.begin(promptAgente.slice(0, 80));
 
         // Auto-compact: se contexto > 75% do orçamento, compacta
@@ -1743,14 +2058,33 @@ app.whenReady().then(() => {
         sendCoreEvent({ type: "model-info", modelName: modeloNome, effort: papel });
 
         const arquivosEfeito: string[] = [];
+        let approximateOutputTokens = 0;
+        let lastApproximateEmitMs = 0;
         const onAgentEvent = (agentEvent: AgentEvent): void => {
           if (agentEvent.type === "step" && agentEvent.usage) {
             _tokenCount =
               (agentEvent.usage.inputTokens || 0) + (agentEvent.usage.outputTokens || 0);
             _stepCount = agentEvent.step;
+            const stepCost = estimateCost(agentEvent.usage, DEEPSEEK_MODEL_FLASH);
+            session.usage.record(
+              "main",
+              `${usageRunId}:main:${agentEvent.step}`,
+              agentEvent.usage,
+              stepCost.totalCostUsd,
+            );
+            approximateOutputTokens = 0;
+            sendUsage(session);
           }
           if (agentEvent.type === "reasoning-delta") {
             _thinkingMs += Math.round(agentEvent.text.length * 3);
+          }
+          if (agentEvent.type === "text-delta" || agentEvent.type === "reasoning-delta") {
+            approximateOutputTokens += Math.max(1, Math.ceil(agentEvent.text.length / 4));
+            const now = Date.now();
+            if (now - lastApproximateEmitMs >= 250) {
+              lastApproximateEmitMs = now;
+              sendUsage(session, true, approximateOutputTokens);
+            }
           }
           if (agentEvent.type === "tool-call") {
             const path = (agentEvent.call.input as { path?: string }).path;
@@ -1760,6 +2094,19 @@ app.whenReady().then(() => {
             ) {
               arquivosEfeito.push(path);
             }
+          }
+          if (
+            agentEvent.type === "notice" &&
+            agentEvent.key === "tool-call-recovery" &&
+            agentEvent.attempt !== undefined
+          ) {
+            session.usage.record(
+              "repair",
+              `${usageRunId}:tool-call-recovery:${agentEvent.attempt}`,
+              { inputTokens: 0, outputTokens: 0 },
+              0,
+            );
+            sendUsage(session, true);
           }
           sendCoreEvent({ type: "agent-event", event: agentEvent });
         };
@@ -1783,7 +2130,6 @@ app.whenReady().then(() => {
 
         let msgs = agentResult.messages;
         session.transcript = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
-        acumularCusto(session, agentResult.cost);
         _stepCount = agentResult.steps;
 
         // Auto-effort: erro de tool no turno escala o próximo pra Pro.
@@ -1835,6 +2181,17 @@ app.whenReady().then(() => {
             tools: session.registry.definitions(),
             contextBudget: CONTEXT_BUDGET,
             onEvent: (agentEvent: AgentEvent) => {
+              if (agentEvent.type === "step" && agentEvent.usage) {
+                const source: UsageSource = "repair";
+                const cost = estimateCost(agentEvent.usage, DEEPSEEK_MODEL_FLASH);
+                session.usage.record(
+                  source,
+                  `${usageRunId}:repair:${reparos}:${agentEvent.step}`,
+                  agentEvent.usage,
+                  cost.totalCostUsd,
+                );
+                sendUsage(session);
+              }
               if (agentEvent.type === "tool-call") {
                 const path = (agentEvent.call.input as { path?: string }).path;
                 if (
@@ -1849,7 +2206,6 @@ app.whenReady().then(() => {
           });
           msgs = repairResult.messages;
           session.transcript = msgs[0]?.role === "system" ? msgs.slice(1) : [...msgs];
-          acumularCusto(session, repairResult.cost);
           arquivosQa = [...arquivosQa, ...arquivosReparo];
           resultadoQa = await corrigirQualidade(
             session.workspace.root,
@@ -1875,6 +2231,7 @@ app.whenReady().then(() => {
 
         try {
           await session.sessionStore.save(session.sessionId, session.transcript);
+          persistirIndiceSessao(session);
         } catch {
           // best-effort
         }
@@ -1883,6 +2240,7 @@ app.whenReady().then(() => {
           type: "session-updated",
           messages: session.transcript,
         });
+        sendUsage(session);
 
         return {
           success: true,
@@ -1920,6 +2278,8 @@ app.whenReady().then(() => {
         // limpa transcript sujo para o próximo turno não herdar invalid-request
         if (activeSession !== null) {
           activeSession.transcript = sanitizeMessagesForProvider(activeSession.transcript);
+          persistirIndiceSessao(activeSession);
+          sendUsage(activeSession);
         }
 
         rejectPendingPermissions("deny");

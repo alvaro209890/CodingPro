@@ -8,9 +8,10 @@ import type {
 } from "@codingpro/llm";
 import type { PermissionRequest } from "./permissions.js";
 import type { PreviaEscrita } from "./preview.js";
+import type { SubagenteEvento } from "./subagent.js";
 
 /** Versão atual do protocolo de eventos Core <-> UI. */
-export const CORE_UI_EVENT_PROTOCOL_VERSION = "1.4.0";
+export const CORE_UI_EVENT_PROTOCOL_VERSION = "1.5.0";
 
 /**
  * Eventos brutos emitidos pelo loop agêntico durante a execução de um turno.
@@ -22,7 +23,13 @@ export type AgentEvent =
   | { readonly call: ToolCall; readonly type: "tool-call" }
   | { readonly call: ToolCall; readonly result: ToolResult; readonly type: "tool-result" }
   /** Aviso não-fatal do loop (ex.: recuperação de chamada de ferramenta inválida) — aditivo v1.3.0. */
-  | { readonly text: string; readonly type: "notice" }
+  | {
+      readonly text: string;
+      readonly type: "notice";
+      readonly key?: string;
+      readonly attempt?: number;
+      readonly total?: number;
+    }
   | {
       readonly reason: FinishReason;
       readonly step: number;
@@ -40,6 +47,32 @@ export interface UiPermissionEvent {
   readonly previa?: PreviaEscrita;
 }
 
+export interface UsageSourceUi {
+  readonly source: "main" | "repair" | `subagent:${string}`;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly cacheReadTokens: number;
+  readonly reasoningTokens: number;
+  readonly costUsd: number;
+  readonly apiCalls: number;
+}
+
+export interface UsageSnapshotUi {
+  readonly estimated: boolean;
+  readonly updatedAt: string;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly cacheReadTokens: number;
+  readonly reasoningTokens: number;
+  readonly totalCostUsd: number;
+  readonly turns: number;
+  readonly apiCalls: number;
+  readonly subagentCalls: number;
+  readonly contextTokens: number;
+  readonly contextBudget: number;
+  readonly sources: readonly UsageSourceUi[];
+}
+
 /** Resposta de aprovação enviada pela UI de volta ao Core. */
 export interface UiPermissionResponse {
   readonly decision: { readonly action: "allow" | "always" | "deny" };
@@ -49,6 +82,8 @@ export interface UiPermissionResponse {
 /** Eventos consolidados do protocolo Core <-> UI (IPC no Electron, TTY no Terminal). */
 export type CoreUiEvent =
   | { readonly type: "agent-event"; readonly event: AgentEvent }
+  | { readonly type: "usage-updated"; readonly snapshot: UsageSnapshotUi }
+  | { readonly type: "subagent-event"; readonly event: SubagenteEvento }
   | UiPermissionEvent
   | { readonly type: "session-updated"; readonly messages: readonly ChatMessage[] }
   | { readonly type: "error"; readonly code: string; readonly message: string }

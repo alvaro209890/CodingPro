@@ -1,10 +1,33 @@
-import type { CoreUiEvent, PreviaEscrita, UiPermissionResponse } from "@codingpro/core";
+import type {
+  CoreUiEvent,
+  PreviaEscrita,
+  UiPermissionResponse,
+  UsageSnapshotUi,
+} from "@codingpro/core";
+import type { UpdateStateUI } from "../shared/updater.js";
 
 export interface SessionMetaUI {
   id: string;
   updatedAt: string;
-  preview: string;
+  createdAt: string;
+  title: string;
+  isRunning: boolean;
+  usage: Omit<
+    UsageSnapshotUi,
+    "contextBudget" | "contextTokens" | "estimated" | "sources" | "updatedAt"
+  >;
 }
+
+export interface ProjectSessionGroupUI {
+  id: string;
+  name: string;
+  workspacePath: string;
+  lastOpenedAt: string;
+  available: boolean;
+  sessions: SessionMetaUI[];
+}
+
+export type { UpdateStateUI } from "../shared/updater.js";
 
 export interface EstadoAcesso {
   /** `conta` = token do site; `chave-propria` = apenas dev; `sem-acesso` = login obrigatório. */
@@ -46,14 +69,7 @@ export interface SendMessageResult {
   reply?: string;
   sessionId?: string;
   cwd?: string;
-  cost?: {
-    inputTokens: number;
-    outputTokens: number;
-    totalCostUsd: number;
-    turns: number;
-    contextTokens: number;
-    contextBudget: number;
-  };
+  cost?: UsageSnapshotUi;
 }
 
 export interface SlashCommandMeta {
@@ -81,15 +97,21 @@ export interface CodingProDesktopAPI {
   setWorkspace: (cwd: string) => Promise<{ success: boolean; cwd?: string; error?: string }>;
   newSession: () => Promise<{ success: boolean; sessionId?: string; error?: string }>;
   cancelRun: () => Promise<{ success: boolean }>;
-  listSessions: () => Promise<SessionMetaUI[]>;
-  loadSession: (
-    sessionId: string,
-  ) => Promise<{ success: boolean; messages?: unknown[]; error?: string }>;
+  listSessions: () => Promise<ProjectSessionGroupUI[]>;
+  loadSession: (target: {
+    workspacePath: string;
+    sessionId: string;
+  }) => Promise<{ success: boolean; messages?: unknown[]; cwd?: string; error?: string }>;
   getDiffPreview: (targetFile: string, newContent: string) => Promise<PreviaEscrita | undefined>;
   runTerminalCommand: (
     command: string,
   ) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
   getSessionCost: () => Promise<SendMessageResult["cost"]>;
+  getUpdateState: () => Promise<UpdateStateUI>;
+  checkForUpdates: () => Promise<UpdateStateUI>;
+  downloadUpdate: () => Promise<UpdateStateUI>;
+  installUpdate: () => Promise<{ success: boolean; error?: string }>;
+  onUpdateEvent: (callback: (state: UpdateStateUI) => void) => () => void;
   getSlashCommands: () => Promise<SlashCommandMeta[]>;
   setAutoApprove: (enabled: boolean) => Promise<{ success: boolean; autoApprove: boolean }>;
   getAutoApprove: () => Promise<boolean>;

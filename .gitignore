@@ -17,6 +17,8 @@ coverage/
 # Relatórios e caches locais de ferramentas
 .vitest/
 .cache/
+.playwright-cli/
+output/playwright/
 
 # Dados locais do CodingPro (checkpoints/undo, sessões) — nunca versionar
 .codingpro/

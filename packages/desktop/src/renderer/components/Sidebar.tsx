@@ -1,19 +1,16 @@
 import type React from "react";
-import type { EstadoAcesso } from "../../types/electron.js";
+import { useState } from "react";
+import type { EstadoAcesso, ProjectSessionGroupUI } from "../../types/electron.js";
 
-export interface SessionRow {
-  id: string;
-  title: string;
-  active?: boolean;
-  updatedAt?: string;
-  isRunning?: boolean;
-}
+const BRAND_MARK = new URL("../../../assets/branding/codingpro-mark.png", import.meta.url).href;
 
 interface SidebarProps {
   activeTab: "code" | "settings";
   onSelectTab: (tab: "code" | "settings") => void;
-  recentSessions: SessionRow[];
-  onSelectSession: (id: string) => void;
+  projectGroups: ProjectSessionGroupUI[];
+  activeSession?: { workspacePath: string; sessionId: string } | undefined;
+  switchBlocked?: boolean;
+  onSelectSession: (target: { workspacePath: string; sessionId: string }) => void;
   onNewSession: () => void;
   onChooseWorkspace: () => void;
   onOpenPalette: () => void;
@@ -119,7 +116,9 @@ const IconeAjustes = () => (
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onSelectTab,
-  recentSessions,
+  projectGroups,
+  activeSession,
+  switchBlocked = false,
   onSelectSession,
   onNewSession,
   onChooseWorkspace,
@@ -132,9 +131,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const conta = descreverAcesso(acesso);
   const emConfiguracoes = activeTab === "settings";
+  const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(() => new Set());
+  const totalSessions = projectGroups.reduce((total, group) => total + group.sessions.length, 0);
 
   return (
     <aside className="sidebar" aria-label="Navegação principal">
+      <div className="sidebar-brand">
+        <img src={BRAND_MARK} alt="" className="sidebar-brand-mark" />
+        <span>CodingPro</span>
+      </div>
       <div className="sidebar-actions">
         <button type="button" className="sidebar-action-btn new-chat" onClick={onNewSession}>
           <IconeNova />
@@ -175,49 +180,102 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ) : (
         <>
           <div className="sidebar-section-header">
-            <span>Conversas</span>
-            {recentSessions.length > 0 && (
-              <span className="sidebar-section-count">{recentSessions.length}</span>
-            )}
+            <span>Projetos</span>
+            {totalSessions > 0 && <span className="sidebar-section-count">{totalSessions}</span>}
           </div>
 
-          {recentSessions.length === 0 ? (
+          {projectGroups.length === 0 ? (
             <p className="sidebar-empty">
               Nenhuma conversa ainda. Envie uma mensagem para começar.
             </p>
           ) : (
-            <nav className="sidebar-recent-list" aria-label="Conversas recentes">
-              {recentSessions.map((session) => (
-                <button
-                  type="button"
-                  key={session.id}
-                  className={`recent-item ${session.active ? "active" : ""}`}
-                  onClick={() => onSelectSession(session.id)}
-                  aria-current={session.active ? "true" : undefined}
-                  title={session.title}
-                >
-                  <span className="recent-icon" aria-hidden="true">
-                    {session.isRunning ? (
-                      <span className="session-running-dot" />
-                    ) : (
-                      <svg
-                        aria-hidden="true"
-                        width="13"
-                        height="13"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      >
-                        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                      </svg>
+            <nav className="sidebar-project-list" aria-label="Conversas por projeto">
+              {projectGroups.map((project) => {
+                const collapsed = collapsedProjects.has(project.id);
+                return (
+                  <section
+                    className={`sidebar-project ${project.available ? "" : "unavailable"}`}
+                    key={project.id}
+                  >
+                    <button
+                      type="button"
+                      className="sidebar-project-toggle"
+                      title={project.workspacePath}
+                      aria-expanded={!collapsed}
+                      onClick={() =>
+                        setCollapsedProjects((current) => {
+                          const next = new Set(current);
+                          if (next.has(project.id)) next.delete(project.id);
+                          else next.add(project.id);
+                          return next;
+                        })
+                      }
+                    >
+                      <span className="project-chevron" aria-hidden="true">
+                        {collapsed ? "›" : "⌄"}
+                      </span>
+                      <IconePasta />
+                      <span className="project-name">{project.name}</span>
+                      <span className="project-count">{project.sessions.length}</span>
+                    </button>
+                    {!collapsed && (
+                      <div className="sidebar-project-sessions">
+                        {project.sessions.length === 0 ? (
+                          <span className="project-empty">Sem conversas salvas</span>
+                        ) : (
+                          project.sessions.map((session) => {
+                            const active =
+                              activeSession?.sessionId === session.id &&
+                              activeSession.workspacePath === project.workspacePath;
+                            return (
+                              <button
+                                type="button"
+                                key={`${project.id}:${session.id}`}
+                                className={`recent-item ${active ? "active" : ""}`}
+                                onClick={() =>
+                                  onSelectSession({
+                                    sessionId: session.id,
+                                    workspacePath: project.workspacePath,
+                                  })
+                                }
+                                disabled={!project.available || switchBlocked}
+                                aria-current={active ? "true" : undefined}
+                                title={
+                                  switchBlocked
+                                    ? "Pare a tarefa atual antes de trocar de conversa."
+                                    : `${session.title}\n${project.workspacePath}`
+                                }
+                              >
+                                <span className="recent-icon" aria-hidden="true">
+                                  {session.isRunning ? (
+                                    <span className="session-running-dot" />
+                                  ) : (
+                                    <svg
+                                      aria-hidden="true"
+                                      width="13"
+                                      height="13"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                    >
+                                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                                    </svg>
+                                  )}
+                                </span>
+                                <span className="recent-title">{session.title}</span>
+                                <span className="recent-time">
+                                  {rotuloRelativo(session.updatedAt)}
+                                </span>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
                     )}
-                  </span>
-                  <span className="recent-title">{session.title}</span>
-                  <span className="recent-time">{rotuloRelativo(session.updatedAt)}</span>
-                </button>
-              ))}
+                  </section>
+                );
+              })}
             </nav>
           )}
 

@@ -10,9 +10,10 @@ import {
 import type { Approver, PermissionMode } from "./permissions.js";
 import {
   executarSubagente,
+  SUBAGENTE_TIMEOUT_PADRAO_MS,
+  type SubagenteEvento,
   type SubagenteRelatorio,
   type SubagenteSpawner,
-  SUBAGENTE_TIMEOUT_PADRAO_MS,
 } from "./subagent.js";
 import type { ExecutableTool, MemoryScope } from "./tool.js";
 import { SUBAGENT_TOOL_POOL } from "./tool-groups.js";
@@ -60,6 +61,7 @@ export interface SpawnerOptions {
   readonly approver?: Approver;
   /** Modo de permissão dos subagentes; padrão `ask`. */
   readonly permissionMode?: PermissionMode;
+  readonly onEvent?: (event: SubagenteEvento) => void;
 }
 
 /**
@@ -91,6 +93,7 @@ export function criarSpawnerSubagentes(options: SpawnerOptions): SubagenteSpawne
         toolPool,
         ...(options.approver === undefined ? {} : { approver: options.approver }),
         ...(options.permissionMode === undefined ? {} : { permissionMode: options.permissionMode }),
+        ...(options.onEvent === undefined ? {} : { onEvent: options.onEvent }),
         ...(signal === undefined ? {} : { signal }),
       });
     },

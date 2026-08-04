@@ -49,13 +49,13 @@ packages/desktop/
   dist/main|preload|renderer/
 ```
 
-Contrato de eventos: `@codingpro/core` → `events.ts` (**v1.2.0**), com `requestId` na aprovação e `previa?` (diff) opcional.
+Contrato de eventos: `@codingpro/core` → `events.ts` (**v1.5.0**), com `requestId`, `previa?`, `usage-updated` e `subagent-event`.
 
 ## O que funciona
 
 | Recurso | Status |
 | --- | --- |
-| Chat com streaming DeepSeek V4 Pro | ✅ |
+| Chat com streaming DeepSeek V4 Flash | ✅ |
 | Histórico multi-turno (sessão no main) | ✅ |
 | Aprovação de efeitos + diff (`write_file`/`edit_file`) | ✅ |
 | Cancelar execução (botão / `Ctrl+.` / `/cancelar`) | ✅ |
@@ -63,7 +63,9 @@ Contrato de eventos: `@codingpro/core` → `events.ts` (**v1.2.0**), com `reques
 | Checkpoints + `readTracker` (mesma semântica da CLI) | ✅ |
 | Escolher pasta do projeto (default Downloads; último path persistido) | ✅ |
 | System prompt com raiz do sandbox + detecção de projeto | ✅ |
-| Sessões JSONL (listar / carregar / gravar) | ✅ |
+| Sessões JSONL agrupadas por projeto (listar / carregar / gravar) | ✅ |
+| Métricas de contexto/custo e subagentes ao vivo | ✅ |
+| Atualização assistida no NSIS e aviso manual no portátil | ✅ |
 | Terminal integrado (timeout 60s) | ✅ |
 | Paleta `Ctrl+K` | ✅ |
 | `code_search` (node:sqlite) | ⚠️ só na CLI Node ≥22.5; omitido no Electron 34 |
@@ -137,12 +139,10 @@ Ver `fase2-app-windows/04_roadmap_checklist.md`.
 
 ## Limitações conhecidas (W3+)
 
-- Sem instalador NSIS / auto-update ainda
 - Sem onboarding visual da API key
 - Diff viewer simples (não lado a lado / por bloco)
 - Terminal via `exec`/`cmd` (não xterm + node-pty)
 - `code_search` vetorial só na CLI até Electron com Node ≥ 22.5 (ou bundling de sql.js)
-- Subagentes/`task` disponíveis, mas UI ainda não mostra árvore de agentes
 - Pet visual da CLI sem equivalente GUI
 
 ## Segurança
@@ -159,6 +159,16 @@ Ver `fase2-app-windows/04_roadmap_checklist.md`.
 | Conversa | Chat com streaming, raciocínio recolhível, timeline de ferramentas e subagentes |
 | Configurações | Temas, auto-aprovar, reduzir animações, skills, atalhos, versão |
 | Terminal | Painel inferior com histórico de comandos, na pasta aberta |
+
+## v1.2.0 — projetos, observabilidade e atualização (2026-08-04)
+
+- Conversas agrupadas por pastas abertas pelo usuário, com troca atômica de workspace/sessão.
+- Painel estruturado de subagentes ativos e concluídos, sem expor raciocínio interno bruto.
+- Ledger deduplicado e contexto/custo atualizados durante a execução.
+- Recuperação DeepSeek normaliza chamadas seguras antes do schema e consolida tentativas inválidas.
+- Status detalhado clicável, marca CP Aurora e atualização assistida com duas confirmações.
+
+Relatório: [`docs/CODINGPRO-DESKTOP-1.2.0.md`](../../docs/CODINGPRO-DESKTOP-1.2.0.md).
 
 ## v1.1.1 — login Cloud obrigatório no pacote (2026-08-03)
 

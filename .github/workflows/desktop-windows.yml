@@ -39,6 +39,7 @@ jobs:
           pnpm --filter @codingpro/llm build
           pnpm --filter @codingpro/core build
           pnpm --filter @codingpro/desktop dist
+          pnpm desktop:metadata
 
       - name: Publicar artefatos
         uses: actions/upload-artifact@v4
@@ -47,6 +48,8 @@ jobs:
           path: |
             packages/desktop/.pack/release/*.exe
             packages/desktop/.pack/release/*.blockmap
+            packages/desktop/.pack/release/*.yml
+            packages/desktop/.pack/release/*.json
           if-no-files-found: error
 
       - name: Criar GitHub Release (tags desktop-v*)
@@ -56,4 +59,6 @@ jobs:
           files: |
             packages/desktop/.pack/release/*.exe
             packages/desktop/.pack/release/*.blockmap
+            packages/desktop/.pack/release/*.yml
+            packages/desktop/.pack/release/*.json
           generate_release_notes: true

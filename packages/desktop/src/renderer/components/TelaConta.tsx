@@ -1,5 +1,7 @@
 import { type FormEvent, useCallback, useState } from "react";
 
+const BRAND_MARK = new URL("../../../assets/branding/codingpro-mark.png", import.meta.url).href;
+
 /**
  * Tela de login do app: email + senha direto, sem navegador.
  * Quem já tem conta aprovada entra em segundos.
@@ -64,9 +66,7 @@ export function TelaConta({ aoConectar }: { aoConectar: () => void }) {
     <main className="tela-conta">
       <section className="tela-conta__apresentacao" aria-label="CodingPro Desktop">
         <div className="tela-conta__logo">
-          <span className="tela-conta__simbolo" aria-hidden="true">
-            CP
-          </span>
+          <img className="tela-conta__simbolo" src={BRAND_MARK} alt="" />
           <span>CodingPro</span>
         </div>
 
@@ -90,7 +90,7 @@ export function TelaConta({ aoConectar }: { aoConectar: () => void }) {
       <section className="tela-conta__painel">
         <div className="tela-conta__cartao">
           <div className="tela-conta__marca-compacta" aria-hidden="true">
-            <span className="tela-conta__simbolo">CP</span>
+            <img className="tela-conta__simbolo" src={BRAND_MARK} alt="" />
             <span>CodingPro</span>
           </div>
           <p className="tela-conta__etiqueta">CONTA CODINGPRO</p>

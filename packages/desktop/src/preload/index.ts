@@ -27,11 +27,9 @@ const api: CodingProDesktopAPI = {
     return ipcRenderer.invoke("codingpro:conta-login", apiUrl);
   },
   contaLoginDireto: (email: string, senha: string) => {
-    return ipcRenderer.invoke(
-      "codingpro:conta-login-direto",
-      email,
-      senha,
-    ) as Promise<{ status: string }>;
+    return ipcRenderer.invoke("codingpro:conta-login-direto", email, senha) as Promise<{
+      status: string;
+    }>;
   },
   contaCadastrar: (email: string, nome: string, senha: string) => {
     return ipcRenderer.invoke("codingpro:conta-cadastrar", email, nome, senha);
@@ -57,8 +55,8 @@ const api: CodingProDesktopAPI = {
   listSessions: () => {
     return ipcRenderer.invoke("codingpro:list-sessions");
   },
-  loadSession: (sessionId: string) => {
-    return ipcRenderer.invoke("codingpro:load-session", sessionId);
+  loadSession: (target) => {
+    return ipcRenderer.invoke("codingpro:load-session", target);
   },
   getDiffPreview: (targetFile: string, newContent: string) => {
     return ipcRenderer.invoke("codingpro:get-diff-preview", { targetFile, newContent });
@@ -68,6 +66,23 @@ const api: CodingProDesktopAPI = {
   },
   getSessionCost: () => {
     return ipcRenderer.invoke("codingpro:get-session-cost");
+  },
+  getUpdateState: () => {
+    return ipcRenderer.invoke("codingpro:update-state");
+  },
+  checkForUpdates: () => {
+    return ipcRenderer.invoke("codingpro:update-check");
+  },
+  downloadUpdate: () => {
+    return ipcRenderer.invoke("codingpro:update-download");
+  },
+  installUpdate: () => {
+    return ipcRenderer.invoke("codingpro:update-install");
+  },
+  onUpdateEvent: (callback) => {
+    const handler = (_: unknown, state: Parameters<typeof callback>[0]) => callback(state);
+    ipcRenderer.on("codingpro:update-event", handler);
+    return () => ipcRenderer.removeListener("codingpro:update-event", handler);
   },
   getSlashCommands: () => {
     return ipcRenderer.invoke("codingpro:list-slash-commands");

@@ -689,22 +689,40 @@ describe("DeepSeekProvider", () => {
     },
   );
 
+  it("remove argumento fora de schema fechado sem expor seu valor", async () => {
+    const provider = new DeepSeekProvider({
+      apiKey: "chave-sintetica",
+      fetch: async () =>
+        sseResponse([
+          streamChunk({
+            tool_calls: [
+              {
+                function: {
+                  arguments: `{"a":19,"b":23,"extra":"${TOOL_ARGUMENT_CANARY}"}`,
+                  name: "somar",
+                },
+                id: "call_extra",
+                index: 0,
+              },
+            ],
+          }),
+          streamChunk({}, "tool_calls"),
+        ]),
+    });
+
+    const events = await collect(provider, undefined, {
+      messages: [{ content: "use a tool", role: "user" }],
+      tools: [somar],
+    });
+
+    expect(events).toContainEqual({
+      call: { id: "call_extra", input: { a: 19, b: 23 }, name: "somar" },
+      type: "tool-call",
+    });
+    expect(JSON.stringify(events)).not.toContain(TOOL_ARGUMENT_CANARY);
+  });
+
   it.each([
-    {
-      delta: {
-        tool_calls: [
-          {
-            function: {
-              arguments: `{"a":19,"b":23,"extra":"${TOOL_ARGUMENT_CANARY}"}`,
-              name: "somar",
-            },
-            id: "call_extra",
-            index: 0,
-          },
-        ],
-      },
-      label: "argumento fora do schema",
-    },
     {
       delta: {
         tool_calls: [

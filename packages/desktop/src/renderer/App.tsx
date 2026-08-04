@@ -1,8 +1,19 @@
-import type { CoreUiEvent, PermissionRequest, PreviaEscrita } from "@codingpro/core";
+import type {
+  CoreUiEvent,
+  PermissionRequest,
+  PreviaEscrita,
+  SubagenteEvento,
+  UsageSnapshotUi,
+} from "@codingpro/core";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ComandoChat } from "../shared/slash-commands.js";
-import type { EstadoAcesso, WorkspaceInfo } from "../types/electron.js";
+import type {
+  EstadoAcesso,
+  ProjectSessionGroupUI,
+  UpdateStateUI,
+  WorkspaceInfo,
+} from "../types/electron.js";
 import { CommandPalette } from "./components/CommandPalette.js";
 import { FloatingInputDock } from "./components/FloatingInputDock.js";
 import { Header } from "./components/Header.js";
@@ -11,11 +22,12 @@ import { renderMarkdown } from "./components/MarkdownRenderer.js";
 import { PermissionModal } from "./components/PermissionModal.js";
 import { type PlanTask, PlanTracker } from "./components/PlanTracker.js";
 import { SettingsPanel } from "./components/SettingsPanel.js";
-import { type SessionRow, Sidebar } from "./components/Sidebar.js";
-import { SubagentPanel } from "./components/SubagentPanel.js";
+import { Sidebar } from "./components/Sidebar.js";
+import { SubagentPanel, type SubagentView } from "./components/SubagentPanel.js";
 import { TaskTracker, toTaskRow } from "./components/TaskTracker.js";
 import { TelaConta } from "./components/TelaConta.js";
 import { type ToolItem, ToolSummaryBlock } from "./components/ToolSummaryBlock.js";
+import { UpdatePrompt } from "./components/UpdatePrompt.js";
 import { useReducaoMovimento, useTheme } from "./useTheme.js";
 import "./aurora.css";
 import "./cursor-skin.css";
@@ -61,7 +73,6 @@ const CollapsibleReasoning: React.FC<{
       {open && (
         <div
           className="reasoning-body"
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: markdown do LLM
           dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }}
         />
       )}
@@ -97,6 +108,75 @@ function contentToString(content: unknown): string {
   } catch {
     return String(content);
   }
+}
+
+function aplicarEventoSubagente(current: SubagentView[], event: SubagenteEvento): SubagentView[] {
+  if (event.type === "started") {
+    return [
+      ...current.filter((agent) => agent.id !== event.id),
+      {
+        action: "Preparando contexto isolado",
+        costUsd: 0,
+        id: event.id,
+        inputTokens: 0,
+        objective: event.objective,
+        outputTokens: 0,
+        startedAt: event.startedAt,
+        status: "running",
+        steps: 0,
+        tools: [],
+        type: event.agentType,
+      },
+    ];
+  }
+  return current.map((agent) => {
+    if (agent.id !== event.id) return agent;
+    if (event.type === "progress") {
+      return {
+        ...agent,
+        action: event.action,
+        tools:
+          event.tool && !agent.tools.includes(event.tool)
+            ? [...agent.tools, event.tool]
+            : agent.tools,
+      };
+    }
+    if (event.type === "step") {
+      return {
+        ...agent,
+        action: `Etapa ${event.step} concluída`,
+        inputTokens: agent.inputTokens + (event.usage?.inputTokens ?? 0),
+        outputTokens: agent.outputTokens + (event.usage?.outputTokens ?? 0),
+        steps: event.step,
+      };
+    }
+    return {
+      ...agent,
+      action:
+        event.type === "completed"
+          ? "Relatório entregue"
+          : event.type === "timeout"
+            ? "Tempo limite atingido"
+            : event.type === "cancelled"
+              ? "Interrompido pelo usuário"
+              : "Execução falhou",
+      costUsd: event.cost?.totalCostUsd ?? agent.costUsd,
+      durationMs: event.durationMs,
+      inputTokens: event.usage.inputTokens,
+      outputTokens: event.usage.outputTokens,
+      report: event.report,
+      status:
+        event.type === "completed"
+          ? "done"
+          : event.type === "timeout"
+            ? "timeout"
+            : event.type === "cancelled"
+              ? "cancelled"
+              : "failed",
+      steps: event.steps,
+      tools: [...event.tools],
+    };
+  });
 }
 
 export const App: React.FC = () => {
@@ -136,16 +216,15 @@ export const App: React.FC = () => {
   >([]);
   const currentPermissionRequest = permissionQueue[0] ?? null;
 
-  const [recentSessions, setRecentSessions] = useState<SessionRow[]>([]);
+  const [projectGroups, setProjectGroups] = useState<ProjectSessionGroupUI[]>([]);
+  const [activeSession, setActiveSession] = useState<
+    { workspacePath: string; sessionId: string } | undefined
+  >(undefined);
 
-  const [sessionCost, setSessionCost] = useState<{
-    inputTokens: number;
-    outputTokens: number;
-    totalCostUsd: number;
-    turns: number;
-    contextTokens: number;
-    contextBudget: number;
-  } | null>(null);
+  const [sessionCost, setSessionCost] = useState<UsageSnapshotUi | null>(null);
+  const [modelInfo, setModelInfo] = useState({ modelName: "DeepSeek V4 Flash", effort: "auto" });
+  const [updateState, setUpdateState] = useState<UpdateStateUI | null>(null);
+  const [dismissedUpdate, setDismissedUpdate] = useState<string | null>(null);
 
   const [_runStartTime, setRunStartTime] = useState<number | null>(null);
 
@@ -160,9 +239,7 @@ export const App: React.FC = () => {
   /** Catálogo real de comandos, vindo do main (era duplicado em 3 lugares divergentes). */
   const [comandos, setComandos] = useState<readonly ComandoChat[] | undefined>(undefined);
 
-  const [subAgents, setSubAgents] = useState<
-    Array<{ id: string; label: string; status: "running" | "done" | "failed" }>
-  >([]);
+  const [subAgents, setSubAgents] = useState<SubagentView[]>([]);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const chatFeedRef = useRef<HTMLDivElement | null>(null);
@@ -173,17 +250,8 @@ export const App: React.FC = () => {
   const refreshSessions = useCallback(async () => {
     if (!window.codingproAPI) return;
     try {
-      const sessions = await window.codingproAPI.listSessions();
-      setRecentSessions((prev) => {
-        const activeId = prev.find((s) => s.active)?.id;
-        return sessions.map((s, idx) => ({
-          active: activeId ? s.id === activeId : idx === 0,
-          id: s.id,
-          // `updatedAt` chegava da API e era descartado — a coluna de tempo ficava vazia.
-          title: s.preview || `Sessão ${s.id.slice(0, 8)}`,
-          updatedAt: s.updatedAt,
-        }));
-      });
+      const groups = await window.codingproAPI.listSessions();
+      setProjectGroups(groups);
     } catch {
       // lista de sessões é acessório: falhar aqui não pode derrubar a tela
     }
@@ -276,6 +344,14 @@ export const App: React.FC = () => {
       })
       .catch(() => undefined);
 
+    void api
+      .getUpdateState()
+      .then((state) => {
+        if (!cancelled) setUpdateState(state);
+      })
+      .catch(() => undefined);
+    const unsubscribeUpdate = api.onUpdateEvent((state) => setUpdateState(state));
+
     const unsubscribe = api.onCoreEvent((event: CoreUiEvent) => {
       if (event.type === "permission-request") {
         setPermissionQueue((prev) =>
@@ -337,14 +413,14 @@ export const App: React.FC = () => {
           });
         } else if (ae.type === "notice") {
           setStatusNote(ae.text);
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: newId("notice"),
-              role: "notice",
-              content: ae.text,
-            },
-          ]);
+          setMessages((prev) => {
+            const id = ae.key ? `notice-${ae.key}` : newId("notice");
+            const existing = prev.findIndex((message) => message.id === id);
+            if (existing === -1) return [...prev, { content: ae.text, id, role: "notice" }];
+            const next = [...prev];
+            next[existing] = { content: ae.text, id, role: "notice" };
+            return next;
+          });
         } else if (ae.type === "tool-call") {
           // Cada tool ganha seu próprio bloco de raciocínio
           setMessages((prev) => {
@@ -370,23 +446,6 @@ export const App: React.FC = () => {
             if (ae.call.name === "task") {
               const tRow = toTaskRow({ ...newItem, status: "running" });
               setTaskItems((prev) => [...prev, tRow]);
-            }
-
-            // Painel de subagentes visuais
-            if (ae.call.name === "task") {
-              const input = ae.call.input as Record<string, unknown> | undefined;
-              const taskList = Array.isArray(input?.tarefas)
-                ? (input.tarefas as Array<{ prompt?: string }>)
-                : Array.isArray(input?.tasks)
-                  ? (input.tasks as Array<{ prompt?: string }>)
-                  : [];
-              taskList.forEach((t, idx) => {
-                const label = t?.prompt ? t.prompt.slice(0, 50) : `Subtarefa ${idx + 1}`;
-                setSubAgents((prev) => [
-                  ...prev,
-                  { id: `${ae.call.name}-${idx}-${Date.now()}`, label, status: "running" },
-                ]);
-              });
             }
 
             if (lastComFim && lastComFim.role === "assistant") {
@@ -431,12 +490,6 @@ export const App: React.FC = () => {
             setTaskItems((prev) =>
               prev.map((t) =>
                 t.id.startsWith("task-") ? { ...t, status: ok ? "done" : ("failed" as const) } : t,
-              ),
-            );
-            // Marca subagentes como done/failed
-            setSubAgents((prev) =>
-              prev.map((a) =>
-                a.id.startsWith("task-") ? { ...a, status: ok ? "done" : ("failed" as const) } : a,
               ),
             );
           }
@@ -487,6 +540,12 @@ export const App: React.FC = () => {
             ];
           });
         }
+      } else if (event.type === "subagent-event") {
+        setSubAgents((current) => aplicarEventoSubagente(current, event.event));
+      } else if (event.type === "usage-updated") {
+        setSessionCost(event.snapshot);
+      } else if (event.type === "model-info") {
+        setModelInfo({ effort: event.effort, modelName: event.modelName });
       } else if (event.type === "plan-task") {
         setPlanTasks((prev) => {
           const idx = prev.findIndex((t) => t.id === event.task.id);
@@ -528,6 +587,7 @@ export const App: React.FC = () => {
     return () => {
       cancelled = true;
       unsubscribe();
+      unsubscribeUpdate();
     };
   }, [apiReady, refreshSessions]);
 
@@ -584,6 +644,12 @@ export const App: React.FC = () => {
             ? workspaceRef.current
             : undefined;
         const result = await window.codingproAPI.sendMessage(textToSend, cwd);
+        if (result.sessionId) {
+          setActiveSession({
+            sessionId: result.sessionId,
+            workspacePath: result.cwd ?? cwd ?? workspaceRef.current,
+          });
+        }
 
         if (result.cwd) {
           // atualiza resumo após /abrir
@@ -645,11 +711,11 @@ export const App: React.FC = () => {
     setPermissionQueue((prev) => prev.filter((p) => p.id !== respondido));
   };
 
-  const handleSelectSession = async (id: string) => {
-    setRecentSessions((prev) => prev.map((s) => ({ ...s, active: s.id === id })));
-    if (!window.codingproAPI || id.startsWith("new-") || id === "current") return;
-    const res = await window.codingproAPI.loadSession(id);
+  const handleSelectSession = async (target: { workspacePath: string; sessionId: string }) => {
+    if (!window.codingproAPI) return;
+    const res = await window.codingproAPI.loadSession(target);
     if (res.success && res.messages) {
+      setActiveSession(target);
       setMessages(
         res.messages.map((msg: unknown, i: number) => {
           const m = msg as { role?: string; content?: unknown };
@@ -660,6 +726,10 @@ export const App: React.FC = () => {
           };
         }),
       );
+      const info = await window.codingproAPI.getWorkspaceInfo();
+      setWorkspaceInfo(info);
+      const cost = await window.codingproAPI.getSessionCost();
+      setSessionCost(cost ?? null);
     } else if (res.error) {
       setStatusNote(res.error);
     }
@@ -668,20 +738,24 @@ export const App: React.FC = () => {
   const handleNewSession = async () => {
     setMessages([]);
     setPlanTasks([]);
-    setRecentSessions((prev) => [
-      { id: `new-${Date.now()}`, title: "Nova sessão", active: true },
-      ...prev.map((s) => ({ ...s, active: false })),
-    ]);
     if (window.codingproAPI) {
-      await window.codingproAPI.newSession();
+      const result = await window.codingproAPI.newSession();
+      if (result.sessionId) {
+        setActiveSession({ sessionId: result.sessionId, workspacePath: workspaceRef.current });
+      }
     }
   };
 
   const handleChooseWorkspace = async () => {
+    if (isRunning) {
+      setStatusNote("Pare a tarefa atual antes de trocar de projeto.");
+      return;
+    }
     if (!window.codingproAPI) return;
     const chosen = await window.codingproAPI.chooseWorkspaceFolder();
     if (!chosen) return;
     setMessages([]);
+    setActiveSession(undefined);
     const info = await window.codingproAPI.getWorkspaceInfo();
     setWorkspaceInfo(info);
     setStatusNote(
@@ -702,9 +776,14 @@ export const App: React.FC = () => {
     const estado = await window.codingproAPI.estadoAcesso();
     setAcesso(estado);
     setMessages([]);
-    setRecentSessions([]);
+    setProjectGroups([]);
+    setActiveSession(undefined);
     setStatusNote(null);
   }, []);
+
+  const activeSessionTitle = projectGroups
+    .find((group) => group.workspacePath === activeSession?.workspacePath)
+    ?.sessions.find((session) => session.id === activeSession?.sessionId)?.title;
 
   // Portão: o app distribuído exige conta; chave própria só existe no modo de desenvolvimento.
   if (acesso?.modo === "sem-acesso") {
@@ -725,9 +804,11 @@ export const App: React.FC = () => {
       <Sidebar
         activeTab={activeTab}
         onSelectTab={setActiveTab}
-        recentSessions={recentSessions}
-        onSelectSession={(id) => {
-          void handleSelectSession(id);
+        projectGroups={projectGroups}
+        activeSession={activeSession}
+        switchBlocked={isRunning}
+        onSelectSession={(target) => {
+          void handleSelectSession(target);
         }}
         onNewSession={() => {
           void handleNewSession();
@@ -762,7 +843,7 @@ export const App: React.FC = () => {
 
       <div className="main-content">
         <Header
-          title={recentSessions.find((s) => s.active)?.title ?? "Nova conversa"}
+          title={activeSessionTitle ?? "Nova conversa"}
           projectName={projectName}
           workspacePath={workspaceInfo.cwd}
           branch={workspaceInfo.branch}
@@ -869,7 +950,6 @@ export const App: React.FC = () => {
                       : {})}
                     {...(m.reasoningEndedAt !== undefined ? { endedAt: m.reasoningEndedAt } : {})}
                   />
-                  {/* biome-ignore lint/security/noDangerouslySetInnerHtml: markdown do LLM */}
                   {m.content && (
                     <div
                       className="text-response-block"
@@ -922,6 +1002,16 @@ export const App: React.FC = () => {
           comandos={comandos}
           branchName={workspaceInfo.branch}
           cost={sessionCost}
+          projectName={projectName}
+          workspacePath={workspaceInfo.cwd}
+          modelName={modelInfo.modelName}
+          effort={modelInfo.effort}
+          acesso={acesso}
+          appVersion={workspaceInfo.appVersion}
+          updateState={updateState}
+          onCheckUpdate={() => void window.codingproAPI?.checkForUpdates()}
+          onDownloadUpdate={() => void window.codingproAPI?.downloadUpdate()}
+          onInstallUpdate={() => void window.codingproAPI?.installUpdate()}
         />
 
         <CommandPalette
@@ -951,6 +1041,18 @@ export const App: React.FC = () => {
             onRespond={handlePermissionResponse}
           />
         )}
+        {updateState &&
+          (updateState.status === "available" || updateState.status === "downloaded") &&
+          dismissedUpdate !== `${updateState.status}:${updateState.availableVersion}` && (
+            <UpdatePrompt
+              state={updateState}
+              onDismiss={() =>
+                setDismissedUpdate(`${updateState.status}:${updateState.availableVersion}`)
+              }
+              onDownload={() => void window.codingproAPI?.downloadUpdate()}
+              onInstall={() => void window.codingproAPI?.installUpdate()}
+            />
+          )}
       </div>
     </div>
   );

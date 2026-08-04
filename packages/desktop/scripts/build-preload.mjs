@@ -69,8 +69,8 @@ const api = {
   listSessions: () => {
     return ipcRenderer.invoke("codingpro:list-sessions");
   },
-  loadSession: (sessionId) => {
-    return ipcRenderer.invoke("codingpro:load-session", sessionId);
+  loadSession: (target) => {
+    return ipcRenderer.invoke("codingpro:load-session", target);
   },
   getDiffPreview: (targetFile, newContent) => {
     return ipcRenderer.invoke("codingpro:get-diff-preview", { targetFile, newContent });
@@ -80,6 +80,23 @@ const api = {
   },
   getSessionCost: () => {
     return ipcRenderer.invoke("codingpro:get-session-cost");
+  },
+  getUpdateState: () => {
+    return ipcRenderer.invoke("codingpro:update-state");
+  },
+  checkForUpdates: () => {
+    return ipcRenderer.invoke("codingpro:update-check");
+  },
+  downloadUpdate: () => {
+    return ipcRenderer.invoke("codingpro:update-download");
+  },
+  installUpdate: () => {
+    return ipcRenderer.invoke("codingpro:update-install");
+  },
+  onUpdateEvent: (callback) => {
+    const handler = (_event, state) => callback(state);
+    ipcRenderer.on("codingpro:update-event", handler);
+    return () => ipcRenderer.removeListener("codingpro:update-event", handler);
   },
   getSlashCommands: () => {
     return ipcRenderer.invoke("codingpro:list-slash-commands");

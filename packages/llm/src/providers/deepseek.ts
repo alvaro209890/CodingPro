@@ -236,14 +236,43 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** Coerce tipos comuns que o modelo manda como string (ex.: offset "10" → 10). */
-function normalizarInputTool(schema: ToolInputSchema, value: unknown): unknown {
+const WRITE_FILE_ALIASES = {
+  content: ["contents", "text"],
+  path: ["file_path", "filePath", "filename"],
+} as const;
+
+/**
+ * Normaliza apenas formas inequivocamente seguras antes da validação do schema.
+ * Schemas fechados descartam extras; aliases existem exclusivamente para `write_file`.
+ * Canonical + alias ou dois aliases para o mesmo campo continuam inválidos (fail-closed).
+ */
+export function normalizarInputTool(
+  toolName: string,
+  schema: ToolInputSchema,
+  value: unknown,
+): unknown {
   if (schema.type !== "object" || !isPlainObject(value)) {
     return value;
   }
-  const out: Record<string, unknown> = { ...value };
+  const original: Record<string, unknown> = { ...value };
+  if (toolName === "write_file") {
+    for (const [canonical, aliases] of Object.entries(WRITE_FILE_ALIASES)) {
+      const presentes = aliases.filter((alias) => Object.hasOwn(original, alias));
+      const temCanonical = Object.hasOwn(original, canonical);
+      if (!temCanonical && presentes.length === 1) {
+        const alias = presentes[0];
+        if (alias !== undefined) original[canonical] = original[alias];
+      } else if ((temCanonical && presentes.length > 0) || presentes.length > 1) {
+        return value;
+      }
+    }
+  }
+  const out: Record<string, unknown> =
+    schema.additionalProperties === false ? Object.create(null) : { ...original };
   for (const [key, prop] of Object.entries(schema.properties)) {
-    const raw = out[key];
+    if (!Object.hasOwn(original, key)) continue;
+    const raw = original[key];
+    out[key] = raw;
     if (prop.type === "integer" && typeof raw === "string") {
       const parsed = Number(raw);
       if (Number.isSafeInteger(parsed)) {
@@ -261,10 +290,12 @@ function normalizarInputTool(schema: ToolInputSchema, value: unknown): unknown {
         out[key] = false;
       }
     } else if (prop.type === "object" && isPlainObject(raw)) {
-      out[key] = normalizarInputTool(prop as ToolInputSchema, raw);
+      out[key] = normalizarInputTool(toolName, prop as ToolInputSchema, raw);
     } else if (prop.type === "array" && Array.isArray(raw) && isPlainObject(prop.items)) {
       out[key] = raw.map((item) =>
-        isPlainObject(item) ? normalizarInputTool(prop.items as ToolInputSchema, item) : item,
+        isPlainObject(item)
+          ? normalizarInputTool(toolName, prop.items as ToolInputSchema, item)
+          : item,
       );
     }
   }
@@ -277,10 +308,12 @@ function toAiTools(definitions: readonly CodingProTool[]): ToolSet {
     tools[definition.name] = tool({
       description: definition.description,
       inputSchema: jsonSchema<JsonObject>(definition.inputSchema as never, {
-        validate: (value) =>
-          toolAcceptsInput(definition.inputSchema, value)
-            ? { success: true, value }
-            : { error: new Error("Tool input inválido."), success: false },
+        validate: (value) => {
+          const normalized = normalizarInputTool(definition.name, definition.inputSchema, value);
+          return toolAcceptsInput(definition.inputSchema, normalized)
+            ? { success: true, value: normalized as JsonObject }
+            : { error: new Error("Tool input inválido."), success: false };
+        },
       }),
       outputSchema: jsonSchema<JsonValue>({}),
     });
@@ -598,7 +631,7 @@ export class DeepSeekProvider implements Provider {
           const input =
             definition === undefined
               ? part.input
-              : normalizarInputTool(definition.inputSchema, part.input);
+              : normalizarInputTool(definition.name, definition.inputSchema, part.input);
           const candidate = { id: part.toolCallId, input, name: part.toolName };
           const motivo =
             definition === undefined

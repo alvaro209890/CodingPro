@@ -1,8 +1,9 @@
+import { randomUUID } from "node:crypto";
 import type { CostBreakdown, Provider, TokenUsage } from "@codingpro/llm";
 import { type AgentFinishReason, runAgent } from "./agent.js";
 import type { TipoAgente } from "./agent-types.js";
 import { ToolGate } from "./gate.js";
-import { type Approver, type PermissionMode, PermissionController } from "./permissions.js";
+import { type Approver, PermissionController, type PermissionMode } from "./permissions.js";
 import { ToolRegistry } from "./registry.js";
 import type { ExecutableTool, ToolContext } from "./tool.js";
 import { rememberTool } from "./tools/remember.js";
@@ -35,6 +36,37 @@ export interface SubagenteRelatorio {
   readonly motivo?: "timeout" | "cancelado" | "erro";
 }
 
+export type SubagenteEvento =
+  | {
+      readonly type: "started";
+      readonly id: string;
+      readonly agentType: string;
+      readonly objective: string;
+      readonly startedAt: string;
+    }
+  | {
+      readonly type: "progress";
+      readonly id: string;
+      readonly action: string;
+      readonly tool?: string;
+    }
+  | {
+      readonly type: "step";
+      readonly id: string;
+      readonly step: number;
+      readonly usage?: TokenUsage;
+    }
+  | {
+      readonly type: "completed" | "failed" | "cancelled" | "timeout";
+      readonly id: string;
+      readonly durationMs: number;
+      readonly steps: number;
+      readonly tools: readonly string[];
+      readonly report: string;
+      readonly usage: TokenUsage;
+      readonly cost?: CostBreakdown;
+    };
+
 export interface ExecutarSubagenteOptions {
   readonly tipo: TipoAgente;
   readonly prompt: string;
@@ -46,6 +78,8 @@ export interface ExecutarSubagenteOptions {
   readonly maxSteps?: number;
   readonly timeoutMs?: number;
   readonly signal?: AbortSignal;
+  readonly executionId?: string;
+  readonly onEvent?: (event: SubagenteEvento) => void;
   /**
    * Aprovador do runtime pai. Sem ele, um subagente com tools de efeito (`worker`) tem toda
    * escrita negada fail-closed e devolve relatório vazio — que era o sintoma de "subagente não
@@ -79,6 +113,16 @@ function registrarTools(
 export async function executarSubagente(
   options: ExecutarSubagenteOptions,
 ): Promise<SubagenteRelatorio> {
+  const executionId = options.executionId ?? randomUUID();
+  const startedMs = Date.now();
+  const toolsUsadas = new Set<string>();
+  options.onEvent?.({
+    agentType: options.tipo.nome,
+    id: executionId,
+    objective: options.prompt,
+    startedAt: new Date(startedMs).toISOString(),
+    type: "started",
+  });
   const registry = registrarTools(options.toolPool, options.tipo.tools);
   const gate = new ToolGate(
     registry,
@@ -111,6 +155,7 @@ export async function executarSubagente(
 
   let texto = "";
   let passos = 0;
+  let anunciouRelatorio = false;
   try {
     const result = await runAgent({
       context: { ...options.context, signal: controller.signal },
@@ -120,8 +165,34 @@ export async function executarSubagente(
       onEvent: (event) => {
         if (event.type === "text-delta") {
           texto += event.text;
+          if (!anunciouRelatorio) {
+            anunciouRelatorio = true;
+            options.onEvent?.({ action: "Redigindo relatório", id: executionId, type: "progress" });
+          }
         } else if (event.type === "step") {
           passos = event.step;
+          options.onEvent?.({
+            id: executionId,
+            step: event.step,
+            type: "step",
+            ...(event.usage === undefined ? {} : { usage: event.usage }),
+          });
+        } else if (event.type === "tool-call") {
+          toolsUsadas.add(event.call.name);
+          options.onEvent?.({
+            action: `Executando ${event.call.name}`,
+            id: executionId,
+            tool: event.call.name,
+            type: "progress",
+          });
+        } else if (event.type === "tool-result") {
+          toolsUsadas.add(event.call.name);
+          options.onEvent?.({
+            action: `${event.call.name} concluída`,
+            id: executionId,
+            tool: event.call.name,
+            type: "progress",
+          });
         }
       },
       provider: options.provider,
@@ -129,7 +200,7 @@ export async function executarSubagente(
       systemPrompt: options.tipo.systemPrompt,
       tools: registry.definitions(),
     });
-    return {
+    const relatorio: SubagenteRelatorio = {
       finishReason: result.finishReason,
       interrompido: false,
       passos: result.steps,
@@ -138,13 +209,24 @@ export async function executarSubagente(
       usage: result.usage,
       ...(result.cost === undefined ? {} : { cost: result.cost }),
     };
+    options.onEvent?.({
+      durationMs: Date.now() - startedMs,
+      id: executionId,
+      report: relatorio.texto,
+      steps: relatorio.passos,
+      tools: [...toolsUsadas],
+      type: "completed",
+      usage: relatorio.usage,
+      ...(relatorio.cost === undefined ? {} : { cost: relatorio.cost }),
+    });
+    return relatorio;
   } catch (error) {
     if (controller.signal.aborted) {
       const motivo = porTimeout
         ? `(interrompido: tempo esgotado após ${Math.round(timeoutMs / 1000)}s)`
         : "(interrompido: cancelado)";
       const parcial = texto.trim();
-      return {
+      const relatorio: SubagenteRelatorio = {
         finishReason: "max-steps",
         interrompido: true,
         motivo: porTimeout ? "timeout" : "cancelado",
@@ -153,12 +235,22 @@ export async function executarSubagente(
         tipo: options.tipo.nome,
         usage: { inputTokens: 0, outputTokens: 0 },
       };
+      options.onEvent?.({
+        durationMs: Date.now() - startedMs,
+        id: executionId,
+        report: relatorio.texto,
+        steps: relatorio.passos,
+        tools: [...toolsUsadas],
+        type: porTimeout ? "timeout" : "cancelled",
+        usage: relatorio.usage,
+      });
+      return relatorio;
     }
     // Falha real (auth, saldo, rede…): vira relatório com a causa em vez de derrubar a tool
     // inteira, que no runtime virava o genérico "A ferramenta falhou ao executar."
     const parcial = texto.trim();
     const causa = error instanceof Error ? error.message : String(error);
-    return {
+    const relatorio: SubagenteRelatorio = {
       finishReason: "max-steps",
       interrompido: true,
       motivo: "erro",
@@ -167,6 +259,16 @@ export async function executarSubagente(
       tipo: options.tipo.nome,
       usage: { inputTokens: 0, outputTokens: 0 },
     };
+    options.onEvent?.({
+      durationMs: Date.now() - startedMs,
+      id: executionId,
+      report: relatorio.texto,
+      steps: relatorio.passos,
+      tools: [...toolsUsadas],
+      type: "failed",
+      usage: relatorio.usage,
+    });
+    return relatorio;
   } finally {
     if (timer !== undefined) {
       clearTimeout(timer);

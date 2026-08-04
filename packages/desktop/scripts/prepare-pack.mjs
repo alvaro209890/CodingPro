@@ -28,6 +28,7 @@ execSync(`pnpm deploy --filter @codingpro/desktop --prod --legacy "${packDir}"`,
 
 console.log("[prepare-pack] copiando dist…");
 cpSync(join(pkgRoot, "dist"), join(packDir, "dist"), { recursive: true });
+cpSync(join(pkgRoot, "assets"), join(packDir, "assets"), { recursive: true });
 
 const pkgPath = join(packDir, "package.json");
 const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));

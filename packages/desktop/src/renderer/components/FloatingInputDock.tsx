@@ -1,3 +1,4 @@
+import type { UsageSnapshotUi } from "@codingpro/core";
 import type React from "react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
@@ -6,6 +7,7 @@ import {
   filtrarSugestoes,
   type SugestaoComando,
 } from "../../shared/slash-commands.js";
+import type { EstadoAcesso, UpdateStateUI } from "../../types/electron.js";
 
 interface FloatingInputDockProps {
   inputPrompt: string;
@@ -18,14 +20,17 @@ interface FloatingInputDockProps {
   /** Catálogo vindo do main; sem ele caímos no catálogo compartilhado compilado junto. */
   comandos?: readonly ComandoChat[] | undefined;
   branchName?: string | undefined;
-  cost?: {
-    inputTokens: number;
-    outputTokens: number;
-    totalCostUsd: number;
-    turns: number;
-    contextTokens: number;
-    contextBudget: number;
-  } | null;
+  cost?: UsageSnapshotUi | null;
+  projectName: string;
+  workspacePath: string;
+  modelName: string;
+  effort: string;
+  acesso: EstadoAcesso | null;
+  appVersion?: string | undefined;
+  updateState?: UpdateStateUI | null;
+  onCheckUpdate?: (() => void) | undefined;
+  onDownloadUpdate?: (() => void) | undefined;
+  onInstallUpdate?: (() => void) | undefined;
 }
 
 /** Percentual do orçamento de contexto já consumido, para o medidor da barra. */
@@ -45,13 +50,40 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
   comandos = COMANDOS_CHAT,
   branchName,
   cost = null,
+  projectName,
+  workspacePath,
+  modelName,
+  effort,
+  acesso,
+  appVersion,
+  updateState,
+  onCheckUpdate,
+  onDownloadUpdate,
+  onInstallUpdate,
 }) => {
   const [sugestoes, setSugestoes] = useState<SugestaoComando[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const listaId = useId();
+  const [statusOpen, setStatusOpen] = useState(false);
+  const statusRef = useRef<HTMLDivElement | null>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: setSelectedIdx é estável
+  useEffect(() => {
+    if (!statusOpen) return;
+    const closeOutside = (event: MouseEvent) => {
+      if (!statusRef.current?.contains(event.target as Node)) setStatusOpen(false);
+    };
+    const closeEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setStatusOpen(false);
+    };
+    document.addEventListener("mousedown", closeOutside);
+    window.addEventListener("keydown", closeEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOutside);
+      window.removeEventListener("keydown", closeEscape);
+    };
+  }, [statusOpen]);
+
   useEffect(() => {
     const s = filtrarSugestoes(inputPrompt, comandos);
     setSugestoes(s);
@@ -261,49 +293,199 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
         </div>
       </div>
 
-      <div className="dock-status-bar">
-        <div className="dock-status-left">
-          {branchName && (
-            <>
-              <svg
-                aria-hidden="true"
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
+      <div className="dock-status-wrap" ref={statusRef}>
+        <button
+          type="button"
+          className="dock-status-bar"
+          onClick={() => setStatusOpen((value) => !value)}
+          aria-expanded={statusOpen}
+          aria-haspopup="dialog"
+          title="Abrir detalhes da execução, uso e atualização"
+        >
+          <span className="dock-status-left">
+            {branchName && (
+              <>
+                <svg
+                  aria-hidden="true"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
+                  <line x1="6" y1="3" x2="6" y2="15" />
+                  <circle cx="18" cy="6" r="3" />
+                  <circle cx="6" cy="18" r="3" />
+                  <path d="M18 9a9 9 0 01-9 9" />
+                </svg>
+                <span>{branchName}</span>
+                <span className="dock-status-sep">·</span>
+              </>
+            )}
+            <span>roda neste computador</span>
+          </span>
+          <span className="dock-status-right">
+            {pct !== null && (
+              <span
+                title={`Contexto: ${cost?.contextTokens.toLocaleString("pt-BR")} de ${cost?.contextBudget.toLocaleString("pt-BR")} tokens`}
               >
-                <line x1="6" y1="3" x2="6" y2="15" />
-                <circle cx="18" cy="6" r="3" />
-                <circle cx="6" cy="18" r="3" />
-                <path d="M18 9a9 9 0 01-9 9" />
-              </svg>
-              <span>{branchName}</span>
-              <span className="dock-status-sep">·</span>
-            </>
-          )}
-          <span>roda neste computador</span>
-        </div>
-        <div className="dock-status-right">
-          {pct !== null && (
-            <span
-              title={`Contexto: ${cost?.contextTokens.toLocaleString("pt-BR")} de ${cost?.contextBudget.toLocaleString("pt-BR")} tokens`}
-            >
-              contexto {pct}%
-            </span>
-          )}
-          {cost && cost.turns > 0 && (
-            <>
-              <span className="dock-status-sep">·</span>
-              <span title={`${cost.inputTokens} tokens de entrada, ${cost.outputTokens} de saída`}>
-                US$ {cost.totalCostUsd.toFixed(4)} · {cost.turns}{" "}
-                {cost.turns === 1 ? "turno" : "turnos"}
+                {cost?.estimated ? "≈ " : ""}contexto {pct}%
               </span>
-            </>
-          )}
-        </div>
+            )}
+            {cost && cost.turns > 0 && (
+              <>
+                <span className="dock-status-sep">·</span>
+                <span
+                  title={`${cost.inputTokens} tokens de entrada, ${cost.outputTokens} de saída`}
+                >
+                  {cost.estimated ? "≈ " : ""}US$ {cost.totalCostUsd.toFixed(4)} · {cost.turns}{" "}
+                  {cost.turns === 1 ? "turno" : "turnos"}
+                </span>
+              </>
+            )}
+          </span>
+        </button>
+        {statusOpen && (
+          <section className="dock-status-popover" role="dialog" aria-label="Detalhes da sessão">
+            <header>
+              <span>Detalhes da sessão</span>
+              <button type="button" onClick={() => setStatusOpen(false)} aria-label="Fechar">
+                ×
+              </button>
+            </header>
+            <dl className="status-detail-grid">
+              <div>
+                <dt>Projeto</dt>
+                <dd>{projectName}</dd>
+              </div>
+              <div className="wide">
+                <dt>Pasta</dt>
+                <dd title={workspacePath}>{workspacePath}</dd>
+              </div>
+              <div>
+                <dt>Branch</dt>
+                <dd>{branchName ?? "Sem Git"}</dd>
+              </div>
+              <div>
+                <dt>Execução</dt>
+                <dd>Local neste computador</dd>
+              </div>
+              <div>
+                <dt>Contexto usado</dt>
+                <dd>
+                  {cost
+                    ? `${cost.estimated ? "≈ " : ""}${cost.contextTokens.toLocaleString("pt-BR")} (${pct ?? 0}%)`
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt>Contexto restante</dt>
+                <dd>
+                  {cost
+                    ? Math.max(0, cost.contextBudget - cost.contextTokens).toLocaleString("pt-BR")
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt>Custo</dt>
+                <dd>
+                  {cost ? `${cost.estimated ? "≈ " : ""}US$ ${cost.totalCostUsd.toFixed(6)}` : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt>Tokens</dt>
+                <dd>
+                  {cost
+                    ? `${cost.inputTokens.toLocaleString("pt-BR")} in · ${cost.outputTokens.toLocaleString("pt-BR")} out`
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt>Cache / raciocínio</dt>
+                <dd>
+                  {cost
+                    ? `${cost.cacheReadTokens.toLocaleString("pt-BR")} · ${cost.reasoningTokens.toLocaleString("pt-BR")}`
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt>Turnos / chamadas</dt>
+                <dd>{cost ? `${cost.turns} · ${cost.apiCalls}` : "—"}</dd>
+              </div>
+              <div>
+                <dt>Subagentes</dt>
+                <dd>{cost?.subagentCalls ?? 0}</dd>
+              </div>
+              <div>
+                <dt>Modelo / esforço</dt>
+                <dd>
+                  {modelName} · {effort}
+                </dd>
+              </div>
+              <div>
+                <dt>Conta Cloud</dt>
+                <dd>
+                  {acesso?.modo === "conta"
+                    ? "Conectada"
+                    : acesso?.modo === "chave-propria"
+                      ? "Chave própria (dev)"
+                      : "Desconectada"}
+                </dd>
+              </div>
+              <div>
+                <dt>Versão</dt>
+                <dd>{appVersion ?? "—"}</dd>
+              </div>
+            </dl>
+            <div className={`status-update-card ${updateState?.status ?? "idle"}`}>
+              <div>
+                <strong>Atualizações</strong>
+                <span>
+                  {updateState?.status === "available"
+                    ? `Versão ${updateState.availableVersion} disponível`
+                    : updateState?.status === "downloading"
+                      ? `Baixando ${Math.round(updateState.progress ?? 0)}%`
+                      : updateState?.status === "downloaded"
+                        ? `Versão ${updateState.availableVersion} pronta para instalar`
+                        : updateState?.status === "checking"
+                          ? "Verificando…"
+                          : updateState?.status === "error"
+                            ? updateState.error
+                            : "Aplicativo atualizado"}
+                </span>
+              </div>
+              {updateState?.status === "available" && onDownloadUpdate ? (
+                <button type="button" onClick={onDownloadUpdate}>
+                  {updateState.mode === "portable" ? "Abrir download" : "Baixar agora"}
+                </button>
+              ) : updateState?.status === "downloaded" && onInstallUpdate ? (
+                <button type="button" onClick={onInstallUpdate}>
+                  Reiniciar e instalar
+                </button>
+              ) : onCheckUpdate && updateState?.status !== "downloading" ? (
+                <button type="button" onClick={onCheckUpdate}>
+                  Verificar
+                </button>
+              ) : null}
+            </div>
+            {cost && cost.sources.length > 0 && (
+              <details className="status-usage-sources">
+                <summary>Uso por fonte</summary>
+                {cost.sources.map((source) => (
+                  <div key={source.source}>
+                    <span>{source.source}</span>
+                    <span>
+                      {source.apiCalls} chamadas · {source.inputTokens + source.outputTokens} tok ·
+                      US$ {source.costUsd.toFixed(6)}
+                    </span>
+                  </div>
+                ))}
+              </details>
+            )}
+          </section>
+        )}
       </div>
     </div>
   );
