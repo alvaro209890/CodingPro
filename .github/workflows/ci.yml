@@ -42,5 +42,10 @@ jobs:
       - name: Instalar dependências
         run: pnpm install --frozen-lockfile
 
+      - name: Preparar pacotes internos para o typecheck
+        run: |
+          pnpm --filter @codingpro/llm build
+          pnpm --filter @codingpro/core build
+
       - name: Validar lint, tipos, testes, cobertura e build
         run: env -u DEEPSEEK_API_KEY -u CODINGPRO_REAL_SMOKE pnpm check

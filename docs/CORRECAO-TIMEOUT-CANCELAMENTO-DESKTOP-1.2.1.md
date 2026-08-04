@@ -65,12 +65,12 @@ baixar e novamente para instalar. A edição portátil continua oferecendo downl
   imprimir credenciais.
 - O smoke direto de desenvolvimento continuou recebendo 401 da chave DeepSeek local antiga. Esse
   caminho não é usado pelo aplicativo empacotado, que foi validado pela rota Cloud.
-- `CodingPro-Setup-1.2.1.exe`: 86.419.821 bytes, SHA-256
-  `7d82f4d085ebfb568d3e17623ed2d3536c686e4890f870379acb70c10df93685`.
-- `CodingPro-portable-1.2.1.exe`: 86.180.863 bytes, SHA-256
-  `08f4d7dd6af7c33861d644a1b491fe219f7d777a46eaddf7e797377376755461`.
-- `CodingPro-Setup-1.2.1.exe.blockmap`: 91.384 bytes, SHA-256
-  `c21c3ee06cb8890a4426fa06bdf2ed9096e0a2883ccfe826e3769a9a9fd2ea02`.
-- `latest.yml`: SHA-256 `afc79263b084e319811c8381b0001e3340a5ba9a1636f195066a353c0c314797`.
-- `latest.json`: SHA-256 `88b05c5bf8d41742a1f818ca987d5b0260201b5ea3ea00b20198a3d8a833c858`.
+- `CodingPro-Setup-1.2.1.exe`: 86.419.826 bytes, SHA-256
+  `00910e66dbfa8dce4df95602fa7fb89d6084fee429c310c10822248a97da2b60`.
+- `CodingPro-portable-1.2.1.exe`: 86.180.868 bytes, SHA-256
+  `321b2278d633664fd812339370a6a6f7e11c91973ea7d486afb70a3584d254d1`.
+- `CodingPro-Setup-1.2.1.exe.blockmap`: 91.390 bytes, SHA-256
+  `99e76f328a835821aeded9db820096e871bdc9a34226ae624a6866e93aa3911c`.
+- Os hashes acima são dos artefatos oficiais reproduzidos pelo GitHub Actions a partir da tag
+  `desktop-v1.2.1`; pequenas diferenças de metadados PE são esperadas em relação ao build local.
 - Artefatos sem assinatura Authenticode nesta entrega, conforme a limitação já documentada.
