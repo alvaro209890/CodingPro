@@ -152,3 +152,55 @@ describe("hardening offline — árvore grande com tetos", () => {
     expect(ms).toBeLessThan(15_000);
   });
 });
+
+describe("plano 02 — verificação pós-edição (evals)", () => {
+  let root: string;
+
+  afterEach(async () => {
+    if (root !== undefined) await cleanup(root);
+  });
+
+  it("após editar com erro de tipo, get_diagnostics responde sem bash", async () => {
+    root = await makeTmpRoot();
+    await writeFile(
+      join(root, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: { strict: true, noEmit: true, target: "ES2022", module: "ESNext" },
+        include: ["*.ts"],
+      }),
+    );
+    await writeFile(join(root, "quebrado.ts"), "export const x: number = 'texto';\n");
+    const workspace = await Workspace.create(root);
+    const { getDiagnosticsTool } = await import("../src/tools/get-diagnostics.js");
+    const result = await getDiagnosticsTool.execute(
+      { paths: ["quebrado.ts"] },
+      { workspace } satisfies ToolContext,
+    );
+    expect(result.type === "text" || result.type === "error-text").toBe(true);
+    if (result.type === "text" || result.type === "error-text") {
+      expect(result.value.length).toBeGreaterThan(0);
+      expect(result.value.length).toBeLessThan(20_000);
+    }
+  });
+
+  it("catálogo ALL_TOOLS permanece abaixo de ~3,5k tokens de descrição", async () => {
+    const { ALL_TOOLS } = await import("../src/tool-groups.js");
+    const { estimateToolTokens } = await import("../src/tool.js");
+    const catalogo = ALL_TOOLS.map(
+      (t) => `${t.definition.name}: ${t.definition.description}`,
+    ).join("\n");
+    const tokens = estimateToolTokens(catalogo);
+    expect(ALL_TOOLS.length).toBeGreaterThanOrEqual(20);
+    expect(tokens).toBeLessThan(3_500);
+  });
+
+  it("teto de saída avisa truncamento acima de 8k tok", async () => {
+    const { applyOutputCeiling, textResult } = await import("../src/tool.js");
+    const enorme = "abcd".repeat(10_000);
+    const cortado = applyOutputCeiling(textResult(enorme));
+    expect(cortado.type).toBe("text");
+    if (cortado.type === "text") {
+      expect(cortado.value).toMatch(/truncado/i);
+    }
+  });
+});

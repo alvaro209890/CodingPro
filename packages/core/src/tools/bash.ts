@@ -72,16 +72,26 @@ interface CommandOutcome {
   readonly exitCode: number | null;
   readonly signal: NodeJS.Signals | null;
   readonly stderr: string;
+  readonly stderrCapped: boolean;
   readonly stdout: string;
+  readonly stdoutCapped: boolean;
   readonly timedOut: boolean;
 }
 
-function runCommand(
+export interface RunShellCommandOptions {
+  readonly maxOutputBytes?: number;
+  readonly signal?: AbortSignal;
+  readonly timeoutMs?: number;
+}
+
+export function runShellCommand(
   command: string,
   cwd: string,
-  timeoutMs: number,
-  signal: AbortSignal | undefined,
+  options: RunShellCommandOptions = {},
 ): Promise<CommandOutcome> {
+  const timeoutMs = options.timeoutMs ?? BASH_DEFAULT_TIMEOUT_MS;
+  const maxOutputBytes = options.maxOutputBytes ?? BASH_MAX_OUTPUT_BYTES;
+  const signal = options.signal;
   return new Promise((resolve, reject) => {
     const isWin = process.platform === "win32";
     const child = spawn(command, {
@@ -94,26 +104,37 @@ function runCommand(
 
     let stdout = "";
     let stderr = "";
+    let stdoutCapped = false;
+    let stderrCapped = false;
     let timedOut = false;
     let aborted = false;
     let settled = false;
 
-    const collect = (chunk: Buffer, current: string): string => {
-      const remaining = BASH_MAX_OUTPUT_BYTES - Buffer.byteLength(current, "utf8");
+    const collect = (chunk: Buffer, current: string): { capped: boolean; text: string } => {
+      const remaining = maxOutputBytes - Buffer.byteLength(current, "utf8");
       if (remaining <= 0) {
-        return current;
+        return { capped: true, text: current };
       }
-      const slice = chunk.byteLength > remaining ? chunk.subarray(0, remaining) : chunk;
-      return current + slice.toString("utf8");
+      if (chunk.byteLength > remaining) {
+        return {
+          capped: true,
+          text: current + chunk.subarray(0, remaining).toString("utf8"),
+        };
+      }
+      return { capped: false, text: current + chunk.toString("utf8") };
     };
 
     const onStdout = (chunk: Buffer) => {
       if (settled) return;
-      stdout = collect(chunk, stdout);
+      const resultado = collect(chunk, stdout);
+      stdout = resultado.text;
+      stdoutCapped = stdoutCapped || resultado.capped;
     };
     const onStderr = (chunk: Buffer) => {
       if (settled) return;
-      stderr = collect(chunk, stderr);
+      const resultado = collect(chunk, stderr);
+      stderr = resultado.text;
+      stderrCapped = stderrCapped || resultado.capped;
     };
 
     const killTree = (): void => {
@@ -173,7 +194,16 @@ function runCommand(
       }
       settled = true;
       cleanup();
-      resolve({ aborted, exitCode: code, signal: closeSignal, stderr, stdout, timedOut });
+      resolve({
+        aborted,
+        exitCode: code,
+        signal: closeSignal,
+        stderr,
+        stderrCapped,
+        stdout,
+        stdoutCapped,
+        timedOut,
+      });
     });
   });
 }
@@ -214,7 +244,10 @@ export const bashTool: ExecutableTool = {
       throw new CoreError("timeout", "Operação cancelada.");
     }
     const timeoutMs = clampTimeout(input.timeoutMs);
-    const outcome = await runCommand(command, context.workspace.root, timeoutMs, context.signal);
+    const outcome = await runShellCommand(command, context.workspace.root, {
+      ...(context.signal === undefined ? {} : { signal: context.signal }),
+      timeoutMs,
+    });
     return textResult(render(command, outcome));
   },
 };

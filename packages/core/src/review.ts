@@ -10,7 +10,7 @@ const MAX_DIFF_BYTES = 200_000;
  * alvo, usa `git diff <alvo>` (ex.: `main`, `HEAD~3`, um range). Best-effort e sem shell (execFile).
  */
 /** Roda git e devolve o stdout; `undefined` se o comando falhou (exit != 0). */
-async function saidaGit(cwd: string, args: string[]): Promise<string | undefined> {
+export async function saidaGit(cwd: string, args: string[]): Promise<string | undefined> {
   try {
     const { stdout } = await execFileAsync("git", args, { cwd, maxBuffer: MAX_DIFF_BYTES });
     return stdout;
@@ -21,7 +21,7 @@ async function saidaGit(cwd: string, args: string[]): Promise<string | undefined
 }
 
 /** `true` se o comando git sai 0 (usa só o exit code, ignora stdout). */
-async function gitOk(cwd: string, args: string[]): Promise<boolean> {
+export async function gitOk(cwd: string, args: string[]): Promise<boolean> {
   try {
     await execFileAsync("git", args, { cwd, maxBuffer: MAX_DIFF_BYTES });
     return true;

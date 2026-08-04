@@ -10,11 +10,16 @@ import { errorResult, textResult } from "../tool.js";
 const WEB_SEARCH_DEFINITION: Tool = {
   name: "web_search",
   description:
-    "Busca na web e retorna até 5 resultados com título, URL e descrição. Use para pesquisar documentação, soluções, ou informações atuais.",
+    "Busca na web e retorna até 5 resultados com título, URL e descrição. Use para pesquisar documentação, soluções, ou informações atuais. Opcional: recency (day|week|month) para fatos voláteis.",
   inputSchema: {
     type: "object",
     properties: {
       query: { type: "string", description: "Termo de busca." },
+      recency: {
+        type: "string",
+        description: "Frescor desejado: any (padrão), day, week ou month.",
+        enum: ["any", "day", "week", "month"],
+      },
     },
     required: ["query"],
     additionalProperties: false,
@@ -56,9 +61,15 @@ export const webSearchTool: ExecutableTool = {
     const query = typeof input.query === "string" ? input.query.trim() : "";
     if (!query) return errorResult("Termo de busca vazio.");
 
+    const recency = typeof input.recency === "string" ? input.recency : "any";
+    const df =
+      recency === "day" ? "d" : recency === "week" ? "w" : recency === "month" ? "m" : undefined;
+
     try {
-      // Usa DuckDuckGo Lite (sem API key)
-      const url = `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`;
+      // Usa DuckDuckGo Lite (sem API key); df= filtra frescor quando disponível.
+      const params = new URLSearchParams({ q: query });
+      if (df) params.set("df", df);
+      const url = `https://lite.duckduckgo.com/lite/?${params.toString()}`;
       const resp = await fetchWithTimeout(url, {
         headers: { "User-Agent": "CodingPro/1.0" },
       });
@@ -67,7 +78,6 @@ export const webSearchTool: ExecutableTool = {
       const html = await resp.text();
       // Extrai links do DuckDuckGo Lite
       const linkRegex = /<a[^>]*href="([^"]*)"[^>]*class="result-link"[^>]*>([^<]*)<\/a>/gi;
-      const _snippetRegex = /<td[^>]*class="result-snippet"[^>]*>([^<]*)<\/td>/gi;
 
       const links: Array<{ url: string; title: string }> = [];
       let m = linkRegex.exec(html);
@@ -81,11 +91,12 @@ export const webSearchTool: ExecutableTool = {
 
       if (links.length === 0) return textResult(`Nenhum resultado para: ${query}`);
 
+      const filtro = df ? ` (recency=${recency})` : "";
       const results = links
         .map((l, i) => `${i + 1}. **[${l.title || "sem título"}](${decodeURIComponent(l.url)})**`)
         .join("\n");
 
-      return textResult(`Resultados para **${query}**:\n\n${results}`);
+      return textResult(`Resultados para **${query}**${filtro}:\n\n${results}`);
     } catch (err) {
       return errorResult(`Falha na busca: ${err instanceof Error ? err.message : String(err)}`);
     }

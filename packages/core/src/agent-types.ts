@@ -16,7 +16,19 @@ export interface TipoAgente {
   readonly systemPrompt: string;
 }
 
-const TOOLS_LEITURA = ["read_file", "list_dir", "grep", "repo_map", "code_search"] as const;
+const TOOLS_LEITURA = [
+  "read_file",
+  "read_files",
+  "list_dir",
+  "grep",
+  "find_references",
+  "repo_map",
+  "code_search",
+  "git_status",
+  "git_diff",
+  "get_diagnostics",
+  "run_command",
+] as const;
 
 /** Tipo `explorer`: só leitura/busca, modelo rápido. */
 export const AGENTE_EXPLORER: TipoAgente = {
@@ -62,7 +74,16 @@ export const AGENTE_WORKER: TipoAgente = {
   systemPrompt:
     "Você é um subagente de trabalho. Execute a tarefa pedida usando as ferramentas disponíveis e " +
     "devolva um relatório do que fez. Responda em português, conciso.",
-  tools: [...TOOLS_LEITURA, "edit_file", "write_file", "remember"],
+  tools: [
+    ...TOOLS_LEITURA,
+    "run_tests",
+    "edit_file",
+    "edit_symbol",
+    "apply_patch",
+    "write_file",
+    "remember",
+    "todo_list",
+  ],
 };
 
 /** Tipos de fábrica, por nome. */

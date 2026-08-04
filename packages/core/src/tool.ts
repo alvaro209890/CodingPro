@@ -1,4 +1,4 @@
-import type { JsonObject, Tool, ToolResult } from "@codingpro/llm";
+import type { JsonObject, JsonValue, Tool, ToolResult } from "@codingpro/llm";
 import type { CheckpointRecorder } from "./checkpoints.js";
 import type { MemoryStore } from "./memory-store.js";
 import type { SubagenteSpawner } from "./subagent.js";
@@ -80,6 +80,99 @@ export function sanitizeToolText(text: string): string {
       // biome-ignore lint/suspicious/noControlCharactersInRegex: sanitização intencional.
       .replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/gu, "")
   );
+}
+
+/** Teto padrão de saída de tool no histórico (tokens estimados). */
+export const DEFAULT_TOOL_OUTPUT_MAX_TOKENS = 8000;
+
+/** Estimativa rápida de tokens (~4 caracteres por token). */
+export function estimateToolTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+/**
+ * Trunca texto longo preservando início (~60%) e fim (~30%) do orçamento,
+ * com aviso em português no meio.
+ */
+export function truncateToolOutput(
+  text: string,
+  maxTokens = DEFAULT_TOOL_OUTPUT_MAX_TOKENS,
+): { text: string; truncated: boolean } {
+  const tokens = estimateToolTokens(text);
+  if (tokens <= maxTokens) {
+    return { text, truncated: false };
+  }
+  const headTokens = Math.floor(maxTokens * 0.6);
+  const tailTokens = Math.floor(maxTokens * 0.3);
+  const headChars = headTokens * 4;
+  const tailChars = tailTokens * 4;
+  const omitted = Math.max(0, tokens - headTokens - tailTokens);
+  const notice = `\n…[truncado: ${omitted} tokens omitidos; teto ${maxTokens} tok]…\n`;
+  return {
+    text: text.slice(0, headChars) + notice + text.slice(-tailChars),
+    truncated: true,
+  };
+}
+
+function truncateJsonStrings(value: JsonValue, maxFieldTokens: number): JsonValue {
+  if (typeof value === "string") {
+    const { text } = truncateToolOutput(value, maxFieldTokens);
+    return text;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => truncateJsonStrings(item, maxFieldTokens));
+  }
+  if (typeof value === "object" && value !== null) {
+    const saida: Record<string, JsonValue> = {};
+    for (const [chave, item] of Object.entries(value)) {
+      saida[chave] = truncateJsonStrings(item as JsonValue, maxFieldTokens);
+    }
+    return saida;
+  }
+  return value;
+}
+
+/** Aplica o teto de saída ao resultado de uma tool antes de entrar no histórico. */
+export function applyOutputCeiling(
+  result: ToolResult,
+  maxTokens = DEFAULT_TOOL_OUTPUT_MAX_TOKENS,
+): ToolResult {
+  if (result.type === "text" || result.type === "error-text") {
+    const { text, truncated } = truncateToolOutput(result.value, maxTokens);
+    if (!truncated) {
+      return result;
+    }
+    return { type: result.type, value: sanitizeToolText(text) };
+  }
+  if (result.type === "json") {
+    const bruto = JSON.stringify(result.value);
+    if (estimateToolTokens(bruto) <= maxTokens) {
+      return result;
+    }
+    const fieldBudget = Math.max(256, Math.floor(maxTokens / 4));
+    const reduzido = truncateJsonStrings(result.value, fieldBudget);
+    const serializado = JSON.stringify(reduzido);
+    if (estimateToolTokens(serializado) <= maxTokens) {
+      return { type: "json", value: reduzido };
+    }
+    const { text } = truncateToolOutput(serializado, maxTokens);
+    return { type: "text", value: sanitizeToolText(`[json truncado]\n${text}`) };
+  }
+  if (result.type === "error-json") {
+    const bruto = JSON.stringify(result.value);
+    if (estimateToolTokens(bruto) <= maxTokens) {
+      return result;
+    }
+    const fieldBudget = Math.max(256, Math.floor(maxTokens / 4));
+    const reduzido = truncateJsonStrings(result.value, fieldBudget);
+    const serializado = JSON.stringify(reduzido);
+    if (estimateToolTokens(serializado) <= maxTokens) {
+      return { type: "error-json", value: reduzido };
+    }
+    const { text } = truncateToolOutput(serializado, maxTokens);
+    return { type: "error-text", value: sanitizeToolText(`[json truncado]\n${text}`) };
+  }
+  return result;
 }
 
 export function textResult(value: string): ToolResult {

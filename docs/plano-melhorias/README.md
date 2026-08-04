@@ -1,6 +1,6 @@
 # Plano de Melhorias — Front + IA CodingPro
 
-**Data:** 2026-08-04 · **Área:** transversal (web, desktop, core, llm) · **Status:** 🚧 em execução (01 ✅; 02–07 planejados)
+**Data:** 2026-08-04 · **Área:** transversal (web, desktop, core, llm) · **Status:** 🚧 em execução (01 ✅; 02 ✅; 03–07 planejados)
 **Objetivo:** deixar a IA **mais eficiente, inteligente, precisa e rápida**, com **mais tools e mais subagentes**, **gastando menos tokens** — e melhorar o front (web + desktop) na mesma medida.
 
 ---
@@ -32,7 +32,7 @@
 | Doc | Tema | Ganho principal | Status |
 |---|---|---|---|
 | [01-front-web.md](01-front-web.md) | Melhorias do front web/desktop | UX, tempo real, custo visível | ✅ concluído |
-| [02-mais-tools.md](02-mais-tools.md) | Catálogo de novas tools | Capacidade (M4) | 📌 planejado |
+| [02-mais-tools.md](02-mais-tools.md) | Catálogo de novas tools | Capacidade (M4) | ✅ concluído |
 | [03-mais-subagentes.md](03-mais-subagentes.md) | Novos tipos + orquestração + roteamento por papel | Capacidade + custo (M4, M1) | 📌 planejado |
 | [04-velocidade.md](04-velocidade.md) | Paralelismo, caches, streaming | Rapidez (M2) | 📌 planejado |
 | [05-inteligencia-e-precisao.md](05-inteligencia-e-precisao.md) | Verificação, grounding, memória | Precisão (M3) | 📌 planejado |

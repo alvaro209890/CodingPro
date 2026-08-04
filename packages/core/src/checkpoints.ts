@@ -29,9 +29,10 @@ export interface CheckpointMeta {
   readonly files: readonly FileSnapshot[];
 }
 
-/** Interface estreita entregue às tools: só captura o estado pré-escrita de um caminho. */
+/** Interface estreita entregue às tools: captura pré-escrita e (no store completo) undo. */
 export interface CheckpointRecorder {
   capture(relativePath: string): Promise<void>;
+  undo?(n?: number): Promise<UndoResult>;
 }
 
 /** Resultado de um `undo`/`redo`: quantos passos e quais checkpoints foram aplicados. */

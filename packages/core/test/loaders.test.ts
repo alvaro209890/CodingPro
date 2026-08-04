@@ -53,6 +53,11 @@ describe("grupos de tools", () => {
   it("subagente recebe leitura, memória e efeito — o worker precisa poder editar", () => {
     const pool = new Set(SUBAGENT_TOOL_POOL.map((t) => t.definition.name));
     for (const tool of [...READ_ONLY_TOOLS, ...EFFECT_TOOLS]) {
+      // checkpoint_restore só no agente principal (subagente não tem CheckpointStore).
+      if (tool.definition.name === "checkpoint_restore") {
+        expect(pool.has(tool.definition.name)).toBe(false);
+        continue;
+      }
       expect(pool.has(tool.definition.name)).toBe(true);
     }
   });

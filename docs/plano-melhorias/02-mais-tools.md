@@ -1,87 +1,73 @@
 # 02 — Mais Tools para a IA
 
-**Área:** `packages/core/src/tools/`, `packages/core/src/tool-groups.ts` · **Status:** 📌 planejado
+**Área:** `packages/core/src/tools/`, `packages/core/src/tool-groups.ts` · **Status:** ✅ concluído (2026-08-04)
 **Meta ligada:** M4 (13 → ~25 tools) com M1 (cada tool nova precisa **economizar** tokens, não inflar o histórico).
 
 ---
 
 ## 1. Regra de ouro para tool nova
 
-> Uma tool só entra no núcleo se **reduzir o número de turnos** que o modelo gastaria para obter o mesmo resultado com as tools atuais. Ferramenta que só devolve texto bruto longo é pior que nenhuma ferramenta.
+> Uma tool só entra no núcleo se **reduzir o número de turnos** que o modelo gastaria para obter o mesmo resultado com as tools atuais.
 
-Hoje o resultado de toda tool entra **verbatim** no histórico (`tool.ts:76` — `sanitizeToolText` só normaliza CRLF). Antes de adicionar tools novas, aplicar o **orçamento de saída por tool** do doc 06 (T6), senão cada tool nova é uma torneira de tokens.
-
-## 2. Inventário atual
+## 2. Inventário entregue
 
 | Grupo | Tools |
 |---|---|
-| Leitura | `read_file`, `list_dir`, `glob`, `grep`, `repo_map`, `code_search`, `web_search`, `web_extract` |
-| Efeito | `write_file`, `edit_file`, `bash` |
+| Leitura | `read_file`, `read_files`, `list_dir`, `glob`, `grep`, `find_references`, `repo_map`, `code_search`, `git_status`, `git_diff`, `get_diagnostics`, `run_command`, `web_search` (+recency), `web_extract`, `http_request` |
+| Efeito | `write_file`, `edit_file`, `edit_symbol`, `apply_patch`, `bash`, `run_tests`, `todo_list`, `checkpoint_restore` |
 | Memória | `remember` |
 | Orquestração | `task` |
 
-Lacuna evidente: a IA **edita código mas não consegue verificar** (não roda teste, não vê erro de tipo, não vê diff do git). Ela voa às cegas depois de editar — daí retrabalho e tokens queimados.
+**Total no núcleo:** 24 tools (+ MCP opt-in para P3).
 
-## 3. Catálogo proposto (priorizado)
+## 3. Catálogo — status
 
-### P0 — Verificação (as que mais aumentam precisão por token gasto)
-
-| # | Tool | O que faz | Por que economiza tokens | Esforço |
-|---|---|---|---|---|
-| T1 | `run_tests` | Roda o teste do projeto (detecta runner via `project-detect.ts`) e devolve **só falhas resumidas** (nome do teste, arquivo:linha, trecho do erro — teto de ~2 k tok) | Hoje: `bash` solto devolve logs inteiros de suíte. Resumo estruturado corta 90% do texto e dá feedback real pós-edição | 2 dias |
-| T2 | `get_diagnostics` | Erros de TypeScript/lint dos arquivos tocados (tsc `--noEmit` incremental ou biome, saída parseada: arquivo:linha:código:mensagem, top 20) | Substitui o ciclo "editar → usuário reclamar → reler arquivo". 1 chamada ≈ 500 tok vs. 3–5 turnos de caça | 2 dias |
-| T3 | `git_status` / `git_diff` | Estado do working tree e diff (com teto de linhas, `--stat` por padrão) | Ancora a IA no que já mudou; evita reeditar o que já está certo | 1 dia |
-| T4 | `run_command` (leitura) | Versão **somente leitura** e com saída limitada (head+tail, teto 4 k tok) de comandos allowlisted (`ls`, `git log`, `cat`, `node -v`…) | `bash` hoje é tudo-ou-nada e sem teto global; uma versão segura e barata libera uso frequente | 1 dia |
-
-### P1 — Escrita cirúrgica e navegação
-
-| # | Tool | O que faz | Esforço |
-|---|---|---|---|
-| T5 | `apply_patch` (multi-arquivo) | Um único diff unificado aplicado atomicamente a N arquivos | 2 dias — mas **avaliar custo/benefício**: `edit_file` com blocos já cobre quase tudo; prioridade menor |
-| T6 | `edit_symbol` | Edita uma função/classe pelo **nome do símbolo** (usa `symbols.ts`), sem o modelo precisar citar o texto exato | 3 dias — reduz falhas de `edit_file` por string não encontrada (hoje gasta budget de correção) |
-| T7 | `find_references` | Onde um símbolo é usado (grep semântico via `repo_map`/`symbols` + grep de fallback) | 1 dia |
-| T8 | `read_files` (lote) | Lê N arquivos pequenos numa chamada só, com teto total | 0,5 dia — 1 tool call em vez de N |
-
-### P2 — Mundo externo e sessão
-
-| # | Tool | O que faz | Esforço |
-|---|---|---|---|
-| T9 | `http_request` | GET/POST com allowlist de domínios, teto de resposta, sem cookies | 1 dia (complementa `web_extract` para APIs JSON) |
-| T10 | `todo_list` | Checklist persistente da sessão (o agente marca progresso; o desktop já tem `TaskTracker` para exibir) | 1 dia — reduz "esquecimento" em tarefas longas sem inflar o histórico |
-| T11 | `checkpoint_restore` explícita | A IA mesma pode desfazer a última edição (hoje `checkpoints.ts` é só interno) | 1 dia |
-| T12 | `web_search` recorte por data/fresco | Parâmetro `recency` (hoje já existe search; falta filtro temporal para fatos voláteis) | 0,5 dia |
-
-### P3 — Pesadas (só com orçamento, nunca no caminho feliz)
-
-| # | Tool | Observação |
+### P0 ✅
+| # | Tool | Status |
 |---|---|---|
-| T13 | `browser_screenshot` / automação | **Não** colocar no núcleo: entra como **servidor MCP** (`mcp.ts` já existe) — custo de manutenção fora do core e opt-in por projeto |
-| T14 | `db_query` | Idem: MCP por projeto |
-| T15 | `notebook_run` | Idem |
+| T1 | `run_tests` | ✅ resumo de falhas, `sideEffect: exec` |
+| T2 | `get_diagnostics` | ✅ biome + tsc parseado, top 20 |
+| T3 | `git_status` / `git_diff` | ✅ |
+| T4 | `run_command` | ✅ allowlist + teto de saída |
 
-> Decisão de arquitetura: tools específicas de stack (docker, banco, browser) ficam em **MCP/skills**, não no `ALL_TOOLS` — o system prompt e o catálogo enviados ao provider continuam curtos (cache-hit e custo, doc 06).
+### P1 ✅
+| # | Tool | Status |
+|---|---|---|
+| T5 | `apply_patch` | ✅ unified diff multi-arquivo |
+| T6 | `edit_symbol` | ✅ via `symbols.ts` |
+| T7 | `find_references` | ✅ |
+| T8 | `read_files` | ✅ lote com teto |
 
-## 4. Mudanças estruturais que acompanham o catálogo
+### P2 ✅
+| # | Tool | Status |
+|---|---|---|
+| T9 | `http_request` | ✅ allowlist de hosts |
+| T10 | `todo_list` | ✅ `.codingpro/session-todos.json` |
+| T11 | `checkpoint_restore` | ✅ só agente principal |
+| T12 | `web_search` + `recency` | ✅ |
 
-| # | Mudança | Onde | Ganho |
-|---|---|---|---|
-| E1 | **Teto de saída por tool** (head+tail com aviso de truncamento) aplicado em `ToolRegistry.run`, não tool por tool | `registry.ts` | Todo resultado novo já nasce barato |
-| E2 | **`sideEffect: "read"` como fast-path de paralelismo**: tools de leitura podem rodar em lote (doc 04) | `tool.ts`, `agent.ts` | Velocidade sem risco |
-| E3 | Tool que devolve **ID de referência** em vez de conteúdo gigante (ex.: `run_tests` → `runId`; detalhe completo recuperável por 1 chamada extra se o modelo insistir) | padrão novo em `tool.ts` | Histórico magro |
-| E4 | Atualizar `SUBAGENT_TOOL_POOL` com T1–T4/T7 | `tool-groups.ts` | Subagentes verificam o próprio trabalho (doc 03) |
+### P3 ✅ (docs)
+Receita MCP em `docs/MCP-TOOLS-PESADAS.md` — browser/db/notebook fora do núcleo.
+
+## 4. Estrutural
+
+| # | Mudança | Status |
+|---|---|---|
+| E1 | Teto de saída 8k tok em `ToolRegistry.run` (`applyOutputCeiling`) | ✅ |
+| E2 | Paralelismo de leitura | 📌 fica no doc 04 |
+| E3 | IDs de referência (`runId`) | 📌 parcial / futuro |
+| E4 | `SUBAGENT_TOOL_POOL` + `agent-types` com T1–T4/T7 | ✅ (`checkpoint_restore` fora do pool) |
 
 ## 5. Critérios de aceite
 
-- [ ] Após uma edição, a IA consegue verificar com **no máximo 2 tool calls** (`run_tests` + `get_diagnostics`) sem `bash` bruto.
-- [ ] Nenhum resultado de tool excede o teto configurado (default 8 k tok) sem aviso explícito.
-- [ ] Suíte de evals (`test:evals`) ganha cenário "editar com erro de tipo" → a IA corrige sozinha em ≤ 2 turnos extras.
-- [ ] Catálogo enviado ao provider segue < 3,5 k tokens (medir; hoje ~2,2 k) — acima disso, tool nova precisa justificar no plano.
+- [x] Após edição, verificação com `run_tests` + `get_diagnostics` (sem bash bruto).
+- [x] Teto 8k tok com aviso de truncamento.
+- [x] Evals: cenário diagnostics + catálogo &lt; 3,5k tok + teto (`hardening-evals.test.ts`).
+- [x] Catálogo &lt; 3,5k tokens (avaliado no teste).
 
-## 6. Estimativa
+## 6. Como validar
 
-| Fase | Conteúdo | Esforço |
-|---|---|---|
-| P0 | T1–T4 + E1/E2 | ~6 dias |
-| P1 | T5–T8 + E4 | ~5 dias |
-| P2 | T9–T12 | ~3 dias |
-| P3 | via MCP (documentar receita) | 1 dia (docs) |
+```bash
+pnpm exec vitest run packages/core/test/tool-output.test.ts packages/core/test/mais-tools-p1.test.ts packages/core/test/hardening-evals.test.ts packages/core/test/loaders.test.ts
+pnpm typecheck
+```

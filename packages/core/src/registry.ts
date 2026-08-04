@@ -1,7 +1,12 @@
 import type { Tool, ToolResult } from "@codingpro/llm";
 import { isTool, toolAcceptsInput } from "@codingpro/llm";
 import { CoreError } from "./errors.js";
-import { type ExecutableTool, errorResult, type ToolContext } from "./tool.js";
+import {
+  applyOutputCeiling,
+  type ExecutableTool,
+  errorResult,
+  type ToolContext,
+} from "./tool.js";
 
 /**
  * Registro de tools executáveis. `run` é a única fronteira de execução: valida o input
@@ -49,7 +54,7 @@ export class ToolRegistry {
       return errorResult("Operação cancelada.");
     }
     try {
-      return await tool.execute(rawInput, context);
+      return applyOutputCeiling(await tool.execute(rawInput, context));
     } catch (error) {
       if (error instanceof CoreError) {
         return errorResult(error.safeMessage);

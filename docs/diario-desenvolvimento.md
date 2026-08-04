@@ -1,5 +1,12 @@
 # Diário de desenvolvimento
 
+## 2026-08-04 — Plano 02 mais tools (P0–P2)
+
+De 13 → 24 tools no núcleo: verificação (`run_tests`, `get_diagnostics`, git), escrita
+cirúrgica (`edit_symbol`, `apply_patch`, `read_files`), sessão (`todo_list`,
+`checkpoint_restore`), `http_request` allowlisted e teto global de saída 8k tok.
+P3 (browser/db) documentado como MCP. Relatório: `docs/ENTREGA-TOOLS-02-2026-08-04.md`.
+
 ## 2026-08-04 — Plano 01 front web/desktop concluído
 
 Entrega completa de `docs/plano-melhorias/01-front-web.md` (W1–W8 + D1–D6):

@@ -239,15 +239,19 @@ export {
 } from "./symbols.js";
 export { SYSTEM_PROMPT_V1 } from "./system-prompt.js";
 export {
+  applyOutputCeiling,
   createReadTracker,
+  DEFAULT_TOOL_OUTPUT_MAX_TOKENS,
   type ExecutableTool,
   errorResult,
+  estimateToolTokens,
   type MemoryScope,
   type ReadTracker,
   sanitizeToolText,
   type ToolContext,
   type ToolSideEffect,
   textResult,
+  truncateToolOutput,
 } from "./tool.js";
 export {
   ALL_TOOLS,
@@ -259,6 +263,7 @@ export {
   READ_ONLY_TOOLS,
   SUBAGENT_TOOL_POOL,
 } from "./tool-groups.js";
+export { applyPatchTool } from "./tools/apply-patch.js";
 export {
   BASH_DEFAULT_TIMEOUT_MS,
   BASH_ENV_ALLOWLIST,
@@ -267,6 +272,7 @@ export {
   BASH_MAX_TIMEOUT_MS,
   bashTool,
 } from "./tools/bash.js";
+export { checkpointRestoreTool } from "./tools/checkpoint-restore.js";
 export { codeSearchTool } from "./tools/code-search.js";
 export {
   aplicarEdicoes,
@@ -276,6 +282,11 @@ export {
   editFileTool,
   parseEditBlocks,
 } from "./tools/edit-file.js";
+export { editSymbolTool } from "./tools/edit-symbol.js";
+export { findReferencesTool } from "./tools/find-references.js";
+export { getDiagnosticsTool } from "./tools/get-diagnostics.js";
+export { gitDiffTool } from "./tools/git-diff.js";
+export { gitStatusTool } from "./tools/git-status.js";
 export {
   GLOB_MAX_RESULTS,
   globParaRegex,
@@ -290,11 +301,20 @@ export {
   GREP_MAX_TOTAL_BYTES,
   grepTool,
 } from "./tools/grep.js";
+export {
+  HTTP_REQUEST_HOST_ALLOWLIST,
+  hostPermitido,
+  httpRequestTool,
+} from "./tools/http-request.js";
 export { LIST_DIR_MAX_ENTRIES, listDirTool } from "./tools/list-dir.js";
 export { READ_FILE_MAX_BYTES, readFileTool } from "./tools/read-file.js";
+export { readFilesTool } from "./tools/read-files.js";
 export { rememberTool } from "./tools/remember.js";
 export { repoMapTool } from "./tools/repo-map.js";
+export { runCommandTool } from "./tools/run-command.js";
+export { runTestsTool } from "./tools/run-tests.js";
 export { taskTool } from "./tools/task.js";
+export { todoListTool } from "./tools/todo-list.js";
 export { webExtractTool, webSearchTool } from "./tools/web-search.js";
 export { WRITE_FILE_MAX_BYTES, writeFileTool } from "./tools/write-file.js";
 // Busca vetorial local (SQLite FTS5 + embeddings offline)
