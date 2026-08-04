@@ -3,11 +3,27 @@ import type { CSSProperties, ReactNode } from "react";
 export function Aviso({
   tipo = "info",
   children,
+  aoTentarNovamente,
 }: {
   tipo?: "info" | "erro" | "sucesso" | "atencao";
   children: ReactNode;
+  /** Em erros, mostra botão de recuperação (W2). */
+  aoTentarNovamente?: () => void;
 }) {
-  return <div className={`aviso ${tipo === "info" ? "" : tipo}`}>{children}</div>;
+  return (
+    <div
+      aria-live={tipo === "erro" || tipo === "sucesso" ? "polite" : undefined}
+      className={`aviso ${tipo === "info" ? "" : tipo}`}
+      role={tipo === "erro" ? "alert" : undefined}
+    >
+      <div className="aviso-corpo">{children}</div>
+      {tipo === "erro" && aoTentarNovamente && (
+        <button className="pequeno" onClick={aoTentarNovamente} type="button">
+          Tentar novamente
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function Cartao({
@@ -31,6 +47,26 @@ export function Metrica({ rotulo, valor }: { rotulo: string; valor: ReactNode })
     <div className="metrica">
       <span className="rotulo">{rotulo}</span>
       <span className="valor">{valor}</span>
+    </div>
+  );
+}
+
+/** Placeholder animado enquanto o cartão carrega (W2). */
+export function Esqueleto({
+  altura = "4.5rem",
+  className = "",
+}: {
+  altura?: string;
+  className?: string;
+}) {
+  return (
+    <div
+      aria-busy="true"
+      className={`esqueleto ${className}`}
+      role="status"
+      style={{ height: altura }}
+    >
+      <span className="sr-only">Carregando</span>
     </div>
   );
 }
@@ -82,7 +118,7 @@ export function GraficoDiario({
   }
   const maximo = Math.max(...dados.map((d) => d.custoMicro), 1);
   return (
-    <div className="grafico">
+    <div aria-label="Consumo diário dos últimos 30 dias" className="grafico" role="img">
       {dados.map((ponto) => (
         <div
           key={ponto.dia}
@@ -91,6 +127,37 @@ export function GraficoDiario({
         />
       ))}
     </div>
+  );
+}
+
+/**
+ * Confirmação inline para ações destrutivas (W5) — substitui o 1 clique + window.confirm.
+ */
+export function ConfirmacaoInline({
+  pergunta,
+  confirmarRotulo = "Confirmar",
+  cancelarRotulo = "Cancelar",
+  aoConfirmar,
+  aoCancelar,
+  perigo = true,
+}: {
+  pergunta: string;
+  confirmarRotulo?: string;
+  cancelarRotulo?: string;
+  aoConfirmar: () => void;
+  aoCancelar: () => void;
+  perigo?: boolean;
+}) {
+  return (
+    <fieldset className="confirmacao-inline">
+      <legend>{pergunta}</legend>
+      <button className={`pequeno ${perigo ? "perigo" : ""}`} onClick={aoConfirmar} type="button">
+        {confirmarRotulo}
+      </button>
+      <button className="pequeno" onClick={aoCancelar} type="button">
+        {cancelarRotulo}
+      </button>
+    </fieldset>
   );
 }
 

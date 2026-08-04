@@ -39,6 +39,12 @@ function pctContexto(cost: FloatingInputDockProps["cost"]): number | null {
   return Math.min(100, Math.round((cost.contextTokens / cost.contextBudget) * 100));
 }
 
+/** Cache-hit % da sessão (D1): tokens de cache / tokens de entrada. */
+function pctCacheHit(cost: FloatingInputDockProps["cost"]): number | null {
+  if (!cost || cost.inputTokens <= 0) return null;
+  return Math.min(100, Math.round((cost.cacheReadTokens / cost.inputTokens) * 100));
+}
+
 export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
   inputPrompt,
   onChangeInput,
@@ -150,6 +156,7 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
   };
 
   const pct = pctContexto(cost);
+  const cachePct = pctCacheHit(cost);
   const idSelecionado = sugestoes[selectedIdx] ? `${listaId}-${selectedIdx}` : undefined;
 
   return (
@@ -338,9 +345,10 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
               <>
                 <span className="dock-status-sep">·</span>
                 <span
-                  title={`${cost.inputTokens} tokens de entrada, ${cost.outputTokens} de saída`}
+                  title={`${cost.inputTokens} tokens de entrada, ${cost.outputTokens} de saída${cachePct !== null ? `, cache-hit ${cachePct}%` : ""}`}
                 >
-                  {cost.estimated ? "≈ " : ""}US$ {cost.totalCostUsd.toFixed(4)} · {cost.turns}{" "}
+                  {cost.estimated ? "≈ " : ""}US$ {cost.totalCostUsd.toFixed(4)}
+                  {cachePct !== null ? ` · cache ${cachePct}%` : ""} · {cost.turns}{" "}
                   {cost.turns === 1 ? "turno" : "turnos"}
                 </span>
               </>
@@ -403,11 +411,17 @@ export const FloatingInputDock: React.FC<FloatingInputDockProps> = ({
                 </dd>
               </div>
               <div>
-                <dt>Cache / raciocínio</dt>
+                <dt>Cache-hit</dt>
                 <dd>
                   {cost
-                    ? `${cost.cacheReadTokens.toLocaleString("pt-BR")} · ${cost.reasoningTokens.toLocaleString("pt-BR")}`
+                    ? `${cachePct ?? 0}% (${cost.cacheReadTokens.toLocaleString("pt-BR")} tok)`
                     : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt>Raciocínio</dt>
+                <dd>
+                  {cost ? cost.reasoningTokens.toLocaleString("pt-BR") : "—"}
                 </dd>
               </div>
               <div>

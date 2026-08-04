@@ -20,14 +20,18 @@ export function registrarRotasConsumo(app: FastifyInstance, ctx: Contexto): void
     ]);
 
     return resposta.send({
+      cacheHitPercent: mes.cacheHitPercent,
       competencia,
       creditosMicro: Number(usuario.creditos_micro),
+      custoMedioMicro: mes.custoMedioMicro,
       custoMicro: mes.custoMicro,
       diario,
       diasAteRenovar: diasAteRenovar(),
       limiteMicro: mes.limiteMicro,
       percentual: mes.limiteMicro > 0 ? (mes.custoMicro / mes.limiteMicro) * 100 : 0,
       requisicoes: mes.requisicoes,
+      tokensCache: mes.tokensCache,
+      tokensEntrada: mes.tokensEntrada,
     });
   });
 }

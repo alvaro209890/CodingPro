@@ -11,6 +11,13 @@ export function navegar(caminho: string): void {
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
+/** Só aceita caminhos internos relativos — evita open redirect. */
+export function destinoSeguro(bruto: string | null | undefined, padrao = "/painel"): string {
+  if (!bruto) return padrao;
+  if (!bruto.startsWith("/") || bruto.startsWith("//") || bruto.includes("://")) return padrao;
+  return bruto;
+}
+
 export function useCaminho(): string {
   const [caminho, setCaminho] = useState(() => window.location.pathname);
 

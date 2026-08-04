@@ -35,6 +35,14 @@ export type ConsumoMes = {
   readonly custoMicro: number;
   readonly requisicoes: number;
   readonly limiteMicro: number;
+  /** Soma de tokens de entrada no mês (base do cache-hit %). */
+  readonly tokensEntrada: number;
+  /** Soma de tokens lidos do cache no mês. */
+  readonly tokensCache: number;
+  /** 0–100; 0 quando não houve entrada. */
+  readonly cacheHitPercent: number;
+  /** Custo médio por requisição no mês, em micro-dólares. */
+  readonly custoMedioMicro: number;
 };
 
 export type AtualizacaoUsuario = {
@@ -283,6 +291,14 @@ export function criarRepositorio(sql: Sql) {
       await sql`UPDATE tokens_cli SET ultimo_uso = now() WHERE id = ${tokenId}`;
     },
 
+    async renomearToken(usuarioId: number, tokenId: number, nome: string): Promise<boolean> {
+      const resultado = await sql`
+        UPDATE tokens_cli SET nome = ${nome}
+        WHERE id = ${tokenId} AND usuario_id = ${usuarioId} AND revogado_em IS NULL
+      `;
+      return resultado.count > 0;
+    },
+
     async consumoDoMes(usuarioId: number, competencia: string): Promise<ConsumoMes> {
       const [linha] = await sql<{ custo_micro: number; requisicoes: number; limite: number }[]>`
         SELECT COALESCE(m.custo_micro, 0) AS custo_micro,
@@ -292,10 +308,25 @@ export function criarRepositorio(sql: Sql) {
         LEFT JOIN uso_mensal m ON m.usuario_id = u.id AND m.competencia = ${competencia}
         WHERE u.id = ${usuarioId}
       `;
+      const [tokens] = await sql<{ entrada: number; cache: number }[]>`
+        SELECT COALESCE(sum(tokens_entrada), 0)::bigint AS entrada,
+               COALESCE(sum(tokens_cache), 0)::bigint   AS cache
+        FROM eventos_uso
+        WHERE usuario_id = ${usuarioId}
+          AND to_char(criado_em, 'YYYY-MM') = ${competencia}
+      `;
+      const custoMicro = Number(linha?.custo_micro ?? 0);
+      const requisicoes = Number(linha?.requisicoes ?? 0);
+      const tokensEntrada = Number(tokens?.entrada ?? 0);
+      const tokensCache = Number(tokens?.cache ?? 0);
       return {
-        custoMicro: Number(linha?.custo_micro ?? 0),
+        cacheHitPercent: tokensEntrada > 0 ? (tokensCache / tokensEntrada) * 100 : 0,
+        custoMedioMicro: requisicoes > 0 ? custoMicro / requisicoes : 0,
+        custoMicro,
         limiteMicro: Number(linha?.limite ?? 0),
-        requisicoes: linha?.requisicoes ?? 0,
+        requisicoes,
+        tokensCache,
+        tokensEntrada,
       };
     },
 

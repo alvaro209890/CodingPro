@@ -118,6 +118,8 @@ export interface CodingProDesktopAPI {
   getSlashCommands: () => Promise<SlashCommandMeta[]>;
   setAutoApprove: (enabled: boolean) => Promise<{ success: boolean; autoApprove: boolean }>;
   getAutoApprove: () => Promise<boolean>;
+  setModoEconomico: (enabled: boolean) => Promise<{ success: boolean; modoEconomico: boolean }>;
+  getModoEconomico: () => Promise<boolean>;
 }
 
 declare global {

@@ -1,15 +1,38 @@
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { API_URL, api, type Usuario } from "./api.js";
 import { Carregando } from "./componentes.js";
-import { Cadastro } from "./paginas/Cadastro.js";
-import { Comecar } from "./paginas/Comecar.js";
-import { destinoSeguro, Entrar } from "./paginas/Entrar.js";
-import { EntrarDispositivo } from "./paginas/EntrarDispositivo.js";
-import { Landing } from "./paginas/Landing.js";
-import { Painel } from "./paginas/Painel.js";
-import { Privacidade } from "./paginas/Privacidade.js";
-import { Termos } from "./paginas/Termos.js";
-import { navegar, propsLink, useCaminho } from "./rotas.js";
+import { destinoSeguro, navegar, propsLink, useCaminho } from "./rotas.js";
+
+const Landing = lazy(() => import("./paginas/Landing.js").then((m) => ({ default: m.Landing })));
+const Cadastro = lazy(() => import("./paginas/Cadastro.js").then((m) => ({ default: m.Cadastro })));
+const Entrar = lazy(() => import("./paginas/Entrar.js").then((m) => ({ default: m.Entrar })));
+const EntrarDispositivo = lazy(() =>
+  import("./paginas/EntrarDispositivo.js").then((m) => ({ default: m.EntrarDispositivo })),
+);
+const Comecar = lazy(() => import("./paginas/Comecar.js").then((m) => ({ default: m.Comecar })));
+const Painel = lazy(() => import("./paginas/Painel.js").then((m) => ({ default: m.Painel })));
+const Termos = lazy(() => import("./paginas/Termos.js").then((m) => ({ default: m.Termos })));
+const Privacidade = lazy(() =>
+  import("./paginas/Privacidade.js").then((m) => ({ default: m.Privacidade })),
+);
+
+/** Preload da rota mais provável após autenticar / aterrissar. */
+function preloadRota(caminho: string, logado: boolean): void {
+  if (logado || caminho === "/painel" || caminho === "/playground") {
+    void import("./paginas/Painel.js");
+    return;
+  }
+  if (caminho === "/entrar" || caminho === "/cadastro") {
+    void import("./paginas/Entrar.js");
+    void import("./paginas/Cadastro.js");
+    return;
+  }
+  if (caminho === "/comecar") {
+    void import("./paginas/Comecar.js");
+    return;
+  }
+  void import("./paginas/Landing.js");
+}
 
 function destinoDaQuery(): string {
   try {
@@ -33,6 +56,11 @@ export function App() {
   }, []);
 
   useEffect(recarregarUsuario, [recarregarUsuario]);
+
+  useEffect(() => {
+    if (carregando) return;
+    preloadRota(caminho, usuario !== null);
+  }, [caminho, carregando, usuario]);
 
   async function sair() {
     await api.post("/api/logout").catch(() => {});
@@ -82,7 +110,9 @@ export function App() {
         {carregando ? (
           <Carregando />
         ) : (
-          <Conteudo caminho={caminho} recarregar={recarregarUsuario} usuario={usuario} />
+          <Suspense fallback={<Carregando />}>
+            <Conteudo caminho={caminho} recarregar={recarregarUsuario} usuario={usuario} />
+          </Suspense>
         )}
       </main>
 

@@ -12,9 +12,15 @@ export interface SubagentView {
   steps: number;
   tools: string[];
   report?: string;
+  /** Relatório completo antes do resumo enviado ao contexto do agente principal (D3). */
+  reportCompleto?: string;
   inputTokens: number;
   outputTokens: number;
   costUsd: number;
+  /** Modelo usado pelo subagente, quando conhecido (D2). */
+  modelName?: string;
+  /** Esforço/papel (fast/high/max), quando conhecido (D2). */
+  effort?: string;
 }
 
 interface SubagentPanelProps {
@@ -36,9 +42,16 @@ function durationLabel(agent: SubagentView, now: number): string {
   return `${Math.floor(duration / 60_000)}m ${Math.round((duration % 60_000) / 1_000)}s`;
 }
 
+function resumoCurto(texto: string, max = 280): string {
+  const limpo = texto.trim();
+  if (limpo.length <= max) return limpo;
+  return `${limpo.slice(0, max).trimEnd()}…`;
+}
+
 export const SubagentPanel: React.FC<SubagentPanelProps> = ({ agents }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [relatorioAberto, setRelatorioAberto] = useState<Set<string>>(() => new Set());
   const [now, setNow] = useState(Date.now());
   const running = agents.filter((agent) => agent.status === "running").length;
 
@@ -70,6 +83,8 @@ export const SubagentPanel: React.FC<SubagentPanelProps> = ({ agents }) => {
         <div className="subagent-list">
           {agents.map((agent) => {
             const open = expanded.has(agent.id);
+            const relatorioExpandido = relatorioAberto.has(agent.id);
+            const relatorio = agent.reportCompleto ?? agent.report;
             return (
               <article className={`subagent-card ${agent.status}`} key={agent.id}>
                 <button
@@ -95,12 +110,19 @@ export const SubagentPanel: React.FC<SubagentPanelProps> = ({ agents }) => {
                     <span className="subagent-action">{agent.action}</span>
                   </span>
                   <span className="subagent-card-meta">
-                    {durationLabel(agent, now)} · {agent.steps} passos
+                    {durationLabel(agent, now)} · {agent.steps} passos · US${" "}
+                    {agent.costUsd.toFixed(4)}
                   </span>
                 </button>
                 {open && (
                   <div className="subagent-card-detail">
                     <dl>
+                      <div>
+                        <dt>Modelo / esforço</dt>
+                        <dd>
+                          {agent.modelName ?? "DeepSeek V4 Flash"} · {agent.effort ?? "herdado"}
+                        </dd>
+                      </div>
                       <div>
                         <dt>Ferramentas</dt>
                         <dd>{agent.tools.length ? agent.tools.join(", ") : "Nenhuma"}</dd>
@@ -117,10 +139,31 @@ export const SubagentPanel: React.FC<SubagentPanelProps> = ({ agents }) => {
                         <dd>US$ {agent.costUsd.toFixed(6)}</dd>
                       </div>
                     </dl>
-                    {agent.report && (
+                    {relatorio && (
                       <div className="subagent-report">
-                        <strong>Relatório final</strong>
-                        <p>{agent.report}</p>
+                        <strong>
+                          {relatorioExpandido ? "Relatório completo" : "Resumo ao contexto"}
+                        </strong>
+                        <p>{relatorioExpandido ? relatorio : resumoCurto(relatorio)}</p>
+                        {relatorio.length > 280 && (
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            style={{ fontSize: 12, marginTop: 6 }}
+                            onClick={() =>
+                              setRelatorioAberto((current) => {
+                                const next = new Set(current);
+                                if (next.has(agent.id)) next.delete(agent.id);
+                                else next.add(agent.id);
+                                return next;
+                              })
+                            }
+                          >
+                            {relatorioExpandido
+                              ? "Mostrar só o resumo"
+                              : "Expandir relatório completo"}
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

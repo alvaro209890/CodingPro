@@ -104,6 +104,12 @@ const api: CodingProDesktopAPI = {
   getAutoApprove: () => {
     return ipcRenderer.invoke("codingpro:get-auto-approve");
   },
+  setModoEconomico: (enabled: boolean) => {
+    return ipcRenderer.invoke("codingpro:set-modo-economico", enabled);
+  },
+  getModoEconomico: () => {
+    return ipcRenderer.invoke("codingpro:get-modo-economico");
+  },
 };
 
 contextBridge.exposeInMainWorld("codingproAPI", api);

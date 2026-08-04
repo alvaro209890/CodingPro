@@ -150,6 +150,7 @@ const _SEM_PASTA = false; // true = modo "acesso total ao PC" (usa C:\ ou ~)
 let runInFlight = false;
 let activeAbort: AbortController | null = null;
 let autoApprove = false;
+let modoEconomico = false;
 let _runStartMs = 0;
 let _tokenCount = 0;
 let _stepCount = 0;
@@ -1877,6 +1878,15 @@ app.whenReady().then(() => {
     return autoApprove;
   });
 
+  ipcMain.handle("codingpro:set-modo-economico", async (_, enabled: boolean) => {
+    modoEconomico = Boolean(enabled);
+    return { success: true, modoEconomico };
+  });
+
+  ipcMain.handle("codingpro:get-modo-economico", async () => {
+    return modoEconomico;
+  });
+
   ipcMain.handle("codingpro:list-sessions", async () => {
     try {
       await sincronizarSessoesConhecidas();
@@ -2077,8 +2087,21 @@ app.whenReady().then(() => {
         const estContexto = snapshotCusto(session);
         if (estContexto && estContexto.contextTokens > CONTEXT_BUDGET * 0.75) {
           try {
+            const before = estContexto.contextTokens;
             const compacted = compactMessages(session.transcript, { maxTokens: CONTEXT_BUDGET });
             session.transcript = compacted.messages;
+            const after = compacted.messages.reduce((acc, m) => acc + estimateMessageTokens(m), 0);
+            const saved = Math.max(0, before - after);
+            if (compacted.dropped > 0 && saved > 0) {
+              sendCoreEvent({
+                event: {
+                  key: "compaction",
+                  text: `Histórico resumido: −${saved} tok`,
+                  type: "notice",
+                },
+                type: "agent-event",
+              });
+            }
           } catch {
             // compactação falhou — segue sem
           }
@@ -2097,7 +2120,8 @@ app.whenReady().then(() => {
           tokensContexto,
           Array.from(session.registry.definitions(), (t) => t.name),
         );
-        const papel = resolverAutoEffort(session.autoEffort);
+        // Modo econômico (D5): força esforço fast/high e corta web_search.
+        const papel = modoEconomico ? "fast" : resolverAutoEffort(session.autoEffort);
         const modeloNome = "DeepSeek V4 Flash";
         // `papel` vem do auto-effort: "auto" → raciocínio max, "fast" → high. Modelo é sempre Flash.
         let providerTurno: Provider = session.provider;
@@ -2175,6 +2199,10 @@ app.whenReady().then(() => {
           sendCoreEvent({ type: "agent-event", event: agentEvent });
         };
 
+        const toolsTurno = modoEconomico
+          ? session.registry.definitions().filter((tool) => tool.name !== "web_search")
+          : session.registry.definitions();
+
         const agentResult = await runAgentComFallback(session, {
           context: {
             workspace: session.workspace,
@@ -2188,7 +2216,7 @@ app.whenReady().then(() => {
           messages: session.transcript,
           provider: providerTurno,
           signal: abort.signal,
-          tools: session.registry.definitions(),
+          tools: toolsTurno,
           systemPrompt,
           contextBudget: CONTEXT_BUDGET,
           onEvent: onAgentEvent,

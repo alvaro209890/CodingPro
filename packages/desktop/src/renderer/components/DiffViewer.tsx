@@ -5,9 +5,20 @@ interface DiffViewerProps {
   previa?: PreviaEscrita;
   onApprove?: () => void;
   onReject?: () => void;
+  /** Tokens economizados na compactação do histórico (D6). */
+  economiaHistoricoTok?: number;
 }
 
-export const DiffViewer: React.FC<DiffViewerProps> = ({ previa, onApprove, onReject }) => {
+function estimarTok(texto: string): number {
+  return Math.ceil(texto.length / 4);
+}
+
+export const DiffViewer: React.FC<DiffViewerProps> = ({
+  previa,
+  onApprove,
+  onReject,
+  economiaHistoricoTok,
+}) => {
   if (!previa) {
     return (
       <div
@@ -15,12 +26,18 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ previa, onApprove, onRej
         style={{ padding: 16, color: "var(--text-muted)", fontSize: 13 }}
       >
         Nenhuma alteração de código para visualizar.
+        {economiaHistoricoTok !== undefined && economiaHistoricoTok > 0 && (
+          <p style={{ marginTop: 8 }}>
+            Histórico resumido: −{economiaHistoricoTok.toLocaleString("pt-BR")} tok
+          </p>
+        )}
       </div>
     );
   }
 
   const linesAntes = previa.antes.split("\n");
   const linesDepois = previa.depois.split("\n");
+  const tokPatch = Math.abs(estimarTok(previa.depois) - estimarTok(previa.antes));
 
   return (
     <div
@@ -46,7 +63,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ previa, onApprove, onRej
           fontWeight: 600,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <svg
             aria-hidden="true"
             width="14"
@@ -62,6 +79,14 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ previa, onApprove, onRej
           <span>{previa.path}</span>
           <span className="diff-badge-add">+{linesDepois.length}</span>
           <span className="diff-badge-del">-{linesAntes.length}</span>
+          <span style={{ fontWeight: 500, color: "var(--text-muted)", fontSize: 12 }}>
+            ≈ {tokPatch.toLocaleString("pt-BR")} tok no patch
+          </span>
+          {economiaHistoricoTok !== undefined && economiaHistoricoTok > 0 && (
+            <span style={{ fontWeight: 500, color: "var(--green-add)", fontSize: 12 }}>
+              histórico resumido: −{economiaHistoricoTok.toLocaleString("pt-BR")} tok
+            </span>
+          )}
         </div>
 
         {onApprove && onReject && (
@@ -97,9 +122,9 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({ previa, onApprove, onRej
           lineHeight: 1.5,
         }}
       >
-        {linesDepois.map((line) => (
+        {linesDepois.map((line, index) => (
           <div
-            key={`+${line}`}
+            key={`+${index}-${line.slice(0, 24)}`}
             style={{
               background: "rgba(34, 197, 94, 0.12)",
               color: "var(--green-add)",

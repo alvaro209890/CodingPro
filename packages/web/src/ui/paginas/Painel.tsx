@@ -1,15 +1,32 @@
-import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { api, ErroApi, formatarData, formatarUsd, type Usuario } from "../api.js";
-import { Aviso, Carregando, Cartao, GraficoDiario, Metrica } from "../componentes.js";
+import {
+  type FormEvent,
+  type KeyboardEvent,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
+import { api, ErroApi, formatarData, formatarUsd, formatarUsdFino, type Usuario } from "../api.js";
+import {
+  Aviso,
+  Cartao,
+  ConfirmacaoInline,
+  Esqueleto,
+  GraficoDiario,
+  Metrica,
+} from "../componentes.js";
 import { navegar, propsLink } from "../rotas.js";
 
-type Consumo = {
+export type Consumo = {
   creditosMicro: number;
   custoMicro: number;
   limiteMicro: number;
   percentual: number;
   requisicoes: number;
   diasAteRenovar: number;
+  cacheHitPercent: number;
+  custoMedioMicro: number;
   diario: { dia: string; custoMicro: number }[];
 };
 
@@ -24,8 +41,47 @@ type Token = {
 
 type Aba = "consumo" | "dispositivos" | "perfil";
 
+const POLL_CONSUMO_MS = 30_000;
+
 export function Painel({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: () => void }) {
   const [aba, setAba] = useState<Aba>("consumo");
+  const tabIds = {
+    consumo: useId(),
+    dispositivos: useId(),
+    perfil: useId(),
+  };
+  const painelIds = {
+    consumo: useId(),
+    dispositivos: useId(),
+    perfil: useId(),
+  };
+  const tabRefs = {
+    consumo: useRef<HTMLButtonElement>(null),
+    dispositivos: useRef<HTMLButtonElement>(null),
+    perfil: useRef<HTMLButtonElement>(null),
+  };
+
+  function trocarAba(proxima: Aba) {
+    setAba(proxima);
+    queueMicrotask(() => tabRefs[proxima].current?.focus());
+  }
+
+  function onTeclaAba(evento: KeyboardEvent<HTMLDivElement>) {
+    const ordem: Aba[] = ["consumo", "dispositivos", "perfil"];
+    const indice = ordem.indexOf(aba);
+    if (evento.key === "ArrowRight" || evento.key === "ArrowLeft") {
+      evento.preventDefault();
+      const delta = evento.key === "ArrowRight" ? 1 : -1;
+      const proxima = ordem[(indice + delta + ordem.length) % ordem.length];
+      if (proxima) trocarAba(proxima);
+    } else if (evento.key === "Home") {
+      evento.preventDefault();
+      trocarAba("consumo");
+    } else if (evento.key === "End") {
+      evento.preventDefault();
+      trocarAba("perfil");
+    }
+  }
 
   return (
     <>
@@ -59,36 +115,54 @@ export function Painel({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar
         </Aviso>
       )}
 
-      <div className="abas" role="tablist">
-        <button
-          aria-selected={aba === "consumo"}
-          onClick={() => setAba("consumo")}
-          role="tab"
-          type="button"
-        >
-          Consumo
-        </button>
-        <button
-          aria-selected={aba === "dispositivos"}
-          onClick={() => setAba("dispositivos")}
-          role="tab"
-          type="button"
-        >
-          Dispositivos
-        </button>
-        <button
-          aria-selected={aba === "perfil"}
-          onClick={() => setAba("perfil")}
-          role="tab"
-          type="button"
-        >
-          Perfil
-        </button>
+      <div className="abas" onKeyDown={onTeclaAba} role="tablist">
+        {(
+          [
+            ["consumo", "Consumo"],
+            ["dispositivos", "Dispositivos"],
+            ["perfil", "Perfil"],
+          ] as const
+        ).map(([id, rotulo]) => (
+          <button
+            aria-controls={painelIds[id]}
+            aria-selected={aba === id}
+            id={tabIds[id]}
+            key={id}
+            onClick={() => trocarAba(id)}
+            ref={tabRefs[id]}
+            role="tab"
+            tabIndex={aba === id ? 0 : -1}
+            type="button"
+          >
+            {rotulo}
+          </button>
+        ))}
       </div>
 
-      {aba === "consumo" && <AbaConsumo />}
-      {aba === "dispositivos" && <AbaDispositivos />}
-      {aba === "perfil" && <AbaPerfil usuario={usuario} aoAtualizar={aoAtualizar} />}
+      <div
+        aria-labelledby={tabIds.consumo}
+        hidden={aba !== "consumo"}
+        id={painelIds.consumo}
+        role="tabpanel"
+      >
+        {aba === "consumo" && <AbaConsumo />}
+      </div>
+      <div
+        aria-labelledby={tabIds.dispositivos}
+        hidden={aba !== "dispositivos"}
+        id={painelIds.dispositivos}
+        role="tabpanel"
+      >
+        {aba === "dispositivos" && <AbaDispositivos />}
+      </div>
+      <div
+        aria-labelledby={tabIds.perfil}
+        hidden={aba !== "perfil"}
+        id={painelIds.perfil}
+        role="tabpanel"
+      >
+        {aba === "perfil" && <AbaPerfil usuario={usuario} aoAtualizar={aoAtualizar} />}
+      </div>
     </>
   );
 }
@@ -96,18 +170,50 @@ export function Painel({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar
 function AbaConsumo() {
   const [consumo, setConsumo] = useState<Consumo | null>(null);
   const [erro, setErro] = useState("");
+  const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
 
-  useEffect(() => {
-    api
-      .get<Consumo>("/api/consumo")
-      .then(setConsumo)
-      .catch((causa: unknown) =>
-        setErro(causa instanceof ErroApi ? causa.message : "Falha ao carregar o consumo."),
-      );
+  const carregar = useCallback(async () => {
+    setErro("");
+    try {
+      const dados = await api.get<Consumo>("/api/consumo");
+      setConsumo(dados);
+      setAtualizadoEm(new Date());
+    } catch (causa: unknown) {
+      setErro(causa instanceof ErroApi ? causa.message : "Falha ao carregar o consumo.");
+    }
   }, []);
 
-  if (erro) return <Aviso tipo="erro">{erro}</Aviso>;
-  if (!consumo) return <Carregando />;
+  useEffect(() => {
+    void carregar();
+  }, [carregar]);
+
+  // Polling leve só enquanto a aba está montada (W3).
+  useEffect(() => {
+    if (erro || !consumo) return;
+    const id = window.setInterval(() => void carregar(), POLL_CONSUMO_MS);
+    return () => window.clearInterval(id);
+  }, [carregar, consumo, erro]);
+
+  if (erro) {
+    return (
+      <Aviso aoTentarNovamente={() => void carregar()} tipo="erro">
+        {erro}
+      </Aviso>
+    );
+  }
+
+  if (!consumo) {
+    return (
+      <div className="pilha" aria-busy="true">
+        <div className="grade tres">
+          <Esqueleto altura="6rem" />
+          <Esqueleto altura="6rem" />
+          <Esqueleto altura="6rem" />
+        </div>
+        <Esqueleto altura="10rem" />
+      </div>
+    );
+  }
 
   return (
     <div className="pilha">
@@ -128,6 +234,41 @@ function AbaConsumo() {
           <Metrica rotulo="Renova em" valor={`${consumo.diasAteRenovar}d`} />
           <p className="fraco" style={{ margin: "0.5rem 0 0" }}>
             {consumo.requisicoes} requisições este mês
+          </p>
+        </Cartao>
+      </div>
+
+      <div className="grade tres">
+        <Cartao className="painel-metrica">
+          <Metrica rotulo="Cache-hit" valor={`${(consumo.cacheHitPercent ?? 0).toFixed(0)}%`} />
+          <p className="fraco" style={{ margin: "0.5rem 0 0" }}>
+            tokens reaproveitados do cache
+          </p>
+        </Cartao>
+        <Cartao className="painel-metrica">
+          <Metrica
+            rotulo="Custo / requisição"
+            valor={formatarUsdFino(consumo.custoMedioMicro ?? 0)}
+          />
+          <p className="fraco" style={{ margin: "0.5rem 0 0" }}>
+            média deste mês
+          </p>
+        </Cartao>
+        <Cartao className="painel-metrica">
+          <Metrica
+            rotulo="Atualização"
+            valor={
+              atualizadoEm
+                ? atualizadoEm.toLocaleTimeString("pt-BR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                  })
+                : "—"
+            }
+          />
+          <p className="fraco" style={{ margin: "0.5rem 0 0" }}>
+            atualiza a cada 30 s
           </p>
         </Cartao>
       </div>
@@ -161,8 +302,12 @@ function AbaConsumo() {
 function AbaDispositivos() {
   const [tokens, setTokens] = useState<Token[] | null>(null);
   const [erro, setErro] = useState("");
+  const [confirmandoId, setConfirmandoId] = useState<number | null>(null);
+  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [nomeEdit, setNomeEdit] = useState("");
 
   const carregar = useCallback(() => {
+    setErro("");
     api
       .get<{ tokens: Token[] }>("/api/tokens")
       .then((dados) => setTokens(dados.tokens))
@@ -175,11 +320,25 @@ function AbaDispositivos() {
 
   async function desconectar(id: number) {
     setErro("");
+    setConfirmandoId(null);
     try {
       await api.del(`/api/tokens/${id}`);
       carregar();
     } catch (causa) {
       setErro(causa instanceof ErroApi ? causa.message : "Falha ao desconectar.");
+    }
+  }
+
+  async function salvarNome(id: number) {
+    const nome = nomeEdit.trim();
+    if (!nome) return;
+    setErro("");
+    try {
+      await api.patch(`/api/tokens/${id}`, { nome });
+      setEditandoId(null);
+      carregar();
+    } catch (causa) {
+      setErro(causa instanceof ErroApi ? causa.message : "Falha ao renomear.");
     }
   }
 
@@ -201,12 +360,19 @@ function AbaDispositivos() {
         </p>
       </Cartao>
 
-      {erro && <Aviso tipo="erro">{erro}</Aviso>}
+      {erro && (
+        <Aviso aoTentarNovamente={carregar} tipo="erro">
+          {erro}
+        </Aviso>
+      )}
 
       <Cartao>
         <h3>Máquinas conectadas</h3>
         {tokens === null ? (
-          <Carregando />
+          <div className="pilha" aria-busy="true">
+            <Esqueleto altura="3rem" />
+            <Esqueleto altura="3rem" />
+          </div>
         ) : ativos.length === 0 ? (
           <p className="fraco" style={{ margin: 0 }}>
             Nenhuma máquina conectada ainda.
@@ -225,17 +391,67 @@ function AbaDispositivos() {
               <tbody>
                 {ativos.map((token) => (
                   <tr key={token.id}>
-                    <td>{token.nome}</td>
+                    <td>
+                      {editandoId === token.id ? (
+                        <form
+                          className="linha"
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            void salvarNome(token.id);
+                          }}
+                        >
+                          <input
+                            aria-label="Nome da máquina"
+                            maxLength={80}
+                            onChange={(e) => setNomeEdit(e.target.value)}
+                            value={nomeEdit}
+                          />
+                          <button className="pequeno" type="submit">
+                            Salvar
+                          </button>
+                          <button
+                            className="pequeno"
+                            onClick={() => setEditandoId(null)}
+                            type="button"
+                          >
+                            Cancelar
+                          </button>
+                        </form>
+                      ) : (
+                        <div className="linha">
+                          <span>{token.nome}</span>
+                          <button
+                            className="pequeno"
+                            onClick={() => {
+                              setEditandoId(token.id);
+                              setNomeEdit(token.nome);
+                            }}
+                            type="button"
+                          >
+                            Renomear
+                          </button>
+                        </div>
+                      )}
+                    </td>
                     <td className="fraco">{formatarData(token.criadoEm)}</td>
                     <td className="fraco">{formatarData(token.ultimoUso)}</td>
                     <td>
-                      <button
-                        className="pequeno perigo"
-                        onClick={() => desconectar(token.id)}
-                        type="button"
-                      >
-                        Desconectar
-                      </button>
+                      {confirmandoId === token.id ? (
+                        <ConfirmacaoInline
+                          aoCancelar={() => setConfirmandoId(null)}
+                          aoConfirmar={() => void desconectar(token.id)}
+                          confirmarRotulo="Desconectar"
+                          pergunta="Desconectar esta máquina?"
+                        />
+                      ) : (
+                        <button
+                          className="pequeno perigo"
+                          onClick={() => setConfirmandoId(token.id)}
+                          type="button"
+                        >
+                          Desconectar
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -247,6 +463,7 @@ function AbaDispositivos() {
     </div>
   );
 }
+
 function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: () => void }) {
   const [atual, setAtual] = useState("");
   const [nova, setNova] = useState("");
@@ -254,6 +471,7 @@ function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: ()
   const [erro, setErro] = useState("");
   const [senhaExclusao, setSenhaExclusao] = useState("");
   const [processandoDados, setProcessandoDados] = useState(false);
+  const [confirmarExclusao, setConfirmarExclusao] = useState(false);
 
   async function trocarSenha(evento: FormEvent) {
     evento.preventDefault();
@@ -294,12 +512,11 @@ function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: ()
     }
   }
 
-  async function excluirConta(evento: FormEvent) {
-    evento.preventDefault();
-    if (!window.confirm("Excluir definitivamente sua conta e dados associados?")) return;
+  async function excluirConta() {
     setErro("");
     setMensagem("");
     setProcessandoDados(true);
+    setConfirmarExclusao(false);
     try {
       await api.del("/api/conta", { senha: senhaExclusao });
       setSenhaExclusao("");
@@ -353,7 +570,12 @@ function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: ()
             Exportar JSON
           </button>
         </div>
-        <form onSubmit={excluirConta}>
+        <form
+          onSubmit={(evento) => {
+            evento.preventDefault();
+            setConfirmarExclusao(true);
+          }}
+        >
           <label>
             <span>Confirmar senha para excluir conta</span>
             <input
@@ -364,9 +586,18 @@ function AbaPerfil({ usuario, aoAtualizar }: { usuario: Usuario; aoAtualizar: ()
               value={senhaExclusao}
             />
           </label>
-          <button className="perigo" disabled={processandoDados} type="submit">
-            Excluir conta
-          </button>
+          {confirmarExclusao ? (
+            <ConfirmacaoInline
+              aoCancelar={() => setConfirmarExclusao(false)}
+              aoConfirmar={() => void excluirConta()}
+              confirmarRotulo="Excluir definitivamente"
+              pergunta="Excluir conta e dados associados?"
+            />
+          ) : (
+            <button className="perigo" disabled={processandoDados} type="submit">
+              Excluir conta
+            </button>
+          )}
         </form>
       </Cartao>
 

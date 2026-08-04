@@ -1,5 +1,17 @@
 # Diário de desenvolvimento
 
+## 2026-08-04 — Plano 01 front web/desktop concluído
+
+Entrega completa de `docs/plano-melhorias/01-front-web.md` (W1–W8 + D1–D6):
+
+- Web: HTTP resiliente, skeletons, retry, consumo ao vivo com cache-hit, code splitting,
+  confirmação inline + renomear máquina, a11y, landing de economia, Vitest (10 testes verdes).
+- API: `/api/consumo` expõe cache-hit e custo médio; `PATCH /api/tokens/:id` renomeia.
+- Desktop: custo+cache no rodapé, cartão de subagente com custo, modo econômico, paralelismo,
+  diff com tokens economizados na compactação.
+
+Detalhes: `docs/ENTREGA-FRONT-01-2026-08-04.md`.
+
 ## 2026-08-03 — Desktop 1.1.0: auditoria do renderer, fim do token manual
 
 ### Diagnóstico

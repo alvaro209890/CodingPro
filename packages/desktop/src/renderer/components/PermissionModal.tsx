@@ -9,6 +9,7 @@ interface PermissionModalProps {
   /** Quantos pedidos ainda esperam atrás deste (subagentes em paralelo). */
   naFila?: number;
   onRespond: (action: "allow" | "always" | "deny") => void;
+  economiaHistoricoTok?: number;
 }
 
 /** Frase do que exatamente será feito — o usuário não deve ter que ler JSON para decidir. */
@@ -34,6 +35,7 @@ export const PermissionModal: React.FC<PermissionModalProps> = ({
   previa,
   naFila = 0,
   onRespond,
+  economiaHistoricoTok,
 }) => {
   const permitirRef = useRef<HTMLButtonElement | null>(null);
 
@@ -87,7 +89,12 @@ export const PermissionModal: React.FC<PermissionModalProps> = ({
         </p>
 
         {previa ? (
-          <DiffViewer previa={previa} />
+          <DiffViewer
+            previa={previa}
+            {...(economiaHistoricoTok !== undefined && economiaHistoricoTok > 0
+              ? { economiaHistoricoTok }
+              : {})}
+          />
         ) : (
           <pre className="modal-code-box">{JSON.stringify(request.input, null, 2)}</pre>
         )}

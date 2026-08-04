@@ -130,6 +130,41 @@ export function Landing() {
         </div>
       </section>
 
+      <section className="landing-section landing-economia" aria-labelledby="economia-titulo">
+        <p className="landing-eyebrow">CRÉDITOS QUE RENDEM</p>
+        <h2 id="economia-titulo">Como a IA economiza seus créditos</h2>
+        <p className="landing-lead" style={{ maxWidth: "40rem" }}>
+          O CodingPro foi desenhado para gastar menos tokens no trabalho repetitivo — e mostrar no
+          painel onde o dinheiro foi (ou não foi) embora.
+        </p>
+        <div className="landing-features">
+          <Cartao className="landing-feature">
+            <span className="landing-featureIcon">♻</span>
+            <h3>Cache-hit</h3>
+            <p>
+              Prefixo estável e histórico append-only fazem a API reaproveitar tokens em cache — até
+              ~120× mais barato que gerá-los de novo.
+            </p>
+          </Cartao>
+          <Cartao className="landing-feature">
+            <span className="landing-featureIcon">⧉</span>
+            <h3>Subagentes baratos</h3>
+            <p>
+              Exploração e revisão rodam em papéis com esforço menor e devolvem só um relatório
+              curto — o contexto caro do agente principal fica limpo.
+            </p>
+          </Cartao>
+          <Cartao className="landing-feature">
+            <span className="landing-featureIcon">◔</span>
+            <h3>Consumo ao vivo</h3>
+            <p>
+              No painel você vê cache-hit %, custo médio por requisição e o gráfico diário
+              atualizando sozinho — sem surpresa no fim do mês.
+            </p>
+          </Cartao>
+        </div>
+      </section>
+
       <section className="landing-steps">
         <p className="landing-eyebrow">DA CONTA AO PRIMEIRO PROJETO</p>
         <h2>Pronto para começar?</h2>

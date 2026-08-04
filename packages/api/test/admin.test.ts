@@ -383,6 +383,8 @@ describe.skipIf(!TEM_BANCO)("consumo do usuário", () => {
       url: "/api/consumo",
     });
     expect(resposta.json()).toMatchObject({
+      cacheHitPercent: 0,
+      custoMedioMicro: 0,
       creditosMicro: 1_000_000_000,
       custoMicro: 0,
       diario: [],

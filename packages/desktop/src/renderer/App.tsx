@@ -111,6 +111,12 @@ function contentToString(content: unknown): string {
   }
 }
 
+function esforcoDoTipo(agentType: string): string {
+  if (agentType === "explorer") return "fast";
+  if (agentType === "architect" || agentType === "reviewer") return "max";
+  return "auto";
+}
+
 function aplicarEventoSubagente(current: SubagentView[], event: SubagenteEvento): SubagentView[] {
   if (event.type === "started") {
     return [
@@ -118,8 +124,10 @@ function aplicarEventoSubagente(current: SubagentView[], event: SubagenteEvento)
       {
         action: "Preparando contexto isolado",
         costUsd: 0,
+        effort: esforcoDoTipo(event.agentType),
         id: event.id,
         inputTokens: 0,
+        modelName: "DeepSeek V4 Flash",
         objective: event.objective,
         outputTokens: 0,
         startedAt: event.startedAt,
@@ -166,6 +174,7 @@ function aplicarEventoSubagente(current: SubagentView[], event: SubagenteEvento)
       inputTokens: event.usage.inputTokens,
       outputTokens: event.usage.outputTokens,
       report: event.report,
+      reportCompleto: event.report,
       status:
         event.type === "completed"
           ? "done"
@@ -235,6 +244,9 @@ export const App: React.FC = () => {
   const [planTasks, setPlanTasks] = useState<PlanTask[]>([]);
 
   const [autoApprove, setAutoApprove] = useState(false);
+  const [modoEconomico, setModoEconomico] = useState(false);
+  const [economiaHistoricoTok, setEconomiaHistoricoTok] = useState(0);
+  const [bannerEconomicoDispensado, setBannerEconomicoDispensado] = useState(false);
 
   const { tema, setTema } = useTheme();
   const { reducaoMovimento, alternarReducaoMovimento } = useReducaoMovimento();
@@ -348,6 +360,13 @@ export const App: React.FC = () => {
       .catch(() => undefined);
 
     void api
+      .getModoEconomico?.()
+      .then((v) => {
+        if (!cancelled) setModoEconomico(v);
+      })
+      .catch(() => undefined);
+
+    void api
       .getSlashCommands()
       .then((lista) => {
         if (!cancelled) setComandos(lista);
@@ -423,6 +442,13 @@ export const App: React.FC = () => {
           });
         } else if (ae.type === "notice") {
           setStatusNote(ae.text);
+          if (ae.key === "compaction") {
+            const match = ae.text.match(/[−-](\d+)/);
+            if (match) {
+              const n = Number(match[1]);
+              if (Number.isFinite(n) && n > 0) setEconomiaHistoricoTok(n);
+            }
+          }
           setMessages((prev) => {
             const id = ae.key ? `notice-${ae.key}` : newId("notice");
             const existing = prev.findIndex((message) => message.id === id);
@@ -880,6 +906,77 @@ export const App: React.FC = () => {
           </div>
         )}
 
+        {(() => {
+          const toolsRodando = messages.reduce((n, msg) => {
+            if (msg.role !== "assistant" || !msg.toolGroup) return n;
+            return n + msg.toolGroup.items.filter((item) => item.status === "running").length;
+          }, 0);
+          if (toolsRodando < 2) return null;
+          return (
+            <div className="status-banner" role="status">
+              <span>
+                {toolsRodando} ferramentas em paralelo
+              </span>
+            </div>
+          );
+        })()}
+
+        {(() => {
+          if (modoEconomico || bannerEconomicoDispensado) return null;
+          const pctCtx =
+            sessionCost && sessionCost.contextBudget > 0
+              ? sessionCost.contextTokens / sessionCost.contextBudget
+              : 0;
+          const saldoUsd =
+            saldoConta.saldoMicro != null ? saldoConta.saldoMicro / 1e6 : Number.POSITIVE_INFINITY;
+          const fracSaldo =
+            sessionCost && saldoUsd > 0 ? sessionCost.totalCostUsd / saldoUsd : 0;
+          if (pctCtx < 0.7 && fracSaldo < 0.2) return null;
+          return (
+            <div className="status-banner" role="status">
+              <span>
+                Sessão pesada detectada. Ativar modo econômico? (esforço high, sem web_search)
+              </span>
+              <button
+                type="button"
+                className="btn btn-allow"
+                style={{ padding: "4px 10px", fontSize: 12 }}
+                onClick={() => {
+                  setModoEconomico(true);
+                  void window.codingproAPI?.setModoEconomico?.(true);
+                }}
+              >
+                Ativar
+              </button>
+              <button
+                type="button"
+                className="status-banner-close"
+                onClick={() => setBannerEconomicoDispensado(true)}
+                aria-label="Dispensar sugestão"
+              >
+                ✕
+              </button>
+            </div>
+          );
+        })()}
+
+        {modoEconomico && (
+          <div className="status-banner" role="status">
+            <span>Modo econômico ativo · esforço high · web_search desligado</span>
+            <button
+              type="button"
+              className="status-banner-close"
+              onClick={() => {
+                setModoEconomico(false);
+                void window.codingproAPI?.setModoEconomico?.(false);
+              }}
+              aria-label="Desativar modo econômico"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         <div className="chat-feed" ref={chatFeedRef}>
           <SubagentPanel agents={subAgents} />
 
@@ -1050,6 +1147,7 @@ export const App: React.FC = () => {
             {...(currentPermissionRequest.previa !== undefined
               ? { previa: currentPermissionRequest.previa }
               : {})}
+            {...(economiaHistoricoTok > 0 ? { economiaHistoricoTok } : {})}
             onRespond={handlePermissionResponse}
           />
         )}

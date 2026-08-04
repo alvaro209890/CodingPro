@@ -34,6 +34,32 @@ export function registrarRotasTokens(app: FastifyInstance, ctx: Contexto): void 
     return resposta.send({ tokens: tokens.map(serializar) });
   });
 
+  app.patch("/api/tokens/:id", async (req, resposta) => {
+    const usuario = await exigirUsuario(ctx, req, resposta);
+    if (!usuario) return resposta;
+    const id = Number.parseInt((req.params as { id: string }).id, 10);
+    if (!Number.isSafeInteger(id)) {
+      return erro(resposta, 400, "id_invalido", "Token inválido.");
+    }
+    const corpo = (req.body ?? {}) as { nome?: unknown };
+    const nome = typeof corpo.nome === "string" ? corpo.nome.trim() : "";
+    if (nome.length < 1 || nome.length > 80) {
+      return erro(resposta, 400, "nome_invalido", "Informe um nome entre 1 e 80 caracteres.");
+    }
+    const ok = await ctx.repo.renomearToken(usuario.id, id, nome);
+    if (!ok) return erro(resposta, 404, "token_inexistente", "Token não encontrado.");
+
+    await ctx.repo.registrarAuditoria({
+      acao: "token_renomeado",
+      alvo: String(id),
+      atorEmail: usuario.email,
+      atorId: usuario.id,
+      detalhe: nome,
+      ip: ipDe(req),
+    });
+    return resposta.send({ ok: true, nome });
+  });
+
   app.delete("/api/tokens/:id", async (req, resposta) => {
     const usuario = await exigirUsuario(ctx, req, resposta);
     if (!usuario) return resposta;

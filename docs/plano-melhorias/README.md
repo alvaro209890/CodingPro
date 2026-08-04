@@ -1,6 +1,6 @@
 # Plano de Melhorias — Front + IA CodingPro
 
-**Data:** 2026-08-04 · **Área:** transversal (web, desktop, core, llm) · **Status:** 📌 planejado (somente plano, sem desenvolvimento)
+**Data:** 2026-08-04 · **Área:** transversal (web, desktop, core, llm) · **Status:** 🚧 em execução (01 ✅; 02–07 planejados)
 **Objetivo:** deixar a IA **mais eficiente, inteligente, precisa e rápida**, com **mais tools e mais subagentes**, **gastando menos tokens** — e melhorar o front (web + desktop) na mesma medida.
 
 ---
@@ -14,8 +14,8 @@
 | Subagentes | `packages/core/src/subagent.ts`, `agent-types.ts` | 4 tipos (explorer, reviewer, architect, worker), até 8 tarefas, concorrência 3 | Todos usam o **mesmo modelo/esforço**; `criarProvider` por papel existe mas não é usado (`subagent-spawner.ts:51`); sem aninhamento nem tarefas em background |
 | Modelo | `packages/llm/src/roles.ts` | Sempre DeepSeek V4 Flash; esforço `high`/`max` por heurística | Heurística de auto-effort simples (`auto-effort.ts`); sem roteamento real por papel |
 | Custo | `packages/llm/src/cost.ts` | Tabela com preço de **cache-hit ~120× mais barato** que cache-miss | Compactação é **truncamento burro** (`compaction.ts:38` — resumo por LLM "fica para fase futura") |
-| Front web | `packages/web/src/ui/` | SPA React: landing, conta, painel de consumo | `api.ts` sem retry/timeout/abort; sem skeletons; sem testes; gráfico de consumo básico |
-| Front desktop | `packages/desktop/src/renderer/` | Chat com SubagentPanel, TaskTracker, PlanTracker, DiffViewer | Falta feedback de custo em tempo real e exploração dos subagentes |
+| Front web | `packages/web/src/ui/` | SPA React: landing, conta, painel de consumo | ✅ 01 entregue: HTTP resiliente, skeletons, polling, cache-hit, testes |
+| Front desktop | `packages/desktop/src/renderer/` | Chat com SubagentPanel, TaskTracker, PlanTracker, DiffViewer | ✅ 01 entregue: custo+cache no rodapé, modo econômico, paralelismo |
 
 ## 2. Metas numeradas
 
@@ -29,15 +29,15 @@
 
 ## 3. Documentos do plano
 
-| Doc | Tema | Ganho principal |
-|---|---|---|
-| [01-front-web.md](01-front-web.md) | Melhorias do front web/desktop | UX, tempo real, custo visível |
-| [02-mais-tools.md](02-mais-tools.md) | Catálogo de novas tools | Capacidade (M4) |
-| [03-mais-subagentes.md](03-mais-subagentes.md) | Novos tipos + orquestração + roteamento por papel | Capacidade + custo (M4, M1) |
-| [04-velocidade.md](04-velocidade.md) | Paralelismo, caches, streaming | Rapidez (M2) |
-| [05-inteligencia-e-precisao.md](05-inteligencia-e-precisao.md) | Verificação, grounding, memória | Precisão (M3) |
-| [06-economia-de-tokens.md](06-economia-de-tokens.md) | Compactação com resumo, budgets, dedup | Custo (M1) |
-| [07-roadmap.md](07-roadmap.md) | Fases, esforço × impacto, critérios de aceite | Execução |
+| Doc | Tema | Ganho principal | Status |
+|---|---|---|---|
+| [01-front-web.md](01-front-web.md) | Melhorias do front web/desktop | UX, tempo real, custo visível | ✅ concluído |
+| [02-mais-tools.md](02-mais-tools.md) | Catálogo de novas tools | Capacidade (M4) | 📌 planejado |
+| [03-mais-subagentes.md](03-mais-subagentes.md) | Novos tipos + orquestração + roteamento por papel | Capacidade + custo (M4, M1) | 📌 planejado |
+| [04-velocidade.md](04-velocidade.md) | Paralelismo, caches, streaming | Rapidez (M2) | 📌 planejado |
+| [05-inteligencia-e-precisao.md](05-inteligencia-e-precisao.md) | Verificação, grounding, memória | Precisão (M3) | 📌 planejado |
+| [06-economia-de-tokens.md](06-economia-de-tokens.md) | Compactação com resumo, budgets, dedup | Custo (M1) | 📌 planejado |
+| [07-roadmap.md](07-roadmap.md) | Fases, esforço × impacto, critérios de aceite | Execução | 📌 planejado |
 
 ## 4. Princípios que regem todo o plano
 
