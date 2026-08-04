@@ -200,6 +200,13 @@ async function streamTurnWithRetry(
         throw error;
       }
       signal?.throwIfAborted();
+      onEvent?.({
+        attempt: attempt + 1,
+        key: "provider-retry",
+        text: `A conexão com a IA demorou ou foi interrompida; tentando novamente (${attempt + 1}/${maxRetries})…`,
+        total: maxRetries,
+        type: "notice",
+      });
       await delayWithAbort(baseDelayMs * 2 ** attempt, signal);
       attempt += 1;
     }

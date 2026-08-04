@@ -201,6 +201,19 @@
   min-width: 0;
 }
 
+/* Badge de saldo de créditos da conta Cloud, no canto direito do cabeçalho. */
+.header-saldo {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
 .header-btn {
   display: inline-flex;
   align-items: center;

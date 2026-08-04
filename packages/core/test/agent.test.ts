@@ -317,6 +317,7 @@ describe("runAgent", () => {
 
   it("re-tenta turno em erro transitório antes de emitir e depois sucede", async () => {
     let calls = 0;
+    const retries: AgentEvent[] = [];
     const provider: Provider = {
       capabilities: { cacheUsage: true, reasoning: "effort", streaming: true, tools: true },
       id: "flaky",
@@ -333,10 +334,17 @@ describe("runAgent", () => {
       context,
       gate,
       messages: [{ content: "oi", role: "user" }],
+      onEvent: (event) => {
+        if (event.type === "notice" && event.key === "provider-retry") retries.push(event);
+      },
       provider,
       retry: { baseDelayMs: 0, maxRetries: 3 },
     });
     expect(calls).toBe(3);
+    expect(retries).toEqual([
+      expect.objectContaining({ attempt: 1, total: 3 }),
+      expect.objectContaining({ attempt: 2, total: 3 }),
+    ]);
     expect(result.messages.at(-1)).toEqual(assistant("ok após retry"));
   });
 

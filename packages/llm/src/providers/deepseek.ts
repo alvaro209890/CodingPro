@@ -56,6 +56,11 @@ type FetchFunction = NonNullable<OpenAICompatibleProviderSettings["fetch"]>;
 export interface DeepSeekProviderOptions {
   readonly apiKey: string;
   /**
+   * Chamado com os headers de toda resposta HTTP (ex.: o proxy Cloud devolve
+   * `x-codingpro-creditos-micro` com o saldo da conta). O corpo não é consumido.
+   */
+  readonly aoReceberResposta?: (headers: Headers) => void;
+  /**
    * Base da API. Padrão: DeepSeek direto. No modo cloud da plataforma aponta para o proxy
    * (ex. `https://codingpro-api.cursar.space/v1`), que fala o mesmo protocolo — muda só
    * a base e a credencial (token `cp_` em vez da chave DeepSeek).
@@ -76,9 +81,12 @@ export interface DeepSeekProviderOptions {
   readonly totalTimeoutMs?: number;
 }
 
-const DEFAULT_CHUNK_TIMEOUT_MS = 30_000;
+// O DeepSeek pode passar mais de 30 s preparando raciocínio ou uma tool call sem emitir SSE.
+// Esse intervalo ocorreu em produção e fazia uma resposta ainda viva ser abortada e repetida.
+const DEFAULT_CHUNK_TIMEOUT_MS = 60_000;
 const DEFAULT_MAX_OUTPUT_TOKENS = 8_192;
-const DEFAULT_TOTAL_TIMEOUT_MS = 120_000;
+// Tarefas de código com contexto grande precisam de margem, mas continuam canceláveis pelo usuário.
+const DEFAULT_TOTAL_TIMEOUT_MS = 300_000;
 
 function validatePositiveInteger(value: number, name: string): void {
   if (!Number.isSafeInteger(value) || value <= 0) {
@@ -164,7 +172,11 @@ export function normalizarBaseUrl(bruto: string): string {
   return url.pathname === "/" ? url.origin : `${url.origin}${url.pathname.replace(/\/+$/u, "")}`;
 }
 
-function createRestrictedFetch(delegate: FetchFunction, baseUrl: string): FetchFunction {
+function createRestrictedFetch(
+  delegate: FetchFunction,
+  baseUrl: string,
+  aoReceberResposta?: (headers: Headers) => void,
+): FetchFunction {
   const permitido = `${baseUrl}/chat/completions`;
   return async (input, init) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
@@ -179,7 +191,10 @@ function createRestrictedFetch(delegate: FetchFunction, baseUrl: string): FetchF
       throw new ProviderError("provider-failed", "O destino da API DeepSeek é inválido.");
     }
 
-    return delegate(input, { ...init, redirect: "error" });
+    const resposta = await delegate(input, { ...init, redirect: "error" });
+    // Só cabeçalhos — ler não consome o corpo do stream.
+    aoReceberResposta?.(resposta.headers);
+    return resposta;
   };
 }
 
@@ -554,7 +569,11 @@ export class DeepSeekProvider implements Provider {
       apiKey: options.apiKey,
       baseURL: baseUrl,
       convertUsage: convertDeepSeekUsage,
-      fetch: createRestrictedFetch(options.fetch ?? globalThis.fetch, baseUrl),
+      fetch: createRestrictedFetch(
+        options.fetch ?? globalThis.fetch,
+        baseUrl,
+        options.aoReceberResposta,
+      ),
       includeUsage: true,
       name: "deepseek",
       transformRequestBody: (body) => ({

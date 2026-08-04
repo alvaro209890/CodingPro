@@ -182,6 +182,26 @@ describe("DeepSeekProvider", () => {
     ]);
   });
 
+  it("expõe headers da resposta sem consumir o stream", async () => {
+    let saldo: string | null | undefined;
+    const provider = new DeepSeekProvider({
+      aoReceberResposta(headers) {
+        saldo = headers.get("x-codingpro-creditos-micro");
+      },
+      apiKey: "chave-sintetica",
+      fetch: async () => {
+        const response = happyResponse();
+        response.headers.set("x-codingpro-creditos-micro", "1234567");
+        return response;
+      },
+    });
+
+    const events = await collect(provider);
+
+    expect(saldo).toBe("1234567");
+    expect(events.at(-1)).toMatchObject({ reason: "stop", type: "finish" });
+  });
+
   it("desliga thinking sem enviar effort", async () => {
     let body: Record<string, unknown> | undefined;
     const provider = new DeepSeekProvider({

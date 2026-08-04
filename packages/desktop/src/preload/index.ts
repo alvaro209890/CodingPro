@@ -1,5 +1,6 @@
 import type { CoreUiEvent, UiPermissionResponse } from "@codingpro/core";
 import { contextBridge, ipcRenderer } from "electron";
+import type { SaldoContaUI } from "../shared/saldo-conta.js";
 import type { CodingProDesktopAPI } from "../types/electron.js";
 
 const api: CodingProDesktopAPI = {
@@ -22,6 +23,16 @@ const api: CodingProDesktopAPI = {
   /** Conta do CodingPro Cloud — mesmo device flow e mesmo arquivo da CLI. */
   estadoAcesso: () => {
     return ipcRenderer.invoke("codingpro:estado-acesso");
+  },
+  obterSaldoConta: () => {
+    return ipcRenderer.invoke("codingpro:saldo-conta") as Promise<SaldoContaUI>;
+  },
+  onSaldoConta: (callback: (saldo: SaldoContaUI) => void) => {
+    const handler = (_: unknown, saldo: SaldoContaUI) => callback(saldo);
+    ipcRenderer.on("codingpro:saldo-event", handler);
+    return () => {
+      ipcRenderer.removeListener("codingpro:saldo-event", handler);
+    };
   },
   contaLogin: (apiUrl?: string) => {
     return ipcRenderer.invoke("codingpro:conta-login", apiUrl);

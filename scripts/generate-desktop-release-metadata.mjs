@@ -9,7 +9,7 @@ const setup = `CodingPro-Setup-${pkg.version}.exe`;
 const portable = `CodingPro-portable-${pkg.version}.exe`;
 const blockmap = `${setup}.blockmap`;
 const releaseNotes =
-  "Conversas por projeto, painel observável de subagentes, uso ao vivo, marca CP Aurora e atualização assistida.";
+  "Cancelamento ponta a ponta, streams abandonados encerrados, diagnóstico local e saldo Cloud no desktop.";
 
 for (const file of [setup, portable, blockmap, "latest.yml"]) {
   if (!existsSync(join(releaseDir, file))) {
@@ -32,13 +32,15 @@ const portableDetails = details(portable);
 const blockmapDetails = details(blockmap);
 const latestYmlPath = join(releaseDir, "latest.yml");
 const latestYml = readFileSync(latestYmlPath, "utf8");
-if (!/^releaseNotes:/mu.test(latestYml)) {
-  writeFileSync(
-    latestYmlPath,
-    `${latestYml.trimEnd()}\nreleaseName: CodingPro Desktop ${pkg.version}\nreleaseNotes: |-\n  ${releaseNotes}\n`,
-    "utf8",
-  );
-}
+const releaseMetadataIndex = latestYml.search(/^release(?:Name|Notes):/mu);
+const latestYmlBase = (
+  releaseMetadataIndex >= 0 ? latestYml.slice(0, releaseMetadataIndex) : latestYml
+).trimEnd();
+writeFileSync(
+  latestYmlPath,
+  `${latestYmlBase}\nreleaseName: CodingPro Desktop ${pkg.version}\nreleaseNotes: |-\n  ${releaseNotes}\n`,
+  "utf8",
+);
 const metadata = {
   version: pkg.version,
   publishedAt: new Date().toISOString(),

@@ -88,6 +88,7 @@ import {
 } from "@codingpro/llm";
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import electronUpdater from "electron-updater";
+import { parseSaldoMicro, type SaldoContaUI } from "../shared/saldo-conta.js";
 import { COMANDOS_CHAT, textoAjudaComandos } from "../shared/slash-commands.js";
 import {
   initialUpdateState,
@@ -98,6 +99,7 @@ import {
 import { decidirModoAcesso, permiteChavePropria } from "./politica-acesso.js";
 import { type IndexedSession, ProjectIndexStore, ZERO_PERSISTED_USAGE } from "./project-index.js";
 import { UsageLedger, type UsageSource } from "./usage-ledger.js";
+import { appendDesktopDiagnostic } from "./diagnostics.js";
 
 const { autoUpdater } = electronUpdater;
 
@@ -112,6 +114,30 @@ const TERMINAL_TIMEOUT_MS = 60_000;
 const CONTEXT_BUDGET = 400_000;
 
 let mainWindow: BrowserWindow | null = null;
+
+/** Saldo da conta Cloud (micro-dólares), observado no header do proxy; `undefined` até ver. */
+let saldoContaMicro: number | undefined;
+
+/** Envia o saldo atual ao renderer (badge do cabeçalho). */
+function notificarSaldoConta(): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("codingpro:saldo-event", {
+      saldoMicro: saldoContaMicro,
+    } satisfies SaldoContaUI);
+  }
+}
+
+/**
+ * Lê o header `x-codingpro-creditos-micro` de uma resposta do proxy Cloud e
+ * guarda/notifica o saldo observado. Não dispara se o valor não mudou.
+ */
+function capturarSaldoDoProxy(headers: Headers): void {
+  const saldo = parseSaldoMicro(headers.get("x-codingpro-creditos-micro"));
+  if (saldo === saldoContaMicro) return;
+  saldoContaMicro = saldo;
+  notificarSaldoConta();
+}
+
 let requestCounter = 0;
 const pendingPermissions = new Map<string, (approval: Approval) => void>();
 
@@ -526,6 +552,7 @@ function criarProvider(role?: "main" | "fast"): Provider {
     const contaFallback = obterCredenciaisConta();
     if (contaFallback) {
       return new DeepSeekProvider({
+        aoReceberResposta: capturarSaldoDoProxy,
         apiKey: contaFallback.token,
         baseUrl: `${contaFallback.apiUrl}/v1`,
         ...papel,
@@ -547,6 +574,7 @@ function criarProvider(role?: "main" | "fast"): Provider {
   const conta = obterCredenciaisConta();
   if (conta) {
     return new DeepSeekProvider({
+      aoReceberResposta: capturarSaldoDoProxy,
       apiKey: conta.token,
       baseUrl: `${conta.apiUrl}/v1`,
       ...papel,
@@ -587,6 +615,7 @@ async function runAgentComFallback(
     if (!conta) throw err;
 
     session.provider = new DeepSeekProvider({
+      aoReceberResposta: capturarSaldoDoProxy,
       apiKey: conta.token,
       baseUrl: `${conta.apiUrl}/v1`,
     });
@@ -1572,6 +1601,13 @@ app.whenReady().then(() => {
 
   ipcMain.handle("codingpro:estado-acesso", async () => obterEstadoAcesso());
 
+  /** Saldo de créditos observado no header do proxy Cloud (undefined até a 1ª chamada). */
+  ipcMain.handle(
+    "codingpro:saldo-conta",
+    async (): Promise<SaldoContaUI> => ({
+      saldoMicro: saldoContaMicro,
+    }),
+  );
   /**
    * Login pela própria janela do app: pede o código ao servidor, abre o navegador na
    * página de autorização e fica consultando até o usuário confirmar. Mesmo device flow
@@ -1635,6 +1671,8 @@ app.whenReady().then(() => {
     const caminho = join(homedir(), ".codingpro", "credenciais.json");
     if (!existsSync(caminho)) return false;
     rmSync(caminho, { force: true });
+    saldoContaMicro = undefined;
+    notificarSaldoConta();
     return true;
   });
 
@@ -1802,11 +1840,21 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle("codingpro:cancel-run", async () => {
-    if (activeAbort) {
+    if (activeAbort && !activeAbort.signal.aborted) {
+      appendDesktopDiagnostic(app.getPath("userData"), {
+        event: "run-cancel-requested",
+        ...(activeSession === null
+          ? {}
+          : {
+              sessionId: activeSession.sessionId,
+              workspace: activeSession.workspace.root,
+            }),
+      });
       activeAbort.abort();
     }
     rejectPendingPermissions("deny");
-    runInFlight = false;
+    // O `finally` da execução libera o gate. Liberar aqui permitiria um segundo run enquanto
+    // provider, tools e subagentes do anterior ainda estão desfazendo o cancelamento.
     return { success: true };
   });
 
@@ -1945,6 +1993,7 @@ app.whenReady().then(() => {
       }
       const abort = new AbortController();
       activeAbort = abort;
+      const runId = `run-${Date.now()}-${requestCounter++}`;
       _runStartMs = Date.now();
       _tokenCount = 0;
       _stepCount = 0;
@@ -2015,7 +2064,13 @@ app.whenReady().then(() => {
 
         const promptAgente = expandirPromptAgente(prompt) ?? prompt;
         session.transcript.push(mensagemUsuario(promptAgente));
-        const usageRunId = `run-${Date.now()}-${requestCounter++}`;
+        const usageRunId = runId;
+        appendDesktopDiagnostic(app.getPath("userData"), {
+          event: "run-started",
+          runId,
+          sessionId: session.sessionId,
+          workspace: session.workspace.root,
+        });
         session.checkpoints.begin(promptAgente.slice(0, 80));
 
         // Auto-compact: se contexto > 75% do orçamento, compacta
@@ -2108,6 +2163,15 @@ app.whenReady().then(() => {
             );
             sendUsage(session, true);
           }
+          if (agentEvent.type === "notice" && agentEvent.key === "provider-retry") {
+            appendDesktopDiagnostic(app.getPath("userData"), {
+              event: "run-retry",
+              message: agentEvent.text,
+              runId,
+              sessionId: session.sessionId,
+              workspace: session.workspace.root,
+            });
+          }
           sendCoreEvent({ type: "agent-event", event: agentEvent });
         };
 
@@ -2118,10 +2182,12 @@ app.whenReady().then(() => {
             checkpoints: session.checkpoints,
             memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
             subagentes: session.subagentes!,
+            signal: abort.signal,
           },
           gate: session.gate,
           messages: session.transcript,
           provider: providerTurno,
+          signal: abort.signal,
           tools: session.registry.definitions(),
           systemPrompt,
           contextBudget: CONTEXT_BUDGET,
@@ -2174,10 +2240,12 @@ app.whenReady().then(() => {
               checkpoints: session.checkpoints,
               memory: { global: session.memoryGlobal, projeto: session.memoryProjeto },
               subagentes: session.subagentes!,
+              signal: abort.signal,
             },
             gate: session.gate,
             messages: entradaReparo,
             provider: providerTurno,
+            signal: abort.signal,
             tools: session.registry.definitions(),
             contextBudget: CONTEXT_BUDGET,
             onEvent: (agentEvent: AgentEvent) => {
@@ -2241,6 +2309,13 @@ app.whenReady().then(() => {
           messages: session.transcript,
         });
         sendUsage(session);
+        appendDesktopDiagnostic(app.getPath("userData"), {
+          durationMs: Date.now() - _runStartMs,
+          event: "run-completed",
+          runId,
+          sessionId: session.sessionId,
+          workspace: session.workspace.root,
+        });
 
         return {
           success: true,
@@ -2267,6 +2342,19 @@ app.whenReady().then(() => {
             : err instanceof Error
               ? err.message
               : String(err);
+        appendDesktopDiagnostic(app.getPath("userData"), {
+          code: isAbort ? "CANCELLED" : "AGENT_ERROR",
+          durationMs: Date.now() - _runStartMs,
+          event: "run-failed",
+          message: msg,
+          runId,
+          ...(activeSession === null
+            ? {}
+            : {
+                sessionId: activeSession.sessionId,
+                workspace: activeSession.workspace.root,
+              }),
+        });
 
         // reverte checkpoint (rollback no erro)
         try {

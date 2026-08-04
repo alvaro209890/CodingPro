@@ -4,6 +4,7 @@ import type {
   UiPermissionResponse,
   UsageSnapshotUi,
 } from "@codingpro/core";
+import type { SaldoContaUI } from "../shared/saldo-conta.js";
 import type { UpdateStateUI } from "../shared/updater.js";
 
 export interface SessionMetaUI {
@@ -82,6 +83,8 @@ export interface SlashCommandMeta {
 export interface CodingProDesktopAPI {
   sendMessage: (prompt: string, workspacePath?: string) => Promise<SendMessageResult>;
   estadoAcesso: () => Promise<EstadoAcesso>;
+  obterSaldoConta: () => Promise<SaldoContaUI>;
+  onSaldoConta: (callback: (saldo: SaldoContaUI) => void) => () => void;
   contaLogin: (apiUrl?: string) => Promise<InicioDeviceUI>;
   contaLoginDireto: (email: string, senha: string) => Promise<{ status: string }>;
   contaCadastrar: (email: string, nome: string, senha: string) => Promise<string>;

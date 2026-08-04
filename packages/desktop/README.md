@@ -35,6 +35,7 @@ Smokes (offline / integração):
 ```bash
 node packages/desktop/scripts/smoke-core.mjs
 node packages/desktop/scripts/smoke-int.mjs   # usa DeepSeek se houver chave
+pnpm --filter @codingpro/desktop smoke:cloud # usa o mesmo token Cloud do app, sem imprimi-lo
 ```
 
 ## Arquitetura
@@ -65,6 +66,7 @@ Contrato de eventos: `@codingpro/core` → `events.ts` (**v1.5.0**), com `reques
 | System prompt com raiz do sandbox + detecção de projeto | ✅ |
 | Sessões JSONL agrupadas por projeto (listar / carregar / gravar) | ✅ |
 | Métricas de contexto/custo e subagentes ao vivo | ✅ |
+| Saldo Cloud atualizado pelas respostas do proxy | ✅ |
 | Atualização assistida no NSIS e aviso manual no portátil | ✅ |
 | Terminal integrado (timeout 60s) | ✅ |
 | Paleta `Ctrl+K` | ✅ |
@@ -151,6 +153,7 @@ Ver `fase2-app-windows/04_roadmap_checklist.md`.
 - Credenciais só no main (preload não expõe fs/env)
 - Efeitos passam por `PermissionController` (fail-closed)
 - Terminal embutido bloqueia multilinha; timeout 60s
+- Diagnóstico local sem prompt/resposta/token em `%APPDATA%\@codingpro\desktop\diagnostics.jsonl`
 
 ## Telas
 
@@ -159,6 +162,17 @@ Ver `fase2-app-windows/04_roadmap_checklist.md`.
 | Conversa | Chat com streaming, raciocínio recolhível, timeline de ferramentas e subagentes |
 | Configurações | Temas, auto-aprovar, reduzir animações, skills, atalhos, versão |
 | Terminal | Painel inferior com histórico de comandos, na pasta aberta |
+
+## v1.2.1 — cancelamento confiável e saldo Cloud (2026-08-04)
+
+- **Parar** agora propaga o `AbortSignal` ao provider, tools, reparos e todos os subagentes.
+- O gate continua ocupado até a execução anterior encerrar; não é mais possível sobrepor dois runs.
+- Streams abandonados cancelam o upstream no proxy e são registrados como `cliente_desconectado`.
+- Intervalos sem chunk de até 60 s e chamadas de até 5 min acomodam raciocínio longo; retries ficam visíveis.
+- O cabeçalho mostra o saldo da conta Cloud observado no proxy, sem expor credenciais ao renderer.
+- Falhas e cancelamentos passam a gerar um JSONL local seguro para diagnóstico.
+
+Relatório: [`docs/CORRECAO-TIMEOUT-CANCELAMENTO-DESKTOP-1.2.1.md`](../../docs/CORRECAO-TIMEOUT-CANCELAMENTO-DESKTOP-1.2.1.md).
 
 ## v1.2.0 — projetos, observabilidade e atualização (2026-08-04)
 

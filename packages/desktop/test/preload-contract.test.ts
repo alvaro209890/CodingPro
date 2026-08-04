@@ -18,6 +18,8 @@ describe("contrato do preload empacotado", () => {
       "onCoreEvent",
       "getWorkspaceInfo",
       "estadoAcesso",
+      "obterSaldoConta",
+      "onSaldoConta",
       "contaLogin",
       "contaLoginDireto",
       "contaCadastrar",

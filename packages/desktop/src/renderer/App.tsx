@@ -7,6 +7,7 @@ import type {
 } from "@codingpro/core";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { SaldoContaUI } from "../shared/saldo-conta.js";
 import type { ComandoChat } from "../shared/slash-commands.js";
 import type {
   EstadoAcesso,
@@ -201,6 +202,8 @@ export const App: React.FC = () => {
    */
   const [acesso, setAcesso] = useState<EstadoAcesso | null>(null);
 
+  /** Saldo da conta Cloud, observado no header do proxy; atualiza via evento do main. */
+  const [saldoConta, setSaldoConta] = useState<SaldoContaUI>({ saldoMicro: undefined });
   /**
    * FILA, não um slot só. Subagentes rodam em paralelo e podem pedir permissão ao mesmo
    * tempo; guardar apenas o pedido atual fazia o segundo sobrescrever o primeiro, que
@@ -293,7 +296,8 @@ export const App: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === ".") {
         e.preventDefault();
         if (window.codingproAPI) {
-          void window.codingproAPI.cancelRun().then(() => setIsRunning(false));
+          setStatusNote("Cancelando a execução…");
+          void window.codingproAPI.cancelRun();
         }
       }
     };
@@ -306,6 +310,12 @@ export const App: React.FC = () => {
 
     let cancelled = false;
     const api = window.codingproAPI;
+
+    // Saldo da conta Cloud: valor inicial + atualizações vindas do header do proxy.
+    void api.obterSaldoConta().then((saldo) => {
+      if (!cancelled) setSaldoConta(saldo);
+    });
+    const removerSaldo = api.onSaldoConta((saldo) => setSaldoConta(saldo));
 
     void api
       .getWorkspaceInfo()
@@ -588,6 +598,7 @@ export const App: React.FC = () => {
       cancelled = true;
       unsubscribe();
       unsubscribeUpdate();
+      removerSaldo();
     };
   }, [apiReady, refreshSessions]);
 
@@ -695,8 +706,8 @@ export const App: React.FC = () => {
 
   const handleCancel = useCallback(async () => {
     if (!window.codingproAPI) return;
+    setStatusNote("Cancelando a execução…");
     await window.codingproAPI.cancelRun();
-    setIsRunning(false);
     setPermissionQueue([]);
   }, []);
 
@@ -847,6 +858,7 @@ export const App: React.FC = () => {
           projectName={projectName}
           workspacePath={workspaceInfo.cwd}
           branch={workspaceInfo.branch}
+          saldoConta={saldoConta}
           isRunning={isRunning}
           isTerminalOpen={isTerminalOpen}
           onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}

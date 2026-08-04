@@ -3,13 +3,8 @@ import type { DeepSeekModel } from "@codingpro/llm";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { type Contexto, erro, ipDe } from "../contexto.js";
 import { checarAcessoLlm } from "../limites.js";
-import {
-  custoMicro,
-  LeitorDeUso,
-  normalizarUso,
-  prepararCorpoUpstream,
-  validarCorpo,
-} from "../proxy.js";
+import { custoMicro, prepararCorpoUpstream, validarCorpo } from "../proxy.js";
+import { proxyUpstreamStream } from "../proxy-stream.js";
 import type { Usuario } from "../repositorio.js";
 import { hashToken, PREFIXO_TOKEN } from "../seguranca.js";
 
@@ -25,6 +20,28 @@ function cabecalhoAviso(usadoMicro: number, limiteMicro: number): string | null 
 type Autenticacao =
   | { readonly ok: true; readonly usuario: Usuario; readonly tokenId: number }
   | { readonly ok: false; readonly status: number; readonly codigo: string; readonly msg: string };
+
+function acompanharDesconexao(req: FastifyRequest, resposta: FastifyReply): AbortSignal {
+  const controller = new AbortController();
+  const abortar = () => {
+    if (!controller.signal.aborted) {
+      controller.abort(new DOMException("Cliente desconectou.", "AbortError"));
+    }
+  };
+  const dispose = () => {
+    req.raw.removeListener("aborted", abortar);
+    resposta.raw.removeListener("close", aoFechar);
+    resposta.raw.removeListener("finish", dispose);
+  };
+  const aoFechar = () => {
+    if (!resposta.raw.writableEnded) abortar();
+    dispose();
+  };
+  req.raw.once("aborted", abortar);
+  resposta.raw.once("close", aoFechar);
+  resposta.raw.once("finish", dispose);
+  return controller.signal;
+}
 
 async function autenticar(ctx: Contexto, req: FastifyRequest): Promise<Autenticacao> {
   const header = req.headers.authorization ?? "";
@@ -83,6 +100,7 @@ export function registrarRotasProxy(app: FastifyInstance, ctx: Contexto): void {
     void ctx.repo.tocarToken(tokenId);
 
     const corpoUpstream = prepararCorpoUpstream({ ...(req.body as Record<string, unknown>) });
+    const clientSignal = acompanharDesconexao(req, resposta);
     let upstream: Response;
     try {
       upstream = await ctx.fetch(alvo, {
@@ -93,8 +111,21 @@ export function registrarRotasProxy(app: FastifyInstance, ctx: Contexto): void {
         },
         method: "POST",
         redirect: "error",
+        signal: clientSignal,
       });
     } catch (causa) {
+      if (clientSignal.aborted) {
+        await registrar(ctx, {
+          competencia,
+          duracaoMs: Date.now() - inicio,
+          erro: "cliente_desconectado",
+          modelo,
+          tokenId,
+          uso: { tokensCache: 0, tokensEntrada: 0, tokensRaciocinio: 0, tokensSaida: 0 },
+          usuarioId: usuario.id,
+        }).catch(() => undefined);
+        return resposta;
+      }
       req.log.error({ causa }, "falha ao falar com o provedor");
       await registrar(ctx, {
         competencia,
@@ -159,6 +190,8 @@ export function registrarRotasProxy(app: FastifyInstance, ctx: Contexto): void {
       tokenId,
       upstream,
       usuarioId: usuario.id,
+      clientSignal,
+      streaming: validacao.stream,
     });
   });
 
@@ -189,46 +222,19 @@ async function repassar(
     tokenId: number;
     upstream: Response;
     usuarioId: number;
+    clientSignal: AbortSignal;
+    streaming: boolean;
   },
 ): Promise<FastifyReply> {
-  const leitor = new LeitorDeUso();
-  const decodificador = new TextDecoder();
   const fluxo = args.upstream.body as ReadableStream<Uint8Array>;
-  // Acumula o texto completo para fallback de JSON (non-streaming).
-  const pedacos: string[] = [];
-
-  const geradora = async function* () {
-    const reader = fluxo.getReader();
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (value) {
-          const texto = decodificador.decode(value, { stream: true });
-          pedacos.push(texto);
-          leitor.alimentar(texto);
-          yield Buffer.from(value);
-        }
-      }
-    } finally {
-      reader.releaseLock();
-      // Força o flush do buffer residual do LeitorDeUso (última linha sem \n).
-      leitor.alimentar("\n");
-      let uso = normalizarUso(leitor.uso);
-      // Fallback: se o LeitorDeUso baseado em SSE não achou nada, tenta
-      // extrair o usage do corpo JSON direto (non-streaming).
-      if (uso.tokensEntrada === 0 && uso.tokensSaida === 0 && uso.tokensRaciocinio === 0) {
-        try {
-          const json = JSON.parse(pedacos.join("")) as { usage?: Record<string, unknown> };
-          if (json.usage) uso = normalizarUso(json.usage);
-        } catch {
-          /* não é JSON — ignora */
-        }
-      }
+  const geradora = proxyUpstreamStream(fluxo, {
+    captureJsonBody: !args.streaming,
+    clientSignal: args.clientSignal,
+    onFinish: async ({ erro, uso }) => {
       await registrar(ctx, {
         competencia: args.competencia,
         duracaoMs: Date.now() - args.inicio,
-        erro: null,
+        erro,
         modelo: args.modelo,
         tokenId: args.tokenId,
         uso,
@@ -236,10 +242,10 @@ async function repassar(
       }).catch((causa: unknown) => {
         args.req.log.error({ causa }, "falha ao gravar consumo");
       });
-    }
-  };
+    },
+  });
 
-  await args.resposta.send(Readable.from(geradora()));
+  await args.resposta.send(Readable.from(geradora));
   return args.resposta;
 }
 

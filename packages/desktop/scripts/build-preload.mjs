@@ -39,6 +39,16 @@ const api = {
   estadoAcesso: () => {
     return ipcRenderer.invoke("codingpro:estado-acesso");
   },
+  obterSaldoConta: () => {
+    return ipcRenderer.invoke("codingpro:saldo-conta");
+  },
+  onSaldoConta: (callback) => {
+    const handler = (_event, saldo) => callback(saldo);
+    ipcRenderer.on("codingpro:saldo-event", handler);
+    return () => {
+      ipcRenderer.removeListener("codingpro:saldo-event", handler);
+    };
+  },
   contaLogin: (apiUrl) => {
     return ipcRenderer.invoke("codingpro:conta-login", apiUrl);
   },

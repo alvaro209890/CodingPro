@@ -1,18 +1,18 @@
-# STATUS do projeto — 2026-08-03
+# STATUS do projeto — 2026-08-04
 
 Documento operacional curto. Lacunas plano × código: **[`docs/LACUNAS_FASES.md`](docs/LACUNAS_FASES.md)**.  
 Estado Fase 1: [`docs/ESTADO_PROJETO.md`](docs/ESTADO_PROJETO.md).
 
-Último incremento: **[`docs/CORRECAO-LOGIN-DESKTOP-1.1.1.md`](docs/CORRECAO-LOGIN-DESKTOP-1.1.1.md)**
-— app empacotado exige conta Cloud, ignora chaves locais e usa a nova tela de acesso.
-Anterior: [`docs/AUTENTICACAO-SOMENTE-SENHA-2026-08-03.md`](docs/AUTENTICACAO-SOMENTE-SENHA-2026-08-03.md).
+Último incremento: **[`docs/CORRECAO-TIMEOUT-CANCELAMENTO-DESKTOP-1.2.1.md`](docs/CORRECAO-TIMEOUT-CANCELAMENTO-DESKTOP-1.2.1.md)**
+— cancelamento ponta a ponta, streams abandonados encerrados, diagnóstico local e saldo Cloud no desktop.
+Anterior: [`docs/CODINGPRO-DESKTOP-1.2.0.md`](docs/CODINGPRO-DESKTOP-1.2.0.md).
 
 ## Fases
 
 | Fase | Status | Próximo foco |
 |------|--------|----------------|
 | 1 CLI | 🟢 Engenharia v1 completa; `glob`, JSON headless e approve-always persistente entregues | `npm publish`, QA visual, Ink/subprocessos/background/voz pós-1.0 |
-| 2 Windows | 🟢 v1.1.1: login Cloud obrigatório no pacote e tela de acesso responsiva validada | Assinatura de código e auto-updater live |
+| 2 Windows | 🟢 v1.2.1: projetos/sessões, updater, observabilidade, cancelamento real e saldo Cloud | Assinatura Authenticode |
 | 3 Plataforma | 🟢 Produção no acer com aprovação + créditos, LGPD/CSP/limites/backup | Configurar SMTP/Turnstile, testar restore/load e conduzir beta |
 
 ## Plataforma (Fase 3) — o que sobe no acer

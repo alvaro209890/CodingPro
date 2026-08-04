@@ -1,10 +1,13 @@
 import type React from "react";
+import { formatarSaldoUsd, type SaldoContaUI } from "../../shared/saldo-conta.js";
 
 interface HeaderProps {
   title: string;
   projectName: string;
   workspacePath: string;
   branch?: string | undefined;
+  /** Saldo da conta Cloud (badge); sem valor até a 1ª resposta do proxy. */
+  saldoConta?: SaldoContaUI;
   isRunning: boolean;
   isTerminalOpen: boolean;
   onToggleTerminal: () => void;
@@ -16,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   projectName,
   workspacePath,
   branch,
+  saldoConta,
   isRunning,
   isTerminalOpen,
   onToggleTerminal,
@@ -55,6 +59,14 @@ export const Header: React.FC<HeaderProps> = ({
     </div>
 
     <div className="header-actions">
+      {saldoConta?.saldoMicro != null && (
+        <span
+          className="header-saldo"
+          title="Saldo de créditos da conta CodingPro Cloud (atualiza a cada resposta do proxy)"
+        >
+          Saldo: {formatarSaldoUsd(saldoConta.saldoMicro)}
+        </span>
+      )}
       {isRunning && onCancel && (
         <button
           type="button"
