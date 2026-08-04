@@ -39,11 +39,16 @@ tinham estilos próprios para formulário.
 
 | Arquivo | Bytes | SHA-256 |
 | --- | ---: | --- |
-| `CodingPro-Setup-1.1.1.exe` | 84.733.035 | `5b8a20cf7f21ad43f3cdc80d81bd262fa1cbdbb8e8352c070de89156c9cbd5fa` |
-| `CodingPro-portable-1.1.1.exe` | 84.505.487 | `cccb02e4850f1b9d38683876ce99daef7b33bbbaab63657c84a8c59bef369bd5` |
+| `CodingPro-Setup-1.1.1.exe` | 85.322.991 | `c0f4c3150380e28267e2b4981ed2ce9bd0d9dbd5f1b19f3278657a4b720def6b` |
+| `CodingPro-portable-1.1.1.exe` | 85.094.952 | `29ec3347561a2cc25acbf921fa23401307b61e5d006ad9b7ea4f7ddd0e32a7aa` |
 
-Os dois arquivos têm cabeçalho PE `MZ`. A assinatura Authenticode ainda está ausente, como na
-versão anterior; assinatura de código continua sendo uma pendência de distribuição.
+> ⚠️ Hashes atualizados em 2026-08-04: os .exe foram regenerados após o fix "login
+> sempre liberado para contas pendentes" (docs/LOGIN-PENDENTE-LIBERADO-2026-08-03.md).
+> Para o build NSIS/portable no Linux é necessário o `wine` instalado (`apt install wine64`).
+
+Os dois arquivos têm cabeçalho PE `MZ` (NSIS self-extracting). A assinatura Authenticode
+ainda está ausente, como na versão anterior; assinatura de código continua sendo uma
+pendência de distribuição.
 
 ## Resultado online
 
