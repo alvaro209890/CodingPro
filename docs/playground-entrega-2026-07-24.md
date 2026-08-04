@@ -1,5 +1,10 @@
 # Entrega do Playground web — 24 de julho de 2026
 
+> **Arquivo histórico.** O Playground e as rotas `/api/vps/*` foram **removidos em 2026-08-03**
+> (`92e2ab1`). O front de trabalho passou a ser o **app desktop** e a **CLI**. O site mantém
+> conta, painel, device flow e downloads. Ver [`STATUS.md`](../STATUS.md) e
+> [`RELATORIO-CORRECOES-2026-08-03-B.md`](RELATORIO-CORRECOES-2026-08-03-B.md).
+
 Este documento consolida a evolução entregue no Playground do site e os procedimentos para publicar a versão no VPS.
 
 ## Escopo entregue
@@ -145,6 +150,8 @@ Após o retorno de `{"ok":true,...}` na rota de saúde, abra `https://codingpro.
 
 ## Histórico de commits
 
+- `ac5f4c8 fix(playground): chat moderno, SSE estável e pensamento efêmero` (no ar antes da remoção)
+- `080781f fix: validação completa do playground, workspace unificado e lint`
 - `fd32140 feat(playground): add workspace uploads and refined browser UI`
 - `5b05936 fix(playground): unify workspace and harden CLI runtime`
-- *(próximo)* `fix(playground): chat moderno, SSE estável e pensamento efêmero`
+- `92e2ab1 feat!: remove o workspace no navegador` — fim do Playground em produção

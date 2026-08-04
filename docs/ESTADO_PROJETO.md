@@ -1,6 +1,6 @@
 # Estado do projeto CodingPro
 
-**Última atualização:** 2026-07-24  
+**Última atualização:** 2026-08-04  
 **Branch:** `master` · **Repo:** https://github.com/alvaro209890/CodingPro  
 
 | Fase | Status |
@@ -43,7 +43,7 @@ CodingPro/
 │   ├── tui/          # protótipo Ink (mínimo; UX real = ANSI na cli)
 │   ├── desktop/      # App Electron Windows (Fase 2)
 │   ├── api/          # Proxy LLM + contas + admin API (Fase 3)
-│   ├── web/          # Site + painel + playground (Fase 3)
+│   ├── web/          # Site + painel de conta (Fase 3)
 │   └── admin/        # Painel admin SPA (Fase 3)
 ├── docs/             # GUIA, ESTADO, LACUNAS_FASES, diário, roteiros QA
 ├── planos/           # docs 01–16 (Fase 1)

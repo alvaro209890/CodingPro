@@ -1,6 +1,10 @@
 # Playground Workspace no navegador
 
-O Playground é o espaço isolado de cada usuário no CodingPro. Ele reúne conversa com IA, CLI, terminal, Git, memória, editor e arquivos no mesmo fluxo.
+> **Descontinuado (2026-08-03).** Este guia descreve o workspace web removido do produto.
+> Use o **CodingPro Desktop** ou a **CLI** para editar código com IA. O site atual oferece
+> cadastro, painel de consumo e `codingpro login`.
+
+O Playground era o espaço isolado de cada usuário no CodingPro. Ele reunia conversa com IA, CLI, terminal, Git, memória, editor e arquivos no mesmo fluxo.
 
 ## Arquivos
 
