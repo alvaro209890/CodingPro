@@ -20,7 +20,14 @@ export function TelaConta({ aoConectar }: { aoConectar: () => void }) {
       setErro("");
       setEnviando(true);
       try {
-        await window.codingproAPI.contaLoginDireto(email.trim(), senha);
+        const resultado = await window.codingproAPI.contaLoginDireto(email.trim(), senha);
+        // Conta pendente loga normalmente; o aviso aparece dentro do app, não aqui.
+        if (resultado?.status === "pendente") {
+          setSucesso(
+            "Login feito! Sua conta está aguardando aprovação do administrador. " +
+              "Você já pode usar o app; o acesso à IA será liberado após a aprovação.",
+          );
+        }
         aoConectar();
       } catch (causa: unknown) {
         setErro(causa instanceof Error ? causa.message : "Login falhou.");

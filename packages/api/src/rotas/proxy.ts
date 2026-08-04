@@ -54,7 +54,7 @@ async function autenticar(ctx: Contexto, req: FastifyRequest): Promise<Autentica
   if (usuario.status !== "ativo") {
     return {
       codigo: "conta_nao_aprovada",
-      msg: "Sua conta ainda não foi aprovada pelo administrador.",
+      msg: "Sua conta está aguardando aprovação do administrador. O acesso à IA é liberado assim que a conta for aprovada e receber créditos.",
       ok: false,
       status: 403,
     };

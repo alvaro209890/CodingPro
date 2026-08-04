@@ -1382,6 +1382,10 @@ app.whenReady().then(() => {
       const err = (await login.json().catch(() => ({}))) as { mensagem?: string };
       throw new Error(err.mensagem || "E-mail ou senha incorretos.");
     }
+    const corpoLogin = (await login.json().catch(() => ({}))) as {
+      usuario?: { status?: string };
+    };
+    const statusConta = corpoLogin.usuario?.status ?? "ativo";
     const cookies = login.headers.getSetCookie?.() ?? [];
     const sessao = cookies.find((c) => c.startsWith("cp_sessao="));
     if (!sessao) throw new Error("Sessão não estabelecida. Tente de novo.");
@@ -1430,6 +1434,9 @@ app.whenReady().then(() => {
       `${JSON.stringify({ apiUrl: API, criadoEm: new Date().toISOString(), token: corpo.token }, null, 2)}\n`,
       { mode: 0o600 },
     );
+    // Devolve o status da conta para o renderer avisar "aguardando aprovação"
+    // dentro do app — o login nunca mais é barrado por conta pendente.
+    return { status: statusConta };
   });
 
   /** Cadastro: cria conta pendente, sem créditos, e devolve a orientação ao usuário. */

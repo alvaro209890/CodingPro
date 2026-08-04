@@ -556,7 +556,7 @@ describe.skipIf(!TEM_BANCO)("painel admin", () => {
     expect(resposta.statusCode).toBe(403);
   });
 
-  it("novato só conecta o dispositivo depois da aprovação manual", async () => {
+  it("pendente já conecta o dispositivo; bloqueado não", async () => {
     amb = await montar();
     const chefe = await cadastrar(amb.app, "chefe@teste.com");
     const novato = await cadastrar(amb.app, "novato@teste.com");
@@ -568,28 +568,31 @@ describe.skipIf(!TEM_BANCO)("painel admin", () => {
     });
     const codigoUsuario = inicio.json().codigoUsuario;
 
+    // Conta pendente aprova o device: o login nunca é barrado (a IA continua
+    // controlada no proxy). Mudança: fluxo "login sempre liberado".
     const pendente = await amb.app.inject({
       headers: { cookie: novato.cookie },
       method: "POST",
       payload: { codigoUsuario },
       url: "/api/device/aprovar",
     });
-    expect(pendente.statusCode).toBe(403);
-    expect(pendente.json().erro).toBe("conta_nao_aprovada");
+    expect(pendente.statusCode).toBe(200);
 
+    // Conta bloqueada continua barrada no device flow.
     await amb.app.inject({
       headers: { cookie: chefe.cookie },
       method: "PATCH",
-      payload: { status: "ativo" },
+      payload: { status: "bloqueado" },
       url: `/api/admin/usuarios/${novato.id}`,
     });
-    const aprovado = await amb.app.inject({
+    const bloqueado = await amb.app.inject({
       headers: { cookie: novato.cookie },
       method: "POST",
-      payload: { codigoUsuario },
+      payload: { codigoUsuario: inicio.json().codigoUsuario },
       url: "/api/device/aprovar",
     });
-    expect(aprovado.statusCode).toBe(200);
+    expect(bloqueado.statusCode).toBe(403);
+    expect(bloqueado.json().erro).toBe("bloqueado");
   });
 
   it("admin não consegue remover o próprio poder de admin", async () => {

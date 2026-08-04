@@ -67,7 +67,7 @@ export interface CodingProDesktopAPI {
   sendMessage: (prompt: string, workspacePath?: string) => Promise<SendMessageResult>;
   estadoAcesso: () => Promise<EstadoAcesso>;
   contaLogin: (apiUrl?: string) => Promise<InicioDeviceUI>;
-  contaLoginDireto: (email: string, senha: string) => Promise<void>;
+  contaLoginDireto: (email: string, senha: string) => Promise<{ status: string }>;
   contaCadastrar: (email: string, nome: string, senha: string) => Promise<string>;
   contaConsultar: (
     apiUrl: string,

@@ -53,13 +53,10 @@ export function registrarRotasDevice(app: FastifyInstance, ctx: Contexto): void 
   app.post("/api/device/aprovar", async (req, resposta) => {
     const usuario = await exigirUsuario(ctx, req, resposta);
     if (!usuario) return resposta;
-    if (usuario.status !== "ativo") {
-      return erro(
-        resposta,
-        403,
-        "conta_nao_aprovada",
-        "Sua conta ainda não foi aprovada pelo administrador.",
-      );
+    // Contas pendentes também aprovam o dispositivo: o login nunca é barrado.
+    // O acesso à IA continua controlado no proxy (status + créditos).
+    if (usuario.status === "bloqueado") {
+      return erro(resposta, 403, "bloqueado", "Esta conta está bloqueada.");
     }
 
     const codigoUsuario = texto(
