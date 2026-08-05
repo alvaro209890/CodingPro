@@ -45,4 +45,11 @@ export const SYSTEM_PROMPT_V1 = [
   "- Caminhos: use `C:\\...` ou `C:/...`. Espaços em caminhos precisam de aspas duplas no cmd.",
   "- Saída de comando pode ter acentos/encoding diferentes — não se assuste com caracteres estranhos.",
   "- Se uma tool de arquivo (read_file/list_dir/grep) falhar num caminho absoluto, prefira as tools de arquivo do sandbox; use bash só para o que elas não cobrem.",
+  "",
+  "Formato de tool calls (I6a few-shot — siga EXATAMENTE estes exemplos):",
+  "- `edit_file` usa `edits` (lista de {old, new}) e caminho relativo à raiz, SEM prefixo da raiz: `{ \"path\": \"src/app.ts\", \"edits\": [{ \"old\": \"x\", \"new\": \"y\" }] }`.",
+  "- `read_file` usa só `path` relativo: `{ \"path\": \"src/app.ts\" }`.",
+  "- `grep` usa `pattern` (regex) e `path` (diretório): `{ \"pattern\": \"useState\", \"path\": \"src\" }`.",
+  "- `write_file` usa `path` + `content`: `{ \"path\": \"README.md\", \"content\": \"# Título\\n\" }`.",
+  "- Chaves de input SEMPRE com aspas duplas no JSON. Não invente campos fora do schema da tool.",
 ].join("\n");
