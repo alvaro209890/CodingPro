@@ -169,7 +169,7 @@ describe("compactMessages", () => {
     // [system][resumo system][sufixo]
     expect(result.messages[0]?.role).toBe("system");
     expect(result.messages[1]?.role).toBe("system");
-    expect(result.messages[1]?.content).toContain("Resumo de contexto antigo");
+    expect(String(result.messages[1]?.content)).toContain("Resumo de contexto antigo");
     expect(result.messages.at(-1)).toEqual(user(3));
     expect(pairingValid(result.messages)).toBe(true);
   });

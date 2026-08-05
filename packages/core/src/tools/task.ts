@@ -84,6 +84,27 @@ function formatarRelatorio(indice: number, r: SubagenteRelatorio): string {
   return `${cabecalho}\n${corpo}`;
 }
 
+/** Tipos de subagente que só leem (sem tool de escrita) — podem rodar em paralelo maior. */
+const TIPOS_SO_LEITURA = new Set([
+  "explorer",
+  "reviewer",
+  "architect",
+  "docs",
+  "security",
+  "debugger",
+  "verifier",
+]);
+
+/** O1 — concorrência adaptativa: exploração em massa sobe para 6; efeitos ficam ≤ 2. */
+function paralelismoAdaptativo(tarefas: readonly Entrada[], maxParalelo: number | undefined): number {
+  const base = Math.max(1, maxParalelo ?? 3);
+  const soLeitura = tarefas.every((t) => TIPOS_SO_LEITURA.has(t.tipo));
+  if (soLeitura) {
+    return Math.min(6, Math.max(base, tarefas.length));
+  }
+  return Math.min(base, 2);
+}
+
 export const taskTool: ExecutableTool = {
   definition,
   sideEffect: "read",
@@ -107,7 +128,7 @@ export const taskTool: ExecutableTool = {
       );
     }
 
-    const limite = Math.max(1, spawner.maxParalelo ?? 3);
+    const limite = paralelismoAdaptativo(tarefas, spawner.maxParalelo);
     const relatorios: SubagenteRelatorio[] = new Array(tarefas.length);
     let proximo = 0;
     const trabalhar = async (): Promise<void> => {

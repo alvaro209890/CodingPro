@@ -69,6 +69,11 @@ export interface SpawnerOptions {
 /** Default do teto de relatório (O2): ~3 k tokens de texto. */
 const RELATORIO_MAX_CHARS_PADRAO = 12_000;
 
+/** O3 — chave estável de cache de exploração (tipo + prompt normalizado). */
+function chaveExploracao(tipo: string, prompt: string): string {
+  return `${tipo}|${prompt.replace(/\s+/gu, " ").trim().slice(0, 200)}`;
+}
+
 /**
  * O2 — limita o relatório devolvido ao agente pai: mantém cabeça (resumo) + cauda (conclusão)
  * com marcador de omissão. Relatórios longos inflam o histórico do agente principal.
@@ -88,6 +93,8 @@ export function criarSpawnerSubagentes(options: SpawnerOptions): SubagenteSpawne
   const custom = options.custom ?? {};
   const toolPool = options.toolPool ?? SUBAGENT_TOOL_POOL;
   const maxRelatorio = options.maxRelatorioChars ?? RELATORIO_MAX_CHARS_PADRAO;
+  // O3 — cache de exploração por sessão: mesma tarefa de leitura (tipo+prompt) reusa relatório.
+  const cacheExploracao = new Map<string, SubagenteRelatorio>();
   const tiposDisponiveis = [
     ...new Set([...Object.keys(TIPOS_AGENTE_PADRAO), ...Object.keys(custom)]),
   ].sort();
@@ -96,6 +103,24 @@ export function criarSpawnerSubagentes(options: SpawnerOptions): SubagenteSpawne
       const tipo = resolverTipoAgente(tipoNome, custom);
       if (tipo === undefined) {
         throw new Error(`Tipo de subagente desconhecido: ${tipoNome}.`);
+      }
+      // Só tipos de leitura entram no cache (explorer/docs/verifier/reviewer/security…);
+      // worker/refactor/tester têm efeito e sempre executam.
+      const soLeitura = new Set([
+        "explorer",
+        "reviewer",
+        "architect",
+        "docs",
+        "security",
+        "debugger",
+        "verifier",
+      ]).has(tipo.nome);
+      if (soLeitura) {
+        const chave = chaveExploracao(tipo.nome, prompt);
+        const emCache = cacheExploracao.get(chave);
+        if (emCache !== undefined) {
+          return emCache;
+        }
       }
       const provider = options.criarProvider?.(tipo.role) ?? options.provider;
       const relatorio = await executarSubagente({
@@ -114,10 +139,11 @@ export function criarSpawnerSubagentes(options: SpawnerOptions): SubagenteSpawne
         ...(signal === undefined ? {} : { signal }),
       });
       const textoLimitado = limitarRelatorio(relatorio.texto, maxRelatorio);
-      if (textoLimitado !== relatorio.texto) {
-        return { ...relatorio, texto: textoLimitado };
+      const final = textoLimitado !== relatorio.texto ? { ...relatorio, texto: textoLimitado } : relatorio;
+      if (soLeitura && final.interrompido !== true) {
+        cacheExploracao.set(chaveExploracao(tipo.nome, prompt), final);
       }
-      return relatorio;
+      return final;
     },
     maxParalelo: options.maxParalelo ?? 3,
     tiposDisponiveis,
