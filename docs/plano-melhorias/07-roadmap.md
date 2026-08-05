@@ -1,6 +1,6 @@
 # 07 — Roadmap Consolidado
 
-**Área:** transversal · **Status:** 📌 planejado
+**Área:** transversal · **Status:** 🚧 em execução — **F1 ✅, F3 parcial, F4 parcial, F5 parcial** (ver §2)
 **Como ler:** cada fase é independente e entrega valor sozinha. Dentro de cada fase, itens ordenados por (ganho ÷ esforço). Totais ≈ **6 semanas** de trabalho (paralelizável em 2 frentes: core/IA e front).
 
 ---
@@ -29,17 +29,17 @@
 
 > Sem F0, nenhuma meta (M1–M3) é verificável. Bloqueia as demais.
 
-### F1 — Quick wins (custo e precisão imediatos)
+### F1 — Quick wins (custo e precisão imediatos) ✅ (2026-08-05)
 
 | Item | Doc | Esforço | Ganho |
 |---|---|---|---|
-| C2 teto de saída por tool no registry | 06 | 1 d | −100–250 k tok/sessão |
-| C7 teste de prefixo byte-idêntico | 06 | 0,5 d | protege cache-hit |
-| I6b reparo de JSON de tool call | 05 | 0,5 d | mata correções triviais |
-| I6a few-shot por tool complexa | 05 | 0,5 d | −tool calls inválidas |
-| I2 grounding: editar só depois de ler | 05 | 1 d | mata alucinação de `old_string` |
-| Linha "agrupe chamadas independentes" no system prompt | 04 V6 | 0,1 d | −turnos |
-| **I9a semear skills de produto + I10a bloco Windows no prompt** | 05 | 0,5–1 d | **mata exploração cega (caso real 08/05: 40 calls → ~3)** |
+| C2 teto de saída por tool no registry | 06 | 1 d | −100–250 k tok/sessão ✅ (já existia) |
+| C7 teste de prefixo byte-idêntico | 06 | 0,5 d | protege cache-hit ✅ `b26c351` |
+| I6b reparo de JSON de tool call | 05 | 0,5 d | mata correções triviais ✅ `465666a` |
+| I6a few-shot por tool complexa | 05 | 0,5 d | −tool calls inválidas 📌 |
+| I2 grounding: editar só depois de ler | 05 | 1 d | mata alucinação de `old_string` ✅ (já existia) |
+| Linha "agrupe chamadas independentes" no system prompt | 04 V6 | 0,1 d | −turnos ✅ (já existia) |
+| **I9a semear skills de produto + I10a bloco Windows no prompt** | 05 | 0,5–1 d | **mata exploração cega (caso real 08/05: 40 calls → ~3)** ✅ `a9ed642` |
 
 ### F2 — Verificação (a IA para de entregar cego)
 
@@ -51,38 +51,38 @@
 | T3 `git_status`/`git_diff` | 02 | 1 d |
 | T4 `run_command` seguro | 02 | 1 d |
 
-### F3 — Velocidade
+### F3 — Velocidade (parcial ✅)
 
 | Item | Doc | Esforço |
 |---|---|---|
-| V1 paralelismo de leitura no loop | 04 | 1,5 d |
-| V4 auto-effort fino | 04 | 1 d |
-| T8 `read_files` em lote | 02 | 0,5 d |
-| V3 cache de índices (repo_map persistido, pré-aquecer vector) | 04 | 2 d |
-| V7 bússola de conhecimento (catálogo de skills no prompt) | 04 | 0,5 d |
+| V1 paralelismo de leitura no loop | 04 | 1,5 d ✅ `3b11ebe` |
+| V4 auto-effort fino | 04 | 1 d ✅ `e84ec01` |
+| T8 `read_files` em lote | 02 | 0,5 d ✅ (já existia) |
+| V3 cache de índices (repo_map persistido, pré-aquecer vector) | 04 | 2 d 📌 |
+| V7 bússola de conhecimento (catálogo de skills no prompt) | 04 | 0,5 d ✅ `a9ed642` |
 
-### F4 — Subagentes
-
-| Item | Doc | Esforço |
-|---|---|---|
-| R1 ligar `criarProvider` por papel | 03 | 1 d |
-| O2 formato/teto de relatório | 03 | 1 d |
-| Tipos `tester` + `verifier` | 03 | 1 d |
-| O1 concorrência adaptativa | 03 | 1 d |
-| O3 cache de exploração | 03 | 1 d |
-| Tipos `refactor`, `docs`, `security`, `debugger` | 03 | 2 d |
-| O4 síntese de N relatórios | 03 | 1 d |
-
-### F5 — Memória longa
+### F4 — Subagentes (parcial ✅)
 
 | Item | Doc | Esforço |
 |---|---|---|
-| C1/I3 compactação com resumo | 06/05 | 2 d |
-| C3 dedup de resultados | 06 | 1 d |
-| I4 recall automático de memória | 05 | 2 d |
-| I5 repo_map âncora + T7 `find_references` | 05/02 | 1,5 d |
-| C9 orçamento de exploração por pergunta (anti-varredura) | 06 | 1 d |
-| I9c eval de ecossistema (replay da sessão `7c5976fc`) | 05 | 0,5 d |
+| R1 ligar `criarProvider` por papel | 03 | 1 d ✅ (desktop já ligava; CLI provider único aceitável) |
+| O2 formato/teto de relatório | 03 | 1 d ✅ `a9ed642` (12 k chars head+tail) |
+| Tipos `tester` + `verifier` | 03 | 1 d ✅ `a9ed642` |
+| O1 concorrência adaptativa | 03 | 1 d 📌 |
+| O3 cache de exploração | 03 | 1 d 📌 |
+| Tipos `refactor`, `docs`, `security`, `debugger` | 03 | 2 d ✅ `a9ed642` |
+| O4 síntese de N relatórios | 03 | 1 d 📌 |
+
+### F5 — Memória longa (parcial ✅)
+
+| Item | Doc | Esforço |
+|---|---|---|
+| C1/I3 compactação com resumo | 06/05 | 2 d 📌 (maior item restante) |
+| C3 dedup de resultados | 06 | 1 d ✅ `44e8135` |
+| I4 recall automático de memória | 05 | 2 d ✅ `6624f49` |
+| C9 orçamento de exploração por pergunta (anti-varredura) | 06 | 1 d ✅ `a9ed642` |
+| I9c eval de ecossistema (replay da sessão `7c5976fc`) | 05 | 0,5 d 📌 |
+| I5 repo_map âncora + T7 `find_references` | 05/02 | 1,5 d 📌 |
 
 ### F6 — Front (paralela ao F2–F4, pessoa/fluxo separado)
 
