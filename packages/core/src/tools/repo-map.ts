@@ -1,4 +1,5 @@
 import type { JsonObject, JsonValue, Tool, ToolResult } from "@codingpro/llm";
+import { join } from "node:path";
 import { construirRepoMap } from "../repo-map.js";
 import type { ExecutableTool, ToolContext } from "../tool.js";
 import { textResult } from "../tool.js";
@@ -45,6 +46,9 @@ export const repoMapTool: ExecutableTool = {
     const mapa = await construirRepoMap(context.workspace, {
       ...(foco === undefined ? {} : { foco }),
       ...(orcamento === undefined ? {} : { orcamentoTokens: orcamento }),
+      // V3a — repo map persistido entre sessões (.codingpro/repo-map-cache.json):
+      // a 1ª chamada da sessão fica instantânea (invalidação por mtime+size).
+      cacheDir: join(context.workspace.root, ".codingpro"),
       ...(context.signal === undefined ? {} : { signal: context.signal }),
     });
     const rodape = mapa.truncado
