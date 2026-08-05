@@ -61,9 +61,15 @@ export function criarAutoEffortState(): AutoEffortState {
 /**
  * Atualiza o estado após um turno: registra falha (escala) ou sucesso (reseta contador).
  * `falhou` = true quando o provider retornou erro retryable.
+ * `motivo` (V4): falha de QUALIDADE (tool call inválida, edição rejeitada) escala o raciocínio;
+ * falha de REDE/transitória NÃO escala (o retry já cuida — raciocínio extra não conserta rede).
  */
-export function atualizarAutoEffort(state: AutoEffortState, falhou: boolean): void {
-  state.falhasConsecutivas = falhou ? state.falhasConsecutivas + 1 : 0;
+export function atualizarAutoEffort(
+  state: AutoEffortState,
+  falhou: boolean,
+  motivo: "qualidade" | "rede" = "qualidade",
+): void {
+  state.falhasConsecutivas = falhou && motivo === "qualidade" ? state.falhasConsecutivas + 1 : 0;
 }
 
 /** Atualiza o estado com a estimativa de contexto e tools disponíveis para o próximo turno. */

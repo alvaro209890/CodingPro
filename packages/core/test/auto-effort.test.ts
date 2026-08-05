@@ -101,4 +101,28 @@ describe("auto-effort", () => {
     atualizarAutoEffort(s, false);
     expect(s.falhasConsecutivas).toBe(0);
   });
+
+  // V4 — falha de REDE não escala raciocínio (retry já cuida); falha de QUALIDADE escala.
+  it("V4: falha de rede não incrementa falhas consecutivas", () => {
+    const s = criarAutoEffortState();
+    atualizarAutoEffort(s, true, "rede");
+    expect(s.falhasConsecutivas).toBe(0);
+    expect(resolverAutoEffort(s)).toBe("fast");
+  });
+
+  it("V4: falha de qualidade escala o raciocínio", () => {
+    const s = criarAutoEffortState();
+    atualizarAutoEffort(s, true, "qualidade");
+    expect(s.falhasConsecutivas).toBe(1);
+    expect(resolverAutoEffort(s)).toBe("auto");
+  });
+
+  it("V4: sucesso zera mesmo após falha de rede", () => {
+    const s = criarAutoEffortState();
+    atualizarAutoEffort(s, true, "rede");
+    atualizarAutoEffort(s, true, "qualidade");
+    expect(s.falhasConsecutivas).toBe(1);
+    atualizarAutoEffort(s, false);
+    expect(s.falhasConsecutivas).toBe(0);
+  });
 });
