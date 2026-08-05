@@ -129,6 +129,38 @@ describe("runAgent", () => {
     expect(events.map((event) => event.type)).toEqual(["tool-call", "step", "tool-result", "step"]);
   });
 
+  it("V1: leituras do mesmo turno rodam em paralelo e preservam a ordem dos resultados", async () => {
+    await writeFile(join(root, "a.txt"), "A");
+    await writeFile(join(root, "b.txt"), "B");
+    const callA: ToolCall = { id: "call-a", input: { path: "a.txt" }, name: "read_file" };
+    const callB: ToolCall = { id: "call-b", input: { path: "b.txt" }, name: "read_file" };
+    const { provider } = scripted([
+      [{ call: callA, type: "tool-call" }, finish(assistant("", [callA, callB]))],
+      [finish(assistant("li os dois"))],
+    ]);
+    const results: string[] = [];
+    const result = await runAgent({
+      context,
+      gate,
+      messages: [{ content: "leia a.txt e b.txt", role: "user" }],
+      onEvent: (event) => {
+        if (event.type === "tool-result") {
+          results.push(
+            `${event.call.name}:${event.call.id}:${event.result.type === "text" ? event.result.value : "?"}`,
+          );
+        }
+      },
+      provider,
+      tools: registry.definitions(),
+    });
+
+    expect(result.finishReason).toBe("stop");
+    // Ordem das chamadas preservada no histórico (não a ordem de conclusão).
+    expect(results).toEqual(["read_file:call-a:A", "read_file:call-b:B"]);
+    const toolMessages = result.messages.filter((m) => m.role === "tool");
+    expect(toolMessages.map((m) => m.toolCallId)).toEqual(["call-a", "call-b"]);
+  });
+
   it("nega efeito sem aprovação e devolve execution-denied como resultado", async () => {
     const call: ToolCall = {
       id: "w1",

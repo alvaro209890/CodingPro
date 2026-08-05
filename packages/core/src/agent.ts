@@ -441,16 +441,38 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
     // que o modelo não consegue parear (toolCalls sem tool-result correspondente).
     const resultsStart = working.length;
     try {
-      for (const call of calls) {
-        options.signal?.throwIfAborted();
-        const result = await options.gate.run(call.name, call.input, options.context);
-        working.push({
-          result: sanitizeToolResult(result),
-          role: "tool",
-          toolCallId: call.id,
-          toolName: call.name,
-        });
-        options.onEvent?.({ call, result, type: "tool-result" });
+      // V1 — leituras puras do mesmo turno executam em paralelo (Promise.all); efeitos
+      // seguem sequenciais NA ORDEM das chamadas. Resultados entram no histórico na ordem
+      // das chamadas (não na ordem de conclusão) para preservar o pareamento.
+      const leituras = calls.filter((call) => options.gate.isReadOnly(call.name));
+      if (leituras.length > 1 && leituras.length === calls.length) {
+        const resultados = await Promise.all(
+          leituras.map(async (call) => {
+            options.signal?.throwIfAborted();
+            return { call, result: await options.gate.run(call.name, call.input, options.context) };
+          }),
+        );
+        for (const { call, result } of resultados) {
+          working.push({
+            result: sanitizeToolResult(result),
+            role: "tool",
+            toolCallId: call.id,
+            toolName: call.name,
+          });
+          options.onEvent?.({ call, result, type: "tool-result" });
+        }
+      } else {
+        for (const call of calls) {
+          options.signal?.throwIfAborted();
+          const result = await options.gate.run(call.name, call.input, options.context);
+          working.push({
+            result: sanitizeToolResult(result),
+            role: "tool",
+            toolCallId: call.id,
+            toolName: call.name,
+          });
+          options.onEvent?.({ call, result, type: "tool-result" });
+        }
       }
     } catch (error) {
       // Abort ou erro de tool: descarta resultados parciais do turno e para o loop.

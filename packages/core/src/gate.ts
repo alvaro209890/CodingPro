@@ -47,4 +47,12 @@ export class ToolGate {
     }
     return result;
   }
+
+  /**
+   * V1 — tool é de leitura pura (sem efeito colateral)? Permite executar um lote em paralelo
+   * no mesmo turno sem mudar a semântica (efeitos continuam sequenciais na ordem).
+   */
+  isReadOnly(name: string): boolean {
+    return this.registry.get(name)?.sideEffect === "read";
+  }
 }
