@@ -118,4 +118,61 @@ describe("ToolRegistry", () => {
     expect(boom).toMatchObject({ type: "error-text" });
     expect((boom as { value: string }).value).not.toContain("sensível");
   });
+
+  // C3 — dedup de resultados idênticos (doc 06): releitura "por garantia" não reexecuta.
+  it("C3: releitura do mesmo input devolve referência curta sem reexecutar", async () => {
+    const registry = new ToolRegistry();
+    let execucoes = 0;
+    registry.register(
+      tool("eco", async (input: JsonObject) => {
+        execucoes += 1;
+        return textResult(`valor=${String(input.valor)}`);
+      }),
+    );
+
+    const primeira = await registry.run("eco", { valor: "olá" }, context);
+    const segunda = await registry.run("eco", { valor: "olá" }, context);
+
+    expect(execucoes).toBe(1); // 2ª chamada veio do cache
+    expect(primeira).toEqual<ToolResult>({ type: "text", value: "valor=olá" });
+    expect(segunda.type).toBe("text");
+    expect((segunda as { value: string }).value).toContain("mesmo resultado da leitura");
+  });
+
+  it("C3: input diferente não deduplica", async () => {
+    const registry = new ToolRegistry();
+    let execucoes = 0;
+    registry.register(
+      tool("eco", async (input: JsonObject) => {
+        execucoes += 1;
+        return textResult(`valor=${String(input.valor)}`);
+      }),
+    );
+    await registry.run("eco", { valor: "a" }, context);
+    await registry.run("eco", { valor: "b" }, context);
+    expect(execucoes).toBe(2);
+  });
+
+  it("C3: tool de efeito invalida o cache de leituras", async () => {
+    const registry = new ToolRegistry();
+    let leituras = 0;
+    registry.register(
+      tool("ler", async () => {
+        leituras += 1;
+        return textResult("conteúdo");
+      }),
+    );
+    const muta: ExecutableTool = {
+      ...tool("muta", async () => textResult("ok")),
+      sideEffect: "write",
+    };
+    registry.register(muta);
+
+    await registry.run("ler", { valor: "x" }, context);
+    await registry.run("ler", { valor: "x" }, context); // cache
+    expect(leituras).toBe(1);
+    await registry.run("muta", { valor: "x" }, context); // invalida
+    await registry.run("ler", { valor: "x" }, context); // reexecuta
+    expect(leituras).toBe(2);
+  });
 });
