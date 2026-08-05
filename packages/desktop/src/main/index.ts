@@ -1388,12 +1388,13 @@ async function handleLocalCommand(
       ...session.transcript,
     ];
     const alvo = Math.max(2_000, Math.floor(CONTEXT_BUDGET * 0.55));
-    const r = compactMessages(base, { maxTokens: alvo });
+    // C1: /compact preserva o contexto antigo como resumo estruturado em vez de truncar.
+    const r = compactMessages(base, { maxTokens: alvo, resumirDescartados: true });
     session.transcript = r.messages[0]?.role === "system" ? r.messages.slice(1) : r.messages;
     const depois = session.transcript.reduce((a, m) => a + estimateMessageTokens(m), 0);
     return {
       handled: true,
-      reply: `· compactado: ${antes.toLocaleString("pt-BR")} → ${depois.toLocaleString("pt-BR")} tok (−${r.dropped} msgs)`,
+      reply: `· compactado: ${antes.toLocaleString("pt-BR")} → ${depois.toLocaleString("pt-BR")} tok (−${r.dropped} msgs${r.resumo !== undefined ? ", com resumo do contexto antigo" : ""})`,
     };
   }
   if (cmd0 === "/desfazer" || cmd0 === "/undo") {
@@ -2207,7 +2208,12 @@ app.whenReady().then(() => {
         if (estContexto && estContexto.contextTokens > CONTEXT_BUDGET * 0.75) {
           try {
             const before = estContexto.contextTokens;
-            const compacted = compactMessages(session.transcript, { maxTokens: CONTEXT_BUDGET });
+            // C1: auto-compact preserva decisões/arquivos/pendências antigas como resumo
+            // estruturado (determinístico, sem LLM) em vez de truncar e perder contexto.
+            const compacted = compactMessages(session.transcript, {
+              maxTokens: CONTEXT_BUDGET,
+              resumirDescartados: true,
+            });
             session.transcript = compacted.messages;
             const after = compacted.messages.reduce((acc, m) => acc + estimateMessageTokens(m), 0);
             const saved = Math.max(0, before - after);
@@ -2215,7 +2221,7 @@ app.whenReady().then(() => {
               sendCoreEvent({
                 event: {
                   key: "compaction",
-                  text: `Histórico resumido: −${saved} tok`,
+                  text: `Histórico resumido: −${saved} tok${compacted.resumo !== undefined ? " (contexto antigo preservado como resumo)" : ""}`,
                   type: "notice",
                 },
                 type: "agent-event",

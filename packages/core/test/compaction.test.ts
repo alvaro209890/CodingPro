@@ -1,6 +1,6 @@
 import type { ChatMessage } from "@codingpro/llm";
 import { describe, expect, it } from "vitest";
-import { compactMessages, estimateMessageTokens } from "../src/compaction.js";
+import { compactMessages, estimateMessageTokens, resumirDescartados } from "../src/compaction.js";
 
 const sys: ChatMessage = { content: "sistema", role: "system" };
 const user = (n: number): ChatMessage => ({ content: `pergunta ${n}`, role: "user" });
@@ -125,5 +125,60 @@ describe("compactMessages", () => {
     expect(
       estimateMessageTokens({ content: "x", reasoning: "pensa", role: "assistant" }),
     ).toBeGreaterThan(0);
+  });
+
+  // C1 — resumo estruturado dos turnos descartados (v1 determinístico, sem LLM).
+  it("C1: resumirDescartados extrai arquivos, decisões e pendências", () => {
+    const mensagens: ChatMessage[] = [
+      user(1),
+      {
+        content: "Decidimos usar Fastify para a API.",
+        role: "assistant",
+        toolCalls: [{ id: "w1", input: { path: "src/server.ts" }, name: "write_file" }],
+      },
+      {
+        result: { type: "error-text", value: "permissão negada" },
+        role: "tool",
+        toolCallId: "w1",
+        toolName: "write_file",
+      },
+      asst(2),
+    ];
+    const resumo = resumirDescartados(mensagens);
+    expect(resumo).toContain("src/server.ts");
+    expect(resumo).toContain("Fastify");
+    expect(resumo).toContain("permissão negada");
+  });
+
+  it("C1: compactMessages com resumirDescartados injeta resumo na posição system→resumo→sufixo", () => {
+    const messages = [
+      sys,
+      user(1),
+      { content: "decisão antiga A", role: "assistant" as const },
+      user(2),
+      asst(2),
+      user(3),
+    ];
+    const result = compactMessages(messages, {
+      estimateTokens: one,
+      maxTokens: 4,
+      resumirDescartados: true,
+    });
+    expect(result.resumo).toBeDefined();
+    expect(result.resumo).toContain("decisão antiga A");
+    // [system][resumo system][sufixo]
+    expect(result.messages[0]?.role).toBe("system");
+    expect(result.messages[1]?.role).toBe("system");
+    expect(result.messages[1]?.content).toContain("Resumo de contexto antigo");
+    expect(result.messages.at(-1)).toEqual(user(3));
+    expect(pairingValid(result.messages)).toBe(true);
+  });
+
+  it("C1: sem resumirDescartados o comportamento é idêntico ao anterior (backward-compat)", () => {
+    const messages = [sys, user(1), asst(1), user(2), asst(2), user(3)];
+    const com = compactMessages(messages, { estimateTokens: one, maxTokens: 4 });
+    expect(com.resumo).toBeUndefined();
+    expect(com.messages).toEqual([sys, user(2), asst(2), user(3)]);
+    expect(pairingValid(com.messages)).toBe(true);
   });
 });

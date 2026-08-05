@@ -437,7 +437,7 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
         transcrito[0]?.role === "system"
           ? transcrito
           : [{ content: promptBase, role: "system" }, ...transcrito];
-      const r = compactMessages(base, { maxTokens: alvo });
+      const r = compactMessages(base, { maxTokens: alvo, resumirDescartados: true });
       transcrito = r.messages[0]?.role === "system" ? r.messages.slice(1) : r.messages;
       stats = atualizarEstimativaContexto(stats, [
         { content: promptBase, role: "system" },
@@ -445,7 +445,7 @@ export async function executarChat(options: ChatOptions, io: ChatIo): Promise<vo
       ]);
       io.progresso(
         `${tema.sucesso(
-          `compactado: ${antes.toLocaleString("pt-BR")} → ${stats.contextTokens.toLocaleString("pt-BR")} tok (−${r.dropped} msgs)`,
+          `compactado: ${antes.toLocaleString("pt-BR")} → ${stats.contextTokens.toLocaleString("pt-BR")} tok (−${r.dropped} msgs${r.resumo !== undefined ? ", com resumo do contexto antigo" : ""})`,
         )}\n`,
       );
       continue;
