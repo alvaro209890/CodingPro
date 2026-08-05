@@ -356,6 +356,59 @@ export function isToolCall(value: unknown): value is ToolCall {
   );
 }
 
+/**
+ * I6b — reparo determinístico de input de tool call antes de rejeitar (zero tokens).
+ * O modelo às vezes emite JSON com aspas simples, chaves sem aspas ou string JSON aninhada.
+ * Só repara formas inequivocamente seguras; qualquer dúvida → devolve o valor original
+ * (fail-closed: o fluxo `invalid-tool-call` do agente continua como fallback).
+ */
+export function repararInputToolCall(valor: unknown): unknown {
+  // 1) String contendo JSON (modelo "esqueceu" de desserializar) → parseia se for objeto válido.
+  if (typeof valor === "string") {
+    const t = valor.trim();
+    if (t.startsWith("{") && t.endsWith("}")) {
+      try {
+        const parsed: unknown = JSON.parse(t);
+        if (isObject(parsed)) return parsed;
+      } catch {
+        // cai para o reparo de aspas simples abaixo
+      }
+    }
+    // 2) JSON com aspas simples (comum quando o modelo imita TS/JS).
+    if (t.startsWith("{") && t.endsWith("}") && t.includes("'")) {
+      const comAspasDuplas = t
+        .replace(/\\'/gu, "\\u0027")
+        .replace(/'/gu, '"');
+      try {
+        const parsed: unknown = JSON.parse(comAspasDuplas);
+        if (isObject(parsed)) return parsed;
+      } catch {
+        return valor;
+      }
+    }
+    return valor;
+  }
+  // 3) Objeto com chaves sem aspas (ex.: `{path: "x"}` já parseado como objeto com chave `path`).
+  if (isObject(valor)) {
+    let reparou = false;
+    const out: Record<string, unknown> = {};
+    for (const [chave, item] of Object.entries(valor)) {
+      // chave com hífen/espaço não vem de JSON canônico — provável `{path: ...}` → `{"path": ...}`
+      if (/^[A-Za-z_][A-Za-z0-9_]*$/u.test(chave)) {
+        out[chave] = repararInputToolCall(item);
+      } else {
+        reparou = true;
+        out[JSON.stringify(chave)] = repararInputToolCall(item);
+      }
+    }
+    return reparou ? out : valor;
+  }
+  if (Array.isArray(valor)) {
+    return valor.map((item) => repararInputToolCall(item));
+  }
+  return valor;
+}
+
 function isToolResult(value: unknown): value is ToolResult {
   if (!isObject(value) || typeof value.type !== "string") {
     return false;

@@ -58,4 +58,34 @@ describe("normalizarInputTool", () => {
       ),
     ).toBe(false);
   });
+
+  // I6b — reparo determinístico de JSON antes de rejeitar (zero tokens).
+  it("repara string JSON aninhada (modelo esqueceu de desserializar)", () => {
+    const resultado = normalizarInputTool(
+      "write_file",
+      writeFile.inputSchema,
+      '{"path": "docs/x.md", "content": "oi"}',
+    );
+    expect(toolAcceptsInput(writeFile.inputSchema, resultado)).toBe(true);
+    expect(resultado).toEqual({ content: "oi", path: "docs/x.md" });
+  });
+
+  it("repara JSON com aspas simples", () => {
+    const resultado = normalizarInputTool(
+      "write_file",
+      writeFile.inputSchema,
+      "{'path': 'docs/x.md', 'content': 'oi'}",
+    );
+    expect(toolAcceptsInput(writeFile.inputSchema, resultado)).toBe(true);
+    expect(resultado).toEqual({ content: "oi", path: "docs/x.md" });
+  });
+
+  it("não repara JSON quebrado de verdade (fail-closed → invalid-tool-call)", () => {
+    const resultado = normalizarInputTool(
+      "write_file",
+      writeFile.inputSchema,
+      '{"path": "docs/x.md", "content": "oi"',
+    );
+    expect(toolAcceptsInput(writeFile.inputSchema, resultado)).toBe(false);
+  });
 });

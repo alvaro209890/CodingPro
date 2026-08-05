@@ -64,5 +64,6 @@ export {
   isChatMessage,
   isTool,
   isToolCall,
+  repararInputToolCall,
   toolAcceptsInput,
 } from "./validation.js";

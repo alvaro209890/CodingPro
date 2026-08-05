@@ -40,6 +40,7 @@ import {
   copyToolCall,
   isChatRequest,
   isToolCall,
+  repararInputToolCall,
   toolAcceptsInput,
 } from "../validation.js";
 
@@ -266,10 +267,12 @@ export function normalizarInputTool(
   schema: ToolInputSchema,
   value: unknown,
 ): unknown {
-  if (schema.type !== "object" || !isPlainObject(value)) {
-    return value;
+  // I6b: repara JSON com aspas simples / chaves sem aspas / string JSON aninhada antes de validar.
+  const reparado = repararInputToolCall(value);
+  if (schema.type !== "object" || !isPlainObject(reparado)) {
+    return reparado;
   }
-  const original: Record<string, unknown> = { ...value };
+  const original: Record<string, unknown> = { ...(reparado as Record<string, unknown>) };
   if (toolName === "write_file") {
     for (const [canonical, aliases] of Object.entries(WRITE_FILE_ALIASES)) {
       const presentes = aliases.filter((alias) => Object.hasOwn(original, alias));
