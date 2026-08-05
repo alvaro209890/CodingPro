@@ -1,5 +1,5 @@
 /** Artefatos Windows publicados em /downloads/ (servidos pelo site). */
-export const DESKTOP_VERSAO = "1.2.2";
+export const DESKTOP_VERSAO = "1.2.3";
 
 export const DOWNLOAD_WINDOWS = {
   portable: {

@@ -9,8 +9,8 @@ const setup = `CodingPro-Setup-${pkg.version}.exe`;
 const portable = `CodingPro-portable-${pkg.version}.exe`;
 const blockmap = `${setup}.blockmap`;
 const releaseNotes =
-  "PlanTracker com progresso real, markdown nos planos, anti-varredura de exploração, " +
-  "inteligência Windows (cmd/Python), 10 tipos de subagente e comandos /subagentes e /executar.";
+  "Inteligência: reparo de tool calls, leituras em paralelo, memória automática, compactação com " +
+  "resumo, 10 subagentes, anti-varredura, repo map na âncora e PlanTracker com progresso real.";
 
 for (const file of [setup, portable, blockmap, "latest.yml"]) {
   if (!existsSync(join(releaseDir, file))) {
