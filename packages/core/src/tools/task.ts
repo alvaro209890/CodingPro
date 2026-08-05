@@ -158,9 +158,23 @@ export const taskTool: ExecutableTool = {
     };
     await Promise.all(Array.from({ length: Math.min(limite, tarefas.length) }, () => trabalhar()));
 
-    const texto = tarefas
-      .map((_t, i) => formatarRelatorio(i, relatorios[i] as SubagenteRelatorio))
-      .join("\n\n");
+    const texto =
+      tarefas.length > 3
+        ? // O4 — síntese: >3 relatórios não entram crus no contexto do agente principal.
+          // Mantém o cabeçalho de cada um + primeiras 400 chars (resumo na frente, como os
+          // subagentes são instruídos a estruturar). Relatórios completos ficam sob demanda.
+          tarefas
+            .map((_t, i) => {
+              const r = relatorios[i] as SubagenteRelatorio;
+              const sufixo = r.interrompido ? ` (${r.motivo ?? "interrompido"})` : "";
+              const corpo = r.texto.length > 0 ? r.texto : "(sem saída)";
+              const cortado = corpo.length > 400 ? `${corpo.slice(0, 400)}…` : corpo;
+              return `## Subagente ${i + 1} — ${r.tipo}${sufixo}\n${cortado}`;
+            })
+            .join("\n\n")
+        : tarefas
+            .map((_t, i) => formatarRelatorio(i, relatorios[i] as SubagenteRelatorio))
+            .join("\n\n");
     return textResult(texto);
   },
 };
