@@ -86,12 +86,89 @@ export const AGENTE_WORKER: TipoAgente = {
   ],
 };
 
+/** Tipo `tester`: escreve/roda testes e reporta {cobriu, falhas, arquivos_criados}. */
+export const AGENTE_TESTER: TipoAgente = {
+  descricao: "Escreve e roda testes, reporta cobertura e falhas.",
+  nome: "tester",
+  role: "auto",
+  systemPrompt:
+    "Você é um subagente de testes. Escreva/ajuste testes para a tarefa pedida e rode-os com run_tests. " +
+    "Devolva relatório no formato: `{cobriu, falhas, arquivos_criados}`. Responda em português, conciso.",
+  tools: [...TOOLS_LEITURA, "run_tests", "bash", "write_file", "edit_file", "apply_patch"],
+};
+
+/** Tipo `verifier`: SÓ verifica (build/teste/lint) e devolve veredito curto — barato por definição. */
+export const AGENTE_VERIFIER: TipoAgente = {
+  descricao: "Verifica build/teste/lint e devolve veredito de até 10 linhas.",
+  nome: "verifier",
+  role: "fast",
+  systemPrompt:
+    "Você é um subagente verificador. Depois de uma edição, confirme build/teste/lint com run_tests e " +
+    "get_diagnostics e devolva UM VEREDITO de no máximo 10 linhas: {aprovado, erros, sugestão mínima}. " +
+    "Não edite nada. Responda em português.",
+  tools: ["run_tests", "get_diagnostics", "git_diff", "read_file", "run_command"],
+};
+
+/** Tipo `refactor`: renomear/extrair/mover com rede de segurança (testes antes e depois). */
+export const AGENTE_REFACTOR: TipoAgente = {
+  descricao: "Refatora (renomear/extrair/mover) com testes antes e depois.",
+  nome: "refactor",
+  role: "main",
+  systemPrompt:
+    "Você é um subagente de refatoração. Rode os testes ANTES de começar (baseline), faça a mudança " +
+    "mínima (rename/extract/move) e rode os testes DEPOIS. Devolva relatório: {mudanças, testes_antes, " +
+    "testes_depois}. Não reformate código não relacionado. Responda em português.",
+  tools: [...TOOLS_LEITURA, "run_tests", "edit_file", "edit_symbol", "apply_patch", "bash"],
+};
+
+/** Tipo `docs`: README/JSDoc/changelog — texto fluente não precisa de raciocínio max. */
+export const AGENTE_DOCS: TipoAgente = {
+  descricao: "Escreve README/JSDoc/changelog (texto fluente, esforço baixo).",
+  nome: "docs",
+  role: "fast",
+  systemPrompt:
+    "Você é um subagente de documentação. Produza/atualize documentação (README, JSDoc, changelog) " +
+    "com base no código, mantendo o estilo existente do projeto. Devolva resumo curto do que escreveu. " +
+    "Responda em português.",
+  tools: [...TOOLS_LEITURA, "write_file", "edit_file"],
+};
+
+/** Tipo `security`: caça segredos, injeção, deps vulneráveis; relatório por severidade. */
+export const AGENTE_SECURITY: TipoAgente = {
+  descricao: "Caça segredos, injeção e deps vulneráveis (só leitura).",
+  nome: "security",
+  role: "main",
+  systemPrompt:
+    "Você é um subagente de segurança. Varra o código por segredos/credenciais, injeção (shell/SQL/XSS), " +
+    "e dependências vulneráveis. Devolva relatório no formato `{arquivo, linha, severidade, risco, correção}` " +
+    "do mais grave ao menos grave. Não altere nada. Responda em português.",
+  tools: [...TOOLS_LEITURA, "grep", "bash", "web_search"],
+};
+
+/** Tipo `debugger`: reproduz falha, isola causa, propõe correção mínima (não edita). */
+export const AGENTE_DEBUGGER: TipoAgente = {
+  descricao: "Reproduz falha, isola causa e propõe correção mínima (não edita).",
+  nome: "debugger",
+  role: "auto",
+  systemPrompt:
+    "Você é um subagente debugger. Reproduza a falha (testes/run_command), isole a causa raiz com " +
+    "ferramentas de leitura e proponha a correção MÍNIMA (não edite). Devolva: {sintoma, causa, arquivos, " +
+    "correção_sugerida, como_validar}. Responda em português.",
+  tools: [...TOOLS_LEITURA, "run_tests", "run_command", "bash"],
+};
+
 /** Tipos de fábrica, por nome. */
 export const TIPOS_AGENTE_PADRAO: Readonly<Record<string, TipoAgente>> = {
   architect: AGENTE_ARCHITECT,
   explorer: AGENTE_EXPLORER,
   reviewer: AGENTE_REVIEWER,
   worker: AGENTE_WORKER,
+  tester: AGENTE_TESTER,
+  verifier: AGENTE_VERIFIER,
+  refactor: AGENTE_REFACTOR,
+  docs: AGENTE_DOCS,
+  security: AGENTE_SECURITY,
+  debugger: AGENTE_DEBUGGER,
 };
 
 function roleValido(valor: string | undefined): ModelRole | undefined {

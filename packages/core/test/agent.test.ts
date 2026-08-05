@@ -9,7 +9,7 @@ import {
   type ToolCall,
 } from "@codingpro/llm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type AgentEvent, runAgent } from "../src/agent.js";
+import { AGENT_MAX_EXPLORATION_STEPS, type AgentEvent, runAgent } from "../src/agent.js";
 import { ToolGate } from "../src/gate.js";
 import { PermissionController } from "../src/permissions.js";
 import { ToolRegistry } from "../src/registry.js";
@@ -172,6 +172,34 @@ describe("runAgent", () => {
 
     expect(result.finishReason).toBe("max-steps");
     expect(result.steps).toBe(2);
+  });
+
+  it("C9: injeta aviso de bússola após N turnos só de exploração (sem esperar maxSteps)", async () => {
+    await writeFile(join(root, "a.txt"), "x");
+    const call: ToolCall = { id: "c", input: { path: "a.txt" }, name: "read_file" };
+    const { provider } = scripted([
+      // 12 turnos só de leitura (read_file) + um turno final que responde.
+      ...[...Array(AGENT_MAX_EXPLORATION_STEPS)].map(() => [
+        finish(assistant("", [call])),
+      ] as const),
+      [finish(assistant("achei o que precisava: x"))],
+    ]);
+    const notices: string[] = [];
+    const result = await runAgent({
+      context,
+      gate,
+      messages: [{ content: "varra o projeto", role: "user" }],
+      onEvent: (event) => {
+        if (event.type === "notice") notices.push(event.text);
+      },
+      provider,
+      tools: registry.definitions(),
+    });
+
+    // Não esgotou o maxSteps (40): o aviso de bússola veio aos 12 passos e o modelo respondeu.
+    expect(result.finishReason).toBe("stop");
+    expect(notices.some((t) => t.includes("explorou 12 vezes"))).toBe(true);
+    expect(result.messages.some((m) => m.role === "user" && m.content.includes("12 chamadas seguidas"))).toBe(true);
   });
 
   it("sintetiza uma resposta final (sem tools) ao esgotar o teto de passos", async () => {

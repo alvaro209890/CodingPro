@@ -99,6 +99,18 @@ export const COMANDOS_CHAT: readonly ComandoChat[] = Object.freeze([
     aceitaArgs: true,
   },
   {
+    nome: "/executar",
+    aliases: ["/execute"],
+    descricao: "executa o plano ativo da sessão (crie com /plan)",
+    aceitaArgs: false,
+  },
+  {
+    nome: "/subagentes",
+    aliases: ["/agents"],
+    descricao: "lista os tipos de subagente disponíveis (task/explorer/reviewer/…)",
+    aceitaArgs: false,
+  },
+  {
     nome: "/review",
     aliases: [],
     descricao: "revisa o diff git (ou <alvo>) com o subagente reviewer",

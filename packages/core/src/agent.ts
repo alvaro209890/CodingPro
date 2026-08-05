@@ -31,6 +31,33 @@ export const AGENT_MAX_TOOL_CALL_FIXES = 5;
 /** Uma tentativa extra se a requisição for rejeitada por histórico sujo (ex. CRLF em tool text). */
 export const AGENT_MAX_INVALID_REQUEST_FIXES = 1;
 
+/**
+ * C9 — teto de exploração por objetivo (anti-varredura).
+ * Se o agente fizer N passos seguidos SÓ de leitura/varredura (sem editar, escrever ou
+ * produzir resposta), injeta um aviso de "bússola" para ele ler skill/doc ou responder.
+ * Caso real 7c5976fc (08/05): 34 `bash` + 6 tools em sequência varrendo C:\ antes de achar
+ * docs/PROMPT-ZERO-CODINGPRO.md — o maxSteps global (40) só cortava no fim, caro.
+ */
+export const AGENT_MAX_EXPLORATION_STEPS = 12;
+
+/** Tools consideradas "exploração pura" (não produzem efeito nem resposta). */
+const TOOLS_EXPLORACAO = new Set([
+  "list_dir",
+  "glob",
+  "grep",
+  "read_file",
+  "read_files",
+  "repo_map",
+  "code_search",
+  "find_references",
+  "bash",
+  "web_search",
+  "web_extract",
+  "http_request",
+  "git_status",
+  "git_diff",
+]);
+
 export interface RetryOptions {
   readonly baseDelayMs?: number;
   readonly maxRetries?: number;
@@ -316,6 +343,8 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
   // Realimentamos o erro como mensagem e deixamos o modelo refazer, com um teto pequeno.
   let correcoesToolCall = 0;
   let correcoesInvalidRequest = 0;
+  // C9: passos consecutivos só de exploração (leitura/bash) — zera a cada turno com efeito.
+  let passosExploracao = 0;
 
   while (steps < maxSteps) {
     options.signal?.throwIfAborted();
@@ -427,6 +456,36 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentResult> {
       // Abort ou erro de tool: descarta resultados parciais do turno e para o loop.
       working = working.slice(0, resultsStart);
       throw error;
+    }
+
+    // C9: anti-varredura — turno só de exploração (leitura/bash) conta; efeito zera.
+    // Ao passar do teto, injeta aviso de "bússola" e segue: o modelo lê skill/doc ou responde.
+    const soExploracao =
+      calls.length > 0 && calls.every((call) => TOOLS_EXPLORACAO.has(call.name));
+    if (soExploracao) {
+      passosExploracao += 1;
+      if (passosExploracao >= AGENT_MAX_EXPLORATION_STEPS) {
+        passosExploracao = 0;
+        options.signal?.throwIfAborted();
+        options.onEvent?.({
+          text: `você já explorou ${AGENT_MAX_EXPLORATION_STEPS} vezes sem produzir — leia a skill/doc relevante ou responda com o que tem`,
+          type: "notice",
+        });
+        working = [
+          ...working,
+          {
+            content:
+              `Você fez ${AGENT_MAX_EXPLORATION_STEPS} chamadas seguidas só de leitura/varredura sem ` +
+              "editar nada nem responder. Pare de explorar o ambiente à toa: se existir skill, doc ou " +
+              "memória cobrindo o assunto, LEIA ESSA FONTE (uma vez) e responda; senão, responda com o " +
+              "que já tem ou pergunte ao usuário. NÃO repita comandos de varredura.",
+            role: "user",
+          },
+        ];
+      }
+    } else if (calls.length > 0) {
+      // turno com tool de efeito (write/edit/task/etc.): exploração acumulada não conta mais
+      passosExploracao = 0;
     }
   }
 

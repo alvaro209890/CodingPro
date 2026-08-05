@@ -57,11 +57,27 @@ export interface SpawnerOptions {
   readonly toolPool?: readonly ExecutableTool[];
   readonly maxParalelo?: number;
   readonly timeoutMs?: number;
+  /** Teto de caracteres do relatório devolvido ao agente pai (O2); head+tail com aviso. */
+  readonly maxRelatorioChars?: number;
   /** Aprovador do runtime pai, para que subagentes com tools de efeito possam escrever. */
   readonly approver?: Approver;
   /** Modo de permissão dos subagentes; padrão `ask`. */
   readonly permissionMode?: PermissionMode;
   readonly onEvent?: (event: SubagenteEvento) => void;
+}
+
+/** Default do teto de relatório (O2): ~3 k tokens de texto. */
+const RELATORIO_MAX_CHARS_PADRAO = 12_000;
+
+/**
+ * O2 — limita o relatório devolvido ao agente pai: mantém cabeça (resumo) + cauda (conclusão)
+ * com marcador de omissão. Relatórios longos inflam o histórico do agente principal.
+ */
+function limitarRelatorio(texto: string, maxChars: number): string {
+  if (texto.length <= maxChars) return texto;
+  const head = Math.floor(maxChars * 0.7);
+  const tail = maxChars - head;
+  return `${texto.slice(0, head)}\n\n…(relatório truncado: ${texto.length - maxChars} caracteres omitidos)…\n\n${texto.slice(-tail)}`;
 }
 
 /**
@@ -71,6 +87,7 @@ export interface SpawnerOptions {
 export function criarSpawnerSubagentes(options: SpawnerOptions): SubagenteSpawner {
   const custom = options.custom ?? {};
   const toolPool = options.toolPool ?? SUBAGENT_TOOL_POOL;
+  const maxRelatorio = options.maxRelatorioChars ?? RELATORIO_MAX_CHARS_PADRAO;
   const tiposDisponiveis = [
     ...new Set([...Object.keys(TIPOS_AGENTE_PADRAO), ...Object.keys(custom)]),
   ].sort();
@@ -81,7 +98,7 @@ export function criarSpawnerSubagentes(options: SpawnerOptions): SubagenteSpawne
         throw new Error(`Tipo de subagente desconhecido: ${tipoNome}.`);
       }
       const provider = options.criarProvider?.(tipo.role) ?? options.provider;
-      return executarSubagente({
+      const relatorio = await executarSubagente({
         context: {
           workspace: options.workspace,
           ...(options.memory === undefined ? {} : { memory: options.memory }),
@@ -96,6 +113,11 @@ export function criarSpawnerSubagentes(options: SpawnerOptions): SubagenteSpawne
         ...(options.onEvent === undefined ? {} : { onEvent: options.onEvent }),
         ...(signal === undefined ? {} : { signal }),
       });
+      const textoLimitado = limitarRelatorio(relatorio.texto, maxRelatorio);
+      if (textoLimitado !== relatorio.texto) {
+        return { ...relatorio, texto: textoLimitado };
+      }
+      return relatorio;
     },
     maxParalelo: options.maxParalelo ?? 3,
     tiposDisponiveis,

@@ -37,4 +37,12 @@ export const SYSTEM_PROMPT_V1 = [
   "- Se existirem skills no contexto (`.codingpro/skills/`), USE-AS — elas definem como trabalhar neste projeto.",
   "- Se um padrão se repetir, sugira criar uma skill: salve em `.codingpro/skills/nome.md` com frontmatter YAML.",
   "- Use `/lembrar` (tool remember) para fatos importantes do projeto.",
+  "",
+  "Ambiente Windows (IMPORTANTE):",
+  "- A tool `bash` roda em cmd.exe do Windows, NÃO em bash/POSIX. Use `dir`, `type`, `where`, `cd /d`.",
+  "- One-liners Python multi-linha falham no cmd (quebras de linha são truncadas). Prefira 1 linha ou salve um .py e rode.",
+  "- Prefira o Python limpo do sistema (`py -3` ou `C:\\Users\\<usuário>\\AppData\\Local\\Programs\\Python\\Python312\\python.exe -E`) — o `python` padrão pode ter PYTHONPATH poluído.",
+  "- Caminhos: use `C:\\...` ou `C:/...`. Espaços em caminhos precisam de aspas duplas no cmd.",
+  "- Saída de comando pode ter acentos/encoding diferentes — não se assuste com caracteres estranhos.",
+  "- Se uma tool de arquivo (read_file/list_dir/grep) falhar num caminho absoluto, prefira as tools de arquivo do sandbox; use bash só para o que elas não cobrem.",
 ].join("\n");

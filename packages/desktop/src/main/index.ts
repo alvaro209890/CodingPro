@@ -1532,6 +1532,38 @@ async function handleLocalCommand(
     const { texto } = formatarRelatorioDoctor(montarDiagnosticos(sondas));
     return { handled: true, reply: texto.trim() };
   }
+  if (cmd0 === "/subagentes" || cmd0 === "/agents") {
+    const tipos = session.subagentes?.tiposDisponiveis ?? [];
+    if (tipos.length === 0) {
+      return { handled: true, reply: "· subagentes indisponíveis nesta sessão" };
+    }
+    const descs: Record<string, string> = {
+      architect: "planeja tarefas grandes (Markdown)",
+      debugger: "reproduz falha e isola causa",
+      docs: "escreve README/JSDoc/changelog",
+      explorer: "explora e busca (só leitura)",
+      refactor: "refatora com rede de segurança",
+      reviewer: "revisa código por severidade",
+      security: "caça segredos/injeção/deps",
+      tester: "escreve e roda testes",
+      verifier: "verifica build/teste/lint",
+      worker: "trabalho geral",
+    };
+    const linhas = tipos.map(
+      (t) => `  ${t} — ${descs[t] ?? "tipo custom (.codingpro/agents)"}`,
+    );
+    return {
+      handled: true,
+      reply: `tipos de subagente (${tipos.length}):\n${linhas.join("\n")}\n\nUse a tool \`task\` (ou /goal) para orquestrar.`,
+    };
+  }
+  if (cmd0 === "/executar" || cmd0 === "/execute") {
+    // Com plano ativo: deixa o prompt chegar ao agente (o plano já está no system prompt).
+    // Sem plano: responde local com instrução.
+    return session.planoAtivo === undefined
+      ? { handled: true, reply: "· não há plano ativo — crie com /plan <objetivo> primeiro" }
+      : { handled: false };
+  }
   if (cmd0 === "/sair" || cmd0 === "/exit") {
     return { handled: true, reply: "· no desktop feche a janela (Alt+F4) — não há /sair" };
   }
