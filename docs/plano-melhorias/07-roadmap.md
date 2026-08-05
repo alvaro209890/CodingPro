@@ -58,7 +58,7 @@
 | V1 paralelismo de leitura no loop | 04 | 1,5 d ✅ `3b11ebe` |
 | V4 auto-effort fino | 04 | 1 d ✅ `e84ec01` |
 | T8 `read_files` em lote | 02 | 0,5 d ✅ (já existia) |
-| V3 cache de índices (repo_map persistido, pré-aquecer vector) | 04 | 2 d 📌 |
+| V3a cache de índices (repo_map persistido) | 04 | 2 d ✅ `326ef97` (tool repo_map usa .codingpro/cache) |
 | V7 bússola de conhecimento (catálogo de skills no prompt) | 04 | 0,5 d ✅ `a9ed642` |
 
 ### F4 — Subagentes (parcial ✅)
@@ -68,8 +68,8 @@
 | R1 ligar `criarProvider` por papel | 03 | 1 d ✅ (desktop já ligava; CLI provider único aceitável) |
 | O2 formato/teto de relatório | 03 | 1 d ✅ `a9ed642` (12 k chars head+tail) |
 | Tipos `tester` + `verifier` | 03 | 1 d ✅ `a9ed642` |
-| O1 concorrência adaptativa | 03 | 1 d 📌 |
-| O3 cache de exploração | 03 | 1 d 📌 |
+| O1 concorrência adaptativa | 03 | 1 d ✅ `34394f7` (leitura ≤6, efeito ≤2) |
+| O3 cache de exploração | 03 | 1 d ✅ `34394f7` (tipo+prompt reusa relatório) |
 | Tipos `refactor`, `docs`, `security`, `debugger` | 03 | 2 d ✅ `a9ed642` |
 | O4 síntese de N relatórios | 03 | 1 d 📌 |
 
