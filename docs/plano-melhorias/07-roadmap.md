@@ -77,7 +77,7 @@
 
 | Item | Doc | Esforço |
 |---|---|---|
-| C1/I3 compactação com resumo | 06/05 | 2 d 📌 (maior item restante) |
+| C1/I3 compactação com resumo | 06/05 | 2 d ✅ `9a8bb91` (v1 determinístico sem LLM) |
 | C3 dedup de resultados | 06 | 1 d ✅ `44e8135` |
 | I4 recall automático de memória | 05 | 2 d ✅ `6624f49` |
 | C9 orçamento de exploração por pergunta (anti-varredura) | 06 | 1 d ✅ `a9ed642` |
