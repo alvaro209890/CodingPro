@@ -9,7 +9,8 @@ const setup = `CodingPro-Setup-${pkg.version}.exe`;
 const portable = `CodingPro-portable-${pkg.version}.exe`;
 const blockmap = `${setup}.blockmap`;
 const releaseNotes =
-  "Cancelamento ponta a ponta, streams abandonados encerrados, diagnóstico local e saldo Cloud no desktop.";
+  "PlanTracker com progresso real, markdown nos planos, anti-varredura de exploração, " +
+  "inteligência Windows (cmd/Python), 10 tipos de subagente e comandos /subagentes e /executar.";
 
 for (const file of [setup, portable, blockmap, "latest.yml"]) {
   if (!existsSync(join(releaseDir, file))) {
