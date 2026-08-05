@@ -1,6 +1,6 @@
 # 07 — Roadmap Consolidado
 
-**Área:** transversal · **Status:** 🚧 em execução — **F1 ✅, F3 parcial, F4 parcial, F5 parcial** (ver §2)
+**Área:** transversal · **Status:** 🚧 em execução — **F0–F6 ✅ completas** (ver §2); resta **F7** (backlog avançado)
 **Como ler:** cada fase é independente e entrega valor sozinha. Dentro de cada fase, itens ordenados por (ganho ÷ esforço). Totais ≈ **6 semanas** de trabalho (paralelizável em 2 frentes: core/IA e front).
 
 ---
@@ -51,7 +51,7 @@
 | T3 `git_status`/`git_diff` | 02 | 1 d |
 | T4 `run_command` seguro | 02 | 1 d |
 
-### F3 — Velocidade (parcial ✅)
+### F3 — Velocidade ✅ (2026-08-05)
 
 | Item | Doc | Esforço |
 |---|---|---|
@@ -61,7 +61,7 @@
 | V3a cache de índices (repo_map persistido) | 04 | 2 d ✅ `326ef97` (tool repo_map usa .codingpro/cache) |
 | V7 bússola de conhecimento (catálogo de skills no prompt) | 04 | 0,5 d ✅ `a9ed642` |
 
-### F4 — Subagentes (parcial ✅)
+### F4 — Subagentes ✅ (2026-08-05)
 
 | Item | Doc | Esforço |
 |---|---|---|
@@ -71,9 +71,9 @@
 | O1 concorrência adaptativa | 03 | 1 d ✅ `34394f7` (leitura ≤6, efeito ≤2) |
 | O3 cache de exploração | 03 | 1 d ✅ `34394f7` (tipo+prompt reusa relatório) |
 | Tipos `refactor`, `docs`, `security`, `debugger` | 03 | 2 d ✅ `a9ed642` |
-| O4 síntese de N relatórios | 03 | 1 d 📌 |
+| O4 síntese de N relatórios | 03 | 1 d ✅ `54ad27d` (>3 tarefas → 400 chars cada) |
 
-### F5 — Memória longa (parcial ✅)
+### F5 — Memória longa ✅ (2026-08-05)
 
 | Item | Doc | Esforço |
 |---|---|---|
@@ -81,8 +81,8 @@
 | C3 dedup de resultados | 06 | 1 d ✅ `44e8135` |
 | I4 recall automático de memória | 05 | 2 d ✅ `6624f49` |
 | C9 orçamento de exploração por pergunta (anti-varredura) | 06 | 1 d ✅ `a9ed642` |
-| I9c eval de ecossistema (replay da sessão `7c5976fc`) | 05 | 0,5 d 📌 |
-| I5 repo_map âncora + T7 `find_references` | 05/02 | 1,5 d 📌 |
+| I9c eval de ecossistema (replay da sessão `7c5976fc`) | 05 | 0,5 d ✅ `f022107` |
+| I5 repo_map âncora + T7 `find_references` | 05/02 | 1,5 d ✅ `87b5439` (âncora 1º turno 1,5 k tok) |
 
 ### F6 — Front (paralela ao F2–F4, pessoa/fluxo separado)
 
