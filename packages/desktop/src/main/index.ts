@@ -67,6 +67,8 @@ import {
   SUBAGENT_TOOL_POOL,
   type SubagenteSpawner,
   SYSTEM_PROMPT_V1,
+  MEMORY_RETRIEVAL_TOP_K,
+  montarBlocoMemoria,
   salvarPlanoEmDisco,
   sanitizeMessagesForProvider,
   type ToolContext,
@@ -362,9 +364,35 @@ async function montarSystemPromptDesktop(session: ChatSession): Promise<string> 
     skillsStr,
   ].join("\n");
   const base = `${SYSTEM_PROMPT_V1}\n${extra}`;
+  // I4 — recall automático de memória: índices (sempre) + memórias relevantes ao turno,
+  // paridade com a CLI (memory-runtime.promptDoTurno). Custo ~300 tok/sessão; evita
+  // "reexplorar" decisões/fatos já memorizados em sessões anteriores.
+  let comMemoria = base;
+  try {
+    const ultimaUsuario = [...session.transcript]
+      .reverse()
+      .find((m) => m.role === "user");
+    const consulta =
+      ultimaUsuario !== undefined && "content" in ultimaUsuario
+        ? String(ultimaUsuario.content).slice(0, 2_000)
+        : "";
+    const [indiceGlobal, indiceProjeto, relGlobal, relProjeto] = await Promise.all([
+      session.memoryGlobal.indice(),
+      session.memoryProjeto.indice(),
+      consulta.length > 0 ? session.memoryGlobal.buscar(consulta) : Promise.resolve([]),
+      consulta.length > 0 ? session.memoryProjeto.buscar(consulta) : Promise.resolve([]),
+    ]);
+    const relevantes = [...relProjeto, ...relGlobal].slice(0, MEMORY_RETRIEVAL_TOP_K);
+    const bloco = montarBlocoMemoria({ indiceGlobal, indiceProjeto, relevantes });
+    if (bloco.length > 0) {
+      comMemoria = `${base}\n\n${bloco}`;
+    }
+  } catch {
+    // memória é best-effort — nunca derruba o turno
+  }
   return session.planoAtivo === undefined
-    ? base
-    : `${base}\n\n${blocoPlanoAtivo(session.planoAtivo)}`;
+    ? comMemoria
+    : `${comMemoria}\n\n${blocoPlanoAtivo(session.planoAtivo)}`;
 }
 
 async function escolherPastaProjeto(defaultPath?: string): Promise<string | undefined> {
