@@ -203,4 +203,28 @@ describe("plano 02 — verificação pós-edição (evals)", () => {
       expect(cortado.value).toMatch(/truncado/i);
     }
   });
+
+  // I9c — eval de ecossistema: replay da sessão 7c5976fc (08/05). A pergunta do usuário era
+  // sobre o "Segundo Cérebro"; o agente gastou 40 calls explorando porque NÃO havia skill.
+  // Com a skill `segundo-cerebro` disponível, a bússola de relevância deve apontar para ela.
+  it("I9c: skill segundo-cerebro existe e é a mais relevante para a pergunta do caso real", async () => {
+    const { carregarSkills } = await import("../src/skills-loader.js");
+    const { sugerirSkills } = await import("../src/skills.js");
+    const { dirsSkills } = await import("../src/skills-loader.js");
+    const skills = await carregarSkills(dirsSkills(process.cwd()));
+    const nome = "segundo-cerebro";
+    const skill = skills.find((s) => s.nome === nome);
+    expect(skill, `skill ${nome} deve existir em .codingpro/skills ou ~/.codingpro/skills`).toBeDefined();
+    if (skill === undefined) return;
+    // A skill precisa cobrir o essencial: onde fica o vault, ssh e o protocolo.
+    expect(skill.body.toLowerCase()).toContain("segundo cérebro");
+    expect(skill.body.toLowerCase()).toMatch(/ssh|100\.65\.138\.58|servidor/);
+    expect(skill.body.toLowerCase()).toMatch(/lock|changelog/);
+
+    // A pergunta real da sessão deve casar com a skill (bússola de relevância).
+    const prompt = "estude como funciona o segundo cerebro que os agents de ia desse pc usam";
+    const sugestoes = sugerirSkills([skill], prompt, 1);
+    expect(sugestoes.length).toBe(1);
+    expect(sugestoes[0]?.nome).toBe(nome);
+  });
 });
