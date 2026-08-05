@@ -14,6 +14,7 @@
 | Índices refeitos por sessão | `repo-map.ts`, `vector/` | `repo_map` e `code_search` reindexam no 1º uso de cada sessão |
 | 1 requisição por passo, sempre com histórico inteiro | loop `agent.ts:320` | Inerente ao paradigma — mitigar com menos passos (docs 02/05), não com "mais streaming" |
 | Auto-effort sobe para `max` com facilidade | `auto-effort.ts` (qualquer falha, contexto > 8 k) | Raciocínio `max` é visivelmente mais lento por turno |
+| **Exploração cega sem bússola (caso real 08/05)** | Sessão `7c5976fc` (workspace `C:\`): 34 `bash` + 6 outras tools em **5 min** para achar 1 arquivo (`docs/PROMPT-ZERO-CODINGPRO.md`) | 40 calls para uma pergunta que 1 skill resolveria; cada call reenvia histórico inteiro (doc 06) |
 
 ## 2. Propostas
 
@@ -62,15 +63,25 @@ Cada turno reenvia o histórico inteiro — turno economizado é latência **e**
 - pipeline de subagentes (doc 03, O6);
 - system prompt ensinando a **agrupar chamadas independentes no mesmo turno** (1 linha no `SYSTEM_PROMPT_V1` — custo zero, efeito imediato no comportamento do modelo).
 
+### V7 — Fim da exploração cega (bússola de conhecimento antes de varrer o disco) ⭐
+
+**Caso real (sessão `7c5976fc`, 08/05):** workspace `C:\`, pergunta sobre o Segundo Cérebro → 34 `bash` (dir/findstr/python) em sequência, cada um esperando o anterior. O agente não sabia que o vault está documentado em `docs/PROMPT-ZERO-CODINGPRO.md` nem que existe skill `segundo-cerebro` — então varreu o drive procurando. **Bússola > velocidade de execução.**
+
+- **Semear skills de produto** (`~/.codingpro/skills/`): Segundo Cérebro, Windows-env, IMAP/DLA — o agente passa de "varrer C:\" para "ler a skill" (1 call). Conteúdo, não runtime (detalhe no doc 05 I9).
+- **Catálogo de skills no system prompt** (I9b): o agente *sabe* o que existe antes de explorar. +200 tok de prefixo cacheado.
+- **Regra de ouro no prompt:** "Se existe skill/docs cobrindo o assunto, LEIA primeiro — não explore o filesystem à toa."
+- **Ganho:** sessões de conhecimento caem de 40 calls / 5 min para 2–4 calls / < 1 min. Esforço: 0,5–1 d (conteúdo) + 0,5 d (catálogo).
+
 ## 3. Ordem sugerida
 
 | Ordem | Item | Por quê |
 |---|---|---|
 | 1 | V6 linha no system prompt + `read_files` | Quase grátis, efeito no mesmo dia |
-| 2 | V1 paralelismo de leitura | Maior ganho/dia de trabalho |
-| 3 | V4 auto-effort fino | Corta tempo e custo juntos |
-| 4 | V3 índices quentes | Sessões recorrentes ficam instantâneas |
-| 5 | V2 subprocesso | Projeto próprio (já planejado) |
+| 2 | V7 bússola de conhecimento (skills) | Mata a exploração cega inteira (caso real) |
+| 3 | V1 paralelismo de leitura | Maior ganho/dia de trabalho |
+| 4 | V4 auto-effort fino | Corta tempo e custo juntos |
+| 5 | V3 índices quentes | Sessões recorrentes ficam instantâneas |
+| 6 | V2 subprocesso | Projeto próprio (já planejado) |
 
 ## 4. Medição (obrigatória antes/depois)
 

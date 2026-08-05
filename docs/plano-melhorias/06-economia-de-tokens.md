@@ -18,6 +18,7 @@ Fatos do código que definem o custo:
 | Compactação = **truncamento** | `compaction.ts` | Joga fora contexto que custou caro; o modelo reexplora e paga de novo |
 | Prefixo do system prompt é estável | `system-prompt.ts` (comentário: "mudanças aqui invalidam o cache") | ✅ Correto — preservar |
 | Cache-hit reportado pelo provider | `usage.cacheReadInputTokens` | Métrica já existe; falta **dirigir o design por ela** |
+| **Exploração sem bússola vira histórico caro (caso real 08/05)** | Sessão `7c5976fc`: 40 calls / **1,86M tokens de entrada** para 1 pergunta de conhecimento (19 s de output) | 34 `bash` em sequência; cada call reenvia histórico inteiro; mesmo com cache-hit 96%, o custo é 40× o necessário |
 
 ## 2. As 8 alavancas (ordenadas por economia esperada)
 
@@ -71,6 +72,14 @@ Fatos do código que definem o custo:
 - `codingpro --economico` / toggle no desktop: força esforço `high`, desativa `web_search`/`web_extract`, aperta tetos (tool 4 k, contexto 60%), `maxParalelo` 2.
 - Exposto no desktop quando consumo > X% do limite (doc 01, D5). Esforço: 1 dia.
 
+### C9 — Orçamento de exploração por pergunta (anti-varredura) ⭐
+
+**Caso real (sessão `7c5976fc`, 08/05):** 40 calls para 1 pergunta de conhecimento; o limite de passos (`maxSteps`, `agent.ts:432`) só cortou no fim. O problema não é o teto — é **não haver teto intermediário por fase**: o agente varreu o drive inteiro (`dir /s /b` em C:\), sem nunca "pagar" pela varredura.
+
+- **Teto de exploração por objetivo:** antes de cada tool de leitura/varredura, o loop conta "passos de exploração desde a última resposta útil" — ao passar de N (ex.: 12) sem edição/escrita, injeta o aviso "você está varrendo sem bússola — leia a skill/doc relevante ou pergunte ao usuário".
+- **Skills como atalho:** o aviso referencia o catálogo de skills (I9b): "existe skill `segundo-cerebro` cobrindo isso".
+- **Ganho:** sessões de conhecimento caem de 1,86M tokens para ~50–100 k (1 skill + 1 read). Esforço: 1 dia (contador no loop + prompt curto).
+
 ## 3. Telemetria (sem ela nada disso se prova)
 
 | # | Métrica | Onde |
@@ -89,6 +98,7 @@ Fatos do código que definem o custo:
 | C3 dedup | 20–60 k | padrão de releitura |
 | C4 roteamento | 30–50% do custo de subagentes | em orquestrações |
 | C5 esforço fino | 10–30% dos output tokens | output = preço maior |
+| C9 bússola de conhecimento | 1,5–1,8 M em perguntas de ambiente | caso real `7c5976fc`: 1,86M → ~100 k |
 | **Soma conservadora** | **−35–45% de custo/sessão** | bate a meta M1 com folga |
 
 ## 5. Critérios de aceite

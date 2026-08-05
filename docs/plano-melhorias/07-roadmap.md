@@ -39,6 +39,7 @@
 | I6a few-shot por tool complexa | 05 | 0,5 d | −tool calls inválidas |
 | I2 grounding: editar só depois de ler | 05 | 1 d | mata alucinação de `old_string` |
 | Linha "agrupe chamadas independentes" no system prompt | 04 V6 | 0,1 d | −turnos |
+| **I9a semear skills de produto + I10a bloco Windows no prompt** | 05 | 0,5–1 d | **mata exploração cega (caso real 08/05: 40 calls → ~3)** |
 
 ### F2 — Verificação (a IA para de entregar cego)
 
@@ -58,6 +59,7 @@
 | V4 auto-effort fino | 04 | 1 d |
 | T8 `read_files` em lote | 02 | 0,5 d |
 | V3 cache de índices (repo_map persistido, pré-aquecer vector) | 04 | 2 d |
+| V7 bússola de conhecimento (catálogo de skills no prompt) | 04 | 0,5 d |
 
 ### F4 — Subagentes
 
@@ -79,6 +81,8 @@
 | C3 dedup de resultados | 06 | 1 d |
 | I4 recall automático de memória | 05 | 2 d |
 | I5 repo_map âncora + T7 `find_references` | 05/02 | 1,5 d |
+| C9 orçamento de exploração por pergunta (anti-varredura) | 06 | 1 d |
+| I9c eval de ecossistema (replay da sessão `7c5976fc`) | 05 | 0,5 d |
 
 ### F6 — Front (paralela ao F2–F4, pessoa/fluxo separado)
 
@@ -91,6 +95,7 @@
 | W6 testes de componente web | 01 | 1 d |
 | W4/W5/W7 splitting, confirmações, a11y | 01 | 1,5 d |
 | D5 modo econômico (banner + flag) | 01/06 | 1 d |
+| **D7–D11 bugs do PlanTracker (caso real 08/05: 0/20, markdown cru, corte no input)** | 01 §6 | 2–3 d |
 
 ### F7 — Avançado (backlog ordenado)
 
@@ -121,6 +126,7 @@ Subprocesso (plano próprio) ──► O5/O6 (F7)
 | Roteamento por papel rebaixa qualidade do explorer | Evals por tipo de subagente antes de ligar `high` por padrão; flag para voltar |
 | Medir custo com preço estimado do Flash | Tabela centralizada em `cost.ts`; recalibrar quando sair preço oficial |
 | Escopo crescer ("só mais uma tool") | Regra do doc 02 §1: toda tool nova precisa mostrar economia de turnos |
+| Skills semeadas ficam desatualizadas (endereço do vault muda, etc.) | Skills apontam para fonte canônica (AGENTS.md/INDEX.md do vault); revisão trimestral; data de validade no cabeçalho |
 
 ## 5. Métricas de sucesso do plano inteiro (revisão após F5)
 

@@ -74,19 +74,48 @@
 - Cada cenário com orçamento de tokens: passar **e** gastar ≤ teto. Regressão de custo falha o CI igual regressão de qualidade.
 - Esforço: 2 dias iniciais + manutenção contínua.
 
+### I9 — Conhecimento do ecossistema do usuário (skills globais de produto)
+
+**Estudo de caso real (2026-08-05, sessão `7c5976fc`, workspace `C:\`):** o usuário pediu "estude como funciona o segundo cerebro que os agents de ia desse pc usam". O agente gastou **40 API calls / 34 `bash` / 5 min / ~1,86M tokens** e bateu no limite de exploração — explorando `.claude/`, `.codex/memories/`, `.gemini/antigravity/brain/` à mão — para **no fim responder quase certo** (achou `docs/PROMPT-ZERO-CODINGPRO.md`). O Hermes (agente irmão) responde a mesma pergunta em **1 chamada**, porque tem a skill `segundo-cerebro` com o caminho do vault, o protocolo (lock + changelog) e o host SSH.
+
+**Causa raiz:** o CodingPro só carrega skills de `.codingpro/skills/*.md` (projeto) e `~/.codingpro/skills/*.md` (global) — **e nenhuma das duas pastas tem a skill do vault**. Não existe skill de produto que ensine o ecossistema do usuário (Segundo Cérebro, IMAP/OneDrive, DLA, servidores SSH). O agente "redescobre" o ambiente a cada sessão, caro.
+
+**Propostas (sem tocar no runtime — é conteúdo):**
+
+| # | Ação | Custo/benefício |
+|---|---|---|
+| I9a | **Semear `~/.codingpro/skills/`** com skills de produto reais: `segundo-cerebro` (vault: `/home/server/Downloads/Segundo-Cerebro`, ssh, lock+changelog, AGENTS.md), `windows-env` (cmd vs bash, PYTHONPATH, Python312 -E), `imap-dla`/`geoforest` quando aplicável | Custo ~0 tokens de runtime; evita 30–40 calls de exploração em perguntas de ambiente |
+| I9b | **Catálogo de skills no system prompt**: 1 bloco de 3–5 linhas listando skills disponíveis (nome + 1 linha do que cobre) para o agente saber que existe antes de explorar | +200 tok de prefixo (cacheado); troca exploração cega por leitura direta |
+| I9c | **Eval novo**: "pergunta sobre o ambiente do usuário" (ex.: onde fica o Segundo Cérebro, como editar o vault) deve responder com ≤ 3 tool calls se a skill certa estiver no contexto | bússola do I9 |
+
+### I10 — Grounding de ambiente Windows (o sandbox é o PC real)
+
+**Estudo de caso real (mesma sessão):** o workspace era `C:\` (raiz do drive) e o sandbox de arquivos **não alcançou `C:\GIS\CodingPro`** — o agente caiu para `bash` + Python 3.12 one-liners com quoting/encoding quebrado (cmd do Windows corta `\n`, Python padrão tinha PYTHONPATH sujo), e repetiu o mesmo comando 2–4× com variações.
+
+**Propostas:**
+
+| # | Ação | Custo/benefício |
+|---|---|---|
+| I10a | **Bloco "Windows" no system prompt**: `bash` = cmd.exe (não POSIX) — usar `dir`/`type`/`where`; one-liners Python multi-linha falham (cmd trunca) — preferir `python -c` de 1 linha ou script temporário; usar `C:\Users\Usuario\AppData\Local\Programs\Python\Python312\python.exe -E` (limpo) em vez de `python` | 0 tok de runtime (é prompt fixo, cacheado); elimina classe inteira de retries de comando quebrado |
+| I10b | **Sandbox com raiz `C:\`**: quando `workspacePath` for raiz de drive, os tools de arquivo (read_file/list_dir/grep) devem resolver caminhos absolutos dentro do drive sem exigir o prefixo do workspace (hoje `read_file("C:\GIS\...")` falha com workspace `C:\` — ver `resolvePath` em `packages/core/src/workspace.ts`). Alternativa conservadora: doc/aviso de que raiz de drive não é workspace ideal (root-cause 6 do desktop: "não hackear o sandbox") | corrige a classe "sandbox não alcança C:\GIS" que força bash |
+| I10c | **Dedup de comandos**: o mesmo `bash` com input idêntico (ou só variação de quoting) apareceu 4× em 34 calls — o C3 do doc 06 cobre results idênticos; estender a hash para **comandos** (normalizar espaços/aspas antes de hashear) | −turnos de retry inútil |
+
 ## 3. Priorização custo × ganho
 
 | Ordem | Item | Ganho de precisão | Custo extra de tokens | Esforço |
 |---|---|---|---|---|
+| 0 | I9a semear skills de produto | Altíssimo (ecossistema real) | **negativo** (elimina exploração cega) | 0,5–1 d (conteúdo, sem runtime) |
 | 1 | I2 grounding antes de editar | Altíssimo | **negativo** (evita releituras) | 0,5–1 d |
 | 2 | I6b reparo de JSON | Alto | zero | 0,5 d |
 | 3 | I6a few-shot no prefixo | Alto | ~0 (cacheado) | 0,5 d |
 | 4 | I1 verificação embutida | Altíssimo | ~500 tok/edição (se paga) | 1–2 d |
-| 5 | I3 resumo na compactação | Alto (sessões longas) | ~2 k tok/compactação (se paga com folga) | 2 d |
-| 6 | I5 repo map âncora | Médio/Alto | 1,5 k tok/sessão | 1 d |
-| 7 | I4 memória automática | Médio | ~300 tok/sessão | 2 d |
-| 8 | I7 planner/critic sob demanda | Alto em tarefa cara | só quando invocado | 1 d |
-| 9 | I8 evals | bússola | custo de CI | 2 d |
+| 5 | I10a bloco Windows no prompt | Alto (PC real do usuário) | 0 (prompt fixo cacheado) | 0,5 d |
+| 6 | I3 resumo na compactação | Alto (sessões longas) | ~2 k tok/compactação (se paga com folga) | 2 d |
+| 7 | I5 repo map âncora | Médio/Alto | 1,5 k tok/sessão | 1 d |
+| 8 | I4 memória automática | Médio | ~300 tok/sessão | 2 d |
+| 9 | I7 planner/critic sob demanda | Alto em tarefa cara | só quando invocado | 1 d |
+| 10 | I10b sandbox raiz de drive | Médio (caso específico) | 0 | 1 d |
+| 11 | I8 evals | bússola | custo de CI | 2 d |
 
 ## 4. Critérios de aceite
 
@@ -95,3 +124,4 @@
 - [ ] 100% das edições em projeto com runner são seguidas de verificação antes da resposta final.
 - [ ] Sessão de 60+ turnos compactada mantém as decisões iniciais no resumo (teste de unidade da compactação).
 - [ ] Nenhuma melhoria aumenta o custo mediano por tarefa > 5% (gate do benchmark).
+- [ ] **Eval de ecossistema (I9c):** "onde fica o Segundo Cérebro e como editar o vault" responde com ≤ 3 tool calls quando a skill `segundo-cerebro` está no contexto (replay da sessão `7c5976fc`).

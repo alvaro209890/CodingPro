@@ -1,7 +1,23 @@
 # Plano de Melhorias — Front + IA CodingPro
 
-**Data:** 2026-08-04 · **Área:** transversal (web, desktop, core, llm) · **Status:** 🚧 em execução (01 ✅; 02 ✅; 03–07 planejados)
+**Data:** 2026-08-04 · **Atualizado:** 2026-08-05 (caso real `7c5976fc`) · **Área:** transversal (web, desktop, core, llm) · **Status:** 🚧 em execução (01 ✅; 02 ✅; 03–07 planejados; 04/05/06 ganharam itens do caso real 08/05)
 **Objetivo:** deixar a IA **mais eficiente, inteligente, precisa e rápida**, com **mais tools e mais subagentes**, **gastando menos tokens** — e melhorar o front (web + desktop) na mesma medida.
+
+---
+
+## 0. Caso real 2026-08-05 — o que a sessão `7c5976fc` ensinou ⭐
+
+No dia 05/08 o usuário perguntou ao desktop (workspace `C:\`): *"estude como funciona o segundo cerebro que os agents de ia desse pc usam"*.
+
+**O que aconteceu:** 40 API calls (34 `bash`), ~1,86M tokens de entrada, ~5 min, e o agente **bateu no limite de exploração** (`maxSteps`) — varreu `.claude/`, `.codex/memories/`, `.gemini/antigravity/brain/` à mão, sofreu com quoting/encoding do cmd, e só no fim achou `docs/PROMPT-ZERO-CODINGPRO.md`. O Hermes (agente irmão) responde a mesma pergunta em **1 chamada** porque tem a skill `segundo-cerebro`.
+
+**Três lições que viraram itens de plano:**
+
+1. **Sem bússola, o agente varre o disco.** Sem skills de produto semeadas (`~/.codingpro/skills/`), todo ambiente é redescoberto do zero → **I9a/I9b, V7, C9**.
+2. **Windows é hostil para `bash` ingênuo.** cmd.exe, encoding, PYTHONPATH — o agente repetiu o mesmo comando 4× com variações → **I10a/I10c**.
+3. **O teto global de passos corta tarde demais.** Precisa de teto intermediário por fase → **C9**.
+
+Detalhes, custos e aceites em cada doc (05 I9/I10, 04 V7, 06 C9). Replay do transcript: `C:\.codingpro\sessions\2026-08-05T17-12-08-296Z-7c5976fc.jsonl`.
 
 ---
 
@@ -31,13 +47,13 @@
 
 | Doc | Tema | Ganho principal | Status |
 |---|---|---|---|
-| [01-front-web.md](01-front-web.md) | Melhorias do front web/desktop | UX, tempo real, custo visível | ✅ concluído |
+| [01-front-web.md](01-front-web.md) | Melhorias do front web/desktop | UX, tempo real, custo visível | ✅ concluído (D7–D11 pós-entrega 📌) |
 | [02-mais-tools.md](02-mais-tools.md) | Catálogo de novas tools | Capacidade (M4) | ✅ concluído |
 | [03-mais-subagentes.md](03-mais-subagentes.md) | Novos tipos + orquestração + roteamento por papel | Capacidade + custo (M4, M1) | 📌 planejado |
-| [04-velocidade.md](04-velocidade.md) | Paralelismo, caches, streaming | Rapidez (M2) | 📌 planejado |
-| [05-inteligencia-e-precisao.md](05-inteligencia-e-precisao.md) | Verificação, grounding, memória | Precisão (M3) | 📌 planejado |
-| [06-economia-de-tokens.md](06-economia-de-tokens.md) | Compactação com resumo, budgets, dedup | Custo (M1) | 📌 planejado |
-| [07-roadmap.md](07-roadmap.md) | Fases, esforço × impacto, critérios de aceite | Execução | 📌 planejado |
+| [04-velocidade.md](04-velocidade.md) | Paralelismo, caches, streaming + **V7 bússola de conhecimento** | Rapidez (M2) | 📌 planejado (+caso real) |
+| [05-inteligencia-e-precisao.md](05-inteligencia-e-precisao.md) | Verificação, grounding, memória + **I9 skills de produto + I10 Windows** | Precisão (M3) | 📌 planejado (+caso real) |
+| [06-economia-de-tokens.md](06-economia-de-tokens.md) | Compactação com resumo, budgets, dedup + **C9 anti-varredura** | Custo (M1) | 📌 planejado (+caso real) |
+| [07-roadmap.md](07-roadmap.md) | Fases, esforço × impacto, critérios de aceite | Execução | 📌 planejado (+caso real) |
 
 ## 4. Princípios que regem todo o plano
 

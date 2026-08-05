@@ -54,7 +54,21 @@
 
 Roteador com URLs reais por aba (`/painel/consumo`), dark mode explícito no web, PWA/offline, i18n en/es, dashboard admin de custo por usuário (existe no admin, evoluir junto com W3).
 
-## 6. Como validar
+## 6. Bugs descobertos no caso real (2026-08-05, sessão `7c5976fc`) — corrigir
+
+**Sintoma (screenshot do usuário):** sessão com `/plan` de 20 passos; o app mostra **"Plano: 0/20 concluído"** mesmo com subagente finalizado e relatório salvo, itens do plano com **markdown cru** (`**Abrir o PowerShell**`, backticks visíveis), painel "Subagentes · 1 finalizados" com spinner parado, e o final do plano **cortado atrás da barra de input**. O run terminou com "limite de passos atingido" (`maxSteps`).
+
+| # | Bug | Causa raiz (lido no código) | Correção proposta | Esforço |
+|---|---|---|---|---|
+| D7 | **PlanTracker preso em 0/N** | `salvarEIniciarPlano` emite `plan-task` **1× só com `pending`** (`main/index.ts:1120`) e nada atualiza para `running`/`done` durante a execução — o `session.planoAtivo` existe, mas não há ponte dele para a UI | Conectar `planoAtivo` ao loop: quando o agente toca um passo (via `task`/ferramentas), emitir `plan-task` com status real; ao menos marcar `running` no turno atual e `done` ao concluir/compactar | 1–2 d |
+| D8 | **Markdown cru nos itens do plano** | `extrairPassosPlano` guarda o label cru (ex.: `**Abrir o PowerShell**` — `index.ts:1095`) e `PlanTracker.tsx:42` renderiza `{t.label}` sem `renderMarkdown()` | Aplicar o mesmo `renderMarkdown()` usado nos balões do chat ao `plan-tracker-label` (ou sanitizar `*`/backticks na extração) | 0,5 d |
+| D9 | **"1 finalizados" + ícone de spinner parado** | `SubagentPanel.tsx:77` usa `agents.length` para o plural ("1 finalizados") e o `.subagent-orbit` só anima com `running > 0`, mas o card mostra 1 arquiteto `done` com aparência de spinner | Plural correto (`1 finalizado` / `N finalizados`) + ícone de estado condizente (✓ quando `running === 0`); CSS `subagent-orbit.running` | 0,5 d |
+| D10 | **Conteúdo do feed cortado atrás do input** | O plano de 20 itens estoura o `max-height` do feed e fica encoberto pela `.floating-input-dock` (o padding-bottom do feed não conta o dock quando o PlanTracker está presente) | `padding-bottom` dinâmico no scroll container quando `planTasks.length > 0` (mesma família do root-cause 8 — overflow do dock) | 0,5 d |
+| D11 | **Espaço vazio grande entre resposta e plano** | O `ToolSummaryBlock`/PlanTracker é anexado ao fim da lista de mensagens, mas o plano vem do evento `plan-task` assíncrono — o feed posiciona o tracker no rodapé fixo e o plano-texto fica no meio do histórico, criando o vão | Definir posição única (rodapé fixo, como o TaskTracker) e **não** duplicar o plano no histórico da mensagem — ou renderizar o bloco de plano dentro do balão que o gerou | 1 d |
+
+**Nota de produto (não é bug de front):** o run terminou em "limite de passos atingido" porque o plano de 20 passos estourou `maxSteps` antes de terminar — reforça o **C9 (doc 06)**: teto de exploração por objetivo + plano alimentando a execução (o modelo não deve "reexplorar" o que o plano já decidiu).
+
+## 7. Como validar
 
 ```bash
 pnpm --filter @codingpro/web test
