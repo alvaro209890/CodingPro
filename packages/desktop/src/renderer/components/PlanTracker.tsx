@@ -1,4 +1,5 @@
 import type React from "react";
+import { renderMarkdown } from "./MarkdownRenderer.js";
 
 export interface PlanTask {
   id: string;
@@ -39,7 +40,11 @@ export const PlanTracker: React.FC<PlanTrackerProps> = ({ tasks, isRunning }) =>
                     ? "…"
                     : "○"}
             </span>
-            <span className="plan-tracker-label">{t.label}</span>
+            <span
+              className="plan-tracker-label"
+              // D8: labels vêm com markdown do plano (negrito, backticks) — renderiza como no chat.
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(t.label) }}
+            />
           </div>
         ))}
       </div>

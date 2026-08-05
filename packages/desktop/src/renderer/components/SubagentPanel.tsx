@@ -71,10 +71,14 @@ export const SubagentPanel: React.FC<SubagentPanelProps> = ({ agents }) => {
         onClick={() => setCollapsed((value) => !value)}
         aria-expanded={!collapsed}
       >
-        <span className={`subagent-orbit ${running > 0 ? "running" : ""}`} aria-hidden="true" />
+        <span className={`subagent-orbit ${running > 0 ? "running" : "idle"}`} aria-hidden="true" />
         <span>
           <strong>Subagentes</strong>
-          <small>{running > 0 ? `${running} ativos` : `${agents.length} finalizados`}</small>
+          <small>
+            {running > 0
+              ? `${running} ${running === 1 ? "ativo" : "ativos"}`
+              : `${agents.length} ${agents.length === 1 ? "finalizado" : "finalizados"}`}
+          </small>
         </span>
         <span className="subagent-chevron">{collapsed ? "›" : "⌄"}</span>
       </button>

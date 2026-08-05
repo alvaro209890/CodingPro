@@ -455,6 +455,15 @@ interface ChatSession {
   usage: UsageLedger;
   planoAtivo?: PlanoAtivo | undefined;
   planoPendente?: PlanoPendente | undefined;
+  /** Passos do plano ativo com status vivo para o PlanTracker (D7: emitir running/done). */
+  planoPassos: readonly PassoPlanoUi[];
+}
+
+/** Passo do plano ativo com status vivo para a UI (mesmo shape do evento plan-task). */
+interface PassoPlanoUi {
+  id: string;
+  label: string;
+  status: "pending" | "running" | "done" | "failed";
 }
 
 let activeSession: ChatSession | null = null;
@@ -930,6 +939,7 @@ async function obterOuCriarSessao(cwd: string): Promise<ChatSession> {
     transcript: [],
     workspace,
     usage: new UsageLedger(),
+    planoPassos: [],
   };
   sessionRef = sess;
   selectedWorkspacePath = normalized;
@@ -1101,6 +1111,50 @@ function extrairPassosPlano(
   return passos;
 }
 
+/** Emite um passo do plano para a UI (PlanTracker) e atualiza o estado da sessão. */
+function emitirPassoPlano(session: ChatSession, passo: PassoPlanoUi): void {
+  sendCoreEvent({ type: "plan-task", task: passo });
+  const idx = session.planoPassos.findIndex((p) => p.id === passo.id);
+  const copia = [...session.planoPassos];
+  if (idx === -1) {
+    copia.push(passo);
+  } else {
+    copia[idx] = passo;
+  }
+  session.planoPassos = copia;
+}
+
+/**
+ * D7: marca o próximo passo pendente como running no início de um run do agente.
+ * Heurística: cada turno do agente "toca" um passo do plano (o tracker anda junto).
+ */
+function marcarProximoPassoRunning(session: ChatSession): void {
+  if (session.planoPassos.length === 0) return;
+  const proximo = session.planoPassos.find((p) => p.status === "pending");
+  if (proximo === undefined) return;
+  emitirPassoPlano(session, { ...proximo, status: "running" });
+}
+
+/** D7: conclui o passo que estava running ao fim de um run com sucesso. */
+function marcarPassoRunningConcluido(session: ChatSession): void {
+  for (const p of session.planoPassos) {
+    if (p.status === "running") {
+      emitirPassoPlano(session, { ...p, status: "done" });
+      return;
+    }
+  }
+}
+
+/** D7: falha o passo running (run falhou/cancelado) — volta a pending para nova tentativa. */
+function marcarPassoRunningFalho(session: ChatSession): void {
+  for (const p of session.planoPassos) {
+    if (p.status === "running") {
+      emitirPassoPlano(session, { ...p, status: "pending" });
+      return;
+    }
+  }
+}
+
 /** Persiste o plano, ativa-o na sessão e emite os passos para o PlanTracker. */
 async function salvarEIniciarPlano(
   session: ChatSession,
@@ -1117,8 +1171,10 @@ async function salvarEIniciarPlano(
   });
   if (resultado.plano !== undefined) {
     session.planoAtivo = resultado.plano;
-    for (const passo of extrairPassosPlano(texto)) {
-      sendCoreEvent({ type: "plan-task", task: passo });
+    const passos = extrairPassosPlano(texto);
+    session.planoPassos = [];
+    for (const passo of passos) {
+      emitirPassoPlano(session, passo);
     }
   }
   linhasProgresso.push("", texto);
@@ -1136,6 +1192,7 @@ async function iniciarComandoPlano(
   if (argLower === "clear" || argLower === "limpar" || argLower === "none") {
     session.planoAtivo = undefined;
     session.planoPendente = undefined;
+    session.planoPassos = [];
     return { handled: true, reply: "· plano ativo limpo" };
   }
   if (arg.length === 0) {
@@ -2082,6 +2139,8 @@ app.whenReady().then(() => {
           workspace: session.workspace.root,
         });
         session.checkpoints.begin(promptAgente.slice(0, 80));
+        // D7: plano ativo → o passo pendente vira running (tracker anda junto com o run).
+        marcarProximoPassoRunning(session);
 
         // Auto-compact: se contexto > 75% do orçamento, compacta
         const estContexto = snapshotCusto(session);
@@ -2337,6 +2396,8 @@ app.whenReady().then(() => {
           messages: session.transcript,
         });
         sendUsage(session);
+        // D7: run concluído com sucesso → passo running vira done.
+        marcarPassoRunningConcluido(session);
         appendDesktopDiagnostic(app.getPath("userData"), {
           durationMs: Date.now() - _runStartMs,
           event: "run-completed",
@@ -2383,6 +2444,10 @@ app.whenReady().then(() => {
                 workspace: activeSession.workspace.root,
               }),
         });
+        // D7: run falhou/cancelou → passo running volta a pending (nova tentativa no próximo run).
+        if (activeSession !== null) {
+          marcarPassoRunningFalho(activeSession);
+        }
 
         // reverte checkpoint (rollback no erro)
         try {
