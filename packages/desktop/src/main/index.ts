@@ -364,6 +364,25 @@ async function montarSystemPromptDesktop(session: ChatSession): Promise<string> 
     skillsStr,
   ].join("\n");
   const base = `${SYSTEM_PROMPT_V1}\n${extra}`;
+  // I5 — repo map âncora: no 1º turno (histórico ainda vazio/curto) e com projeto detectado,
+  // injeta o repo_map resumido (orçamento 1,5 k tok) para o agente não explorar às cegas.
+  let comRepoMap = base;
+  const turnoInicial =
+    session.transcript.filter((m) => m.role === "user").length <= 1 && session.transcript.length <= 3;
+  if (turnoInicial && projetoLinha.length > 0 && !projetoLinha.includes("detecção indisponível")) {
+    try {
+      const mapa = await construirRepoMap(workspace, {
+        cacheDir: join(workspace.root, ".codingpro"),
+        orcamentoTokens: 1_500,
+        maxArquivos: 400,
+      });
+      if (mapa.texto.trim().length > 0) {
+        comRepoMap = `${base}\n\n### Mapa do repositório (âncora do 1º turno — I5)\n${mapa.texto}`;
+      }
+    } catch {
+      // repo map é best-effort — nunca derruba o turno
+    }
+  }
   // I4 — recall automático de memória: índices (sempre) + memórias relevantes ao turno,
   // paridade com a CLI (memory-runtime.promptDoTurno). Custo ~300 tok/sessão; evita
   // "reexplorar" decisões/fatos já memorizados em sessões anteriores.
@@ -385,10 +404,14 @@ async function montarSystemPromptDesktop(session: ChatSession): Promise<string> 
     const relevantes = [...relProjeto, ...relGlobal].slice(0, MEMORY_RETRIEVAL_TOP_K);
     const bloco = montarBlocoMemoria({ indiceGlobal, indiceProjeto, relevantes });
     if (bloco.length > 0) {
-      comMemoria = `${base}\n\n${bloco}`;
+      // base já pode conter o repo map do 1º turno (I5) — anexa memória depois dele.
+      comMemoria = `${comRepoMap}\n\n${bloco}`;
+    } else {
+      comMemoria = comRepoMap;
     }
   } catch {
     // memória é best-effort — nunca derruba o turno
+    comMemoria = comRepoMap;
   }
   return session.planoAtivo === undefined
     ? comMemoria
